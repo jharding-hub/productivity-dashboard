@@ -70,6 +70,10 @@ input[type="date"]::-webkit-calendar-picker-indicator,input[type="time"]::-webki
 body.unlocked .editable{cursor:text;border-bottom-color:var(--border);}
 body.unlocked .editable:hover{border-bottom-color:var(--text-faint);background:rgba(255,255,255,0.03);}
 .editable:focus{outline:none;border-bottom-color:var(--accent)!important;background:var(--surface-raised)!important;}
+.date-editable{padding:1px 4px;border-radius:2px;border-bottom:1px dashed transparent;transition:all 0.15s;display:inline-block;}
+body.unlocked .date-editable{cursor:pointer;border-bottom-color:var(--border);}
+body.unlocked .date-editable:hover{border-bottom-color:var(--accent);background:rgba(255,255,255,0.03);}
+.date-edit-input{width:130px;font-size:11px;padding:2px 4px;display:inline-block;}
 
 /* PROJECTS */
 .project-list{display:flex;flex-direction:column;gap:6px;overflow-y:auto;}
@@ -540,12 +544,44 @@ function toggleSubtask(pid,sid){const p=state.projects.find(p=>p.id===pid);const
 function deleteSubtask(pid,sid){const p=state.projects.find(p=>p.id===pid);if(p)p.subtasks=p.subtasks.filter(s=>s.id!==sid);save();renderProjects();}
 function editProjectName(pid,v){if(!v)return;const p=state.projects.find(p=>p.id===pid);if(p)p.name=v;save();}
 function editSubtaskName(pid,sid,v){if(!v)return;const p=state.projects.find(p=>p.id===pid);const s=p&&p.subtasks.find(s=>s.id===sid);if(s)s.name=v;save();}
+function editProjectDue(pid,v){const p=state.projects.find(p=>p.id===pid);if(p){p.due=v;save();renderProjects();}}
+function editSubtaskDue(pid,sid,v){const p=state.projects.find(p=>p.id===pid);const s=p&&p.subtasks.find(s=>s.id===sid);if(s){s.due=v;save();renderProjects();}}
+function editReminderDate(id,v){const r=state.reminders.find(r=>r.id===id);if(r){r.date=v;save();renderReminders();}}
+function editReminderTime(id,v){const r=state.reminders.find(r=>r.id===id);if(r){r.time=v;save();renderReminders();}}
+function makeDateClickable(el,currentVal,onSave){
+  el.addEventListener('click',function(e){
+    if(state.panelsLocked)return;
+    e.stopPropagation();
+    const inp=document.createElement('input');
+    inp.type='date';inp.className='date-edit-input';
+    inp.value=currentVal||'';
+    el.innerHTML='';el.appendChild(inp);
+    inp.focus();
+    inp.addEventListener('change',function(){onSave(inp.value);});
+    inp.addEventListener('blur',function(){onSave(inp.value);});
+  });
+}
+function makeTimeClickable(el,currentVal,onSave){
+  el.addEventListener('click',function(e){
+    if(state.panelsLocked)return;
+    e.stopPropagation();
+    const inp=document.createElement('input');
+    inp.type='time';inp.className='date-edit-input';inp.style.width='100px';
+    inp.value=currentVal||'';
+    el.innerHTML='';el.appendChild(inp);
+    inp.focus();
+    inp.addEventListener('change',function(){onSave(inp.value);});
+    inp.addEventListener('blur',function(){onSave(inp.value);});
+  });
+}
 
 function renderProjects(){const el=document.getElementById('projectList');const today=todayStr();if(state.projects.length===0){el.innerHTML='<div class="empty-state">No projects yet.</div>';document.getElementById('projCount').textContent='0';updateNoteSelectors();return;}
 el.innerHTML=state.projects.map(p=>{const total=p.subtasks.length,done=p.subtasks.filter(s=>s.done).length;const ov=p.due&&p.due<today;const ovc=p.subtasks.filter(s=>s.due&&s.due<today&&!s.done).length;const sorted=[...p.subtasks].sort((a,b)=>{if(a.done!==b.done)return a.done?1:-1;if(a.due&&b.due)return a.due.localeCompare(b.due);if(a.due)return -1;if(b.due)return 1;return 0;});
-return '<div class="project-card"><div class="proj-header" onclick="toggleProjectExpand(\''+p.id+'\')"><span class="proj-expand '+(p.expanded?'open':'')+'">\u25B6</span><div class="proj-info"><div class="proj-name editable" id="pn_'+p.id+'">'+esc(p.name)+'</div><div class="proj-meta"><span>'+done+'/'+total+' tasks</span>'+(p.due?'<span class="'+(ov?'overdue':'')+'">Ends: '+fmtDate(p.due)+(ov?' \u26A0':'')+'</span>':'')+(ovc>0?'<span class="overdue">'+ovc+' overdue</span>':'')+'</div></div><div style="display:flex;gap:4px;" onclick="event.stopPropagation()"><span class="st-btn st-cal" onclick="exportProjectICS(\''+p.id+'\')">\u{1F4C5}</span><span class="proj-delete" onclick="deleteProject(\''+p.id+'\')">\u2715</span></div></div><div class="subtask-area '+(p.expanded?'open':'')+'"><div class="subtask-list">'+(sorted.length===0?'<div class="empty-state" style="padding:10px;">No subtasks yet.</div>':sorted.map(st=>{const so=st.due&&st.due<today&&!st.done;return '<div class="subtask-item '+(st.done?'st-done':'')+'"><div class="st-check '+(st.done?'checked':'')+'" onclick="toggleSubtask(\''+p.id+"','"+st.id+'\')">'+(st.done?'\u2713':'')+'</div><span class="st-name editable" id="sn_'+st.id+'"><span class="priority-dot priority-'+st.priority+'"></span>'+esc(st.name)+'</span>'+(st.due?'<span class="st-due '+(so?'overdue':'')+'">'+(so?'\u26A0 ':'')+fmtDate(st.due)+'</span>':'')+'<div class="st-actions"><span class="st-btn st-cal" onclick="exportSubtaskICS(\''+p.id+"','"+st.id+'\')">\u{1F4C5}</span><span class="st-btn st-del" onclick="deleteSubtask(\''+p.id+"','"+st.id+'\')">\u2715</span></div></div>';}).join(''))+'</div><div class="subtask-add"><input type="text" id="stN_'+p.id+'" placeholder="New subtask..." onkeydown="if(event.key===\'Enter\')addSubtask(\''+p.id+'\')"><select id="stP_'+p.id+'"><option value="low">Low</option><option value="med" selected>Med</option><option value="high">High</option></select><input type="date" id="stD_'+p.id+'"><button class="btn btn-accent btn-sm" onclick="addSubtask(\''+p.id+'\')">+</button></div></div></div>';}).join('');
+return '<div class="project-card"><div class="proj-header" onclick="toggleProjectExpand(\''+p.id+'\')"><span class="proj-expand '+(p.expanded?'open':'')+'">\u25B6</span><div class="proj-info"><div class="proj-name editable" id="pn_'+p.id+'">'+esc(p.name)+'</div><div class="proj-meta"><span>'+done+'/'+total+' tasks</span>'+(p.due?'<span class="date-editable '+(ov?'overdue':'')+'" id="pd_'+p.id+'">Ends: '+fmtDate(p.due)+(ov?' \u26A0':'')+'</span>':'<span class="date-editable" id="pd_'+p.id+'" style="color:var(--text-faint);">+ set date</span>')+(ovc>0?'<span class="overdue">'+ovc+' overdue</span>':'')+'</div></div><div style="display:flex;gap:4px;" onclick="event.stopPropagation()"><span class="st-btn st-cal" onclick="exportProjectICS(\''+p.id+'\')">\u{1F4C5}</span><span class="proj-delete" onclick="deleteProject(\''+p.id+'\')">\u2715</span></div></div><div class="subtask-area '+(p.expanded?'open':'')+'"><div class="subtask-list">'+(sorted.length===0?'<div class="empty-state" style="padding:10px;">No subtasks yet.</div>':sorted.map(st=>{const so=st.due&&st.due<today&&!st.done;return '<div class="subtask-item '+(st.done?'st-done':'')+'"><div class="st-check '+(st.done?'checked':'')+'" onclick="toggleSubtask(\''+p.id+"','"+st.id+'\')">'+(st.done?'\u2713':'')+'</div><span class="st-name editable" id="sn_'+st.id+'"><span class="priority-dot priority-'+st.priority+'"></span>'+esc(st.name)+'</span>'+(st.due?'<span class="st-due date-editable '+(so?'overdue':'')+'" id="sd_'+st.id+'">'+(so?'\u26A0 ':'')+fmtDate(st.due)+'</span>':'<span class="st-due date-editable" id="sd_'+st.id+'" style="color:var(--text-faint);">+ date</span>')+'<div class="st-actions"><span class="st-btn st-cal" onclick="exportSubtaskICS(\''+p.id+"','"+st.id+'\')">\u{1F4C5}</span><span class="st-btn st-del" onclick="deleteSubtask(\''+p.id+"','"+st.id+'\')">\u2715</span></div></div>';}).join(''))+'</div><div class="subtask-add"><input type="text" id="stN_'+p.id+'" placeholder="New subtask..." onkeydown="if(event.key===\'Enter\')addSubtask(\''+p.id+'\')"><select id="stP_'+p.id+'"><option value="low">Low</option><option value="med" selected>Med</option><option value="high">High</option></select><input type="date" id="stD_'+p.id+'"><button class="btn btn-accent btn-sm" onclick="addSubtask(\''+p.id+'\')">+</button></div></div></div>';}).join('');
 document.getElementById('projCount').textContent=state.projects.length;
 state.projects.forEach(p=>{const pe=document.getElementById('pn_'+p.id);if(pe)makeEditable(pe,v=>editProjectName(p.id,v));p.subtasks.forEach(st=>{const se=document.getElementById('sn_'+st.id);if(se)makeEditable(se,v=>{editSubtaskName(p.id,st.id,v.trim());});});});
+// Attach date editors
+state.projects.forEach(p=>{const pde=document.getElementById('pd_'+p.id);if(pde)makeDateClickable(pde,p.due,v=>editProjectDue(p.id,v));p.subtasks.forEach(st=>{const sde=document.getElementById('sd_'+st.id);if(sde)makeDateClickable(sde,st.due,v=>editSubtaskDue(p.id,st.id,v));});});
 refreshEditables();updateNoteSelectors();}
 
 // REMINDERS
@@ -555,9 +591,9 @@ function clearPastReminders(){state.reminders=state.reminders.filter(r=>!r.date|
 function editReminderText(id,v){if(!v)return;const r=state.reminders.find(r=>r.id===id);if(r)r.text=v;save();}
 function renderReminders(){const el=document.getElementById('reminderList');const today=todayStr();const sorted=[...state.reminders].sort((a,b)=>{if(a.date&&b.date){const d=a.date.localeCompare(b.date);if(d!==0)return d;}if(a.date&&!b.date)return -1;if(!a.date&&b.date)return 1;if(a.time&&b.time)return a.time.localeCompare(b.time);return 0;});
 if(sorted.length===0){el.innerHTML='<div class="empty-state">No reminders.</div>';document.getElementById('remCount').textContent='0';return;}
-el.innerHTML=sorted.map(r=>{const ov=r.date&&r.date<today;const it=r.date===today;return '<div class="reminder-item"><span class="rem-icon">'+(ov?'\u{1F534}':it?'\u{1F7E1}':'\u{1F535}')+'</span><div class="rem-body"><div class="rem-text editable" id="rt_'+r.id+'">'+esc(r.text)+'</div><div class="rem-when '+(ov?'overdue':'')+'">'+(r.date?fmtDate(r.date):'No date')+(r.time?' at '+fmtTime(r.time):'')+(ov?' \u2014 OVERDUE':it?' \u2014 TODAY':'')+'</div></div><div style="display:flex;gap:2px;"><span class="st-btn st-cal" onclick="exportReminderICS(\''+r.id+'\')">\u{1F4C5}</span><span class="st-btn st-del" onclick="deleteReminder(\''+r.id+'\')">\u2715</span></div></div>';}).join('');
+el.innerHTML=sorted.map(r=>{const ov=r.date&&r.date<today;const it=r.date===today;return '<div class="reminder-item"><span class="rem-icon">'+(ov?'\u{1F534}':it?'\u{1F7E1}':'\u{1F535}')+'</span><div class="rem-body"><div class="rem-text editable" id="rt_'+r.id+'">'+esc(r.text)+'</div><div class="rem-when '+(ov?'overdue':'')+'">'+'<span class="date-editable" id="rd_'+r.id+'">'+(r.date?fmtDate(r.date):'+ set date')+'</span>'+(r.time?' at <span class="date-editable" id="rt2_'+r.id+'">'+fmtTime(r.time)+'</span>':' <span class="date-editable" id="rt2_'+r.id+'" style="color:var(--text-faint);">+ time</span>')+(ov?' \u2014 OVERDUE':it?' \u2014 TODAY':'')+'</div></div><div style="display:flex;gap:2px;"><span class="st-btn st-cal" onclick="exportReminderICS(\''+r.id+'\')">\u{1F4C5}</span><span class="st-btn st-del" onclick="deleteReminder(\''+r.id+'\')">\u2715</span></div></div>';}).join('');
 document.getElementById('remCount').textContent=sorted.filter(r=>!r.date||r.date>=today).length;
-state.reminders.forEach(r=>{const e=document.getElementById('rt_'+r.id);if(e)makeEditable(e,v=>editReminderText(r.id,v));});refreshEditables();}
+state.reminders.forEach(r=>{const e=document.getElementById('rt_'+r.id);if(e)makeEditable(e,v=>editReminderText(r.id,v));const rde=document.getElementById('rd_'+r.id);if(rde)makeDateClickable(rde,r.date,v=>editReminderDate(r.id,v));const rte=document.getElementById('rt2_'+r.id);if(rte)makeTimeClickable(rte,r.time,v=>editReminderTime(r.id,v));});refreshEditables();}
 
 // ICS
 function generateICS(events){let ics='BEGIN:VCALENDAR\r\nVERSION:2.0\r\nPRODID:-//Productivity Dashboard//EN\r\nCALSCALE:GREGORIAN\r\nMETHOD:PUBLISH\r\n';events.forEach(ev=>{const uid='cd-'+Date.now()+'-'+Math.random().toString(36).substr(2,8);const d=ev.date?ev.date.replace(/-/g,''):new Date().toISOString().split('T')[0].replace(/-/g,'');ics+='BEGIN:VEVENT\r\nUID:'+uid+'\r\nDTSTAMP:'+new Date().toISOString().replace(/[-:]/g,'').split('.')[0]+'Z\r\n';if(ev.time){const t=ev.time.replace(':','')+'00';ics+='DTSTART:'+d+'T'+t+'\r\n';const sm=parseInt(ev.time.split(':')[0])*60+parseInt(ev.time.split(':')[1])+60;ics+='DTEND:'+d+'T'+String(Math.floor(sm/60)).padStart(2,'0')+String(sm%60).padStart(2,'0')+'00\r\n';}else{ics+='DTSTART;VALUE=DATE:'+d+'\r\nDTEND;VALUE=DATE:'+d+'\r\n';}ics+='SUMMARY:'+icsEsc(ev.title)+'\r\n';if(ev.description)ics+='DESCRIPTION:'+icsEsc(ev.description)+'\r\n';ics+='BEGIN:VALARM\r\nTRIGGER:-PT15M\r\nACTION:DISPLAY\r\nDESCRIPTION:Reminder\r\nEND:VALARM\r\nEND:VEVENT\r\n';});ics+='END:VCALENDAR\r\n';return ics;}
