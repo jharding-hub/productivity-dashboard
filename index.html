@@ -28,7 +28,7 @@ body{font-family:'DM Sans',sans-serif;background:var(--bg);color:var(--text);min
 .nav-tabs{display:none;position:fixed;bottom:0;left:0;right:0;background:var(--surface);border-top:1px solid var(--border);padding:6px 8px env(safe-area-inset-bottom);z-index:100;overflow-x:auto;white-space:nowrap;gap:2px;}
 .nav-tab{display:inline-flex;flex-direction:column;align-items:center;gap:2px;padding:6px 12px;border:none;background:none;color:var(--text-dim);font-size:10px;font-family:inherit;cursor:pointer;border-radius:var(--radius-sm);}
 .nav-tab .nt-icon{font-size:18px;}.nav-tab.active{color:var(--accent);background:var(--accent-glow);}
-.dashboard{display:grid;grid-template-columns:1fr 1fr 340px;gap:16px;padding:16px 24px 24px;max-width:1600px;margin:0 auto;}
+.dashboard{display:grid;grid-template-columns:1fr 1fr 340px;gap:16px;padding:16px 24px 24px;max-width:1600px;margin:0 auto;align-items:start;}
 .panel{background:var(--surface);border:1px solid var(--border);border-radius:var(--radius);padding:18px;animation:fadeUp 0.4s ease both;transition:box-shadow 0.2s,opacity 0.2s,transform 0.2s;}
 @keyframes fadeUp{from{opacity:0;transform:translateY(10px)}to{opacity:1;transform:translateY(0)}}
 .panel.dragging{opacity:0.4;transform:scale(0.97);}
@@ -38,6 +38,15 @@ body{font-family:'DM Sans',sans-serif;background:var(--bg);color:var(--text);min
 .panel-title{font-family:'Fraunces',serif;font-size:16px;font-weight:600;color:var(--text);display:flex;align-items:center;gap:7px;}
 .panel-title .icon{font-size:17px;}
 .panel-badge{font-size:10px;font-weight:600;padding:2px 8px;border-radius:20px;background:var(--accent-glow);color:var(--accent);}
+.panel-content{max-height:380px;overflow-y:auto;overflow-x:hidden;scroll-behavior:smooth;position:relative;transition:max-height 0.4s ease;}
+.panel.expanded .panel-content{max-height:80vh;}
+.panel-content::-webkit-scrollbar{width:4px;}.panel-content::-webkit-scrollbar-track{background:transparent;}.panel-content::-webkit-scrollbar-thumb{background:var(--border);border-radius:2px;}.panel-content::-webkit-scrollbar-thumb:hover{background:var(--border-focus);}
+.panel-content.has-overflow::after{content:'';position:sticky;bottom:0;left:0;right:0;display:block;height:30px;background:linear-gradient(transparent,var(--surface));pointer-events:none;margin-top:-30px;}
+.panel.expanded .panel-content.has-overflow::after{display:none;}
+.expand-btn{background:none;border:none;color:var(--text-faint);cursor:pointer;font-size:11px;padding:2px 6px;border-radius:var(--radius-sm);transition:all 0.15s;font-family:inherit;display:flex;align-items:center;gap:3px;}
+.expand-btn:hover{color:var(--accent);background:var(--accent-glow);}
+.expand-btn .expand-arrow{transition:transform 0.3s;display:inline-block;}
+.panel.expanded .expand-btn .expand-arrow{transform:rotate(180deg);}
 .drag-handle{cursor:grab;color:var(--text-faint);font-size:14px;padding:4px 6px;border-radius:var(--radius-sm);transition:all 0.15s;user-select:none;-webkit-user-select:none;display:none;}
 .drag-handle:hover{color:var(--text-dim);background:var(--surface-raised);}
 .drag-handle:active{cursor:grabbing;}
@@ -63,7 +72,7 @@ body.unlocked .editable:hover{border-bottom-color:var(--text-faint);background:r
 .editable:focus{outline:none;border-bottom-color:var(--accent)!important;background:var(--surface-raised)!important;}
 
 /* PROJECTS */
-.project-list{display:flex;flex-direction:column;gap:6px;max-height:500px;overflow-y:auto;}
+.project-list{display:flex;flex-direction:column;gap:6px;overflow-y:auto;}
 .project-card{background:var(--surface-raised);border:1px solid var(--border);border-radius:var(--radius-sm);border-left:3px solid var(--accent-dim);overflow:hidden;transition:all 0.15s;}
 .project-card:hover{border-color:var(--accent);}
 .proj-header{display:flex;align-items:center;gap:10px;padding:12px 14px;cursor:pointer;}
@@ -93,7 +102,7 @@ body.unlocked .editable:hover{border-bottom-color:var(--text-faint);background:r
 .priority-high{background:var(--red);}.priority-med{background:var(--orange);}.priority-low{background:var(--blue);}
 
 /* REMINDERS */
-.reminder-list{display:flex;flex-direction:column;gap:5px;max-height:300px;overflow-y:auto;}
+.reminder-list{display:flex;flex-direction:column;gap:5px;overflow-y:auto;}
 .reminder-item{display:flex;align-items:center;gap:8px;padding:9px 10px;background:var(--surface-raised);border:1px solid var(--border);border-radius:var(--radius-sm);font-size:13px;transition:all 0.15s;}
 .reminder-item:hover{background:var(--surface-hover);}
 .rem-icon{font-size:15px;}.rem-body{flex:1;min-width:0;}
@@ -154,7 +163,7 @@ body.unlocked .editable:hover{border-bottom-color:var(--text-faint);background:r
 .tab-btn{background:none;border:none;color:var(--text-dim);padding:4px 10px;border-radius:var(--radius-sm);cursor:pointer;font-size:12px;font-family:inherit;transition:all 0.15s;}
 .tab-btn:hover{color:var(--text);}.tab-btn.active{background:var(--surface-raised);color:var(--accent);font-weight:600;}
 /* NOTES */
-.notes-list{display:flex;flex-direction:column;gap:8px;max-height:460px;overflow-y:auto;}
+.notes-list{display:flex;flex-direction:column;gap:8px;overflow-y:auto;}
 .note-card{background:var(--surface-raised);border:1px solid var(--border);border-radius:var(--radius-sm);padding:12px;transition:all 0.15s;}
 .note-card:hover{border-color:var(--border-focus);background:var(--surface-hover);}
 .note-header{display:flex;align-items:flex-start;justify-content:space-between;gap:8px;margin-bottom:6px;}
@@ -234,16 +243,20 @@ body.unlocked .editable:hover{border-bottom-color:var(--text-faint);background:r
 <!-- 1. PROJECTS -->
 <div class="panel mobile-visible" data-panel="projects" data-nav="projects">
 <div class="panel-header"><div class="panel-title"><span class="drag-handle">&#10495;</span><span class="icon">&#128194;</span> Projects</div>
-<div style="display:flex;gap:6px;align-items:center;"><span class="panel-badge" id="projCount">0</span><button class="btn btn-sm btn-outlook" onclick="exportAllToICS()">&#128197; Export All</button></div></div>
+<div style="display:flex;gap:6px;align-items:center;"><span class="panel-badge" id="projCount">0</span><button class="expand-btn" onclick="toggleExpand(this)" title="Expand/collapse"><span class="expand-arrow">▼</span></button><button class="btn btn-sm btn-outlook" onclick="exportAllToICS()">&#128197; Export All</button></div></div>
+<div class="panel-content" id="pc_projects">
 <div class="project-list" id="projectList"></div>
+</div>
 <div class="section-label" style="margin-top:12px;">Add Project</div>
 <div class="add-row"><input type="text" id="newProjName" placeholder="Project name..."><input type="date" id="newProjDue"><button class="btn btn-accent" onclick="addProject()">+</button></div></div>
 
 <!-- 2. REMINDERS -->
 <div class="panel" data-panel="reminders" data-nav="reminders">
 <div class="panel-header"><div class="panel-title"><span class="drag-handle">&#10495;</span><span class="icon">&#128276;</span> Reminders</div>
-<div style="display:flex;gap:6px;align-items:center;"><span class="panel-badge" id="remCount">0</span><span class="clear-done" onclick="clearPastReminders()">clear past</span></div></div>
+<div style="display:flex;gap:6px;align-items:center;"><span class="panel-badge" id="remCount">0</span><button class="expand-btn" onclick="toggleExpand(this)" title="Expand/collapse"><span class="expand-arrow">▼</span></button><span class="clear-done" onclick="clearPastReminders()">clear past</span></div></div>
+<div class="panel-content" id="pc_reminders">
 <div class="reminder-list" id="reminderList"></div>
+</div>
 <div class="section-label" style="margin-top:10px;">Add Reminder</div>
 <input type="text" id="newRemText" placeholder="Reminder text..." style="margin-bottom:6px;">
 <div class="add-row" style="margin-top:0;"><input type="date" id="newRemDate"><input type="time" id="newRemTime"><button class="btn btn-accent" onclick="addReminder()">+</button></div></div>
@@ -295,17 +308,21 @@ body.unlocked .editable:hover{border-bottom-color:var(--text-faint);background:r
 <!-- 7. ROUTINES -->
 <div class="panel" data-panel="routines" data-nav="routines">
 <div class="panel-header"><div class="panel-title"><span class="drag-handle">&#10495;</span><span class="icon">&#128257;</span> Routines</div>
-<div style="display:flex;gap:5px;"><span class="panel-badge" id="routineProgress">0/0</span><button class="btn btn-sm" onclick="resetRoutines()">Reset</button></div></div>
+<div style="display:flex;gap:5px;"><span class="panel-badge" id="routineProgress">0/0</span><button class="expand-btn" onclick="toggleExpand(this)" title="Expand/collapse"><span class="expand-arrow">▼</span></button><button class="btn btn-sm" onclick="resetRoutines()">Reset</button></div></div>
 <div class="tab-row"><button class="tab-btn active" onclick="switchRoutineTab('morning',this)">Morning</button><button class="tab-btn" onclick="switchRoutineTab('evening',this)">Evening</button><button class="tab-btn" onclick="switchRoutineTab('custom',this)">Custom</button></div>
+<div class="panel-content" id="pc_routines">
 <div class="routine-list" id="routineList"></div>
+</div>
 <div class="add-row" style="margin-top:6px;"><input type="text" id="newRoutineName" placeholder="Add routine item..."><button class="btn btn-accent btn-sm" onclick="addRoutine()">+</button></div></div>
 
 <!-- 8. NOTES -->
 <div class="panel" data-panel="notes" data-nav="notes">
 <div class="panel-header"><div class="panel-title"><span class="drag-handle">&#10495;</span><span class="icon">&#128221;</span> Notes</div>
-<div style="display:flex;gap:6px;align-items:center;"><span class="panel-badge" id="noteCount">0</span></div></div>
+<div style="display:flex;gap:6px;align-items:center;"><span class="panel-badge" id="noteCount">0</span><button class="expand-btn" onclick="toggleExpand(this)" title="Expand/collapse"><span class="expand-arrow">▼</span></button></div></div>
 <div class="note-filter-row"><input type="text" class="note-search" id="noteSearch" placeholder="Search notes..." oninput="renderNotes()"><select id="noteFilterProj" onchange="renderNotes()" style="width:auto;padding:4px 8px;font-size:12px;"><option value="all">All projects</option></select></div>
+<div class="panel-content" id="pc_notes">
 <div class="notes-list" id="notesList"></div>
+</div>
 <div class="note-form">
 <input type="text" id="newNoteLabel" placeholder="Note label...">
 <textarea class="note-textarea" id="newNoteBody" placeholder="Note content..."></textarea>
@@ -382,7 +399,7 @@ if(sessionStorage.getItem('pd_auth')==='1'){
 <!-- SCRIPT 2: FIREBASE — isolated so errors here cannot break auth or app -->
 <script>
 // ═══════════════════════════════════════════
-// FIREBASE CONFIG — paste your values here
+// FIREBASE CONFIG
 // ═══════════════════════════════════════════
 var firebaseConfig = {
   apiKey: "AIzaSyCgNToGWHbZI8s8OnhF1Z9l2BMXXtfHuC0",
@@ -653,6 +670,15 @@ function fmtTime(t){const[h,m]=t.split(':');const hr=parseInt(h);return(hr>12?hr
 function slugify(s){return s.toLowerCase().replace(/[^a-z0-9]+/g,'-').replace(/(^-|-$)/g,'');}
 function toast(msg){const el=document.getElementById('toast');el.textContent=msg;el.classList.add('show');setTimeout(()=>el.classList.remove('show'),2500);}
 document.addEventListener('keydown',e=>{if(e.target.tagName==='INPUT'||e.target.tagName==='TEXTAREA'||e.target.tagName==='SELECT'||e.target.isContentEditable)return;if(e.key==='b'||e.key==='B'){document.getElementById('brainDump').focus();e.preventDefault();}if(e.key==='s'||e.key==='S'){startTimer();e.preventDefault();}if(e.key==='p'||e.key==='P'){pauseTimer();e.preventDefault();}});
+
+// PANEL EXPAND/COLLAPSE
+function toggleExpand(btn){const panel=btn.closest('.panel');panel.classList.toggle('expanded');checkOverflows();}
+function checkOverflows(){document.querySelectorAll('.panel-content').forEach(pc=>{if(pc.scrollHeight>pc.clientHeight+10){pc.classList.add('has-overflow');}else{pc.classList.remove('has-overflow');}});}
+// Run overflow check after renders
+const _origRenderProjects=renderProjects;renderProjects=function(){_origRenderProjects();checkOverflows();}
+const _origRenderReminders=renderReminders;renderReminders=function(){_origRenderReminders();checkOverflows();}
+const _origRenderNotes=renderNotes;renderNotes=function(){_origRenderNotes();checkOverflows();}
+const _origRenderRoutines=renderRoutines;renderRoutines=function(){_origRenderRoutines();checkOverflows();}
 
 // INIT - called after auth
 async function initApp(){
