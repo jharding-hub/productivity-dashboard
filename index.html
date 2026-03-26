@@ -130,12 +130,38 @@ body.unlocked .date-editable:hover{border-bottom-color:var(--accent);background:
 .time-bar-fill{height:100%;border-radius:3px;transition:width 1s linear;}
 .timer-controls{display:flex;gap:5px;margin-top:8px;flex-wrap:wrap;}
 
-/* ENERGY & MOOD */
-.energy-grid{display:grid;grid-template-columns:1fr 1fr;gap:8px;}
-.energy-card{background:var(--surface-raised);border:1px solid var(--border);border-radius:var(--radius-sm);padding:10px;text-align:center;cursor:pointer;transition:all 0.2s;}
-.energy-card:hover{border-color:var(--accent-dim);transform:translateY(-1px);}
-.energy-card.selected{border-color:var(--accent);background:var(--accent-glow);}
-.energy-card .emoji{font-size:22px;margin-bottom:2px;}.energy-card .elabel{font-size:11px;color:var(--text-dim);}
+/* ENERGY & MOOD - compact */
+.em-row{display:flex;gap:8px;align-items:center;margin-bottom:8px;}
+.em-label{font-size:11px;color:var(--text-dim);min-width:50px;}
+.em-pills{display:flex;gap:4px;flex:1;flex-wrap:wrap;}
+.em-pill{background:var(--surface-raised);border:1px solid var(--border);color:var(--text-dim);padding:4px 10px;border-radius:20px;cursor:pointer;font-size:11px;font-family:inherit;transition:all 0.15s;display:inline-flex;align-items:center;gap:4px;white-space:nowrap;}
+.em-pill:hover{border-color:var(--accent-dim);color:var(--text);}
+.em-pill.selected{background:var(--accent-glow);border-color:var(--accent);color:var(--accent);font-weight:600;}
+.em-pill .em-ico{font-size:13px;}
+
+/* TRENDS */
+.trends-divider{border-top:1px solid var(--border);margin:12px 0;padding-top:12px;}
+.trends-header{display:flex;align-items:center;justify-content:space-between;margin-bottom:8px;}
+.trends-header-title{font-size:13px;font-weight:600;color:var(--text);display:flex;align-items:center;gap:5px;}
+.log-indicator{font-size:10px;padding:2px 8px;border-radius:20px;display:inline-flex;align-items:center;gap:4px;}
+.log-indicator.logged{background:var(--green-dim);color:var(--green);}
+.log-indicator.not-logged{background:var(--surface-raised);color:var(--text-faint);}
+.trends-controls{display:flex;gap:3px;margin-bottom:8px;}
+.tc-btn{background:none;border:1px solid var(--border);color:var(--text-dim);padding:3px 8px;border-radius:20px;cursor:pointer;font-size:10px;font-family:inherit;transition:all 0.15s;}
+.tc-btn:hover{border-color:var(--accent-dim);color:var(--text);}
+.tc-btn.active{background:var(--accent-glow);border-color:var(--accent);color:var(--accent);}
+.chart-box{position:relative;width:100%;height:180px;background:var(--surface-raised);border:1px solid var(--border);border-radius:var(--radius-sm);padding:8px 8px 20px 30px;overflow:hidden;margin-bottom:6px;}
+.chart-box svg{width:100%;height:100%;}
+.chart-legend{display:flex;gap:10px;font-size:10px;color:var(--text-dim);justify-content:center;margin-bottom:8px;flex-wrap:wrap;}
+.chart-legend-item{display:flex;align-items:center;gap:3px;}
+.legend-line{width:14px;height:3px;border-radius:2px;}
+.trend-stats{display:grid;grid-template-columns:1fr 1fr 1fr;gap:6px;}
+.trend-stat{background:var(--surface-raised);border:1px solid var(--border);border-radius:var(--radius-sm);padding:8px;text-align:center;}
+.trend-stat .ts-val{font-size:18px;font-weight:700;color:var(--text);}
+.trend-stat .ts-lbl{font-size:9px;color:var(--text-dim);margin-top:1px;}
+.trend-stat .ts-chg{font-size:10px;font-weight:600;margin-top:1px;}
+.ts-chg.up{color:var(--green);}.ts-chg.down{color:var(--red);}.ts-chg.flat{color:var(--text-faint);}
+.no-data-msg{text-align:center;padding:20px 10px;color:var(--text-faint);font-size:12px;line-height:1.6;}
 
 /* WELLNESS TOOLKIT - compact dropdown style */
 .wellness-select{width:100%;background:var(--surface-raised);border:1px solid var(--teal);color:var(--text);padding:8px 10px;border-radius:var(--radius-sm);font-family:inherit;font-size:13px;outline:none;cursor:pointer;margin-bottom:10px;}
@@ -282,21 +308,37 @@ body.unlocked .date-editable:hover{border-bottom-color:var(--accent);background:
 
 <!-- 5. ENERGY & MOOD (compact) -->
 <div class="panel" data-panel="energy" data-nav="energy">
-<div class="panel-header"><div class="panel-title"><span class="drag-handle">&#10495;</span><span class="icon">&#128267;</span> Energy &amp; Mood</div><div class="panel-badge">Self-Regulation</div></div>
-<p style="font-size:11px;color:var(--text-dim);margin-bottom:8px;">Check in to match your task to your state.</p>
-<div style="font-size:11px;color:var(--text-dim);margin-bottom:4px;">Energy Level</div>
-<div class="energy-grid" id="energyGrid">
-<div class="energy-card" onclick="setEnergy(this,'high')"><div class="emoji">&#9889;</div><div class="elabel">High</div></div>
-<div class="energy-card" onclick="setEnergy(this,'good')"><div class="emoji">&#9728;&#65039;</div><div class="elabel">Good</div></div>
-<div class="energy-card" onclick="setEnergy(this,'low')"><div class="emoji">&#127781;&#65039;</div><div class="elabel">Low</div></div>
-<div class="energy-card" onclick="setEnergy(this,'crashed')"><div class="emoji">&#129707;</div><div class="elabel">Crashed</div></div></div>
-<div style="font-size:11px;color:var(--text-dim);margin:10px 0 4px;">Mood</div>
-<div class="energy-grid" id="moodGrid">
-<div class="energy-card" onclick="setMood(this,'focused')"><div class="emoji">&#127919;</div><div class="elabel">Focused</div></div>
-<div class="energy-card" onclick="setMood(this,'scattered')"><div class="emoji">&#127744;</div><div class="elabel">Scattered</div></div>
-<div class="energy-card" onclick="setMood(this,'anxious')"><div class="emoji">&#128560;</div><div class="elabel">Anxious</div></div>
-<div class="energy-card" onclick="setMood(this,'calm')"><div class="emoji">&#129496;</div><div class="elabel">Calm</div></div></div>
-<div id="stateAdvice" style="margin-top:10px;"></div></div>
+<div class="panel-header"><div class="panel-title"><span class="drag-handle">&#10495;</span><span class="icon">&#128267;</span> Energy, Mood &amp; Trends</div><div class="panel-badge">Self-Regulation</div></div>
+<div class="em-row"><span class="em-label">Energy</span><div class="em-pills" id="energyPills">
+<span class="em-pill" onclick="setEnergy(this,'high')"><span class="em-ico">&#9889;</span>High</span>
+<span class="em-pill" onclick="setEnergy(this,'good')"><span class="em-ico">&#9728;&#65039;</span>Good</span>
+<span class="em-pill" onclick="setEnergy(this,'low')"><span class="em-ico">&#127781;&#65039;</span>Low</span>
+<span class="em-pill" onclick="setEnergy(this,'crashed')"><span class="em-ico">&#129707;</span>Crashed</span>
+</div></div>
+<div class="em-row"><span class="em-label">Mood</span><div class="em-pills" id="moodPills">
+<span class="em-pill" onclick="setMood(this,'focused')"><span class="em-ico">&#127919;</span>Focused</span>
+<span class="em-pill" onclick="setMood(this,'scattered')"><span class="em-ico">&#127744;</span>Scattered</span>
+<span class="em-pill" onclick="setMood(this,'anxious')"><span class="em-ico">&#128560;</span>Anxious</span>
+<span class="em-pill" onclick="setMood(this,'calm')"><span class="em-ico">&#129496;</span>Calm</span>
+</div></div>
+<div id="stateAdvice" style="margin-top:6px;"></div>
+<div class="trends-divider">
+<div class="trends-header"><div class="trends-header-title">&#128200; Trends</div><span class="log-indicator not-logged" id="logIndicator">&#9675; Not logged</span></div>
+<div class="trends-controls">
+<button class="tc-btn active" onclick="setTrendMetric('energy',this)">&#9889; Energy</button>
+<button class="tc-btn" onclick="setTrendMetric('mood',this)">&#127919; Mood</button>
+<button class="tc-btn" onclick="setTrendMetric('both',this)">Both</button>
+<span style="flex:1;"></span>
+<button class="tc-btn active" onclick="setTrendView('daily',this)">30d</button>
+<button class="tc-btn" onclick="setTrendView('weekly',this)">12w</button>
+<button class="tc-btn" onclick="setTrendView('monthly',this)">12m</button>
+</div>
+<div class="panel-content" id="pc_trends">
+<div class="chart-box" id="trendChart"></div>
+<div class="chart-legend" id="chartLegend"></div>
+<div class="trend-stats" id="trendStats"></div>
+</div>
+</div></div>
 
 <!-- 6. WELLNESS TOOLKIT (separate panel, hidden by default) -->
 <div class="panel hidden-panel" data-panel="wellness" data-nav="wellness">
@@ -430,7 +472,7 @@ try {
 <!-- SCRIPT 3: APP LOGIC -->
 <script>
 // STATE
-let state={projects:[],reminders:[],thoughts:[],notes:[],routines:{morning:[{id:'m1',name:'Hydrate \u2014 glass of water',done:false},{id:'m2',name:"Review today's calendar",done:false},{id:'m3',name:'Pick top 3 priorities',done:false},{id:'m4',name:'Quick workspace tidy',done:false}],evening:[{id:'e1',name:'Review what got done today',done:false},{id:'e2',name:"Brain dump tomorrow's thoughts",done:false},{id:'e3',name:"Set out tomorrow's essentials",done:false},{id:'e4',name:'Wind-down activity',done:false}],custom:[]},currentRoutineTab:'morning',energy:null,mood:null,panelOrder:['projects','reminders','brain','time','energy','wellness','notes','routines','decision'],panelsLocked:true};
+let state={projects:[],reminders:[],thoughts:[],notes:[],moodLog:[],routines:{morning:[{id:'m1',name:'Hydrate \u2014 glass of water',done:false},{id:'m2',name:"Review today's calendar",done:false},{id:'m3',name:'Pick top 3 priorities',done:false},{id:'m4',name:'Quick workspace tidy',done:false}],evening:[{id:'e1',name:'Review what got done today',done:false},{id:'e2',name:"Brain dump tomorrow's thoughts",done:false},{id:'e3',name:"Set out tomorrow's essentials",done:false},{id:'e4',name:'Wind-down activity',done:false}],custom:[]},currentRoutineTab:'morning',energy:null,mood:null,panelOrder:['projects','reminders','brain','time','energy','wellness','notes','routines','decision'],panelsLocked:true};
 
 // SYNC STATUS
 function setSyncStatus(status,label){const el=document.getElementById('syncStatus');if(!el)return;el.className='sync-status '+status;el.innerHTML='<span class="sync-dot"></span> '+label;}
@@ -476,7 +518,7 @@ async function load(){
   // Ensure data integrity
   if(!state.routines)state.routines={morning:[],evening:[],custom:[]};
   if(!state.reminders)state.reminders=[];
-  if(!state.notes)state.notes=[];
+  if(!state.notes)state.notes=[];if(!state.moodLog)state.moodLog=[];
   if(!state.panelOrder)state.panelOrder=['projects','reminders','brain','time','energy','wellness','notes','routines','decision'];
   if(!state.panelOrder.includes('wellness'))state.panelOrder.splice(state.panelOrder.indexOf('energy')+1,0,'wellness');
   if(!state.panelOrder.includes('notes'))state.panelOrder.splice(state.panelOrder.indexOf('routines'),0,'notes');
@@ -495,7 +537,7 @@ function startRealtimeSync(){
       state={...state,...cloud};
       // Re-render everything
       renderProjects();renderReminders();renderThoughts();renderNotes();renderRoutines();
-      showStateAdvice();updateWellnessVisibility();
+      showStateAdvice();updateWellnessVisibility();renderTrends();
       setSyncStatus('synced','Synced');
     }catch(e){console.log('Realtime sync error:',e);}
   },err=>{console.log('Snapshot error:',err);setSyncStatus('error','Sync lost');});
@@ -615,8 +657,8 @@ function editThought(id,v){if(!v)return;const t=state.thoughts.find(t=>t.id===id
 function renderThoughts(){document.getElementById('thoughtChips').innerHTML=state.thoughts.map(t=>'<div class="thought-chip"><span class="editable" id="tt_'+t.id+'">'+esc(t.text)+'</span><span class="chip-promote" onclick="promoteThought(\''+t.id+'\')">\u2197</span><span class="chip-x" onclick="deleteThought(\''+t.id+'\')">\u00D7</span></div>').join('');state.thoughts.forEach(t=>{const e=document.getElementById('tt_'+t.id);if(e)makeEditable(e,v=>editThought(t.id,v));});refreshEditables();}
 
 // ENERGY & MOOD
-function setEnergy(el,v){state.energy=v;document.querySelectorAll('#energyGrid .energy-card').forEach(c=>c.classList.remove('selected'));el.classList.add('selected');save();showStateAdvice();updateWellnessVisibility();}
-function setMood(el,v){state.mood=v;document.querySelectorAll('#moodGrid .energy-card').forEach(c=>c.classList.remove('selected'));el.classList.add('selected');save();showStateAdvice();updateWellnessVisibility();}
+function setEnergy(el,v){state.energy=v;document.querySelectorAll('#energyPills .em-pill').forEach(c=>c.classList.remove('selected'));el.classList.add('selected');logMoodEntry();save();showStateAdvice();updateWellnessVisibility();renderTrends();}
+function setMood(el,v){state.mood=v;document.querySelectorAll('#moodPills .em-pill').forEach(c=>c.classList.remove('selected'));el.classList.add('selected');logMoodEntry();save();showStateAdvice();updateWellnessVisibility();renderTrends();}
 const adviceMap={'high-focused':{t:'\u{1F525} Peak state \u2014 tackle your hardest task now.',c:'var(--green)'},'high-scattered':{t:'\u26A1 Energy but no focus. Start a Pomodoro.',c:'var(--orange)'},'high-anxious':{t:'\u{1F4A8} Burn off anxious energy with something physical.',c:'var(--orange)'},'high-calm':{t:'\u2728 Great for creative work or complex problems.',c:'var(--green)'},'good-focused':{t:'\u{1F44D} Solid state. Pick a medium-priority task.',c:'var(--green)'},'good-scattered':{t:'\u{1F4CB} List 3 things, do just the first one.',c:'var(--blue)'},'good-anxious':{t:'\u{1F4DD} Channel worry into a task with a clear endpoint.',c:'var(--blue)'},'good-calm':{t:'\u{1F33F} Good baseline. Handle routine tasks or admin.',c:'var(--green)'},'low-focused':{t:'\u{1F3AF} Low but present? Detail work \u2014 editing, reviewing.',c:'var(--blue)'},'low-scattered':{t:'\u{1FAE7} Not deep work time. 5-min break, then one tiny task.',c:'var(--purple)'},'low-anxious':{t:'\u{1F9CA} Pause. Check the Grounding Toolkit \u2192',c:'var(--purple)'},'low-calm':{t:'\u2601\uFE0F Rest state. Gentle tasks or a proper break.',c:'var(--blue)'},'crashed-focused':{t:'\u26A0\uFE0F Running on fumes. Only truly urgent items.',c:'var(--red)'},'crashed-scattered':{t:'\u{1F6D1} Brain needs a reset. Check the Grounding Toolkit \u2192',c:'var(--red)'},'crashed-anxious':{t:'\u{1FAC2} Hardest state. Grounding Toolkit first, then reassess.',c:'var(--red)'},'crashed-calm':{t:'\u{1F319} Depleted but peaceful. Gentle admin or rest.',c:'var(--purple)'}};
 function showStateAdvice(){const el=document.getElementById('stateAdvice');if(!state.energy||!state.mood){el.innerHTML='';return;}const k=state.energy+'-'+state.mood;const a=adviceMap[k];if(a)el.innerHTML='<div class="decision-prompt" style="border-left:3px solid '+a.c+';margin-bottom:0;">'+a.t+'</div>';}
 
@@ -707,6 +749,153 @@ function slugify(s){return s.toLowerCase().replace(/[^a-z0-9]+/g,'-').replace(/(
 function toast(msg){const el=document.getElementById('toast');el.textContent=msg;el.classList.add('show');setTimeout(()=>el.classList.remove('show'),2500);}
 document.addEventListener('keydown',e=>{if(e.target.tagName==='INPUT'||e.target.tagName==='TEXTAREA'||e.target.tagName==='SELECT'||e.target.isContentEditable)return;if(e.key==='b'||e.key==='B'){document.getElementById('brainDump').focus();e.preventDefault();}if(e.key==='s'||e.key==='S'){startTimer();e.preventDefault();}if(e.key==='p'||e.key==='P'){pauseTimer();e.preventDefault();}});
 
+// ═══════════════════════════════════════
+// MOOD/ENERGY LOGGING & TRENDS
+// ═══════════════════════════════════════
+const eScore={crashed:1,low:2,good:3,high:4};
+const mScore={anxious:1,scattered:2,calm:3,focused:4};
+const eLabel={1:'Crashed',2:'Low',3:'Good',4:'High'};
+const mLabel={1:'Anxious',2:'Scattered',3:'Calm',4:'Focused'};
+
+function logMoodEntry(){
+  if(!state.energy&&!state.mood)return;
+  const today=todayStr();
+  let entry=state.moodLog.find(e=>e.date===today);
+  if(!entry){entry={date:today};state.moodLog.push(entry);}
+  if(state.energy)entry.energy=state.energy;
+  if(state.mood)entry.mood=state.mood;
+  entry.ts=new Date().toISOString();
+  updateLogIndicator();
+}
+
+function updateLogIndicator(){
+  const el=document.getElementById('logIndicator');if(!el)return;
+  const entry=state.moodLog.find(e=>e.date===todayStr());
+  if(entry&&entry.energy&&entry.mood){el.className='log-indicator logged';el.innerHTML='\u2713 Logged today';}
+  else if(entry){el.className='log-indicator not-logged';el.innerHTML='\u25CB Set '+(entry.energy?'mood':'energy');}
+  else{el.className='log-indicator not-logged';el.innerHTML='\u25CB Not logged';}
+}
+
+let curView='daily',curMetric='energy';
+function setTrendView(v,btn){curView=v;btn.parentElement.querySelectorAll('.tc-btn').forEach((b,i)=>{if(i>=3)b.classList.remove('active');});btn.classList.add('active');renderTrends();}
+function setTrendMetric(m,btn){curMetric=m;const btns=[...btn.parentElement.querySelectorAll('.tc-btn')];btns.slice(0,3).forEach(b=>b.classList.remove('active'));btn.classList.add('active');renderTrends();}
+
+function dateRange(days){const d=[];const now=new Date();for(let i=days-1;i>=0;i--){const dt=new Date(now);dt.setDate(dt.getDate()-i);d.push(dt.toISOString().split('T')[0]);}return d;}
+function weekBuckets(log,weeks){const r=[];const now=new Date();for(let w=weeks-1;w>=0;w--){const we=new Date(now);we.setDate(we.getDate()-w*7);const ws=new Date(we);ws.setDate(ws.getDate()-6);const s=ws.toISOString().split('T')[0],e=we.toISOString().split('T')[0];r.push({label:(ws.getMonth()+1)+'/'+ws.getDate(),entries:log.filter(l=>l.date>=s&&l.date<=e)});}return r;}
+function monthBuckets(log,months){const r=[];const now=new Date();for(let m=months-1;m>=0;m--){const d=new Date(now.getFullYear(),now.getMonth()-m,1);const ms=d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0');r.push({label:d.toLocaleDateString('en-US',{month:'short'}),year:d.getFullYear(),entries:log.filter(l=>l.date.startsWith(ms))});}return r;}
+function avg(entries,field){const sm=field==='energy'?eScore:mScore;const v=entries.filter(e=>e[field]).map(e=>sm[e[field]]);return v.length?v.reduce((a,b)=>a+b,0)/v.length:null;}
+
+function priorYearLog(){
+  return state.moodLog.map(e=>{
+    const d=new Date(e.date+'T00:00:00');d.setFullYear(d.getFullYear()+1);
+    return {...e,date:d.toISOString().split('T')[0]};
+  });
+}
+
+function renderTrends(){
+  const chart=document.getElementById('trendChart');
+  const legend=document.getElementById('chartLegend');
+  const stats=document.getElementById('trendStats');
+  if(!chart)return;
+  updateLogIndicator();
+
+  if(state.moodLog.length<2){
+    chart.innerHTML='<div class="no-data-msg">Log your energy &amp; mood above daily.<br>Charts appear after a couple days.</div>';
+    legend.innerHTML='';stats.innerHTML='';return;
+  }
+
+  const metrics=curMetric==='both'?['energy','mood']:[curMetric];
+  let series=[];
+  let labels=[];
+
+  if(curView==='daily'){
+    const dates=dateRange(30);
+    labels=dates.map(d=>{const dt=new Date(d+'T00:00:00');return(dt.getMonth()+1)+'/'+dt.getDate();});
+    // Prior year dates
+    const pDates=dates.map(d=>{const dt=new Date(d+'T00:00:00');dt.setFullYear(dt.getFullYear()-1);return dt.toISOString().split('T')[0];});
+    metrics.forEach(metric=>{
+      const sm=metric==='energy'?eScore:mScore;
+      series.push({values:dates.map(d=>{const e=state.moodLog.find(l=>l.date===d);return e&&e[metric]?sm[e[metric]]:null;}),label:metric==='energy'?'Energy':'Mood',color:metric==='energy'?'var(--accent)':'var(--teal)'});
+      const pv=pDates.map(d=>{const e=state.moodLog.find(l=>l.date===d);return e&&e[metric]?sm[e[metric]]:null;});
+      if(pv.some(v=>v!==null))series.push({values:pv,label:(metric==='energy'?'Energy':'Mood')+' (yr ago)',color:metric==='energy'?'var(--orange)':'var(--purple)',dashed:true});
+    });
+  }else if(curView==='weekly'){
+    const wk=weekBuckets(state.moodLog,12);
+    const pwk=weekBuckets(priorYearLog(),12);
+    labels=wk.map(w=>'Wk '+w.label);
+    metrics.forEach(metric=>{
+      series.push({values:wk.map(w=>avg(w.entries,metric)),label:metric==='energy'?'Energy':'Mood',color:metric==='energy'?'var(--accent)':'var(--teal)'});
+      const pv=pwk.map(w=>avg(w.entries,metric));
+      if(pv.some(v=>v!==null))series.push({values:pv,label:(metric==='energy'?'Energy':'Mood')+' (yr ago)',color:metric==='energy'?'var(--orange)':'var(--purple)',dashed:true});
+    });
+  }else{
+    const mo=monthBuckets(state.moodLog,12);
+    const pmo=monthBuckets(priorYearLog(),12);
+    labels=mo.map(m=>m.label);
+    metrics.forEach(metric=>{
+      series.push({values:mo.map(m=>avg(m.entries,metric)),label:metric==='energy'?'Energy':'Mood',color:metric==='energy'?'var(--accent)':'var(--teal)'});
+      const pv=pmo.map(m=>avg(m.entries,metric));
+      if(pv.some(v=>v!==null))series.push({values:pv,label:(metric==='energy'?'Energy':'Mood')+' (yr ago)',color:metric==='energy'?'var(--orange)':'var(--purple)',dashed:true});
+    });
+  }
+
+  // DRAW SVG CHART
+  const W=chart.clientWidth-38,H=chart.clientHeight-28;
+  const minV=1,maxV=4;
+  const xStep=W/(labels.length-1||1);
+  function yPos(v){return H-((v-minV)/(maxV-minV))*H;}
+
+  let svg='<svg viewBox="0 0 '+(W+38)+' '+(H+28)+'" xmlns="http://www.w3.org/2000/svg">';
+  // Y-axis labels
+  const yLabels=curMetric==='mood'?mLabel:eLabel;
+  for(let i=1;i<=4;i++){
+    const y=yPos(i)+8;
+    svg+='<text x="28" y="'+y+'" text-anchor="end" fill="var(--text-faint)" font-size="9" font-family="DM Sans">'+yLabels[i]+'</text>';
+    svg+='<line x1="32" y1="'+(y-3)+'" x2="'+(W+34)+'" y2="'+(y-3)+'" stroke="var(--border)" stroke-width="0.5" stroke-dasharray="3,3"/>';
+  }
+  // X-axis labels (show subset)
+  const step=Math.max(1,Math.floor(labels.length/7));
+  for(let i=0;i<labels.length;i+=step){
+    svg+='<text x="'+(34+i*xStep)+'" y="'+(H+18)+'" text-anchor="middle" fill="var(--text-faint)" font-size="8" font-family="DM Sans">'+labels[i]+'</text>';
+  }
+  // Lines
+  series.forEach(s=>{
+    let path='';let dots='';let started=false;
+    s.values.forEach((v,i)=>{
+      if(v===null)return;
+      const x=34+i*xStep,y=yPos(v);
+      if(!started){path+='M'+x+','+y;started=true;}else{path+='L'+x+','+y;}
+      dots+='<circle cx="'+x+'" cy="'+y+'" r="2.5" fill="'+s.color+'" opacity="0.8"/>';
+    });
+    if(path)svg+='<path d="'+path+'" fill="none" stroke="'+s.color+'" stroke-width="2" '+(s.dashed?'stroke-dasharray="6,4" opacity="0.5"':'opacity="0.9"')+'/>';
+    svg+=dots;
+  });
+  svg+='</svg>';
+  chart.innerHTML=svg;
+
+  // LEGEND
+  legend.innerHTML=series.map(s=>'<div class="chart-legend-item"><span class="legend-line" style="background:'+s.color+';'+(s.dashed?'opacity:0.5;':'')+'"></span>'+s.label+'</div>').join('');
+
+  // STATS
+  const primary=series[0];
+  if(!primary){stats.innerHTML='';return;}
+  const vals=primary.values.filter(v=>v!==null);
+  const curAvg=vals.length?vals.reduce((a,b)=>a+b,0)/vals.length:0;
+  const recent=vals.slice(-7);
+  const recentAvg=recent.length?recent.reduce((a,b)=>a+b,0)/recent.length:0;
+  const prior=series.find(s=>s.dashed);
+  const priorVals=prior?prior.values.filter(v=>v!==null):[];
+  const priorAvg=priorVals.length?priorVals.reduce((a,b)=>a+b,0)/priorVals.length:0;
+
+  const lbl=curMetric==='mood'?mLabel:eLabel;
+  function scoreLbl(v){return lbl[Math.round(v)]||'--';}
+  function chg(cur,prev){if(!prev)return'<span class="ts-chg flat">no prior data</span>';const d=cur-prev;const cls=d>0.2?'up':d<-0.2?'down':'flat';const arrow=d>0.2?'\u2191':d<-0.2?'\u2193':'\u2192';return'<span class="ts-chg '+cls+'">'+arrow+' vs yr ago: '+scoreLbl(prev)+'</span>';}
+
+  stats.innerHTML='<div class="trend-stat"><div class="ts-val">'+scoreLbl(curAvg)+'</div><div class="ts-lbl">Period avg</div>'+chg(curAvg,priorAvg)+'</div>'
+    +'<div class="trend-stat"><div class="ts-val">'+scoreLbl(recentAvg)+'</div><div class="ts-lbl">Recent (7)</div></div>'
+    +'<div class="trend-stat"><div class="ts-val">'+vals.length+'</div><div class="ts-lbl">Days logged</div></div>';
+}
+
 // PANEL EXPAND/COLLAPSE
 function toggleExpand(btn){const panel=btn.closest('.panel');panel.classList.toggle('expanded');checkOverflows();}
 function checkOverflows(){document.querySelectorAll('.panel-content').forEach(pc=>{if(pc.scrollHeight>pc.clientHeight+10){pc.classList.add('has-overflow');}else{pc.classList.remove('has-overflow');}});}
@@ -721,9 +910,9 @@ async function initApp(){
 await load();
 applyPanelOrder();updateLockUI();updateClock();setInterval(updateClock,1000);updateTimerDisplay();
 renderProjects();renderReminders();renderThoughts();renderNotes();renderRoutines();newDecisionPrompt();initDragDrop();
-if(state.energy){const c=document.querySelectorAll('#energyGrid .energy-card');const m=['high','good','low','crashed'];const i=m.indexOf(state.energy);if(i>=0)c[i].classList.add('selected');}
-if(state.mood){const c=document.querySelectorAll('#moodGrid .energy-card');const m=['focused','scattered','anxious','calm'];const i=m.indexOf(state.mood);if(i>=0)c[i].classList.add('selected');}
-showStateAdvice();updateWellnessVisibility();
+if(state.energy){const c=document.querySelectorAll('#energyPills .em-pill');const m=['high','good','low','crashed'];const i=m.indexOf(state.energy);if(i>=0)c[i].classList.add('selected');}
+if(state.mood){const c=document.querySelectorAll('#moodPills .em-pill');const m=['focused','scattered','anxious','calm'];const i=m.indexOf(state.mood);if(i>=0)c[i].classList.add('selected');}
+showStateAdvice();updateWellnessVisibility();renderTrends();
 startRealtimeSync();
 if('serviceWorker' in navigator){navigator.serviceWorker.register('sw.js').catch(e=>console.log('SW:',e));}
 }
