@@ -28,7 +28,8 @@ body{font-family:'DM Sans',sans-serif;background:var(--bg);color:var(--text);min
 .nav-tabs{display:none;position:fixed;bottom:0;left:0;right:0;background:var(--surface);border-top:1px solid var(--border);padding:6px 8px env(safe-area-inset-bottom);z-index:100;overflow-x:auto;white-space:nowrap;gap:2px;}
 .nav-tab{display:inline-flex;flex-direction:column;align-items:center;gap:2px;padding:6px 12px;border:none;background:none;color:var(--text-dim);font-size:10px;font-family:inherit;cursor:pointer;border-radius:var(--radius-sm);}
 .nav-tab .nt-icon{font-size:18px;}.nav-tab.active{color:var(--accent);background:var(--accent-glow);}
-.dashboard{display:grid;grid-template-columns:1fr 1fr 340px;gap:16px;padding:16px 24px 24px;max-width:1600px;margin:0 auto;align-items:start;}
+.dashboard{display:grid;grid-template-columns:2fr 2fr 1fr;gap:16px;padding:16px 24px 24px;max-width:1600px;margin:0 auto;align-items:start;}
+.panel-narrow{min-width:0;}
 .panel{background:var(--surface);border:1px solid var(--border);border-radius:var(--radius);padding:18px;animation:fadeUp 0.4s ease both;transition:box-shadow 0.2s,opacity 0.2s,transform 0.2s;}
 @keyframes fadeUp{from{opacity:0;transform:translateY(10px)}to{opacity:1;transform:translateY(0)}}
 .panel.dragging{opacity:0.4;transform:scale(0.97);}
@@ -225,7 +226,7 @@ body.unlocked .date-editable:hover{border-bottom-color:var(--accent);background:
 .empty-state{text-align:center;padding:20px;color:var(--text-faint);font-size:13px;}
 .clear-done{font-size:11px;color:var(--text-faint);cursor:pointer;text-decoration:underline;}.clear-done:hover{color:var(--text-dim);}
 .section-label{font-size:11px;color:var(--text-dim);text-transform:uppercase;letter-spacing:0.5px;margin:8px 0 4px;}
-@media(max-width:1100px){.dashboard{grid-template-columns:1fr 1fr;}}
+@media(max-width:1100px){.dashboard{grid-template-columns:1fr 1fr;}.panel-narrow{grid-column:span 1;}}
 @media(max-width:768px){.dashboard{grid-template-columns:1fr;padding:12px 14px 90px;gap:12px;}.header{padding:14px 14px 10px;}.header h1{font-size:18px;}.header h1 span{display:none;}.nav-tabs{display:flex;}.panel{display:none;}.panel.mobile-visible{display:block;}.panel.hidden-panel{display:none!important;}.drag-handle{display:none!important;}}
 /* LOGIN GATE */
 .login-gate{position:fixed;inset:0;background:var(--bg);z-index:9999;display:flex;align-items:center;justify-content:center;padding:20px;}
@@ -292,14 +293,14 @@ body.unlocked .date-editable:hover{border-bottom-color:var(--accent);background:
 <div class="add-row" style="margin-top:0;"><input type="date" id="newRemDate"><input type="time" id="newRemTime"><button class="btn btn-accent" onclick="addReminder()">+</button></div></div>
 
 <!-- 3. BRAIN DUMP -->
-<div class="panel" data-panel="brain" data-nav="brain">
+<div class="panel panel-narrow" data-panel="brain" data-nav="brain">
 <div class="panel-header"><div class="panel-title"><span class="drag-handle">&#10495;</span><span class="icon">&#129504;</span> Brain Dump</div><div class="panel-badge">Working Memory</div></div>
 <p style="font-size:11px;color:var(--text-dim);margin-bottom:6px;">Catch thoughts before they vanish. Press Enter to save. &#8599; promotes to subtask.</p>
 <textarea class="brain-dump-area" id="brainDump" placeholder="Ideas, stray thoughts, that thing you keep forgetting..." onkeydown="handleDumpKey(event)"></textarea>
 <div class="thought-chips" id="thoughtChips"></div></div>
 
 <!-- 4. TIME AWARENESS -->
-<div class="panel" data-panel="time" data-nav="time">
+<div class="panel panel-narrow" data-panel="time" data-nav="time">
 <div class="panel-header"><div class="panel-title"><span class="drag-handle">&#10495;</span><span class="icon">&#9201;</span> Time Awareness</div><div class="panel-badge">Time Blindness Aid</div></div>
 <div class="time-block"><div class="time-label">Day Progress</div><div style="display:flex;align-items:baseline;gap:8px;"><div class="time-value" id="dayPercent">0%</div><span style="font-size:11px;color:var(--text-dim);" id="dayRemaining"></span></div><div class="time-bar"><div class="time-bar-fill" id="dayBar" style="background:var(--accent);width:0%"></div></div></div>
 <div class="time-block"><div class="time-label">Focus Timer</div><div class="time-value" id="timerDisplay">25:00</div><div class="time-bar"><div class="time-bar-fill" id="timerBar" style="background:var(--green);width:100%"></div></div>
@@ -378,7 +379,7 @@ body.unlocked .date-editable:hover{border-bottom-color:var(--accent);background:
 </div></div></div>
 
 <!-- 9. STUCK HELPER -->
-<div class="panel" data-panel="decision" data-nav="help">
+<div class="panel panel-narrow" data-panel="decision" data-nav="help">
 <div class="panel-header"><div class="panel-title"><span class="drag-handle">&#10495;</span><span class="icon">&#129517;</span> Stuck? Start Here</div><div class="panel-badge">Decision Aid</div></div>
 <div class="decision-prompt" id="decisionPrompt"></div>
 <button class="btn" onclick="newDecisionPrompt()">New prompt</button></div>
@@ -472,7 +473,7 @@ try {
 <!-- SCRIPT 3: APP LOGIC -->
 <script>
 // STATE
-let state={projects:[],reminders:[],thoughts:[],notes:[],moodLog:[],routines:{morning:[{id:'m1',name:'Hydrate \u2014 glass of water',done:false},{id:'m2',name:"Review today's calendar",done:false},{id:'m3',name:'Pick top 3 priorities',done:false},{id:'m4',name:'Quick workspace tidy',done:false}],evening:[{id:'e1',name:'Review what got done today',done:false},{id:'e2',name:"Brain dump tomorrow's thoughts",done:false},{id:'e3',name:"Set out tomorrow's essentials",done:false},{id:'e4',name:'Wind-down activity',done:false}],custom:[]},currentRoutineTab:'morning',energy:null,mood:null,panelOrder:['projects','reminders','brain','time','energy','wellness','notes','routines','decision'],panelsLocked:true};
+let state={projects:[],reminders:[],thoughts:[],notes:[],moodLog:[],routines:{morning:[{id:'m1',name:'Hydrate \u2014 glass of water',done:false},{id:'m2',name:"Review today's calendar",done:false},{id:'m3',name:'Pick top 3 priorities',done:false},{id:'m4',name:'Quick workspace tidy',done:false}],evening:[{id:'e1',name:'Review what got done today',done:false},{id:'e2',name:"Brain dump tomorrow's thoughts",done:false},{id:'e3',name:"Set out tomorrow's essentials",done:false},{id:'e4',name:'Wind-down activity',done:false}],custom:[]},currentRoutineTab:'morning',energy:null,mood:null,panelOrder:['projects','reminders','time','energy','notes','brain','routines','wellness','decision'],panelsLocked:true,lastRoutineReset:null};
 
 // SYNC STATUS
 function setSyncStatus(status,label){const el=document.getElementById('syncStatus');if(!el)return;el.className='sync-status '+status;el.innerHTML='<span class="sync-dot"></span> '+label;}
@@ -519,9 +520,12 @@ async function load(){
   if(!state.routines)state.routines={morning:[],evening:[],custom:[]};
   if(!state.reminders)state.reminders=[];
   if(!state.notes)state.notes=[];if(!state.moodLog)state.moodLog=[];
-  if(!state.panelOrder)state.panelOrder=['projects','reminders','brain','time','energy','wellness','notes','routines','decision'];
+  if(!state.panelOrder)state.panelOrder=['projects','reminders','time','energy','notes','brain','routines','wellness','decision'];
   if(!state.panelOrder.includes('wellness'))state.panelOrder.splice(state.panelOrder.indexOf('energy')+1,0,'wellness');
   if(!state.panelOrder.includes('notes'))state.panelOrder.splice(state.panelOrder.indexOf('routines'),0,'notes');
+  // Migrate to new 3-column layout order if still using old order
+  const oldOrder='projects,reminders,brain,time,energy';
+  if(state.panelOrder.join(',').startsWith(oldOrder)){state.panelOrder=['projects','reminders','time','energy','notes','brain','routines','wellness','decision'];}
   state.projects.forEach(p=>{if(!p.subtasks)p.subtasks=[];if(p.expanded===undefined)p.expanded=true;});
 }
 
@@ -725,6 +729,17 @@ document.getElementById('noteCount').textContent=state.notes.length;
 notes.forEach(n=>{const le=document.getElementById('nl_'+n.id);if(le)makeEditable(le,v=>editNoteLabel(n.id,v));const be=document.getElementById('nb_'+n.id);if(be)makeEditable(be,v=>editNoteBody(n.id,v));});refreshEditables();}
 
 // ROUTINES
+function checkDailyRoutineReset(){
+  const today=todayStr();
+  if(state.lastRoutineReset===today)return;
+  // Reset all routine tabs
+  ['morning','evening','custom'].forEach(tab=>{
+    if(state.routines[tab])state.routines[tab].forEach(r=>r.done=false);
+  });
+  state.lastRoutineReset=today;
+  save();
+  renderRoutines();
+}
 function switchRoutineTab(tab,btn){state.currentRoutineTab=tab;document.querySelectorAll('.tab-btn').forEach(b=>b.classList.remove('active'));btn.classList.add('active');renderRoutines();}
 function toggleRoutine(tab,id){const r=state.routines[tab].find(r=>r.id===id);if(r)r.done=!r.done;save();renderRoutines();}
 function addRoutine(){const n=document.getElementById('newRoutineName').value.trim();if(!n)return;state.routines[state.currentRoutineTab].push({id:'r'+Date.now(),name:n,done:false});document.getElementById('newRoutineName').value='';save();renderRoutines();}
@@ -909,7 +924,7 @@ const _origRenderRoutines=renderRoutines;renderRoutines=function(){_origRenderRo
 async function initApp(){
 await load();
 applyPanelOrder();updateLockUI();updateClock();setInterval(updateClock,1000);updateTimerDisplay();
-renderProjects();renderReminders();renderThoughts();renderNotes();renderRoutines();newDecisionPrompt();initDragDrop();
+renderProjects();renderReminders();renderThoughts();renderNotes();renderRoutines();checkDailyRoutineReset();newDecisionPrompt();initDragDrop();
 if(state.energy){const c=document.querySelectorAll('#energyPills .em-pill');const m=['high','good','low','crashed'];const i=m.indexOf(state.energy);if(i>=0)c[i].classList.add('selected');}
 if(state.mood){const c=document.querySelectorAll('#moodPills .em-pill');const m=['focused','scattered','anxious','calm'];const i=m.indexOf(state.mood);if(i>=0)c[i].classList.add('selected');}
 showStateAdvice();updateWellnessVisibility();renderTrends();
