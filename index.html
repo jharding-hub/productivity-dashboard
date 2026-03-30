@@ -195,8 +195,8 @@ body.unlocked .date-editable:hover{border-bottom-color:var(--accent);background:
 .breath-content{position:relative;z-index:1;text-align:center;padding:30px;max-width:400px;width:100%;}
 .breath-ring-wrap{position:relative;width:220px;height:220px;margin:0 auto 20px;}
 .breath-ring-bg{fill:none;stroke:var(--border);stroke-width:6;}
-.breath-ring-fill{fill:none;stroke:var(--teal);stroke-width:6;stroke-linecap:round;transform-origin:center;transform:rotate(-90deg);transition:stroke-dashoffset 0.3s ease;}
-.breath-ring-glow{fill:none;stroke:var(--teal);stroke-width:2;stroke-linecap:round;transform-origin:center;transform:rotate(-90deg);opacity:0.3;filter:blur(4px);transition:stroke-dashoffset 0.3s ease;}
+.breath-ring-fill{fill:none;stroke:var(--teal);stroke-width:6;stroke-linecap:round;transform-origin:center;transform:rotate(-90deg);transition:stroke-dashoffset 0.05s linear;}
+.breath-ring-glow{fill:none;stroke:var(--teal);stroke-width:2;stroke-linecap:round;transform-origin:center;transform:rotate(-90deg);opacity:0.3;filter:blur(4px);transition:stroke-dashoffset 0.05s linear;}
 .breath-center{position:absolute;top:50%;left:50%;transform:translate(-50%,-50%);text-align:center;}
 .breath-phase{font-size:20px;font-weight:700;color:var(--teal);margin-bottom:4px;transition:all 0.3s;}
 .breath-count{font-size:52px;font-weight:700;font-variant-numeric:tabular-nums;color:var(--text);line-height:1;}
@@ -205,11 +205,15 @@ body.unlocked .date-editable:hover{border-bottom-color:var(--accent);background:
 .breath-technique-name{font-family:'Fraunces',serif;font-size:18px;color:var(--accent);margin-bottom:6px;}
 .breath-stop{background:var(--surface-raised);border:1px solid var(--border);color:var(--text-dim);padding:10px 28px;border-radius:var(--radius-sm);cursor:pointer;font-size:13px;font-family:inherit;transition:all 0.15s;}
 .breath-stop:hover{background:var(--surface-hover);color:var(--text);border-color:var(--border-focus);}
+.breath-controls{display:flex;gap:10px;align-items:center;justify-content:center;}
+.breath-mute{background:var(--surface-raised);border:1px solid var(--border);color:var(--text-dim);padding:10px 16px;border-radius:var(--radius-sm);cursor:pointer;font-size:13px;font-family:inherit;transition:all 0.15s;}
+.breath-mute:hover{background:var(--surface-hover);color:var(--text);border-color:var(--border-focus);}
+.breath-mute.muted{color:var(--text-faint);}
 .breath-complete{animation:breathComplete 0.5s ease;}
 @keyframes breathComplete{0%{transform:scale(1)}50%{transform:scale(1.05)}100%{transform:scale(1)}}
-.breath-orb{position:absolute;top:50%;left:50%;width:80px;height:80px;border-radius:50%;background:radial-gradient(circle,var(--teal) 0%,transparent 70%);opacity:0.15;transform:translate(-50%,-50%);transition:all 1s ease;}
-.breath-orb.inhale{width:160px;height:160px;opacity:0.25;}
-.breath-orb.exhale{width:60px;height:60px;opacity:0.1;}
+.breath-orb{position:absolute;top:50%;left:50%;width:80px;height:80px;border-radius:50%;background:radial-gradient(circle,var(--teal) 0%,transparent 70%);opacity:0.15;transform:translate(-50%,-50%);transition:all 2s ease-in-out;}
+.breath-orb.inhale{width:160px;height:160px;opacity:0.25;transition:all 3.5s ease-in-out;}
+.breath-orb.exhale{width:50px;height:50px;opacity:0.08;transition:all 4s ease-in-out;}
 /* ROUTINES */
 .routine-list{display:flex;flex-direction:column;gap:5px;}
 .routine-item{display:flex;align-items:center;gap:8px;padding:7px 10px;background:var(--surface-raised);border:1px solid var(--border);border-radius:var(--radius-sm);font-size:13px;transition:all 0.15s;}
@@ -559,7 +563,10 @@ body.unlocked .date-editable:hover{border-bottom-color:var(--accent);background:
 </div>
 </div>
 <div class="breath-cycle-info" id="breathCycleInfo"></div>
+<div class="breath-controls">
+<button class="breath-mute" id="breathMuteBtn" onclick="toggleBreathMute()" title="Toggle voice guidance">&#128266; Voice On</button>
 <button class="breath-stop" onclick="stopBreathwork()">&#9209; End Session</button>
+</div>
 </div>
 </div>
 <div class="toast" id="toast"></div>
@@ -1444,29 +1451,77 @@ function showBreathDesc(){
 }
 
 let breathInterval=null;
+let breathRAF=null;
 let breathActive=false;
 const CIRC=628.3; // 2 * PI * 100
+let breathVoice=null;
+let breathVoiceReady=false;
+let breathMuted=false;
+
+function toggleBreathMute(){
+  breathMuted=!breathMuted;
+  const btn=document.getElementById('breathMuteBtn');
+  if(breathMuted){
+    btn.textContent='\u{1F507} Voice Off';
+    btn.classList.add('muted');
+    try{speechSynthesis.cancel();}catch(e){}
+  }else{
+    btn.textContent='\u{1F50A} Voice On';
+    btn.classList.remove('muted');
+  }
+}
+
+// VOICE SETUP — warm female US English
+function initBreathVoice(){
+  if(!('speechSynthesis' in window))return;
+  function pickVoice(){
+    const voices=speechSynthesis.getVoices();
+    if(!voices.length)return;
+    // Prefer: Samantha (macOS/iOS), Microsoft Aria, Google US English Female
+    const preferred=['samantha','aria','zira','female','woman'];
+    const usVoices=voices.filter(v=>v.lang&&v.lang.startsWith('en')&&(v.lang.includes('US')||v.lang.includes('us')||v.lang==='en-US'||v.lang==='en_US'));
+    const allEn=usVoices.length?usVoices:voices.filter(v=>v.lang&&v.lang.startsWith('en'));
+    // Try to find a preferred female voice
+    for(const pref of preferred){
+      const match=allEn.find(v=>v.name.toLowerCase().includes(pref));
+      if(match){breathVoice=match;breathVoiceReady=true;return;}
+    }
+    // Fallback: any English voice
+    if(allEn.length){breathVoice=allEn[0];breathVoiceReady=true;}
+  }
+  pickVoice();
+  if(!breathVoiceReady) speechSynthesis.onvoiceschanged=pickVoice;
+}
+
+function speak(text){
+  if(!breathVoiceReady||!breathActive||breathMuted)return;
+  try{
+    speechSynthesis.cancel();
+    const utt=new SpeechSynthesisUtterance(text);
+    if(breathVoice)utt.voice=breathVoice;
+    utt.rate=0.85;   // slightly slower — calm
+    utt.pitch=1.05;  // slightly higher — warm female
+    utt.volume=0.45; // low-moderate
+    speechSynthesis.speak(utt);
+  }catch(e){console.log('Speech error:',e);}
+}
 
 function startBreathwork(){
   const id=document.getElementById('breathSelect').value;
   if(!id)return;
   const t=breathTechniques[id];
   breathActive=true;
+  initBreathVoice();
 
   // Show overlay
   const overlay=document.getElementById('breathOverlay');
   overlay.classList.add('active');
   document.getElementById('breathName').textContent=t.name;
 
-  let cycle=0,pi=0,count=t.durations[0];
-  const totalPhaseTime=t.durations[pi];
-
-  function updateRing(elapsed,total){
-    const pct=elapsed/total;
-    const offset=CIRC*(1-pct);
-    document.getElementById('breathRingFill').style.strokeDashoffset=offset;
-    document.getElementById('breathRingGlow').style.strokeDashoffset=offset;
-  }
+  let cycle=0,pi=0;
+  let phaseStartTime=performance.now();
+  let phaseDuration=t.durations[pi]*1000; // ms
+  let lastCount=-1;
 
   function updateOrb(phase){
     const orb=document.getElementById('breathOrb');
@@ -1476,51 +1531,76 @@ function startBreathwork(){
     else if(p.includes('exhale')||p.includes('out')){orb.classList.add('exhale');}
   }
 
-  function tick(){
-    if(!breathActive)return;
+  function onNewPhase(){
     const phase=t.phases[pi];
     const cue=t.cues[pi];
-    const dur=t.durations[pi];
-    
     document.getElementById('breathPhase').textContent=phase;
-    document.getElementById('breathCount').textContent=count;
     document.getElementById('breathInstruction').textContent=cue;
     document.getElementById('breathCycleInfo').textContent=t.cycles>1?'Cycle '+(cycle+1)+' of '+t.cycles:'';
-    
-    updateRing(dur-count,dur);
     updateOrb(phase);
+    lastCount=-1;
+    // Speak the cue
+    speak(cue);
+  }
 
-    count--;
-    if(count<0){
+  function frame(now){
+    if(!breathActive)return;
+    const elapsed=now-phaseStartTime;
+    const dur=phaseDuration;
+    const remaining=Math.max(0,dur-elapsed);
+    const pct=Math.min(1,elapsed/dur);
+
+    // Smooth ring
+    const offset=CIRC*(1-pct);
+    document.getElementById('breathRingFill').style.strokeDashoffset=offset;
+    document.getElementById('breathRingGlow').style.strokeDashoffset=offset;
+
+    // Countdown (integer display)
+    const countDown=Math.ceil(remaining/1000);
+    if(countDown!==lastCount){
+      lastCount=countDown;
+      document.getElementById('breathCount').textContent=countDown>0?countDown:'';
+    }
+
+    // Phase complete?
+    if(elapsed>=dur){
       pi++;
       if(pi>=t.phases.length){
         pi=0;cycle++;
         if(cycle>=t.cycles){
-          // Complete
-          clearInterval(breathInterval);breathInterval=null;
+          // Session complete
           document.getElementById('breathPhase').textContent='\u2713 Complete';
           document.getElementById('breathCount').textContent='';
           document.getElementById('breathInstruction').textContent='Well done. Take a moment before returning.';
           document.getElementById('breathCycleInfo').textContent='';
-          updateRing(1,1);
+          document.getElementById('breathRingFill').style.strokeDashoffset=0;
+          document.getElementById('breathRingGlow').style.strokeDashoffset=0;
           document.getElementById('breathOrb').className='breath-orb';
           document.querySelector('.breath-content').classList.add('breath-complete');
           setTimeout(()=>{document.querySelector('.breath-content').classList.remove('breath-complete');},600);
-          // Auto-close after 5 seconds
-          setTimeout(()=>{if(breathActive)stopBreathwork();},5000);
+          speak('Well done. Take a moment.');
+          setTimeout(()=>{if(breathActive)stopBreathwork();},6000);
           return;
         }
       }
-      count=t.durations[pi];
+      phaseStartTime=now;
+      phaseDuration=t.durations[pi]*1000;
+      onNewPhase();
     }
+
+    breathRAF=requestAnimationFrame(frame);
   }
-  tick();
-  breathInterval=setInterval(tick,1000);
+
+  // Start first phase
+  onNewPhase();
+  breathRAF=requestAnimationFrame(frame);
 }
 
 function stopBreathwork(){
   breathActive=false;
+  if(breathRAF){cancelAnimationFrame(breathRAF);breathRAF=null;}
   clearInterval(breathInterval);breathInterval=null;
+  try{speechSynthesis.cancel();}catch(e){}
   document.getElementById('breathOverlay').classList.remove('active');
   document.getElementById('breathRingFill').style.strokeDashoffset=CIRC;
   document.getElementById('breathRingGlow').style.strokeDashoffset=CIRC;
