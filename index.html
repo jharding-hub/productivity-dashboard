@@ -183,6 +183,33 @@ body.unlocked .date-editable:hover{border-bottom-color:var(--accent);background:
 .guided-count{font-size:40px;font-weight:700;font-variant-numeric:tabular-nums;color:var(--text);}
 .guided-instruction{font-size:12px;color:var(--text-dim);margin-top:4px;}
 
+/* BREATHWORK */
+.breathwork-select{width:100%;background:var(--surface-raised);border:1px solid var(--teal);color:var(--text);padding:8px 10px;border-radius:var(--radius-sm);font-family:inherit;font-size:13px;outline:none;cursor:pointer;margin-bottom:10px;}
+.breathwork-select option{background:var(--surface);color:var(--text);}
+.breathwork-desc{font-size:11px;color:var(--text-dim);margin-bottom:10px;line-height:1.5;}
+.breathwork-start{width:100%;padding:10px;font-size:13px;font-weight:600;background:var(--teal-dim);border:1px solid var(--teal);color:var(--teal);border-radius:var(--radius-sm);cursor:pointer;font-family:inherit;transition:all 0.15s;}
+.breathwork-start:hover{background:var(--teal);color:var(--bg);}
+.breath-overlay{position:fixed;inset:0;z-index:500;display:none;align-items:center;justify-content:center;flex-direction:column;}
+.breath-overlay.active{display:flex;}
+.breath-backdrop{position:absolute;inset:0;background:rgba(26,25,23,0.85);backdrop-filter:blur(12px);-webkit-backdrop-filter:blur(12px);}
+.breath-content{position:relative;z-index:1;text-align:center;padding:30px;max-width:400px;width:100%;}
+.breath-ring-wrap{position:relative;width:220px;height:220px;margin:0 auto 20px;}
+.breath-ring-bg{fill:none;stroke:var(--border);stroke-width:6;}
+.breath-ring-fill{fill:none;stroke:var(--teal);stroke-width:6;stroke-linecap:round;transform-origin:center;transform:rotate(-90deg);transition:stroke-dashoffset 0.3s ease;}
+.breath-ring-glow{fill:none;stroke:var(--teal);stroke-width:2;stroke-linecap:round;transform-origin:center;transform:rotate(-90deg);opacity:0.3;filter:blur(4px);transition:stroke-dashoffset 0.3s ease;}
+.breath-center{position:absolute;top:50%;left:50%;transform:translate(-50%,-50%);text-align:center;}
+.breath-phase{font-size:20px;font-weight:700;color:var(--teal);margin-bottom:4px;transition:all 0.3s;}
+.breath-count{font-size:52px;font-weight:700;font-variant-numeric:tabular-nums;color:var(--text);line-height:1;}
+.breath-instruction{font-size:12px;color:var(--text-dim);margin-top:4px;}
+.breath-cycle-info{font-size:12px;color:var(--text-faint);margin-bottom:16px;}
+.breath-technique-name{font-family:'Fraunces',serif;font-size:18px;color:var(--accent);margin-bottom:6px;}
+.breath-stop{background:var(--surface-raised);border:1px solid var(--border);color:var(--text-dim);padding:10px 28px;border-radius:var(--radius-sm);cursor:pointer;font-size:13px;font-family:inherit;transition:all 0.15s;}
+.breath-stop:hover{background:var(--surface-hover);color:var(--text);border-color:var(--border-focus);}
+.breath-complete{animation:breathComplete 0.5s ease;}
+@keyframes breathComplete{0%{transform:scale(1)}50%{transform:scale(1.05)}100%{transform:scale(1)}}
+.breath-orb{position:absolute;top:50%;left:50%;width:80px;height:80px;border-radius:50%;background:radial-gradient(circle,var(--teal) 0%,transparent 70%);opacity:0.15;transform:translate(-50%,-50%);transition:all 1s ease;}
+.breath-orb.inhale{width:160px;height:160px;opacity:0.25;}
+.breath-orb.exhale{width:60px;height:60px;opacity:0.1;}
 /* ROUTINES */
 .routine-list{display:flex;flex-direction:column;gap:5px;}
 .routine-item{display:flex;align-items:center;gap:8px;padding:7px 10px;background:var(--surface-raised);border:1px solid var(--border);border-radius:var(--radius-sm);font-size:13px;transition:all 0.15s;}
@@ -369,10 +396,28 @@ body.unlocked .date-editable:hover{border-bottom-color:var(--accent);background:
 <!-- 4. TIME AWARENESS -->
 <div class="panel panel-narrow" data-panel="time" data-nav="time">
 <div class="panel-header"><div class="panel-title"><span class="drag-handle">&#10495;</span><span class="icon">&#9201;</span> Time Awareness</div><div class="panel-badge">Time Blindness Aid</div></div>
-<div class="time-block"><div class="time-label">Day Progress</div><div style="display:flex;align-items:baseline;gap:8px;"><div class="time-value" id="dayPercent">0%</div><span style="font-size:11px;color:var(--text-dim);" id="dayRemaining"></span></div><div class="time-bar"><div class="time-bar-fill" id="dayBar" style="background:var(--accent);width:0%"></div></div></div>
-<div class="time-block"><div class="time-label">Focus Timer</div><div class="time-value" id="timerDisplay">25:00</div><div class="time-bar"><div class="time-bar-fill" id="timerBar" style="background:var(--green);width:100%"></div></div>
+<div class="time-block">
+<div class="time-label">Breathwork</div>
+<select class="breathwork-select" id="breathSelect" onchange="showBreathDesc()">
+<option value="">Choose a technique...</option>
+<option value="box">&#129697; Box Breathing (4-4-4-4) &mdash; 2 min</option>
+<option value="478">&#127754; 4-7-8 Breathing &mdash; 2.5 min</option>
+<option value="sigh">&#128168; Physiological Sigh &mdash; 1 min</option>
+<option value="scan">&#129496; 2-Minute Body Scan</option>
+<option value="resonance">&#127908; Resonance Breathing (5.5-5.5) &mdash; 2 min</option>
+<option value="alternate">&#128067; Alternate Nostril (Nadi Shodhana) &mdash; 2 min</option>
+<option value="22exhale">&#127754; 2:1 Extended Exhale (4-8) &mdash; 2 min</option>
+</select>
+<div class="breathwork-desc" id="breathDesc"></div>
+<button class="breathwork-start" id="breathStartBtn" onclick="startBreathwork()" style="display:none;">&#9654; Begin Session</button>
+</div>
+<div class="time-block">
+<div class="time-label">Focus Timer</div>
+<div class="time-value" id="timerDisplay">25:00</div>
+<div class="time-bar"><div class="time-bar-fill" id="timerBar" style="background:var(--green);width:100%"></div></div>
 <div class="timer-controls"><button class="btn btn-sm" onclick="startTimer()">&#9654; Start</button><button class="btn btn-sm" onclick="pauseTimer()">&#9208; Pause</button><button class="btn btn-sm" onclick="resetTimer()">&#8634; Reset</button>
-<select id="timerPreset" onchange="setTimerPreset()" style="width:auto;padding:4px 8px;font-size:12px;"><option value="25">25 min</option><option value="15">15 min</option><option value="5">5 min break</option><option value="45">45 min</option></select></div></div></div>
+<select id="timerPreset" onchange="setTimerPreset()" style="width:auto;padding:4px 8px;font-size:12px;"><option value="25">25 min</option><option value="15">15 min</option><option value="5">5 min break</option><option value="45">45 min</option></select></div>
+</div></div>
 
 <!-- 5. ENERGY & MOOD (compact) -->
 <div class="panel" data-panel="energy" data-nav="energy">
@@ -494,6 +539,27 @@ body.unlocked .date-editable:hover{border-bottom-color:var(--accent);background:
 <button class="btn" onclick="resetPanelVisibility()">Show All</button>
 <button class="btn btn-accent" onclick="closeCustomize()">Done</button>
 </div>
+</div>
+</div>
+<div class="breath-overlay" id="breathOverlay">
+<div class="breath-backdrop"></div>
+<div class="breath-content">
+<div class="breath-technique-name" id="breathName"></div>
+<div class="breath-ring-wrap">
+<svg viewBox="0 0 220 220" width="220" height="220">
+<circle class="breath-ring-bg" cx="110" cy="110" r="100"/>
+<circle class="breath-ring-glow" id="breathRingGlow" cx="110" cy="110" r="100" stroke-dasharray="628.3" stroke-dashoffset="628.3"/>
+<circle class="breath-ring-fill" id="breathRingFill" cx="110" cy="110" r="100" stroke-dasharray="628.3" stroke-dashoffset="628.3"/>
+</svg>
+<div class="breath-orb" id="breathOrb"></div>
+<div class="breath-center">
+<div class="breath-phase" id="breathPhase">&mdash;</div>
+<div class="breath-count" id="breathCount">&mdash;</div>
+<div class="breath-instruction" id="breathInstruction"></div>
+</div>
+</div>
+<div class="breath-cycle-info" id="breathCycleInfo"></div>
+<button class="breath-stop" onclick="stopBreathwork()">&#9209; End Session</button>
 </div>
 </div>
 <div class="toast" id="toast"></div>
@@ -850,7 +916,7 @@ function applyPanelOrder(){const dash=document.getElementById('dashboard');const
 function initDragDrop(){document.querySelectorAll('.panel').forEach(panel=>{panel.addEventListener('dragstart',e=>{if(state.panelsLocked){e.preventDefault();return;}dragSrcPanel=panel;panel.classList.add('dragging');e.dataTransfer.effectAllowed='move';e.dataTransfer.setData('text/plain',panel.dataset.panel);});panel.addEventListener('dragend',()=>{panel.classList.remove('dragging');document.querySelectorAll('.panel').forEach(p=>p.classList.remove('drag-over'));dragSrcPanel=null;});panel.addEventListener('dragover',e=>{if(state.panelsLocked)return;e.preventDefault();e.dataTransfer.dropEffect='move';if(panel!==dragSrcPanel)panel.classList.add('drag-over');});panel.addEventListener('dragleave',()=>{panel.classList.remove('drag-over');});panel.addEventListener('drop',e=>{e.preventDefault();panel.classList.remove('drag-over');if(!dragSrcPanel||dragSrcPanel===panel)return;const dash=document.getElementById('dashboard');const all=[...dash.querySelectorAll('.panel')];const fi=all.indexOf(dragSrcPanel);const ti=all.indexOf(panel);if(fi<ti)panel.after(dragSrcPanel);else panel.before(dragSrcPanel);state.panelOrder=[...dash.querySelectorAll('.panel')].map(p=>p.dataset.panel);save();toast('Panel moved');});});}
 
 // CLOCK
-function updateClock(){const now=new Date();document.getElementById('clock').textContent=now.toLocaleTimeString('en-US',{hour12:true});document.getElementById('clockDate').textContent=now.toLocaleDateString('en-US',{weekday:'long',year:'numeric',month:'long',day:'numeric'});const mins=now.getHours()*60+now.getMinutes();const wk=6*60,sl=22*60,dayLen=sl-wk;const elapsed=Math.max(0,Math.min(dayLen,mins-wk));const pct=Math.round((elapsed/dayLen)*100);document.getElementById('dayPercent').textContent=pct+'%';document.getElementById('dayBar').style.width=pct+'%';const rh=Math.floor((dayLen-elapsed)/60),rm=(dayLen-elapsed)%60;document.getElementById('dayRemaining').textContent=rh+'h '+rm+'m of usable day left';}
+function updateClock(){const now=new Date();document.getElementById('clock').textContent=now.toLocaleTimeString('en-US',{hour12:true});document.getElementById('clockDate').textContent=now.toLocaleDateString('en-US',{weekday:'long',year:'numeric',month:'long',day:'numeric'});}
 
 // TIMER
 let timerTotal=25*60,timerLeft=25*60,timerInterval=null,timerRunning=false;
@@ -1294,6 +1360,171 @@ async function adminDeleteUser(uid,email){
     toast('User '+email+' deleted');
     renderAdminPanel();
   }catch(e){toast('Error: '+e.message);}
+}
+
+// ═══════════════════════════════════════
+// BREATHWORK ENGINE
+// ═══════════════════════════════════════
+const breathTechniques={
+  box:{
+    name:'Box Breathing (4-4-4-4)',
+    source:'Balban et al., 2023 \u2014 Navy SEAL protocol',
+    desc:'Equal inhale, hold, exhale, hold. Activates parasympathetic nervous system and reduces cortisol.',
+    phases:['Inhale','Hold','Exhale','Hold'],
+    durations:[4,4,4,4],
+    cycles:4,
+    cues:['Breathe in slowly through your nose','Keep your lungs full, stay relaxed','Release slowly through your mouth','Stay empty, stay calm']
+  },
+  '478':{
+    name:'4-7-8 Breathing',
+    source:'Weil, 2015; pranayama tradition \u2014 vagus nerve activation',
+    desc:'Extended exhale (2x inhale) shifts autonomic balance toward parasympathetic dominance. Powerful for anxiety.',
+    phases:['Inhale','Hold','Exhale'],
+    durations:[4,7,8],
+    cycles:4,
+    cues:['Quietly through your nose','Gently hold, body relaxed','Slowly and completely through your mouth']
+  },
+  sigh:{
+    name:'Physiological Sigh',
+    source:'Balban et al., 2023, Cell Reports Medicine \u2014 Stanford/Huberman Lab',
+    desc:'Fastest known voluntary method to reduce autonomic arousal. Double inhale reinflates alveoli, long exhale calms.',
+    phases:['Deep Inhale','Quick Sniff In','Long Exhale'],
+    durations:[3,1,6],
+    cycles:6,
+    cues:['Deep breath through your nose','Short sharp sniff on top','Slow and long through your mouth']
+  },
+  scan:{
+    name:'2-Minute Body Scan',
+    source:'Kabat-Zinn MBSR; Demarzo et al., 2017 meta-analysis',
+    desc:'Redirects attention from rumination to body awareness. Even brief scans reduce cortisol and cognitive fusion.',
+    phases:['Settle In','Feet & Legs','Torso & Hands','Arms & Shoulders','Neck & Face','Integrate'],
+    durations:[8,15,15,15,15,12],
+    cycles:1,
+    cues:['Close your eyes. Three slow breaths.','Notice your feet on the ground. Scan up through calves, knees, thighs.','Feel your belly rise and fall. Notice your hands resting.','Scan forearms, upper arms. Let shoulders drop.','Relax your jaw. Soften your forehead. Unclench.','Breathe into any remaining tension. Open your eyes slowly.']
+  },
+  resonance:{
+    name:'Resonance Breathing (5.5-5.5)',
+    source:'Lehrer & Gevirtz, 2014 \u2014 heart rate variability optimization',
+    desc:'Breathing at ~5.5 breaths/min maximizes heart rate variability. The gold standard for vagal tone training.',
+    phases:['Inhale','Exhale'],
+    durations:[5,6],
+    cycles:6,
+    cues:['Slowly fill your lungs through your nose','Gently release, letting your body soften']
+  },
+  alternate:{
+    name:'Alternate Nostril Breathing',
+    source:'Telles et al., 2013; Nadi Shodhana from Hatha Yoga tradition',
+    desc:'Balances sympathetic and parasympathetic activity. Reduces blood pressure and improves attention.',
+    phases:['Right Nostril In','Hold','Left Nostril Out','Left Nostril In','Hold','Right Nostril Out'],
+    durations:[4,2,4,4,2,4],
+    cycles:3,
+    cues:['Close left nostril, inhale right','Close both, hold gently','Close right nostril, exhale left','Keep right closed, inhale left','Close both, hold gently','Close left nostril, exhale right']
+  },
+  '22exhale':{
+    name:'2:1 Extended Exhale (4-8)',
+    source:'Gerritsen & Band, 2018 review \u2014 slow breathing and vagal stimulation',
+    desc:'Exhale twice as long as inhale. Reliably increases parasympathetic activity and reduces anxiety.',
+    phases:['Inhale','Exhale'],
+    durations:[4,8],
+    cycles:5,
+    cues:['Breathe in smoothly through your nose','Long, slow release through your mouth']
+  }
+};
+
+function showBreathDesc(){
+  const id=document.getElementById('breathSelect').value;
+  const desc=document.getElementById('breathDesc');
+  const btn=document.getElementById('breathStartBtn');
+  if(!id){desc.innerHTML='';btn.style.display='none';return;}
+  const t=breathTechniques[id];
+  const totalSec=t.phases.reduce((a,d,i)=>a+t.durations[i],0)*t.cycles;
+  const mins=Math.floor(totalSec/60);const secs=totalSec%60;
+  desc.innerHTML='<strong style="color:var(--teal);">'+t.name+'</strong><br>'+t.desc+'<br><span style="color:var(--text-faint);font-size:10px;">'+t.source+' \u2022 ~'+mins+'m'+(secs?(' '+secs+'s'):'')+'</span>';
+  btn.style.display='block';
+}
+
+let breathInterval=null;
+let breathActive=false;
+const CIRC=628.3; // 2 * PI * 100
+
+function startBreathwork(){
+  const id=document.getElementById('breathSelect').value;
+  if(!id)return;
+  const t=breathTechniques[id];
+  breathActive=true;
+
+  // Show overlay
+  const overlay=document.getElementById('breathOverlay');
+  overlay.classList.add('active');
+  document.getElementById('breathName').textContent=t.name;
+
+  let cycle=0,pi=0,count=t.durations[0];
+  const totalPhaseTime=t.durations[pi];
+
+  function updateRing(elapsed,total){
+    const pct=elapsed/total;
+    const offset=CIRC*(1-pct);
+    document.getElementById('breathRingFill').style.strokeDashoffset=offset;
+    document.getElementById('breathRingGlow').style.strokeDashoffset=offset;
+  }
+
+  function updateOrb(phase){
+    const orb=document.getElementById('breathOrb');
+    orb.className='breath-orb';
+    const p=phase.toLowerCase();
+    if(p.includes('inhale')||p.includes('sniff')||p.includes('in')){orb.classList.add('inhale');}
+    else if(p.includes('exhale')||p.includes('out')){orb.classList.add('exhale');}
+  }
+
+  function tick(){
+    if(!breathActive)return;
+    const phase=t.phases[pi];
+    const cue=t.cues[pi];
+    const dur=t.durations[pi];
+    
+    document.getElementById('breathPhase').textContent=phase;
+    document.getElementById('breathCount').textContent=count;
+    document.getElementById('breathInstruction').textContent=cue;
+    document.getElementById('breathCycleInfo').textContent=t.cycles>1?'Cycle '+(cycle+1)+' of '+t.cycles:'';
+    
+    updateRing(dur-count,dur);
+    updateOrb(phase);
+
+    count--;
+    if(count<0){
+      pi++;
+      if(pi>=t.phases.length){
+        pi=0;cycle++;
+        if(cycle>=t.cycles){
+          // Complete
+          clearInterval(breathInterval);breathInterval=null;
+          document.getElementById('breathPhase').textContent='\u2713 Complete';
+          document.getElementById('breathCount').textContent='';
+          document.getElementById('breathInstruction').textContent='Well done. Take a moment before returning.';
+          document.getElementById('breathCycleInfo').textContent='';
+          updateRing(1,1);
+          document.getElementById('breathOrb').className='breath-orb';
+          document.querySelector('.breath-content').classList.add('breath-complete');
+          setTimeout(()=>{document.querySelector('.breath-content').classList.remove('breath-complete');},600);
+          // Auto-close after 5 seconds
+          setTimeout(()=>{if(breathActive)stopBreathwork();},5000);
+          return;
+        }
+      }
+      count=t.durations[pi];
+    }
+  }
+  tick();
+  breathInterval=setInterval(tick,1000);
+}
+
+function stopBreathwork(){
+  breathActive=false;
+  clearInterval(breathInterval);breathInterval=null;
+  document.getElementById('breathOverlay').classList.remove('active');
+  document.getElementById('breathRingFill').style.strokeDashoffset=CIRC;
+  document.getElementById('breathRingGlow').style.strokeDashoffset=CIRC;
+  document.getElementById('breathOrb').className='breath-orb';
 }
 
 // PANEL EXPAND/COLLAPSE
