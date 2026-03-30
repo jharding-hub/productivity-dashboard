@@ -36,6 +36,7 @@ body{font-family:'DM Sans',sans-serif;background:var(--bg);color:var(--text);min
 .panel.dragging{opacity:0.4;transform:scale(0.97);}
 .panel.drag-over{box-shadow:0 0 0 2px var(--accent),0 4px 20px rgba(212,168,83,0.25);transform:scale(1.01);}
 .panel.hidden-panel{display:none;}
+.panel.user-hidden{display:none!important;}
 .panel-header{display:flex;align-items:center;justify-content:space-between;margin-bottom:14px;}
 .panel-title{font-family:'Fraunces',serif;font-size:16px;font-weight:600;color:var(--text);display:flex;align-items:center;gap:7px;}
 .panel-title .icon{font-size:17px;}
@@ -228,7 +229,7 @@ body.unlocked .date-editable:hover{border-bottom-color:var(--accent);background:
 .clear-done{font-size:11px;color:var(--text-faint);cursor:pointer;text-decoration:underline;}.clear-done:hover{color:var(--text-dim);}
 .section-label{font-size:11px;color:var(--text-dim);text-transform:uppercase;letter-spacing:0.5px;margin:8px 0 4px;}
 @media(max-width:1100px){.dashboard{grid-template-columns:1fr 1fr;}.panel-narrow{grid-column:span 1;}}
-@media(max-width:768px){.dashboard{grid-template-columns:1fr;padding:12px 14px 90px;gap:12px;}.header{padding:14px 14px 10px;}.header h1{font-size:18px;}.header h1 span{display:none;}.nav-tabs{display:flex;}.panel{display:none;}.panel.mobile-visible{display:block;}.panel.hidden-panel{display:none!important;}.drag-handle{display:none!important;}}
+@media(max-width:768px){.dashboard{grid-template-columns:1fr;padding:12px 14px 90px;gap:12px;}.header{padding:14px 14px 10px;}.header h1{font-size:18px;}.header h1 span{display:none;}.nav-tabs{display:flex;}.panel{display:none;}.panel.mobile-visible{display:block;}.panel.hidden-panel{display:none!important;}.panel.user-hidden{display:none!important;}.drag-handle{display:none!important;}}
 /* AUTH GATE */
 .login-gate{position:fixed;inset:0;background:var(--bg);z-index:9999;display:flex;align-items:center;justify-content:center;padding:20px;}
 .login-gate.hidden{display:none;}
@@ -242,6 +243,27 @@ body.unlocked .date-editable:hover{border-bottom-color:var(--accent);background:
 .login-link{color:var(--text-faint);font-size:12px;cursor:pointer;margin-top:6px;display:inline-block;}
 .login-link:hover{color:var(--accent);}
 .login-success{color:var(--green);font-size:12px;margin-top:8px;min-height:18px;}
+.customize-btn{background:none;border:1px solid var(--border);color:var(--text-faint);padding:3px 8px;border-radius:var(--radius-sm);cursor:pointer;font-size:11px;font-family:inherit;transition:all 0.15s;}
+.customize-btn:hover{border-color:var(--accent-dim);color:var(--accent);}
+.customize-overlay{position:fixed;inset:0;background:rgba(0,0,0,0.6);z-index:300;display:none;align-items:center;justify-content:center;padding:20px;}
+.customize-overlay.show{display:flex;}
+.customize-box{background:var(--surface);border:1px solid var(--border);border-radius:var(--radius);padding:28px;max-width:440px;width:100%;max-height:80vh;overflow-y:auto;}
+.customize-box h3{font-family:'Fraunces',serif;font-size:18px;color:var(--accent);margin-bottom:4px;}
+.customize-box .cust-sub{font-size:12px;color:var(--text-dim);margin-bottom:16px;}
+.panel-toggle{display:flex;align-items:center;gap:10px;padding:10px 12px;background:var(--surface-raised);border:1px solid var(--border);border-radius:var(--radius-sm);margin-bottom:6px;transition:all 0.15s;}
+.panel-toggle:hover{border-color:var(--border-focus);background:var(--surface-hover);}
+.panel-toggle .pt-icon{font-size:18px;width:24px;text-align:center;}
+.panel-toggle .pt-info{flex:1;}
+.panel-toggle .pt-name{font-size:13px;font-weight:600;color:var(--text);}
+.panel-toggle .pt-desc{font-size:11px;color:var(--text-dim);margin-top:1px;}
+.pt-new{font-size:9px;font-weight:700;padding:1px 6px;border-radius:8px;background:var(--accent-glow);color:var(--accent);margin-left:6px;animation:chipIn 0.3s ease;}
+.toggle-switch{position:relative;width:40px;height:22px;flex-shrink:0;}
+.toggle-switch input{opacity:0;width:0;height:0;}
+.toggle-slider{position:absolute;cursor:pointer;inset:0;background:var(--surface-hover);border:1px solid var(--border);border-radius:11px;transition:all 0.2s;}
+.toggle-slider::before{content:'';position:absolute;height:16px;width:16px;left:2px;bottom:2px;background:var(--text-faint);border-radius:50%;transition:all 0.2s;}
+.toggle-switch input:checked+.toggle-slider{background:var(--accent-glow);border-color:var(--accent);}
+.toggle-switch input:checked+.toggle-slider::before{transform:translateX(18px);background:var(--accent);}
+.customize-actions{display:flex;gap:8px;justify-content:flex-end;margin-top:16px;padding-top:12px;border-top:1px solid var(--border);}
 .app-wrap{display:none;}
 .app-wrap.visible{display:block;}
 /* ADMIN PANEL */
@@ -309,6 +331,7 @@ body.unlocked .date-editable:hover{border-bottom-color:var(--accent);background:
 <span class="user-email-display" id="userEmail"></span>
 <button class="logout-btn" onclick="doLogout()" title="Sign out">Sign out</button>
 <span class="sync-status offline" id="syncStatus"><span class="sync-dot"></span> Local</span>
+<button class="customize-btn" onclick="openCustomize()" title="Show/hide panels">&#9881; Panels</button>
 <button class="lock-btn" id="lockBtn" onclick="toggleLock()" title="Lock/unlock layout and editing">&#128274; Locked</button>
 <div><div class="clock" id="clock">--:--</div><div class="clock-date" id="clockDate"></div></div>
 </div></div>
@@ -450,18 +473,29 @@ body.unlocked .date-editable:hover{border-bottom-color:var(--accent);background:
 
 <!-- MOBILE NAV -->
 <div class="nav-tabs" id="navTabs">
-<button class="nav-tab active" onclick="showMobilePanel('projects',this)"><span class="nt-icon">&#128194;</span>Projects</button>
-<button class="nav-tab" onclick="showMobilePanel('reminders',this)"><span class="nt-icon">&#128276;</span>Remind</button>
-<button class="nav-tab" onclick="showMobilePanel('brain',this)"><span class="nt-icon">&#129504;</span>Dump</button>
-<button class="nav-tab" onclick="showMobilePanel('time',this)"><span class="nt-icon">&#9201;</span>Timer</button>
-<button class="nav-tab" onclick="showMobilePanel('energy',this)"><span class="nt-icon">&#128267;</span>Mood</button>
-<button class="nav-tab" onclick="showMobilePanel('routines',this)"><span class="nt-icon">&#128257;</span>Routines</button>
-<button class="nav-tab" onclick="showMobilePanel('notes',this)"><span class="nt-icon">&#128221;</span>Notes</button>
-<button class="nav-tab" onclick="showMobilePanel('help',this)"><span class="nt-icon">&#129517;</span>Help</button>
+<button class="nav-tab active" onclick="showMobilePanel('projects',this)" data-navfor="projects"><span class="nt-icon">&#128194;</span>Projects</button>
+<button class="nav-tab" onclick="showMobilePanel('reminders',this)" data-navfor="reminders"><span class="nt-icon">&#128276;</span>Remind</button>
+<button class="nav-tab" onclick="showMobilePanel('brain',this)" data-navfor="brain"><span class="nt-icon">&#129504;</span>Dump</button>
+<button class="nav-tab" onclick="showMobilePanel('time',this)" data-navfor="time"><span class="nt-icon">&#9201;</span>Timer</button>
+<button class="nav-tab" onclick="showMobilePanel('energy',this)" data-navfor="energy"><span class="nt-icon">&#128267;</span>Mood</button>
+<button class="nav-tab" onclick="showMobilePanel('routines',this)" data-navfor="routines"><span class="nt-icon">&#128257;</span>Routines</button>
+<button class="nav-tab" onclick="showMobilePanel('notes',this)" data-navfor="notes"><span class="nt-icon">&#128221;</span>Notes</button>
+<button class="nav-tab" onclick="showMobilePanel('help',this)" data-navfor="decision"><span class="nt-icon">&#129517;</span>Help</button>
 <button class="nav-tab" onclick="showMobilePanel('admin',this)" id="adminNavTab" style="display:none;"><span class="nt-icon">&#128737;</span>Admin</button>
 </div>
 
 <div class="modal-overlay" id="modalOverlay" onclick="if(event.target===this)closeModal()"><div class="modal" id="modalContent"></div></div>
+<div class="customize-overlay" id="customizeOverlay" onclick="if(event.target===this)closeCustomize()">
+<div class="customize-box">
+<h3>&#9881; Customize Panels</h3>
+<p class="cust-sub">Toggle panels on or off. Hidden panels keep their data and can be re-enabled anytime.</p>
+<div id="panelToggles"></div>
+<div class="customize-actions">
+<button class="btn" onclick="resetPanelVisibility()">Show All</button>
+<button class="btn btn-accent" onclick="closeCustomize()">Done</button>
+</div>
+</div>
+</div>
 <div class="toast" id="toast"></div>
 </div><!-- end app-wrap -->
 
@@ -616,7 +650,7 @@ try {
 <!-- SCRIPT 3: APP LOGIC -->
 <script>
 // STATE
-let state={projects:[],reminders:[],thoughts:[],notes:[],moodLog:[],routines:{morning:[{id:'m1',name:'Hydrate \u2014 glass of water',done:false},{id:'m2',name:"Review today's calendar",done:false},{id:'m3',name:'Pick top 3 priorities',done:false},{id:'m4',name:'Quick workspace tidy',done:false}],evening:[{id:'e1',name:'Review what got done today',done:false},{id:'e2',name:"Brain dump tomorrow's thoughts",done:false},{id:'e3',name:"Set out tomorrow's essentials",done:false},{id:'e4',name:'Wind-down activity',done:false}],custom:[]},currentRoutineTab:'morning',energy:null,mood:null,panelOrder:['projects','reminders','time','energy','notes','brain','routines','wellness','decision','admin'],panelsLocked:true,lastRoutineReset:null};
+let state={projects:[],reminders:[],thoughts:[],notes:[],moodLog:[],routines:{morning:[{id:'m1',name:'Hydrate \u2014 glass of water',done:false},{id:'m2',name:"Review today's calendar",done:false},{id:'m3',name:'Pick top 3 priorities',done:false},{id:'m4',name:'Quick workspace tidy',done:false}],evening:[{id:'e1',name:'Review what got done today',done:false},{id:'e2',name:"Brain dump tomorrow's thoughts",done:false},{id:'e3',name:"Set out tomorrow's essentials",done:false},{id:'e4',name:'Wind-down activity',done:false}],custom:[]},currentRoutineTab:'morning',energy:null,mood:null,panelOrder:['projects','reminders','time','energy','notes','brain','routines','wellness','decision','admin'],panelsLocked:true,lastRoutineReset:null,visiblePanels:{},knownPanels:[]};
 
 // SYNC STATUS
 function setSyncStatus(status,label){const el=document.getElementById('syncStatus');if(!el)return;el.className='sync-status '+status;el.innerHTML='<span class="sync-dot"></span> '+label;}
@@ -673,7 +707,7 @@ async function load(){
   // Ensure data integrity
   if(!state.routines)state.routines={morning:[],evening:[],custom:[]};
   if(!state.reminders)state.reminders=[];
-  if(!state.notes)state.notes=[];if(!state.moodLog)state.moodLog=[];
+  if(!state.notes)state.notes=[];if(!state.moodLog)state.moodLog=[];if(!state.visiblePanels)state.visiblePanels={};if(!state.knownPanels)state.knownPanels=[];
   if(!state.panelOrder)state.panelOrder=['projects','reminders','time','energy','notes','brain','routines','wellness','decision','admin'];
   if(!state.panelOrder.includes('wellness'))state.panelOrder.splice(state.panelOrder.indexOf('energy')+1,0,'wellness');
   if(!state.panelOrder.includes('notes'))state.panelOrder.splice(state.panelOrder.indexOf('routines'),0,'notes');
@@ -699,6 +733,97 @@ function startRealtimeSync(){
       setSyncStatus('synced','Synced');
     }catch(e){console.log('Realtime sync error:',e);}
   },err=>{console.log('Snapshot error:',err);setSyncStatus('error','Sync lost');});
+}
+
+// ═══════════════════════════════════════
+// PANEL VISIBILITY / CUSTOMIZATION
+// ═══════════════════════════════════════
+const ALL_PANELS=[
+  {id:'projects',icon:'\u{1F4C2}',name:'Projects',desc:'Track projects with subtasks and due dates'},
+  {id:'reminders',icon:'\u{1F514}',name:'Reminders',desc:'Date and time-based reminders'},
+  {id:'time',icon:'\u23F1',name:'Time Awareness',desc:'Day progress bar and focus timer'},
+  {id:'energy',icon:'\u{1F50B}',name:'Energy, Mood & Trends',desc:'Check-in and track patterns over time'},
+  {id:'notes',icon:'\u{1F4DD}',name:'Notes',desc:'Labeled notes with project tags'},
+  {id:'brain',icon:'\u{1F9E0}',name:'Brain Dump',desc:'Capture fleeting thoughts'},
+  {id:'routines',icon:'\u{1F501}',name:'Routines',desc:'Morning, evening, and custom checklists'},
+  {id:'wellness',icon:'\u{1F9FA}',name:'Grounding Toolkit',desc:'Breathing and grounding techniques (auto-shows when needed)'},
+  {id:'decision',icon:'\u{1F9ED}',name:'Stuck? Start Here',desc:'Decision aid prompts'},
+  {id:'admin',icon:'\u{1F6E1}',name:'Admin Panel',desc:'User management (admin only)'}
+];
+function getPanelIds(){return ALL_PANELS.map(p=>p.id);}
+
+function initPanelVisibility(){
+  const ids=getPanelIds();
+  // Default all to visible if not set
+  ids.forEach(id=>{
+    if(state.visiblePanels[id]===undefined) state.visiblePanels[id]=true;
+  });
+  // Detect new panels the user hasn't seen
+  if(!state.knownPanels)state.knownPanels=[];
+  const newPanels=ids.filter(id=>!state.knownPanels.includes(id));
+  if(newPanels.length>0&&state.knownPanels.length>0){
+    // There are genuinely new panels (not first run)
+    newPanels.forEach(id=>{state.visiblePanels[id]=false;}); // default hidden, user opts in
+    toast('New panels available! Tap \u2699 Panels to activate.');
+  }
+  state.knownPanels=ids.slice();
+  save();
+}
+
+function applyPanelVisibility(){
+  document.querySelectorAll('.panel[data-panel]').forEach(p=>{
+    const id=p.dataset.panel;
+    if(id==='wellness'||id==='admin')return; // these have their own logic
+    if(state.visiblePanels[id]===false){
+      p.classList.add('user-hidden');
+    }else{
+      p.classList.remove('user-hidden');
+    }
+  });
+  // Update mobile nav tabs
+  document.querySelectorAll('.nav-tab[data-navfor]').forEach(tab=>{
+    const id=tab.dataset.navfor;
+    if(id==='admin')return; // admin nav has its own logic
+    if(state.visiblePanels[id]===false){
+      tab.style.display='none';
+    }else{
+      tab.style.display='';
+    }
+  });
+}
+
+function openCustomize(){
+  const el=document.getElementById('panelToggles');
+  const ids=getPanelIds();
+  const newPanels=ids.filter(id=>state.knownPanels&&!state.knownPanels.includes(id));
+  el.innerHTML=ALL_PANELS.filter(p=>{
+    if(p.id==='admin'&&!isAdmin)return false;
+    if(p.id==='wellness')return false; // wellness is auto-controlled
+    return true;
+  }).map(p=>{
+    const checked=state.visiblePanels[p.id]!==false;
+    const isNew=newPanels.includes(p.id);
+    return '<div class="panel-toggle"><span class="pt-icon">'+p.icon+'</span><div class="pt-info"><div class="pt-name">'+p.name+(isNew?'<span class="pt-new">NEW</span>':'')+'</div><div class="pt-desc">'+p.desc+'</div></div><label class="toggle-switch"><input type="checkbox" '+(checked?'checked':'')+' onchange="togglePanelVisibility(\''+p.id+'\',this.checked)"><span class="toggle-slider"></span></label></div>';
+  }).join('');
+  document.getElementById('customizeOverlay').classList.add('show');
+}
+
+function closeCustomize(){
+  document.getElementById('customizeOverlay').classList.remove('show');
+}
+
+function togglePanelVisibility(id,visible){
+  state.visiblePanels[id]=visible;
+  save();
+  applyPanelVisibility();
+}
+
+function resetPanelVisibility(){
+  getPanelIds().forEach(id=>{state.visiblePanels[id]=true;});
+  save();
+  applyPanelVisibility();
+  openCustomize(); // refresh the modal toggles
+  toast('All panels visible');
 }
 
 // LOCK / UNLOCK
@@ -1183,7 +1308,7 @@ const _origRenderRoutines=renderRoutines;renderRoutines=function(){_origRenderRo
 // INIT - called after auth
 async function initApp(){
 await load();
-applyPanelOrder();updateLockUI();updateClock();setInterval(updateClock,1000);updateTimerDisplay();
+initPanelVisibility();applyPanelOrder();applyPanelVisibility();updateLockUI();updateClock();setInterval(updateClock,1000);updateTimerDisplay();
 renderProjects();renderReminders();renderThoughts();renderNotes();renderRoutines();checkDailyRoutineReset();newDecisionPrompt();initDragDrop();
 if(state.energy){const c=document.querySelectorAll('#energyPills .em-pill');const m=['high','good','low','crashed'];const i=m.indexOf(state.energy);if(i>=0)c[i].classList.add('selected');}
 if(state.mood){const c=document.querySelectorAll('#moodPills .em-pill');const m=['focused','scattered','anxious','calm'];const i=m.indexOf(state.mood);if(i>=0)c[i].classList.add('selected');}
