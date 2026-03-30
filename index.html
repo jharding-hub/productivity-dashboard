@@ -288,13 +288,16 @@ body.unlocked .date-editable:hover{border-bottom-color:var(--accent);background:
 <div class="login-error" id="loginError"></div>
 <div class="login-success" id="loginSuccess"></div>
 <span class="login-link" onclick="doForgotPassword()">Forgot password?</span>
+<span style="margin:0 6px;color:var(--text-faint);">|</span>
+<span class="login-link" onclick="showSetupForm()">First-time setup</span>
 </div>
 <div id="setupForm" style="display:none;">
-<p style="font-size:12px;color:var(--text-dim);margin-bottom:12px;">First time? Create the admin account.</p>
-<input type="email" id="setupEmail" placeholder="Admin email..." onkeydown="if(event.key==='Enter')document.getElementById('setupPass').focus()">
+<p style="font-size:12px;color:var(--text-dim);margin-bottom:12px;">Create the admin account. This only needs to be done once.</p>
+<input type="email" id="setupEmail" placeholder="Your email..." onkeydown="if(event.key==='Enter')document.getElementById('setupPass').focus()">
 <input type="password" id="setupPass" placeholder="Password (min 6 chars)..." onkeydown="if(event.key==='Enter')doSetup()">
 <button class="login-btn" onclick="doSetup()">Create Admin Account</button>
 <div class="login-error" id="setupError"></div>
+<span class="login-link" onclick="showLoginForm()">&#8592; Back to sign in</span>
 </div>
 </div>
 </div>
@@ -468,17 +471,15 @@ var currentUser=null;
 var isAdmin=false;
 var userProfile=null;
 
-async function checkInitialSetup(){
-  if(!db)return;
-  try{
-    const snap=await db.collection('users').limit(1).get();
-    if(snap.empty){
-      // No users exist — show setup form
-      document.getElementById('loginForm').style.display='none';
-      document.getElementById('setupForm').style.display='block';
-      document.getElementById('loginSub').textContent='First-time setup: create admin account';
-    }
-  }catch(e){console.log('Setup check error:',e);}
+function showSetupForm(){
+  document.getElementById('loginForm').style.display='none';
+  document.getElementById('setupForm').style.display='block';
+  document.getElementById('loginSub').textContent='Create the first admin account';
+}
+function showLoginForm(){
+  document.getElementById('loginForm').style.display='block';
+  document.getElementById('setupForm').style.display='none';
+  document.getElementById('loginSub').textContent='Sign in to your workspace';
 }
 
 async function doSetup(){
@@ -490,12 +491,13 @@ async function doSetup(){
   if(pass.length<6){err.textContent='Password must be at least 6 characters.';return;}
   try{
     const cred=await firebase.auth().createUserWithEmailAndPassword(email,pass);
+    // Write user profile — this user becomes admin
     await db.collection('users').doc(cred.user.uid).set({
       email:email,admin:true,disabled:false,
       createdAt:firebase.firestore.FieldValue.serverTimestamp(),
       lastActive:firebase.firestore.FieldValue.serverTimestamp()
     });
-    // Auth state listener will handle the rest
+    // onAuthStateChanged will fire and handle the rest
   }catch(e){err.textContent=e.message;}
 }
 
@@ -507,11 +509,11 @@ async function doLogin(){
   if(!email||!pass){err.textContent='Enter email and password.';return;}
   try{
     await firebase.auth().signInWithEmailAndPassword(email,pass);
-    // Auth state listener handles the rest
   }catch(e){
-    const msg=e.code==='auth/user-not-found'?'No account with that email.':
+    const msg=e.code==='auth/user-not-found'?'No account with that email. Ask your admin to create one.':
               e.code==='auth/wrong-password'||e.code==='auth/invalid-credential'?'Incorrect password.':
-              e.code==='auth/too-many-requests'?'Too many attempts. Try later.':e.message;
+              e.code==='auth/invalid-email'?'Invalid email format.':
+              e.code==='auth/too-many-requests'?'Too many attempts. Try again later.':e.message;
     err.textContent=msg;
   }
 }
@@ -525,7 +527,7 @@ async function doForgotPassword(){
   try{
     await firebase.auth().sendPasswordResetEmail(email);
     succ.textContent='Password reset email sent. Check your inbox.';
-  }catch(e){err.textContent=e.message;}
+  }catch(e){err.textContent=e.code==='auth/user-not-found'?'No account with that email.':e.message;}
 }
 
 function doLogout(){
@@ -541,31 +543,34 @@ function hideApp(){
   document.getElementById('loginGate').classList.remove('hidden');
   document.getElementById('appWrap').classList.remove('visible');
   document.getElementById('loginError').textContent='';
+  document.getElementById('loginSuccess').textContent='';
   document.getElementById('loginEmail').value='';
   document.getElementById('loginPass').value='';
+  showLoginForm();
 }
 
-// Firebase Auth state listener
 function initAuthListener(){
   firebase.auth().onAuthStateChanged(async function(user){
     if(user){
       currentUser=user;
-      // Load user profile
       try{
         const prof=await db.collection('users').doc(user.uid).get();
         if(prof.exists){
           userProfile=prof.data();
           if(userProfile.disabled){
             firebase.auth().signOut();
-            document.getElementById('loginError').textContent='Account disabled. Contact admin.';
+            document.getElementById('loginError').textContent='Account disabled. Contact your admin.';
             return;
           }
           isAdmin=userProfile.admin===true;
-          // Update last active
-          db.collection('users').doc(user.uid).update({lastActive:firebase.firestore.FieldValue.serverTimestamp()});
+          db.collection('users').doc(user.uid).update({lastActive:firebase.firestore.FieldValue.serverTimestamp()}).catch(function(){});
         }else{
-          // Profile missing — create basic one
-          await db.collection('users').doc(user.uid).set({email:user.email,admin:false,disabled:false,createdAt:firebase.firestore.FieldValue.serverTimestamp(),lastActive:firebase.firestore.FieldValue.serverTimestamp()});
+          // Profile missing — create one (non-admin by default)
+          await db.collection('users').doc(user.uid).set({
+            email:user.email,admin:false,disabled:false,
+            createdAt:firebase.firestore.FieldValue.serverTimestamp(),
+            lastActive:firebase.firestore.FieldValue.serverTimestamp()
+          });
           userProfile={email:user.email,admin:false,disabled:false};
           isAdmin=false;
         }
@@ -575,7 +580,6 @@ function initAuthListener(){
     }else{
       currentUser=null;isAdmin=false;userProfile=null;
       hideApp();
-      checkInitialSetup();
     }
   });
 }
