@@ -29,9 +29,9 @@ body{font-family:'DM Sans',sans-serif;background:var(--bg);color:var(--text);min
 .nav-tabs{display:none;position:fixed;bottom:0;left:0;right:0;background:var(--surface);border-top:1px solid var(--border);padding:6px 8px env(safe-area-inset-bottom);z-index:100;overflow-x:auto;white-space:nowrap;gap:2px;}
 .nav-tab{display:inline-flex;flex-direction:column;align-items:center;gap:2px;padding:6px 12px;border:none;background:none;color:var(--text-dim);font-size:10px;font-family:inherit;cursor:pointer;border-radius:var(--radius-sm);}
 .nav-tab .nt-icon{font-size:18px;}.nav-tab.active{color:var(--accent);background:var(--accent-glow);}
-.dashboard{display:grid;grid-template-columns:2fr 2fr 1fr;gap:16px;padding:16px 24px 24px;max-width:1600px;margin:0 auto;align-items:start;}
+.dashboard{display:grid;grid-template-columns:2fr 2fr 1fr;gap:16px;padding:16px 24px 24px;max-width:1600px;margin:0 auto;align-items:stretch;}
 .panel-narrow{min-width:0;}
-.panel{background:var(--surface);border:1px solid var(--border);border-radius:var(--radius);padding:18px;animation:fadeUp 0.4s ease both;transition:box-shadow 0.2s,opacity 0.2s,transform 0.2s;}
+.panel{background:var(--surface);border:1px solid var(--border);border-radius:var(--radius);padding:18px;animation:fadeUp 0.4s ease both;transition:box-shadow 0.2s,opacity 0.2s,transform 0.2s;display:flex;flex-direction:column;}
 @keyframes fadeUp{from{opacity:0;transform:translateY(10px)}to{opacity:1;transform:translateY(0)}}
 .panel.dragging{opacity:0.4;transform:scale(0.97);}
 .panel.drag-over{box-shadow:0 0 0 2px var(--accent),0 4px 20px rgba(212,168,83,0.25);transform:scale(1.01);}
@@ -41,8 +41,8 @@ body{font-family:'DM Sans',sans-serif;background:var(--bg);color:var(--text);min
 .panel-title{font-family:'Fraunces',serif;font-size:16px;font-weight:600;color:var(--text);display:flex;align-items:center;gap:7px;}
 .panel-title .icon{font-size:17px;}
 .panel-badge{font-size:10px;font-weight:600;padding:2px 8px;border-radius:20px;background:var(--accent-glow);color:var(--accent);}
-.panel-content{max-height:380px;overflow-y:auto;overflow-x:hidden;scroll-behavior:smooth;position:relative;transition:max-height 0.4s ease;}
-.panel.expanded .panel-content{max-height:80vh;}
+.panel-content{flex:1;overflow-y:auto;overflow-x:hidden;scroll-behavior:smooth;position:relative;min-height:0;}
+
 .panel-content::-webkit-scrollbar{width:4px;}.panel-content::-webkit-scrollbar-track{background:transparent;}.panel-content::-webkit-scrollbar-thumb{background:var(--border);border-radius:2px;}.panel-content::-webkit-scrollbar-thumb:hover{background:var(--border-focus);}
 .panel-content.has-overflow::after{content:'';position:sticky;bottom:0;left:0;right:0;display:block;height:30px;background:linear-gradient(transparent,var(--surface));pointer-events:none;margin-top:-30px;}
 .panel.expanded .panel-content.has-overflow::after{display:none;}
@@ -189,17 +189,17 @@ body.unlocked .date-editable:hover{border-bottom-color:var(--accent);background:
 .breathwork-desc{font-size:11px;color:var(--text-dim);margin-bottom:10px;line-height:1.5;}
 .breathwork-start{width:100%;padding:10px;font-size:13px;font-weight:600;background:var(--teal-dim);border:1px solid var(--teal);color:var(--teal);border-radius:var(--radius-sm);cursor:pointer;font-family:inherit;transition:all 0.15s;}
 .breathwork-start:hover{background:var(--teal);color:var(--bg);}
-.breath-overlay{position:fixed;inset:0;z-index:500;display:none;align-items:center;justify-content:center;flex-direction:column;}
-.breath-overlay.active{display:flex;}
-.breath-backdrop{position:absolute;inset:0;background:rgba(26,25,23,0.85);backdrop-filter:blur(12px);-webkit-backdrop-filter:blur(12px);}
+.breath-overlay{position:fixed;inset:0;z-index:500;visibility:hidden;opacity:0;display:flex;align-items:center;justify-content:center;flex-direction:column;transition:opacity 0.8s ease,visibility 0.8s ease;pointer-events:none;}
+.breath-overlay.active{visibility:visible;opacity:1;pointer-events:auto;}
+.breath-backdrop{position:absolute;inset:0;background:rgba(26,25,23,0.88);backdrop-filter:blur(16px);-webkit-backdrop-filter:blur(16px);transition:opacity 0.8s ease;}
 .breath-content{position:relative;z-index:1;text-align:center;padding:30px;max-width:400px;width:100%;}
 .breath-ring-wrap{position:relative;width:220px;height:220px;margin:0 auto 20px;}
-.breath-ring-bg{fill:none;stroke:var(--border);stroke-width:6;}
-.breath-ring-fill{fill:none;stroke:var(--teal);stroke-width:6;stroke-linecap:round;transform-origin:center;transform:rotate(-90deg);transition:stroke-dashoffset 0.05s linear;}
-.breath-ring-glow{fill:none;stroke:var(--teal);stroke-width:2;stroke-linecap:round;transform-origin:center;transform:rotate(-90deg);opacity:0.3;filter:blur(4px);transition:stroke-dashoffset 0.05s linear;}
+.breath-ring-bg{fill:none;stroke:var(--border);stroke-width:3;opacity:0.4;}
+.breath-ring-fill{fill:none;stroke:var(--teal);stroke-width:4;stroke-linecap:round;transform-origin:center;transform:rotate(-90deg);opacity:0.8;}
+.breath-ring-glow{fill:none;stroke:var(--teal);stroke-width:8;stroke-linecap:round;transform-origin:center;transform:rotate(-90deg);opacity:0.12;filter:blur(8px);}
 .breath-center{position:absolute;top:50%;left:50%;transform:translate(-50%,-50%);text-align:center;}
-.breath-phase{font-size:20px;font-weight:700;color:var(--teal);margin-bottom:4px;transition:all 0.3s;}
-.breath-count{font-size:52px;font-weight:700;font-variant-numeric:tabular-nums;color:var(--text);line-height:1;}
+.breath-phase{font-size:20px;font-weight:600;color:var(--teal);margin-bottom:4px;transition:all 0.6s ease;opacity:0.9;}
+.breath-count{font-size:48px;font-weight:600;font-variant-numeric:tabular-nums;color:var(--text-dim);line-height:1;opacity:0.7;}
 .breath-instruction{font-size:12px;color:var(--text-dim);margin-top:4px;}
 .breath-cycle-info{font-size:12px;color:var(--text-faint);margin-bottom:16px;}
 .breath-technique-name{font-family:'Fraunces',serif;font-size:18px;color:var(--accent);margin-bottom:6px;}
@@ -260,7 +260,7 @@ body.unlocked .date-editable:hover{border-bottom-color:var(--accent);background:
 .clear-done{font-size:11px;color:var(--text-faint);cursor:pointer;text-decoration:underline;}.clear-done:hover{color:var(--text-dim);}
 .section-label{font-size:11px;color:var(--text-dim);text-transform:uppercase;letter-spacing:0.5px;margin:8px 0 4px;}
 @media(max-width:1100px){.dashboard{grid-template-columns:1fr 1fr;}.panel-narrow{grid-column:span 1;}}
-@media(max-width:768px){.dashboard{grid-template-columns:1fr;padding:12px 14px 90px;gap:12px;}.header{padding:14px 14px 10px;}.header h1{font-size:18px;}.header h1 span{display:none;}.nav-tabs{display:flex;}.panel{display:none;}.panel.mobile-visible{display:block;}.panel.hidden-panel{display:none!important;}.panel.user-hidden{display:none!important;}.drag-handle{display:none!important;}}
+@media(max-width:768px){.dashboard{grid-template-columns:1fr;padding:12px 14px 16px;gap:12px;}.header{padding:14px 14px 10px;}.header h1{font-size:18px;}.header h1 span{display:none;}.nav-tabs{display:flex;}.panel{display:none;}.panel.mobile-visible{display:flex;}.panel.hidden-panel{display:none!important;}.panel.user-hidden{display:none!important;}.drag-handle{display:none!important;}.dynamic-panels{padding:0 14px 90px;}}
 /* AUTH GATE */
 .login-gate{position:fixed;inset:0;background:var(--bg);z-index:9999;display:flex;align-items:center;justify-content:center;padding:20px;}
 .login-gate.hidden{display:none;}
@@ -457,17 +457,6 @@ body.unlocked .date-editable:hover{border-bottom-color:var(--accent);background:
 </div>
 </div></div>
 
-<!-- 6. WELLNESS TOOLKIT (separate panel, hidden by default) -->
-<div class="panel hidden-panel" data-panel="wellness" data-nav="wellness">
-<div class="panel-header"><div class="panel-title"><span class="drag-handle">&#10495;</span><span class="icon">&#129658;</span> Grounding Toolkit</div><div class="panel-badge" id="wellnessTrigger">--</div></div>
-<p style="font-size:11px;color:var(--text-dim);margin-bottom:8px;">Evidence-based techniques for your current state. Pick one:</p>
-<select class="wellness-select" id="wellnessSelect" onchange="showSelectedTechnique()">
-<option value="">Choose a technique...</option>
-</select>
-<div id="techniqueDetail"></div>
-<div class="guided-display" id="guidedDisplay"><div class="guided-phase" id="guidedPhase">&mdash;</div><div class="guided-count" id="guidedCount">&mdash;</div><div class="guided-instruction" id="guidedInstruction"></div><button class="tc-timer-btn" onclick="stopGuided()" style="margin-top:10px;">&#9209; Stop</button></div>
-</div>
-
 <!-- 7. ROUTINES -->
 <div class="panel" data-panel="routines" data-nav="routines">
 <div class="panel-header"><div class="panel-title"><span class="drag-handle">&#10495;</span><span class="icon">&#128257;</span> Routines</div>
@@ -494,6 +483,29 @@ body.unlocked .date-editable:hover{border-bottom-color:var(--accent);background:
 <button class="btn btn-accent" onclick="addNote()">Add Note</button>
 </div></div></div>
 
+
+
+<!-- 11. STUCK HELPER -->
+<div class="panel panel-narrow" data-panel="decision" data-nav="help">
+<div class="panel-header"><div class="panel-title"><span class="drag-handle">&#10495;</span><span class="icon">&#129517;</span> Stuck? Start Here</div><div class="panel-badge">Decision Aid</div></div>
+<div class="decision-prompt" id="decisionPrompt"></div>
+<button class="btn" onclick="newDecisionPrompt()">New prompt</button></div>
+
+</div>
+
+<div class="dynamic-panels" id="dynamicPanels">
+<!-- 6. WELLNESS TOOLKIT (separate panel, hidden by default) -->
+<div class="panel hidden-panel" data-panel="wellness" data-nav="wellness">
+<div class="panel-header"><div class="panel-title"><span class="drag-handle">&#10495;</span><span class="icon">&#129658;</span> Grounding Toolkit</div><div class="panel-badge" id="wellnessTrigger">--</div></div>
+<p style="font-size:11px;color:var(--text-dim);margin-bottom:8px;">Evidence-based techniques for your current state. Pick one:</p>
+<select class="wellness-select" id="wellnessSelect" onchange="showSelectedTechnique()">
+<option value="">Choose a technique...</option>
+</select>
+<div id="techniqueDetail"></div>
+<div class="guided-display" id="guidedDisplay"><div class="guided-phase" id="guidedPhase">&mdash;</div><div class="guided-count" id="guidedCount">&mdash;</div><div class="guided-instruction" id="guidedInstruction"></div><button class="tc-timer-btn" onclick="stopGuided()" style="margin-top:10px;">&#9209; Stop</button></div>
+</div>
+
+
 <!-- 10. ADMIN (only visible to admins) -->
 <div class="panel hidden-panel" data-panel="admin" data-nav="admin" id="adminPanel">
 <div class="panel-header"><div class="panel-title"><span class="drag-handle">&#10495;</span><span class="icon">&#128737;</span> Admin</div><div class="panel-badge">Users &amp; Management</div></div>
@@ -511,13 +523,6 @@ body.unlocked .date-editable:hover{border-bottom-color:var(--accent);background:
 <div class="login-error" id="adminAddError" style="text-align:left;"></div>
 </div>
 </div>
-
-<!-- 11. STUCK HELPER -->
-<div class="panel panel-narrow" data-panel="decision" data-nav="help">
-<div class="panel-header"><div class="panel-title"><span class="drag-handle">&#10495;</span><span class="icon">&#129517;</span> Stuck? Start Here</div><div class="panel-badge">Decision Aid</div></div>
-<div class="decision-prompt" id="decisionPrompt"></div>
-<button class="btn" onclick="newDecisionPrompt()">New prompt</button></div>
-
 </div>
 
 <!-- MOBILE NAV -->
@@ -564,7 +569,7 @@ body.unlocked .date-editable:hover{border-bottom-color:var(--accent);background:
 </div>
 <div class="breath-cycle-info" id="breathCycleInfo"></div>
 <div class="breath-controls">
-<button class="breath-mute" id="breathMuteBtn" onclick="toggleBreathMute()" title="Toggle voice guidance">&#128266; Voice On</button>
+<button class="breath-mute muted" id="breathMuteBtn" onclick="toggleBreathMute()" title="Toggle voice guidance">&#128263; Voice Off</button>
 <button class="breath-stop" onclick="stopBreathwork()">&#9209; End Session</button>
 </div>
 </div>
@@ -1456,7 +1461,7 @@ let breathActive=false;
 const CIRC=628.3; // 2 * PI * 100
 let breathVoice=null;
 let breathVoiceReady=false;
-let breathMuted=false;
+let breathMuted=true;
 
 function toggleBreathMute(){
   breathMuted=!breathMuted;
