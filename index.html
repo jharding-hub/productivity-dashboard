@@ -41,7 +41,8 @@ body{font-family:'DM Sans',sans-serif;background:var(--bg);color:var(--text);min
 .panel-title{font-family:'Fraunces',serif;font-size:16px;font-weight:600;color:var(--text);display:flex;align-items:center;gap:7px;}
 .panel-title .icon{font-size:17px;}
 .panel-badge{font-size:10px;font-weight:600;padding:2px 8px;border-radius:20px;background:var(--accent-glow);color:var(--accent);}
-.panel-content{flex:1;overflow-y:auto;overflow-x:hidden;scroll-behavior:smooth;position:relative;min-height:0;}
+.panel-content{flex:1;overflow-y:auto;overflow-x:hidden;scroll-behavior:smooth;position:relative;min-height:0;max-height:240px;}
+.panel.expanded .panel-content{max-height:none;}
 
 .panel-content::-webkit-scrollbar{width:4px;}.panel-content::-webkit-scrollbar-track{background:transparent;}.panel-content::-webkit-scrollbar-thumb{background:var(--border);border-radius:2px;}.panel-content::-webkit-scrollbar-thumb:hover{background:var(--border-focus);}
 .panel-content.has-overflow::after{content:'';position:sticky;bottom:0;left:0;right:0;display:block;height:30px;background:linear-gradient(transparent,var(--surface));pointer-events:none;margin-top:-30px;}
@@ -192,12 +193,10 @@ body.unlocked .date-editable:hover{border-bottom-color:var(--accent);background:
 .breath-overlay{position:fixed;inset:0;z-index:500;visibility:hidden;opacity:0;display:flex;align-items:center;justify-content:center;flex-direction:column;transition:opacity 0.8s ease,visibility 0.8s ease;pointer-events:none;}
 .breath-overlay.active{visibility:visible;opacity:1;pointer-events:auto;}
 .breath-backdrop{position:absolute;inset:0;background:rgba(26,25,23,0.88);backdrop-filter:blur(16px);-webkit-backdrop-filter:blur(16px);transition:opacity 0.8s ease;}
-.breath-content{position:relative;z-index:1;text-align:center;padding:30px;max-width:400px;width:100%;}
-.breath-ring-wrap{position:relative;width:220px;height:220px;margin:0 auto 20px;}
-.breath-ring-bg{fill:none;stroke:var(--border);stroke-width:3;opacity:0.4;}
-.breath-ring-fill{fill:none;stroke:var(--teal);stroke-width:4;stroke-linecap:round;transform-origin:center;transform:rotate(-90deg);opacity:0.8;}
-.breath-ring-glow{fill:none;stroke:var(--teal);stroke-width:8;stroke-linecap:round;transform-origin:center;transform:rotate(-90deg);opacity:0.12;filter:blur(8px);}
-.breath-center{position:absolute;top:50%;left:50%;transform:translate(-50%,-50%);text-align:center;}
+.breath-content{position:relative;z-index:1;text-align:center;padding:30px 20px;width:80vw;max-width:800px;}
+.breath-bar-wrap{margin:24px auto 20px;width:100%;}
+.breath-bar-track{position:relative;width:60vw;max-width:700px;height:72px;background:rgba(15,28,58,0.55);border:1px solid rgba(45,90,170,0.25);border-radius:36px;overflow:hidden;margin:0 auto;box-shadow:inset 0 2px 12px rgba(0,0,0,0.4);}
+.breath-bar{position:absolute;top:0;left:0;height:100%;width:30%;border-radius:36px;background:#1a3870;box-shadow:0 0 28px rgba(40,90,200,0.55),inset 0 1px 0 rgba(120,170,255,0.18);transition:background-color 2.5s ease-in-out;}
 .breath-phase{font-size:20px;font-weight:600;color:var(--teal);margin-bottom:4px;transition:all 0.6s ease;opacity:0.9;}
 .breath-count{font-size:48px;font-weight:600;font-variant-numeric:tabular-nums;color:var(--text-dim);line-height:1;opacity:0.7;}
 .breath-instruction{font-size:12px;color:var(--text-dim);margin-top:4px;}
@@ -210,10 +209,7 @@ body.unlocked .date-editable:hover{border-bottom-color:var(--accent);background:
 .breath-mute:hover{background:var(--surface-hover);color:var(--text);border-color:var(--border-focus);}
 .breath-mute.muted{color:var(--text-faint);}
 .breath-complete{animation:breathComplete 0.5s ease;}
-@keyframes breathComplete{0%{transform:scale(1)}50%{transform:scale(1.05)}100%{transform:scale(1)}}
-.breath-orb{position:absolute;top:50%;left:50%;width:80px;height:80px;border-radius:50%;background:radial-gradient(circle,var(--teal) 0%,transparent 70%);opacity:0.15;transform:translate(-50%,-50%);transition:all 2s ease-in-out;}
-.breath-orb.inhale{width:160px;height:160px;opacity:0.25;transition:all 3.5s ease-in-out;}
-.breath-orb.exhale{width:50px;height:50px;opacity:0.08;transition:all 4s ease-in-out;}
+@keyframes breathComplete{0%{transform:scale(1)}50%{transform:scale(1.02)}100%{transform:scale(1)}}
 /* ROUTINES */
 .routine-list{display:flex;flex-direction:column;gap:5px;}
 .routine-item{display:flex;align-items:center;gap:8px;padding:7px 10px;background:var(--surface-raised);border:1px solid var(--border);border-radius:var(--radius-sm);font-size:13px;transition:all 0.15s;}
@@ -256,6 +252,18 @@ body.unlocked .date-editable:hover{border-bottom-color:var(--accent);background:
 ::-webkit-scrollbar-thumb{background:var(--border);border-radius:3px;}::-webkit-scrollbar-thumb:hover{background:var(--border-focus);}
 .toast{position:fixed;bottom:80px;right:24px;background:var(--green);color:var(--bg);padding:10px 18px;border-radius:var(--radius);font-size:13px;font-weight:600;opacity:0;transform:translateY(10px);transition:all 0.3s;pointer-events:none;z-index:999;}
 .toast.show{opacity:1;transform:translateY(0);}
+/* SHARE INBOX BANNER */
+.share-inbox{position:fixed;top:72px;left:50%;transform:translateX(-50%);z-index:400;background:var(--surface);border:1px solid var(--accent-dim);border-radius:var(--radius);padding:16px 20px;min-width:320px;max-width:90vw;box-shadow:0 8px 32px rgba(0,0,0,0.5);animation:slideDown 0.35s cubic-bezier(0.22,1,0.36,1) both;}
+@keyframes slideDown{from{opacity:0;transform:translateX(-50%) translateY(-12px)}to{opacity:1;transform:translateX(-50%) translateY(0)}}
+.share-inbox-title{font-family:'Fraunces',serif;font-size:15px;color:var(--accent);margin-bottom:8px;display:flex;align-items:center;gap:7px;}
+.share-inbox-preview{font-size:13px;color:var(--text-dim);background:var(--surface-raised);border:1px solid var(--border);border-radius:var(--radius-sm);padding:8px 10px;margin-bottom:10px;line-height:1.5;word-break:break-word;max-height:80px;overflow-y:auto;}
+.share-inbox-actions{display:flex;gap:6px;flex-wrap:wrap;}
+.share-inbox-btn{flex:1;min-width:100px;padding:7px 10px;border-radius:var(--radius-sm);border:1px solid var(--border);background:var(--surface-raised);color:var(--text-dim);font-family:inherit;font-size:12px;font-weight:600;cursor:pointer;transition:all 0.15s;text-align:center;}
+.share-inbox-btn:hover{background:var(--surface-hover);border-color:var(--border-focus);color:var(--text);}
+.share-inbox-btn.primary{background:var(--accent-glow);border-color:var(--accent-dim);color:var(--accent);}
+.share-inbox-btn.primary:hover{background:var(--accent);color:var(--bg);}
+.share-inbox-dismiss{position:absolute;top:10px;right:12px;background:none;border:none;color:var(--text-faint);font-size:18px;cursor:pointer;line-height:1;padding:2px;}
+.share-inbox-dismiss:hover{color:var(--text);}
 .empty-state{text-align:center;padding:20px;color:var(--text-faint);font-size:13px;}
 .clear-done{font-size:11px;color:var(--text-faint);cursor:pointer;text-decoration:underline;}.clear-done:hover{color:var(--text-dim);}
 .section-label{font-size:11px;color:var(--text-dim);text-transform:uppercase;letter-spacing:0.5px;margin:8px 0 4px;}
@@ -554,19 +562,14 @@ body.unlocked .date-editable:hover{border-bottom-color:var(--accent);background:
 <div class="breath-backdrop"></div>
 <div class="breath-content">
 <div class="breath-technique-name" id="breathName"></div>
-<div class="breath-ring-wrap">
-<svg viewBox="0 0 220 220" width="220" height="220">
-<circle class="breath-ring-bg" cx="110" cy="110" r="100"/>
-<circle class="breath-ring-glow" id="breathRingGlow" cx="110" cy="110" r="100" stroke-dasharray="628.3" stroke-dashoffset="628.3"/>
-<circle class="breath-ring-fill" id="breathRingFill" cx="110" cy="110" r="100" stroke-dasharray="628.3" stroke-dashoffset="628.3"/>
-</svg>
-<div class="breath-orb" id="breathOrb"></div>
-<div class="breath-center">
+<div class="breath-bar-wrap">
+<div class="breath-bar-track">
+<div class="breath-bar" id="breathBar"></div>
+</div>
+</div>
 <div class="breath-phase" id="breathPhase">&mdash;</div>
 <div class="breath-count" id="breathCount">&mdash;</div>
 <div class="breath-instruction" id="breathInstruction"></div>
-</div>
-</div>
 <div class="breath-cycle-info" id="breathCycleInfo"></div>
 <div class="breath-controls">
 <button class="breath-mute muted" id="breathMuteBtn" onclick="toggleBreathMute()" title="Toggle voice guidance">&#128263; Voice Off</button>
@@ -1528,12 +1531,19 @@ function startBreathwork(){
   let phaseDuration=t.durations[pi]*1000; // ms
   let lastCount=-1;
 
-  function updateOrb(phase){
-    const orb=document.getElementById('breathOrb');
-    orb.className='breath-orb';
+  function updateBar(phase){
+    const bar=document.getElementById('breathBar');
     const p=phase.toLowerCase();
-    if(p.includes('inhale')||p.includes('sniff')||p.includes('in')){orb.classList.add('inhale');}
-    else if(p.includes('exhale')||p.includes('out')){orb.classList.add('exhale');}
+    if(p.includes('inhale')||p.includes('sniff')||p.includes('in')){
+      bar.style.backgroundColor='#1a3870';
+      bar.style.boxShadow='0 0 32px rgba(40,90,200,0.6),inset 0 1px 0 rgba(120,170,255,0.2)';
+    } else if(p.includes('exhale')||p.includes('out')){
+      bar.style.backgroundColor='#2b5ea8';
+      bar.style.boxShadow='0 0 32px rgba(80,140,255,0.45),inset 0 1px 0 rgba(150,200,255,0.2)';
+    } else {
+      bar.style.backgroundColor='#1e4580';
+      bar.style.boxShadow='0 0 20px rgba(50,100,180,0.35),inset 0 1px 0 rgba(100,150,230,0.15)';
+    }
   }
 
   function onNewPhase(){
@@ -1542,7 +1552,7 @@ function startBreathwork(){
     document.getElementById('breathPhase').textContent=phase;
     document.getElementById('breathInstruction').textContent=cue;
     document.getElementById('breathCycleInfo').textContent=t.cycles>1?'Cycle '+(cycle+1)+' of '+t.cycles:'';
-    updateOrb(phase);
+    updateBar(phase);
     lastCount=-1;
     // Speak the cue
     speak(cue);
@@ -1555,10 +1565,15 @@ function startBreathwork(){
     const remaining=Math.max(0,dur-elapsed);
     const pct=Math.min(1,elapsed/dur);
 
-    // Smooth ring
-    const offset=CIRC*(1-pct);
-    document.getElementById('breathRingFill').style.strokeDashoffset=offset;
-    document.getElementById('breathRingGlow').style.strokeDashoffset=offset;
+    // Sweep bar based on phase direction
+    const bar=document.getElementById('breathBar');
+    const ph=t.phases[pi].toLowerCase();
+    if(ph.includes('inhale')||ph.includes('sniff')||ph.includes('in')){
+      bar.style.left=(pct*70)+'%';
+    } else if(ph.includes('exhale')||ph.includes('out')){
+      bar.style.left=((1-pct)*70)+'%';
+    }
+    // Hold phases: bar stays, color handled by updateBar on phase start
 
     // Countdown (integer display)
     const countDown=Math.ceil(remaining/1000);
@@ -1578,9 +1593,8 @@ function startBreathwork(){
           document.getElementById('breathCount').textContent='';
           document.getElementById('breathInstruction').textContent='Well done. Take a moment before returning.';
           document.getElementById('breathCycleInfo').textContent='';
-          document.getElementById('breathRingFill').style.strokeDashoffset=0;
-          document.getElementById('breathRingGlow').style.strokeDashoffset=0;
-          document.getElementById('breathOrb').className='breath-orb';
+          document.getElementById('breathBar').style.left='70%';
+          document.getElementById('breathBar').style.backgroundColor='#2b5ea8';
           document.querySelector('.breath-content').classList.add('breath-complete');
           setTimeout(()=>{document.querySelector('.breath-content').classList.remove('breath-complete');},600);
           speak('Well done. Take a moment.');
@@ -1607,9 +1621,8 @@ function stopBreathwork(){
   clearInterval(breathInterval);breathInterval=null;
   try{speechSynthesis.cancel();}catch(e){}
   document.getElementById('breathOverlay').classList.remove('active');
-  document.getElementById('breathRingFill').style.strokeDashoffset=CIRC;
-  document.getElementById('breathRingGlow').style.strokeDashoffset=CIRC;
-  document.getElementById('breathOrb').className='breath-orb';
+  document.getElementById('breathBar').style.left='0%';
+  document.getElementById('breathBar').style.backgroundColor='#1a3870';
 }
 
 // PANEL EXPAND/COLLAPSE
@@ -1622,6 +1635,81 @@ const _origRenderNotes=renderNotes;renderNotes=function(){_origRenderNotes();che
 const _origRenderRoutines=renderRoutines;renderRoutines=function(){_origRenderRoutines();checkOverflows();}
 
 // INIT - called after auth
+
+// ─── SHARE TARGET HANDLER ───────────────────────────────────────────────────
+// Activated when the app is opened via the OS Share sheet (Android/Chrome PWA).
+// Reads ?share_text=, ?share_title=, ?share_url= from the URL and shows an
+// inbox banner so the user can route the content to Brain Dump or Notes.
+function checkShareTarget(){
+  const p=new URLSearchParams(window.location.search);
+  const text=(p.get('share_text')||'').trim();
+  const title=(p.get('share_title')||'').trim();
+  const url=(p.get('share_url')||'').trim();
+  if(!text&&!title&&!url)return;
+
+  // Build a clean preview string
+  const parts=[];
+  if(title)parts.push(title);
+  if(text&&text!==title)parts.push(text);
+  if(url)parts.push(url);
+  const combined=parts.join('\n');
+
+  // Remove params from URL without reload
+  window.history.replaceState({},'',window.location.pathname);
+
+  // Build and show the inbox banner
+  const div=document.createElement('div');
+  div.className='share-inbox';
+  div.id='shareInbox';
+  div.innerHTML=`
+    <button class="share-inbox-dismiss" onclick="document.getElementById('shareInbox').remove()" title="Dismiss">&times;</button>
+    <div class="share-inbox-title">&#128228; Incoming Share</div>
+    <div class="share-inbox-preview" id="sharePreview">${esc(combined)}</div>
+    <div class="share-inbox-actions">
+      <button class="share-inbox-btn primary" onclick="shareIntoBrainDump()">&#129504; Brain Dump</button>
+      <button class="share-inbox-btn" onclick="shareIntoNote()">&#128221; Add as Note</button>
+      <button class="share-inbox-btn" onclick="shareIntoReminder()">&#128276; Add as Reminder</button>
+    </div>`;
+  // Store text on the element for the action functions
+  div._shareText=combined;
+  div._shareTitle=title||text.slice(0,40)||'Shared item';
+  document.body.appendChild(div);
+}
+
+function shareIntoBrainDump(){
+  const d=document.getElementById('shareInbox');if(!d)return;
+  const text=d._shareText;
+  state.thoughts.push({id:'th'+Date.now(),text:text});
+  save();renderThoughts();
+  // Make sure Brain Dump panel is visible and briefly highlight it
+  const bp=document.querySelector('[data-panel="brain"]');
+  if(bp){bp.scrollIntoView({behavior:'smooth',block:'nearest'});bp.style.outline='2px solid var(--accent)';setTimeout(()=>{bp.style.outline='';},1800);}
+  d.remove();
+  toast('Added to Brain Dump ✓');
+}
+
+function shareIntoNote(){
+  const d=document.getElementById('shareInbox');if(!d)return;
+  const now=new Date();
+  state.notes.push({id:'n'+Date.now(),label:d._shareTitle,body:d._shareText,projectId:'',created:now.toISOString(),date:now.toLocaleDateString('en-US',{month:'short',day:'numeric',year:'numeric'}),time:now.toLocaleTimeString('en-US',{hour:'numeric',minute:'2-digit'})});
+  save();renderNotes();
+  const np=document.querySelector('[data-panel="notes"]');
+  if(np){np.scrollIntoView({behavior:'smooth',block:'nearest'});np.style.outline='2px solid var(--accent)';setTimeout(()=>{np.style.outline='';},1800);}
+  d.remove();
+  toast('Added to Notes ✓');
+}
+
+function shareIntoReminder(){
+  const d=document.getElementById('shareInbox');if(!d)return;
+  state.reminders.push({id:'rem'+Date.now(),text:d._shareText,date:'',time:''});
+  save();renderReminders();
+  const rp=document.querySelector('[data-panel="reminders"]');
+  if(rp){rp.scrollIntoView({behavior:'smooth',block:'nearest'});rp.style.outline='2px solid var(--accent)';setTimeout(()=>{rp.style.outline='';},1800);}
+  d.remove();
+  toast('Added to Reminders ✓');
+}
+// ────────────────────────────────────────────────────────────────────────────
+
 async function initApp(){
 await load();
 initPanelVisibility();applyPanelOrder();applyPanelVisibility();updateLockUI();updateClock();setInterval(updateClock,1000);updateTimerDisplay();
@@ -1632,6 +1720,8 @@ showStateAdvice();updateWellnessVisibility();renderTrends();
 startRealtimeSync();
 showAdminPanel();
 if('serviceWorker' in navigator){navigator.serviceWorker.register('sw.js').catch(e=>console.log('SW:',e));}
+// Handle Web Share Target inbound data
+setTimeout(checkShareTarget, 400); // slight delay so panels render first
 }
 // Auth is handled by Firebase onAuthStateChanged listener in Script 1
 </script>
