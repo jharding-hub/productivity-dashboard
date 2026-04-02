@@ -194,9 +194,9 @@ body.unlocked .date-editable:hover{border-bottom-color:var(--accent);background:
 .breath-overlay.active{visibility:visible;opacity:1;pointer-events:auto;}
 .breath-backdrop{position:absolute;inset:0;background:rgba(26,25,23,0.88);backdrop-filter:blur(16px);-webkit-backdrop-filter:blur(16px);transition:opacity 0.8s ease;}
 .breath-content{position:relative;z-index:1;text-align:center;padding:30px 20px;width:80vw;max-width:800px;}
-.breath-bar-wrap{margin:24px auto 20px;width:100%;}
-.breath-bar-track{position:relative;width:60vw;max-width:700px;height:72px;background:rgba(15,28,58,0.55);border:1px solid rgba(45,90,170,0.25);border-radius:36px;overflow:hidden;margin:0 auto;box-shadow:inset 0 2px 12px rgba(0,0,0,0.4);}
-.breath-bar{position:absolute;top:0;left:0;height:100%;width:30%;border-radius:36px;background:#1a3870;box-shadow:0 0 28px rgba(40,90,200,0.55),inset 0 1px 0 rgba(120,170,255,0.18);transition:background-color 2.5s ease-in-out;}
+.breath-bar-wrap{margin:20px auto 16px;width:100%;display:flex;justify-content:center;}
+.breath-bar-track{position:relative;width:min(60vw,52vh);height:min(60vw,52vh);background:rgba(8,18,42,0.7);border:1px solid rgba(30,70,160,0.3);border-radius:16px;overflow:hidden;box-shadow:inset 0 4px 24px rgba(0,0,0,0.6),inset 0 0 0 1px rgba(255,255,255,0.03);}
+.breath-bar{position:absolute;bottom:0;left:0;width:100%;height:0%;border-radius:12px 12px 0 0;background:linear-gradient(to top,#0f1e4a,#1a3870);box-shadow:0 -4px 30px rgba(40,90,200,0.4),inset 0 0 20px rgba(60,120,255,0.1);transition:background 3s ease-in-out;}
 .breath-phase{font-size:20px;font-weight:600;color:var(--teal);margin-bottom:4px;transition:all 0.6s ease;opacity:0.9;}
 .breath-count{font-size:48px;font-weight:600;font-variant-numeric:tabular-nums;color:var(--text-dim);line-height:1;opacity:0.7;}
 .breath-instruction{font-size:12px;color:var(--text-dim);margin-top:4px;}
@@ -224,14 +224,20 @@ body.unlocked .date-editable:hover{border-bottom-color:var(--accent);background:
 .tab-btn:hover{color:var(--text);}.tab-btn.active{background:var(--surface-raised);color:var(--accent);font-weight:600;}
 /* NOTES */
 .notes-list{display:flex;flex-direction:column;gap:8px;overflow-y:auto;}
-.note-card{background:var(--surface-raised);border:1px solid var(--border);border-radius:var(--radius-sm);padding:12px;transition:all 0.15s;}
-.note-card:hover{border-color:var(--border-focus);background:var(--surface-hover);}
+.note-card{background:var(--surface-raised);border:1px solid var(--border);border-radius:var(--radius-sm);padding:12px;transition:border-color 0.15s;}
+.note-card:hover{border-color:var(--border-focus);}
 .note-header{display:flex;align-items:flex-start;justify-content:space-between;gap:8px;margin-bottom:6px;}
-.note-label{font-weight:600;font-size:14px;flex:1;min-width:0;}
-.note-date{font-size:10px;color:var(--text-faint);white-space:nowrap;margin-top:2px;}
-.note-body{font-size:13px;color:var(--text-dim);line-height:1.6;white-space:pre-wrap;word-break:break-word;}
+.note-label-input{font-weight:600;font-size:14px;flex:1;min-width:0;background:transparent;border:none;border-bottom:1px dashed transparent;color:var(--text);font-family:inherit;padding:0;outline:none;transition:border-color 0.15s;}
+.note-label-input:hover{border-bottom-color:var(--border);}
+.note-label-input:focus{border-bottom-color:var(--accent);}
+.note-date{font-size:10px;color:var(--text-faint);white-space:nowrap;margin-top:2px;flex-shrink:0;}
+.note-body-input{font-size:13px;color:var(--text-dim);line-height:1.6;word-break:break-word;width:100%;background:transparent;border:none;border-bottom:1px dashed transparent;font-family:inherit;resize:none;outline:none;overflow:hidden;min-height:20px;padding:0;transition:border-color 0.15s;}
+.note-body-input:hover{border-bottom-color:var(--border);}
+.note-body-input:focus{border-bottom-color:var(--accent);color:var(--text);}
 .note-footer{display:flex;align-items:center;gap:6px;margin-top:8px;flex-wrap:wrap;}
-.note-tag{font-size:10px;padding:2px 8px;border-radius:12px;background:var(--accent-glow);color:var(--accent);font-weight:600;white-space:nowrap;}
+.note-cat-select{font-size:11px;padding:2px 6px;background:var(--surface);border:1px solid var(--border);border-radius:20px;color:var(--text-dim);font-family:inherit;cursor:pointer;outline:none;max-width:160px;}
+.note-cat-select:focus{border-color:var(--accent-dim);color:var(--accent);}
+.note-cat-select.has-proj{background:var(--accent-glow);border-color:var(--accent-dim);color:var(--accent);font-weight:600;}
 .note-delete{color:var(--text-faint);cursor:pointer;font-size:12px;margin-left:auto;opacity:0;transition:opacity 0.15s;}
 .note-card:hover .note-delete{opacity:1;}.note-delete:hover{color:var(--red);}
 .note-form{display:flex;flex-direction:column;gap:6px;margin-top:10px;padding-top:10px;border-top:1px solid var(--border);}
@@ -1079,15 +1085,56 @@ function stopGuided(){clearInterval(guidedInterval);guidedInterval=null;document
 // NOTES
 function addNote(){const label=document.getElementById('newNoteLabel').value.trim();const body=document.getElementById('newNoteBody').value.trim();if(!label&&!body)return;const projId=document.getElementById('newNoteProject').value;const now=new Date();state.notes.push({id:'n'+Date.now(),label:label||'Untitled',body:body,projectId:projId,created:now.toISOString(),date:now.toLocaleDateString('en-US',{month:'short',day:'numeric',year:'numeric'}),time:now.toLocaleTimeString('en-US',{hour:'numeric',minute:'2-digit'})});document.getElementById('newNoteLabel').value='';document.getElementById('newNoteBody').value='';save();renderNotes();toast('Note added');}
 function deleteNote(id){state.notes=state.notes.filter(n=>n.id!==id);save();renderNotes();}
-function editNoteLabel(id,v){if(!v)return;const n=state.notes.find(n=>n.id===id);if(n)n.label=v;save();}
-function editNoteBody(id,v){const n=state.notes.find(n=>n.id===id);if(n)n.body=v;save();}
+function editNoteLabel(id,v){if(!v)return;const n=state.notes.find(n=>n.id===id);if(n){n.label=v;save();}}
+function editNoteBody(id,v){const n=state.notes.find(n=>n.id===id);if(n){n.body=v;save();}}
+function editNoteProject(id,projId){const n=state.notes.find(n=>n.id===id);if(n){n.projectId=projId;save();renderNotes();}}
+function autoResizeTextarea(ta){ta.style.height='auto';ta.style.height=ta.scrollHeight+'px';}
 function updateNoteSelectors(){const opts='<option value="">No project tag</option>'+state.projects.map(p=>'<option value="'+p.id+'">'+esc(p.name)+'</option>').join('');document.getElementById('newNoteProject').innerHTML=opts;const fOpts='<option value="all">All projects</option><option value="none">Untagged</option>'+state.projects.map(p=>'<option value="'+p.id+'">'+esc(p.name)+'</option>').join('');document.getElementById('noteFilterProj').innerHTML=fOpts;}
-function renderNotes(){updateNoteSelectors();const el=document.getElementById('notesList');const filter=document.getElementById('noteFilterProj').value;const search=document.getElementById('noteSearch').value.toLowerCase().trim();let notes=[...state.notes];if(filter==='none')notes=notes.filter(n=>!n.projectId);else if(filter!=='all')notes=notes.filter(n=>n.projectId===filter);if(search)notes=notes.filter(n=>(n.label+' '+n.body).toLowerCase().includes(search));notes.sort((a,b)=>b.created.localeCompare(a.created));
-if(notes.length===0){el.innerHTML='<div class="empty-state">'+(state.notes.length===0?'No notes yet. Add your first one below.':'No matching notes.')+'</div>';document.getElementById('noteCount').textContent=state.notes.length;return;}
-el.innerHTML=notes.map(n=>{const proj=state.projects.find(p=>p.id===n.projectId);return '<div class="note-card"><div class="note-header"><span class="note-label editable" id="nl_'+n.id+'">'+esc(n.label)+'</span><span class="note-date">'+n.date+' '+n.time+'</span></div><div class="note-body editable" id="nb_'+n.id+'">'+esc(n.body)+'</div><div class="note-footer">'+(proj?'<span class="note-tag">\u{1F4C2} '+esc(proj.name)+'</span>':'')+'<span class="note-delete" onclick="deleteNote(\''+n.id+'\')">\u2715 delete</span></div></div>';}).join('');
-document.getElementById('noteCount').textContent=state.notes.length;
-notes.forEach(n=>{const le=document.getElementById('nl_'+n.id);if(le)makeEditable(le,v=>editNoteLabel(n.id,v));const be=document.getElementById('nb_'+n.id);if(be)makeEditable(be,v=>editNoteBody(n.id,v));});refreshEditables();}
-
+function renderNotes(){
+  updateNoteSelectors();
+  const el=document.getElementById('notesList');
+  const filter=document.getElementById('noteFilterProj').value;
+  const search=document.getElementById('noteSearch').value.toLowerCase().trim();
+  let notes=[...state.notes];
+  if(filter==='none')notes=notes.filter(n=>!n.projectId);
+  else if(filter!=='all')notes=notes.filter(n=>n.projectId===filter);
+  if(search)notes=notes.filter(n=>(n.label+' '+n.body).toLowerCase().includes(search));
+  notes.sort((a,b)=>b.created.localeCompare(a.created));
+  if(notes.length===0){el.innerHTML='<div class="empty-state">'+(state.notes.length===0?'No notes yet. Add your first one below.':'No matching notes.')+'</div>';document.getElementById('noteCount').textContent=state.notes.length;return;}
+  const projOpts='<option value="">No tag</option>'+state.projects.map(p=>'<option value="'+p.id+'">\u{1F4C2} '+esc(p.name)+'</option>').join('');
+  el.innerHTML=notes.map(n=>{
+    const hasProjClass=n.projectId?'has-proj':'';
+    return '<div class="note-card">'+
+      '<div class="note-header">'+
+        '<input class="note-label-input" id="nl_'+n.id+'" value="'+esc(n.label)+'" placeholder="Note label..." />'+
+        '<span class="note-date">'+n.date+' '+n.time+'</span>'+
+      '</div>'+
+      '<textarea class="note-body-input" id="nb_'+n.id+'" placeholder="Note content...">'+esc(n.body)+'</textarea>'+
+      '<div class="note-footer">'+
+        '<select class="note-cat-select '+hasProjClass+'" id="np_'+n.id+'" onchange="editNoteProject(\''+n.id+'\',this.value)">'+
+          projOpts+
+        '</select>'+
+        '<span class="note-delete" onclick="deleteNote(\''+n.id+'\')">\u2715 delete</span>'+
+      '</div>'+
+    '</div>';
+  }).join('');
+  document.getElementById('noteCount').textContent=state.notes.length;
+  notes.forEach(n=>{
+    const li=document.getElementById('nl_'+n.id);
+    if(li){li.addEventListener('blur',()=>editNoteLabel(n.id,li.value.trim()));}
+    const bi=document.getElementById('nb_'+n.id);
+    if(bi){
+      bi.style.height='auto';bi.style.height=bi.scrollHeight+'px';
+      bi.addEventListener('input',()=>autoResizeTextarea(bi));
+      bi.addEventListener('blur',()=>editNoteBody(n.id,bi.value));
+    }
+    const ps=document.getElementById('np_'+n.id);
+    if(ps){
+      ps.value=n.projectId||'';
+      ps.addEventListener('change',()=>{ps.className='note-cat-select'+(ps.value?' has-proj':'');});
+    }
+  });
+}
 // ROUTINES
 function checkDailyRoutineReset(){
   const today=todayStr();
@@ -1535,14 +1582,17 @@ function startBreathwork(){
     const bar=document.getElementById('breathBar');
     const p=phase.toLowerCase();
     if(p.includes('inhale')||p.includes('sniff')||p.includes('in')){
-      bar.style.backgroundColor='#1a3870';
-      bar.style.boxShadow='0 0 32px rgba(40,90,200,0.6),inset 0 1px 0 rgba(120,170,255,0.2)';
+      // Bright rising blue
+      bar.style.background='linear-gradient(to top,#0f1e4a,#1e4fa8)';
+      bar.style.boxShadow='0 -4px 40px rgba(50,110,230,0.55),inset 0 0 24px rgba(80,150,255,0.15)';
     } else if(p.includes('exhale')||p.includes('out')){
-      bar.style.backgroundColor='#2b5ea8';
-      bar.style.boxShadow='0 0 32px rgba(80,140,255,0.45),inset 0 1px 0 rgba(150,200,255,0.2)';
+      // Slightly cooler as it sinks
+      bar.style.background='linear-gradient(to top,#0a1535,#162d6e)';
+      bar.style.boxShadow='0 -4px 24px rgba(30,70,160,0.35),inset 0 0 16px rgba(50,100,200,0.1)';
     } else {
-      bar.style.backgroundColor='#1e4580';
-      bar.style.boxShadow='0 0 20px rgba(50,100,180,0.35),inset 0 1px 0 rgba(100,150,230,0.15)';
+      // Hold — dark, still
+      bar.style.background='linear-gradient(to top,#08112a,#101e50)';
+      bar.style.boxShadow='0 -2px 16px rgba(20,50,120,0.25),inset 0 0 10px rgba(30,60,140,0.08)';
     }
   }
 
@@ -1565,15 +1615,15 @@ function startBreathwork(){
     const remaining=Math.max(0,dur-elapsed);
     const pct=Math.min(1,elapsed/dur);
 
-    // Sweep bar based on phase direction
+    // Animate bar height: rise on inhale, fall on exhale, hold still
     const bar=document.getElementById('breathBar');
     const ph=t.phases[pi].toLowerCase();
     if(ph.includes('inhale')||ph.includes('sniff')||ph.includes('in')){
-      bar.style.left=(pct*70)+'%';
+      bar.style.height=(pct*100)+'%';
     } else if(ph.includes('exhale')||ph.includes('out')){
-      bar.style.left=((1-pct)*70)+'%';
+      bar.style.height=((1-pct)*100)+'%';
     }
-    // Hold phases: bar stays, color handled by updateBar on phase start
+    // Hold phases: bar height is unchanged, color set by updateBar on phase start
 
     // Countdown (integer display)
     const countDown=Math.ceil(remaining/1000);
@@ -1593,8 +1643,8 @@ function startBreathwork(){
           document.getElementById('breathCount').textContent='';
           document.getElementById('breathInstruction').textContent='Well done. Take a moment before returning.';
           document.getElementById('breathCycleInfo').textContent='';
-          document.getElementById('breathBar').style.left='70%';
-          document.getElementById('breathBar').style.backgroundColor='#2b5ea8';
+          document.getElementById('breathBar').style.height='100%';
+          document.getElementById('breathBar').style.background='linear-gradient(to top,#0f1e4a,#2b5ea8)';
           document.querySelector('.breath-content').classList.add('breath-complete');
           setTimeout(()=>{document.querySelector('.breath-content').classList.remove('breath-complete');},600);
           speak('Well done. Take a moment.');
@@ -1621,8 +1671,8 @@ function stopBreathwork(){
   clearInterval(breathInterval);breathInterval=null;
   try{speechSynthesis.cancel();}catch(e){}
   document.getElementById('breathOverlay').classList.remove('active');
-  document.getElementById('breathBar').style.left='0%';
-  document.getElementById('breathBar').style.backgroundColor='#1a3870';
+  document.getElementById('breathBar').style.height='0%';
+  document.getElementById('breathBar').style.background='linear-gradient(to top,#0f1e4a,#1a3870)';
 }
 
 // PANEL EXPAND/COLLAPSE
