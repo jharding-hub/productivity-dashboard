@@ -1,4 +1,4 @@
-const CACHE_NAME = 'productivity-dashboard-v2';
+const CACHE_NAME = 'productivity-dashboard-v3';
 const ASSETS = [
   './',
   './index.html',
@@ -24,6 +24,11 @@ self.addEventListener('activate', e => {
 });
 
 self.addEventListener('fetch', e => {
+  const url = new URL(e.request.url);
+
+  // Share Target: redirect GET ?share_text=... to the app with params intact
+  // The browser will open index.html with query params — we just let it fall through
+  // to the cache-first handler so the app loads and JS can read the params.
   e.respondWith(
     caches.match(e.request).then(cached => {
       const fetched = fetch(e.request).then(response => {
