@@ -29,9 +29,9 @@ body{font-family:'DM Sans',sans-serif;background:var(--bg);color:var(--text);min
 .nav-tabs{display:none;position:fixed;bottom:0;left:0;right:0;background:var(--surface);border-top:1px solid var(--border);padding:6px 8px env(safe-area-inset-bottom);z-index:100;overflow-x:auto;white-space:nowrap;gap:2px;}
 .nav-tab{display:inline-flex;flex-direction:column;align-items:center;gap:2px;padding:6px 12px;border:none;background:none;color:var(--text-dim);font-size:10px;font-family:inherit;cursor:pointer;border-radius:var(--radius-sm);}
 .nav-tab .nt-icon{font-size:18px;}.nav-tab.active{color:var(--accent);background:var(--accent-glow);}
-.dashboard{display:grid;grid-template-columns:2fr 2fr 1fr;gap:16px;padding:16px 24px 24px;max-width:1600px;margin:0 auto;align-items:stretch;}
+.dashboard{display:grid;grid-template-columns:2fr 2fr 1fr;gap:16px;padding:16px 24px 24px;max-width:1600px;margin:0 auto;align-items:start;}
 .panel-narrow{min-width:0;}
-.panel{background:var(--surface);border:1px solid var(--border);border-radius:var(--radius);padding:18px;animation:fadeUp 0.4s ease both;transition:box-shadow 0.2s,opacity 0.2s,transform 0.2s;display:flex;flex-direction:column;}
+.panel{background:var(--surface);border:1px solid var(--border);border-radius:var(--radius);padding:18px;animation:fadeUp 0.4s ease both;transition:box-shadow 0.2s,opacity 0.2s,transform 0.2s;}
 @keyframes fadeUp{from{opacity:0;transform:translateY(10px)}to{opacity:1;transform:translateY(0)}}
 .panel.dragging{opacity:0.4;transform:scale(0.97);}
 .panel.drag-over{box-shadow:0 0 0 2px var(--accent),0 4px 20px rgba(212,168,83,0.25);transform:scale(1.01);}
@@ -41,7 +41,8 @@ body{font-family:'DM Sans',sans-serif;background:var(--bg);color:var(--text);min
 .panel-title{font-family:'Fraunces',serif;font-size:16px;font-weight:600;color:var(--text);display:flex;align-items:center;gap:7px;}
 .panel-title .icon{font-size:17px;}
 .panel-badge{font-size:10px;font-weight:600;padding:2px 8px;border-radius:20px;background:var(--accent-glow);color:var(--accent);}
-.panel-content{flex:1;overflow-y:auto;overflow-x:hidden;scroll-behavior:smooth;position:relative;min-height:0;}
+.panel-content{max-height:380px;overflow-y:auto;overflow-x:hidden;scroll-behavior:smooth;position:relative;transition:max-height 0.4s ease;}
+.panel.expanded .panel-content{max-height:80vh;}
 
 .panel-content::-webkit-scrollbar{width:4px;}.panel-content::-webkit-scrollbar-track{background:transparent;}.panel-content::-webkit-scrollbar-thumb{background:var(--border);border-radius:2px;}.panel-content::-webkit-scrollbar-thumb:hover{background:var(--border-focus);}
 .panel-content.has-overflow::after{content:'';position:sticky;bottom:0;left:0;right:0;display:block;height:30px;background:linear-gradient(transparent,var(--surface));pointer-events:none;margin-top:-30px;}
@@ -281,7 +282,7 @@ body.unlocked .date-editable:hover{border-bottom-color:var(--accent);background:
 .clear-done{font-size:11px;color:var(--text-faint);cursor:pointer;text-decoration:underline;}.clear-done:hover{color:var(--text-dim);}
 .section-label{font-size:11px;color:var(--text-dim);text-transform:uppercase;letter-spacing:0.5px;margin:8px 0 4px;}
 @media(max-width:1100px){.dashboard{grid-template-columns:1fr 1fr;}.panel-narrow{grid-column:span 1;}}
-@media(max-width:768px){.dashboard{grid-template-columns:1fr;padding:12px 14px 16px;gap:12px;}.header{padding:14px 14px 10px;}.header h1{font-size:18px;}.header h1 span{display:none;}.nav-tabs{display:flex;}.panel{display:none;}.panel.mobile-visible{display:flex;}.panel.hidden-panel{display:none!important;}.panel.user-hidden{display:none!important;}.drag-handle{display:none!important;}.dynamic-panels{padding:0 14px 90px;}}
+@media(max-width:768px){.dashboard{grid-template-columns:1fr;padding:12px 14px 16px;gap:12px;}.header{padding:14px 14px 10px;}.header h1{font-size:18px;}.header h1 span{display:none;}.nav-tabs{display:flex;}.panel{display:none;}.panel.mobile-visible{display:block;}.panel.hidden-panel{display:none!important;}.panel.user-hidden{display:none!important;}.drag-handle{display:none!important;}.dynamic-panels{padding:0 14px 90px;}}
 /* AUTH GATE */
 .login-gate{position:fixed;inset:0;background:var(--bg);z-index:9999;display:flex;align-items:center;justify-content:center;padding:20px;}
 .login-gate.hidden{display:none;}
