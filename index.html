@@ -41,8 +41,7 @@ body{font-family:'DM Sans',sans-serif;background:var(--bg);color:var(--text);min
 .panel-title{font-family:'Fraunces',serif;font-size:16px;font-weight:600;color:var(--text);display:flex;align-items:center;gap:7px;}
 .panel-title .icon{font-size:17px;}
 .panel-badge{font-size:10px;font-weight:600;padding:2px 8px;border-radius:20px;background:var(--accent-glow);color:var(--accent);}
-.panel-content{flex:1;overflow-y:auto;overflow-x:hidden;scroll-behavior:smooth;position:relative;min-height:0;max-height:317px;}
-.panel.expanded .panel-content{max-height:none;}
+.panel-content{flex:1;overflow-y:auto;overflow-x:hidden;scroll-behavior:smooth;position:relative;min-height:0;}
 
 .panel-content::-webkit-scrollbar{width:4px;}.panel-content::-webkit-scrollbar-track{background:transparent;}.panel-content::-webkit-scrollbar-thumb{background:var(--border);border-radius:2px;}.panel-content::-webkit-scrollbar-thumb:hover{background:var(--border-focus);}
 .panel-content.has-overflow::after{content:'';position:sticky;bottom:0;left:0;right:0;display:block;height:30px;background:linear-gradient(transparent,var(--surface));pointer-events:none;margin-top:-30px;}
@@ -193,29 +192,49 @@ body.unlocked .date-editable:hover{border-bottom-color:var(--accent);background:
 .breath-overlay{position:fixed;inset:0;z-index:500;visibility:hidden;opacity:0;display:flex;align-items:center;justify-content:center;flex-direction:column;transition:opacity 0.8s ease,visibility 0.8s ease;pointer-events:none;}
 .breath-overlay.active{visibility:visible;opacity:1;pointer-events:auto;}
 .breath-backdrop{position:absolute;inset:0;background:rgba(26,25,23,0.88);backdrop-filter:blur(16px);-webkit-backdrop-filter:blur(16px);transition:opacity 0.8s ease;}
-.breath-content{position:relative;z-index:1;text-align:center;padding:30px 20px;width:80vw;max-width:800px;}
-.breath-bar-wrap{margin:14px auto 10px;width:100%;display:flex;justify-content:center;gap:20px;}
-.breath-bar-track{position:relative;width:min(27.5vw,163px);height:min(47.5vw,280px);background:rgba(6,14,38,0.75);border:1px solid rgba(30,70,160,0.3);border-radius:50% 50% 22% 22% / 46% 46% 16% 16%;overflow:hidden;box-shadow:inset 0 6px 28px rgba(0,0,0,0.65),inset 0 0 0 1px rgba(255,255,255,0.03),0 0 18px rgba(20,60,160,0.12);}
-.breath-bar{position:absolute;bottom:0;left:0;width:100%;height:0%;background:linear-gradient(to top,#0f1e4a,#1a3870);box-shadow:0 -6px 30px rgba(40,90,200,0.4),inset 0 0 20px rgba(60,120,255,0.1);transition:background 3s ease-in-out;}
-.body-scan-wrap{margin:14px auto 10px;width:100%;display:none;justify-content:center;}
-.body-scan-wrap.active{display:flex;}
-.scan-svg{width:min(38vw,170px);height:auto;overflow:visible;}
-.scan-part{fill:rgba(12,24,66,0.7);stroke:rgba(35,75,160,0.35);stroke-width:1.5;transition:fill 1.4s ease,stroke 1.4s ease,filter 1.4s ease;}
-.scan-part.scan-lit{fill:rgba(28,88,210,0.72);stroke:rgba(90,160,255,0.85);filter:drop-shadow(0 0 9px rgba(60,140,255,0.65));}
-.scan-part.scan-glow{fill:rgba(38,105,220,0.45);stroke:rgba(100,170,255,0.55);filter:drop-shadow(0 0 5px rgba(80,150,255,0.35));}
-.breath-phase{font-size:30px;font-weight:600;color:var(--teal);margin-bottom:4px;transition:all 0.6s ease;opacity:0.9;}
-.breath-count{font-size:72px;font-weight:600;font-variant-numeric:tabular-nums;color:var(--text-dim);line-height:1;opacity:0.7;}
-.breath-instruction{font-size:18px;color:var(--text-dim);margin-top:4px;}
-.breath-cycle-info{font-size:18px;color:var(--text-faint);margin-bottom:10px;}
-.breath-technique-name{font-family:'Fraunces',serif;font-size:18px;color:var(--accent);margin-bottom:4px;}
+.breath-content{position:relative;z-index:1;text-align:center;padding:30px;max-width:400px;width:100%;}
+.breath-ring-wrap{position:relative;width:220px;height:220px;margin:0 auto 20px;}
+.breath-ring-bg{fill:none;stroke:var(--border);stroke-width:3;opacity:0.4;}
+.breath-ring-fill{fill:none;stroke:var(--teal);stroke-width:4;stroke-linecap:round;transform-origin:center;transform:rotate(-90deg);opacity:0.8;}
+.breath-ring-glow{fill:none;stroke:var(--teal);stroke-width:8;stroke-linecap:round;transform-origin:center;transform:rotate(-90deg);opacity:0.12;filter:blur(8px);}
+.breath-center{position:absolute;top:50%;left:50%;transform:translate(-50%,-50%);text-align:center;}
+.breath-phase{font-size:20px;font-weight:600;color:var(--teal);margin-bottom:4px;transition:all 0.6s ease;opacity:0.9;}
+.breath-count{font-size:48px;font-weight:600;font-variant-numeric:tabular-nums;color:var(--text-dim);line-height:1;opacity:0.7;}
+.breath-instruction{font-size:12px;color:var(--text-dim);margin-top:4px;}
+.breath-cycle-info{font-size:12px;color:var(--text-faint);margin-bottom:16px;}
+.breath-technique-name{font-family:'Fraunces',serif;font-size:18px;color:var(--accent);margin-bottom:6px;}
 .breath-stop{background:var(--surface-raised);border:1px solid var(--border);color:var(--text-dim);padding:10px 28px;border-radius:var(--radius-sm);cursor:pointer;font-size:13px;font-family:inherit;transition:all 0.15s;}
 .breath-stop:hover{background:var(--surface-hover);color:var(--text);border-color:var(--border-focus);}
-.breath-controls{display:flex;gap:10px;align-items:center;justify-content:center;margin-top:16px;}
+.breath-controls{display:flex;gap:10px;align-items:center;justify-content:center;}
 .breath-mute{background:var(--surface-raised);border:1px solid var(--border);color:var(--text-dim);padding:10px 16px;border-radius:var(--radius-sm);cursor:pointer;font-size:13px;font-family:inherit;transition:all 0.15s;}
 .breath-mute:hover{background:var(--surface-hover);color:var(--text);border-color:var(--border-focus);}
 .breath-mute.muted{color:var(--text-faint);}
-.breath-complete{animation:breathComplete 2s ease;}
-@keyframes breathComplete{0%{opacity:1}30%{opacity:0.6}70%{opacity:0.6}100%{opacity:1}}
+.breath-complete{animation:breathComplete 0.5s ease;}
+@keyframes breathComplete{0%{transform:scale(1)}50%{transform:scale(1.05)}100%{transform:scale(1)}}
+.breath-orb{position:absolute;top:50%;left:50%;width:80px;height:80px;border-radius:50%;background:radial-gradient(circle,var(--teal) 0%,transparent 70%);opacity:0.15;transform:translate(-50%,-50%);transition:all 2s ease-in-out;}
+.breath-orb.inhale{width:160px;height:160px;opacity:0.25;transition:all 3.5s ease-in-out;}
+.breath-orb.exhale{width:50px;height:50px;opacity:0.08;transition:all 4s ease-in-out;}
+/* FLOATING TIMER */
+.float-timer{position:fixed;top:16px;left:50%;transform:translateX(-50%);z-index:400;background:var(--surface);border:1px solid var(--border);border-radius:var(--radius);padding:14px 20px;box-shadow:0 8px 32px rgba(0,0,0,0.4);display:none;align-items:center;gap:14px;transition:all 0.4s cubic-bezier(0.4,0,0.2,1);cursor:grab;user-select:none;-webkit-user-select:none;min-width:320px;}
+.float-timer.active{display:flex;}
+.float-timer.minimized{min-width:auto;padding:8px 14px;gap:8px;border-radius:20px;}
+.float-timer.minimized .ft-bar-wrap,.float-timer.minimized .ft-controls,.float-timer.minimized .ft-label{display:none;}
+.float-timer.minimized .ft-time{font-size:16px;}
+.float-timer:active{cursor:grabbing;}
+.ft-body{flex:1;min-width:0;}
+.ft-label{font-size:10px;color:var(--text-dim);text-transform:uppercase;letter-spacing:0.5px;margin-bottom:2px;}
+.ft-time{font-size:28px;font-weight:700;font-variant-numeric:tabular-nums;color:var(--text);line-height:1;}
+.ft-bar-wrap{width:100%;height:4px;background:var(--surface-hover);border-radius:2px;margin-top:6px;overflow:hidden;}
+.ft-bar{height:100%;background:var(--green);border-radius:2px;transition:width 1s linear;}
+.ft-controls{display:flex;gap:4px;margin-top:8px;}
+.ft-btn{background:var(--surface-raised);border:1px solid var(--border);color:var(--text-dim);padding:4px 10px;border-radius:var(--radius-sm);cursor:pointer;font-size:11px;font-family:inherit;transition:all 0.15s;}
+.ft-btn:hover{background:var(--surface-hover);color:var(--text);border-color:var(--border-focus);}
+.ft-minimize{background:none;border:none;color:var(--text-faint);cursor:pointer;font-size:16px;padding:2px 4px;transition:color 0.15s;flex-shrink:0;}
+.ft-minimize:hover{color:var(--accent);}
+.ft-close{background:none;border:none;color:var(--text-faint);cursor:pointer;font-size:14px;padding:2px 4px;transition:color 0.15s;flex-shrink:0;}
+.ft-close:hover{color:var(--red);}
+.float-timer.alarm .ft-time{animation:timerPulse 1s ease infinite;}
+@keyframes timerPulse{0%,100%{color:var(--text);}50%{color:var(--accent);}}
 /* ROUTINES */
 .routine-list{display:flex;flex-direction:column;gap:5px;}
 .routine-item{display:flex;align-items:center;gap:8px;padding:7px 10px;background:var(--surface-raised);border:1px solid var(--border);border-radius:var(--radius-sm);font-size:13px;transition:all 0.15s;}
@@ -230,20 +249,14 @@ body.unlocked .date-editable:hover{border-bottom-color:var(--accent);background:
 .tab-btn:hover{color:var(--text);}.tab-btn.active{background:var(--surface-raised);color:var(--accent);font-weight:600;}
 /* NOTES */
 .notes-list{display:flex;flex-direction:column;gap:8px;overflow-y:auto;}
-.note-card{background:var(--surface-raised);border:1px solid var(--border);border-radius:var(--radius-sm);padding:12px;transition:border-color 0.15s;}
-.note-card:hover{border-color:var(--border-focus);}
+.note-card{background:var(--surface-raised);border:1px solid var(--border);border-radius:var(--radius-sm);padding:12px;transition:all 0.15s;}
+.note-card:hover{border-color:var(--border-focus);background:var(--surface-hover);}
 .note-header{display:flex;align-items:flex-start;justify-content:space-between;gap:8px;margin-bottom:6px;}
-.note-label-input{font-weight:600;font-size:14px;flex:1;min-width:0;background:transparent;border:none;border-bottom:1px dashed transparent;color:var(--text);font-family:inherit;padding:0;outline:none;transition:border-color 0.15s;}
-.note-label-input:hover{border-bottom-color:var(--border);}
-.note-label-input:focus{border-bottom-color:var(--accent);}
-.note-date{font-size:10px;color:var(--text-faint);white-space:nowrap;margin-top:2px;flex-shrink:0;}
-.note-body-input{font-size:13px;color:var(--text-dim);line-height:1.6;word-break:break-word;width:100%;background:transparent;border:none;border-bottom:1px dashed transparent;font-family:inherit;resize:none;outline:none;overflow:hidden;min-height:20px;padding:0;transition:border-color 0.15s;}
-.note-body-input:hover{border-bottom-color:var(--border);}
-.note-body-input:focus{border-bottom-color:var(--accent);color:var(--text);}
+.note-label{font-weight:600;font-size:14px;flex:1;min-width:0;}
+.note-date{font-size:10px;color:var(--text-faint);white-space:nowrap;margin-top:2px;}
+.note-body{font-size:13px;color:var(--text-dim);line-height:1.6;white-space:pre-wrap;word-break:break-word;}
 .note-footer{display:flex;align-items:center;gap:6px;margin-top:8px;flex-wrap:wrap;}
-.note-cat-select{font-size:11px;padding:2px 6px;background:var(--surface);border:1px solid var(--border);border-radius:20px;color:var(--text-dim);font-family:inherit;cursor:pointer;outline:none;max-width:160px;}
-.note-cat-select:focus{border-color:var(--accent-dim);color:var(--accent);}
-.note-cat-select.has-proj{background:var(--accent-glow);border-color:var(--accent-dim);color:var(--accent);font-weight:600;}
+.note-tag{font-size:10px;padding:2px 8px;border-radius:12px;background:var(--accent-glow);color:var(--accent);font-weight:600;white-space:nowrap;}
 .note-delete{color:var(--text-faint);cursor:pointer;font-size:12px;margin-left:auto;opacity:0;transition:opacity 0.15s;}
 .note-card:hover .note-delete{opacity:1;}.note-delete:hover{color:var(--red);}
 .note-form{display:flex;flex-direction:column;gap:6px;margin-top:10px;padding-top:10px;border-top:1px solid var(--border);}
@@ -264,18 +277,6 @@ body.unlocked .date-editable:hover{border-bottom-color:var(--accent);background:
 ::-webkit-scrollbar-thumb{background:var(--border);border-radius:3px;}::-webkit-scrollbar-thumb:hover{background:var(--border-focus);}
 .toast{position:fixed;bottom:80px;right:24px;background:var(--green);color:var(--bg);padding:10px 18px;border-radius:var(--radius);font-size:13px;font-weight:600;opacity:0;transform:translateY(10px);transition:all 0.3s;pointer-events:none;z-index:999;}
 .toast.show{opacity:1;transform:translateY(0);}
-/* SHARE INBOX BANNER */
-.share-inbox{position:fixed;top:72px;left:50%;transform:translateX(-50%);z-index:400;background:var(--surface);border:1px solid var(--accent-dim);border-radius:var(--radius);padding:16px 20px;min-width:320px;max-width:90vw;box-shadow:0 8px 32px rgba(0,0,0,0.5);animation:slideDown 0.35s cubic-bezier(0.22,1,0.36,1) both;}
-@keyframes slideDown{from{opacity:0;transform:translateX(-50%) translateY(-12px)}to{opacity:1;transform:translateX(-50%) translateY(0)}}
-.share-inbox-title{font-family:'Fraunces',serif;font-size:15px;color:var(--accent);margin-bottom:8px;display:flex;align-items:center;gap:7px;}
-.share-inbox-preview{font-size:13px;color:var(--text-dim);background:var(--surface-raised);border:1px solid var(--border);border-radius:var(--radius-sm);padding:8px 10px;margin-bottom:10px;line-height:1.5;word-break:break-word;max-height:80px;overflow-y:auto;}
-.share-inbox-actions{display:flex;gap:6px;flex-wrap:wrap;}
-.share-inbox-btn{flex:1;min-width:100px;padding:7px 10px;border-radius:var(--radius-sm);border:1px solid var(--border);background:var(--surface-raised);color:var(--text-dim);font-family:inherit;font-size:12px;font-weight:600;cursor:pointer;transition:all 0.15s;text-align:center;}
-.share-inbox-btn:hover{background:var(--surface-hover);border-color:var(--border-focus);color:var(--text);}
-.share-inbox-btn.primary{background:var(--accent-glow);border-color:var(--accent-dim);color:var(--accent);}
-.share-inbox-btn.primary:hover{background:var(--accent);color:var(--bg);}
-.share-inbox-dismiss{position:absolute;top:10px;right:12px;background:none;border:none;color:var(--text-faint);font-size:18px;cursor:pointer;line-height:1;padding:2px;}
-.share-inbox-dismiss:hover{color:var(--text);}
 .empty-state{text-align:center;padding:20px;color:var(--text-faint);font-size:13px;}
 .clear-done{font-size:11px;color:var(--text-faint);cursor:pointer;text-decoration:underline;}.clear-done:hover{color:var(--text-dim);}
 .section-label{font-size:11px;color:var(--text-dim);text-transform:uppercase;letter-spacing:0.5px;margin:8px 0 4px;}
@@ -574,38 +575,41 @@ body.unlocked .date-editable:hover{border-bottom-color:var(--accent);background:
 <div class="breath-backdrop"></div>
 <div class="breath-content">
 <div class="breath-technique-name" id="breathName"></div>
+<div class="breath-ring-wrap">
+<svg viewBox="0 0 220 220" width="220" height="220">
+<circle class="breath-ring-bg" cx="110" cy="110" r="100"/>
+<circle class="breath-ring-glow" id="breathRingGlow" cx="110" cy="110" r="100" stroke-dasharray="628.3" stroke-dashoffset="628.3"/>
+<circle class="breath-ring-fill" id="breathRingFill" cx="110" cy="110" r="100" stroke-dasharray="628.3" stroke-dashoffset="628.3"/>
+</svg>
+<div class="breath-orb" id="breathOrb"></div>
+<div class="breath-center">
 <div class="breath-phase" id="breathPhase">&mdash;</div>
 <div class="breath-count" id="breathCount">&mdash;</div>
 <div class="breath-instruction" id="breathInstruction"></div>
+</div>
+</div>
 <div class="breath-cycle-info" id="breathCycleInfo"></div>
-<div class="breath-bar-wrap" id="breathBarWrap">
-<div class="breath-bar-track">
-<div class="breath-bar" id="breathBarL"></div>
-</div>
-<div class="breath-bar-track">
-<div class="breath-bar" id="breathBarR"></div>
-</div>
-</div>
-<div class="body-scan-wrap" id="bodyScanWrap">
-<svg class="scan-svg" viewBox="0 0 160 268" xmlns="http://www.w3.org/2000/svg">
-<ellipse class="scan-part" id="sp-head" cx="80" cy="30" rx="26" ry="28"/>
-<rect class="scan-part" id="sp-neck" x="72" y="57" width="16" height="15" rx="4"/>
-<rect class="scan-part" id="sp-torso" x="48" y="71" width="64" height="80" rx="12"/>
-<rect class="scan-part" id="sp-larm" x="22" y="76" width="22" height="62" rx="11"/>
-<rect class="scan-part" id="sp-rarm" x="116" y="76" width="22" height="62" rx="11"/>
-<ellipse class="scan-part" id="sp-lhand" cx="33" cy="147" rx="12" ry="9"/>
-<ellipse class="scan-part" id="sp-rhand" cx="127" cy="147" rx="12" ry="9"/>
-<rect class="scan-part" id="sp-lleg" x="53" y="150" width="24" height="90" rx="12"/>
-<rect class="scan-part" id="sp-rleg" x="83" y="150" width="24" height="90" rx="12"/>
-<ellipse class="scan-part" id="sp-lfoot" cx="63" cy="246" rx="20" ry="9"/>
-<ellipse class="scan-part" id="sp-rfoot" cx="94" cy="246" rx="20" ry="9"/>
-</svg>
-</div>
 <div class="breath-controls">
 <button class="breath-mute muted" id="breathMuteBtn" onclick="toggleBreathMute()" title="Toggle voice guidance">&#128263; Voice Off</button>
 <button class="breath-stop" onclick="stopBreathwork()">&#9209; End Session</button>
 </div>
 </div>
+</div>
+<div class="float-timer" id="floatTimer">
+<div class="ft-body">
+<div class="ft-label">Focus Timer</div>
+<div class="ft-time" id="ftTime">25:00</div>
+<div class="ft-bar-wrap"><div class="ft-bar" id="ftBar" style="width:100%"></div></div>
+<div class="ft-controls">
+<button class="ft-btn" onclick="pauseTimer()">&#9208; Pause</button>
+<button class="ft-btn" onclick="resetTimer()">&#8634; Reset</button>
+<select id="ftPreset" onchange="setTimerPresetFloat()" style="background:var(--surface-raised);border:1px solid var(--border);color:var(--text-dim);padding:3px 6px;border-radius:var(--radius-sm);font-size:11px;font-family:inherit;">
+<option value="25">25m</option><option value="15">15m</option><option value="5">5m</option><option value="45">45m</option>
+</select>
+</div>
+</div>
+<button class="ft-minimize" onclick="toggleMinimizeFloat()" title="Minimize">&#9866;</button>
+<button class="ft-close" onclick="closeFloat()" title="Close">&#10005;</button>
 </div>
 <div class="toast" id="toast"></div>
 </div><!-- end app-wrap -->
@@ -965,11 +969,197 @@ function updateClock(){const now=new Date();document.getElementById('clock').tex
 
 // TIMER
 let timerTotal=25*60,timerLeft=25*60,timerInterval=null,timerRunning=false;
-function updateTimerDisplay(){const m=Math.floor(timerLeft/60),s=timerLeft%60;document.getElementById('timerDisplay').textContent=String(m).padStart(2,'0')+':'+String(s).padStart(2,'0');document.getElementById('timerBar').style.width=(timerTotal>0?(timerLeft/timerTotal)*100:0)+'%';if(timerLeft<=0&&timerRunning){pauseTimer();toast('\u23F0 Timer done!');}}
-function startTimer(){if(timerRunning)return;timerRunning=true;timerInterval=setInterval(()=>{timerLeft=Math.max(0,timerLeft-1);updateTimerDisplay();},1000);}
-function pauseTimer(){timerRunning=false;clearInterval(timerInterval);}
-function resetTimer(){pauseTimer();timerLeft=timerTotal;updateTimerDisplay();}
-function setTimerPreset(){const v=parseInt(document.getElementById('timerPreset').value);timerTotal=v*60;timerLeft=timerTotal;pauseTimer();updateTimerDisplay();}
+let timerAlarmTimeout=null;
+let audioCtx=null;
+
+function fmtTimer(secs){const m=Math.floor(secs/60),s=secs%60;return String(m).padStart(2,'0')+':'+String(s).padStart(2,'0');}
+
+function updateTimerDisplay(){
+  const display=fmtTimer(timerLeft);
+  const pct=timerTotal>0?(timerLeft/timerTotal)*100:0;
+  // Panel timer
+  const td=document.getElementById('timerDisplay');if(td)td.textContent=display;
+  const tb=document.getElementById('timerBar');if(tb)tb.style.width=pct+'%';
+  // Floating timer
+  const ft=document.getElementById('ftTime');if(ft)ft.textContent=display;
+  const fb=document.getElementById('ftBar');if(fb)fb.style.width=pct+'%';
+  // Done?
+  if(timerLeft<=0&&timerRunning){
+    pauseTimer();
+    playAlarm();
+    const fl=document.getElementById('floatTimer');
+    if(fl)fl.classList.add('alarm');
+    toast('\u23F0 Focus session complete!');
+    // Stop alarm after 12 seconds
+    timerAlarmTimeout=setTimeout(()=>{stopAlarm();const fl2=document.getElementById('floatTimer');if(fl2)fl2.classList.remove('alarm');},12000);
+  }
+}
+
+function startTimer(){
+  if(timerRunning)return;
+  stopAlarm();
+  const fl=document.getElementById('floatTimer');
+  if(fl){fl.classList.add('active');fl.classList.remove('alarm','minimized');}
+  timerRunning=true;
+  timerInterval=setInterval(()=>{timerLeft=Math.max(0,timerLeft-1);updateTimerDisplay();},1000);
+}
+
+function pauseTimer(){
+  timerRunning=false;
+  clearInterval(timerInterval);
+}
+
+function resetTimer(){
+  pauseTimer();stopAlarm();
+  timerLeft=timerTotal;
+  const fl=document.getElementById('floatTimer');
+  if(fl)fl.classList.remove('alarm');
+  updateTimerDisplay();
+}
+
+function setTimerPreset(){
+  const v=parseInt(document.getElementById('timerPreset').value);
+  timerTotal=v*60;timerLeft=timerTotal;pauseTimer();stopAlarm();updateTimerDisplay();
+  // Sync float preset
+  const fp=document.getElementById('ftPreset');if(fp)fp.value=v;
+}
+function setTimerPresetFloat(){
+  const v=parseInt(document.getElementById('ftPreset').value);
+  timerTotal=v*60;timerLeft=timerTotal;pauseTimer();stopAlarm();updateTimerDisplay();
+  const pp=document.getElementById('timerPreset');if(pp)pp.value=v;
+}
+
+function toggleMinimizeFloat(){
+  const fl=document.getElementById('floatTimer');
+  if(fl)fl.classList.toggle('minimized');
+}
+function closeFloat(){
+  pauseTimer();stopAlarm();
+  const fl=document.getElementById('floatTimer');
+  if(fl){fl.classList.remove('active','alarm','minimized');}
+}
+
+// DRAGGABLE FLOAT
+(function(){
+  let dragging=false,offsetX=0,offsetY=0;
+  document.addEventListener('mousedown',function(e){
+    const fl=document.getElementById('floatTimer');
+    if(!fl||!fl.contains(e.target))return;
+    if(e.target.tagName==='BUTTON'||e.target.tagName==='SELECT')return;
+    dragging=true;
+    const rect=fl.getBoundingClientRect();
+    offsetX=e.clientX-rect.left;offsetY=e.clientY-rect.top;
+    fl.style.transition='none';
+    e.preventDefault();
+  });
+  document.addEventListener('mousemove',function(e){
+    if(!dragging)return;
+    const fl=document.getElementById('floatTimer');if(!fl)return;
+    fl.style.left=(e.clientX-offsetX)+'px';
+    fl.style.top=(e.clientY-offsetY)+'px';
+    fl.style.transform='none';
+  });
+  document.addEventListener('mouseup',function(){
+    if(!dragging)return;
+    dragging=false;
+    const fl=document.getElementById('floatTimer');
+    if(fl)fl.style.transition='';
+  });
+  // Touch support
+  document.addEventListener('touchstart',function(e){
+    const fl=document.getElementById('floatTimer');
+    if(!fl||!fl.contains(e.target))return;
+    if(e.target.tagName==='BUTTON'||e.target.tagName==='SELECT')return;
+    dragging=true;
+    const rect=fl.getBoundingClientRect();
+    const touch=e.touches[0];
+    offsetX=touch.clientX-rect.left;offsetY=touch.clientY-rect.top;
+    fl.style.transition='none';
+  },{passive:true});
+  document.addEventListener('touchmove',function(e){
+    if(!dragging)return;
+    const fl=document.getElementById('floatTimer');if(!fl)return;
+    const touch=e.touches[0];
+    fl.style.left=(touch.clientX-offsetX)+'px';
+    fl.style.top=(touch.clientY-offsetY)+'px';
+    fl.style.transform='none';
+  },{passive:true});
+  document.addEventListener('touchend',function(){
+    if(!dragging)return;
+    dragging=false;
+    const fl=document.getElementById('floatTimer');
+    if(fl)fl.style.transition='';
+  });
+})();
+
+// SOFT ALARM — Web Audio API
+let alarmOscillators=[];
+let alarmGain=null;
+let alarmPlaying=false;
+
+function playAlarm(){
+  if(alarmPlaying)return;
+  try{
+    if(!audioCtx)audioCtx=new(window.AudioContext||window.webkitAudioContext)();
+    alarmPlaying=true;
+    alarmGain=audioCtx.createGain();
+    alarmGain.gain.value=0;
+    alarmGain.connect(audioCtx.destination);
+
+    // Soft chime pattern: gentle tones that fade in and out
+    function chime(freq,startTime,duration){
+      const osc=audioCtx.createOscillator();
+      const env=audioCtx.createGain();
+      osc.type='sine';
+      osc.frequency.value=freq;
+      osc.connect(env);
+      env.connect(alarmGain);
+      // Gentle envelope
+      env.gain.setValueAtTime(0,startTime);
+      env.gain.linearRampToValueAtTime(0.12,startTime+duration*0.3);
+      env.gain.linearRampToValueAtTime(0.08,startTime+duration*0.7);
+      env.gain.linearRampToValueAtTime(0,startTime+duration);
+      osc.start(startTime);
+      osc.stop(startTime+duration);
+      alarmOscillators.push(osc);
+    }
+
+    // Master volume fade in
+    alarmGain.gain.setValueAtTime(0,audioCtx.currentTime);
+    alarmGain.gain.linearRampToValueAtTime(0.35,audioCtx.currentTime+0.5);
+
+    // Three gentle chime sequences
+    const baseTime=audioCtx.currentTime;
+    const pattern=[
+      // Sequence 1 — soft two-note chime
+      {f:523.25,t:0,d:1.2},     // C5
+      {f:659.25,t:0.6,d:1.2},   // E5
+      // Sequence 2 (after pause)
+      {f:523.25,t:3,d:1.2},
+      {f:659.25,t:3.6,d:1.2},
+      // Sequence 3
+      {f:523.25,t:6,d:1.2},
+      {f:659.25,t:6.6,d:1.2},
+      {f:783.99,t:7.2,d:1.8},   // G5 — resolution
+      // Final soft tone
+      {f:523.25,t:10,d:2.0},
+    ];
+    pattern.forEach(n=>{chime(n.f,baseTime+n.t,n.d);});
+
+    // Auto-stop after pattern ends
+    setTimeout(()=>{stopAlarm();},13000);
+  }catch(e){console.log('Audio alarm error:',e);}
+}
+
+function stopAlarm(){
+  alarmPlaying=false;
+  clearTimeout(timerAlarmTimeout);
+  try{
+    alarmOscillators.forEach(o=>{try{o.stop();}catch(e){}});
+    alarmOscillators=[];
+    if(alarmGain){try{alarmGain.gain.setValueAtTime(0,audioCtx.currentTime);}catch(e){}}
+  }catch(e){}
+}
 
 // PROJECTS
 function addProject(){const n=document.getElementById('newProjName').value.trim();if(!n)return;state.projects.push({id:'p'+Date.now(),name:n,due:document.getElementById('newProjDue').value,expanded:true,subtasks:[]});document.getElementById('newProjName').value='';document.getElementById('newProjDue').value='';save();renderProjects();toast('Project added');}
@@ -1109,56 +1299,15 @@ function stopGuided(){clearInterval(guidedInterval);guidedInterval=null;document
 // NOTES
 function addNote(){const label=document.getElementById('newNoteLabel').value.trim();const body=document.getElementById('newNoteBody').value.trim();if(!label&&!body)return;const projId=document.getElementById('newNoteProject').value;const now=new Date();state.notes.push({id:'n'+Date.now(),label:label||'Untitled',body:body,projectId:projId,created:now.toISOString(),date:now.toLocaleDateString('en-US',{month:'short',day:'numeric',year:'numeric'}),time:now.toLocaleTimeString('en-US',{hour:'numeric',minute:'2-digit'})});document.getElementById('newNoteLabel').value='';document.getElementById('newNoteBody').value='';save();renderNotes();toast('Note added');}
 function deleteNote(id){state.notes=state.notes.filter(n=>n.id!==id);save();renderNotes();}
-function editNoteLabel(id,v){if(!v)return;const n=state.notes.find(n=>n.id===id);if(n){n.label=v;save();}}
-function editNoteBody(id,v){const n=state.notes.find(n=>n.id===id);if(n){n.body=v;save();}}
-function editNoteProject(id,projId){const n=state.notes.find(n=>n.id===id);if(n){n.projectId=projId;save();renderNotes();}}
-function autoResizeTextarea(ta){ta.style.height='auto';ta.style.height=ta.scrollHeight+'px';}
+function editNoteLabel(id,v){if(!v)return;const n=state.notes.find(n=>n.id===id);if(n)n.label=v;save();}
+function editNoteBody(id,v){const n=state.notes.find(n=>n.id===id);if(n)n.body=v;save();}
 function updateNoteSelectors(){const opts='<option value="">No project tag</option>'+state.projects.map(p=>'<option value="'+p.id+'">'+esc(p.name)+'</option>').join('');document.getElementById('newNoteProject').innerHTML=opts;const fOpts='<option value="all">All projects</option><option value="none">Untagged</option>'+state.projects.map(p=>'<option value="'+p.id+'">'+esc(p.name)+'</option>').join('');document.getElementById('noteFilterProj').innerHTML=fOpts;}
-function renderNotes(){
-  updateNoteSelectors();
-  const el=document.getElementById('notesList');
-  const filter=document.getElementById('noteFilterProj').value;
-  const search=document.getElementById('noteSearch').value.toLowerCase().trim();
-  let notes=[...state.notes];
-  if(filter==='none')notes=notes.filter(n=>!n.projectId);
-  else if(filter!=='all')notes=notes.filter(n=>n.projectId===filter);
-  if(search)notes=notes.filter(n=>(n.label+' '+n.body).toLowerCase().includes(search));
-  notes.sort((a,b)=>b.created.localeCompare(a.created));
-  if(notes.length===0){el.innerHTML='<div class="empty-state">'+(state.notes.length===0?'No notes yet. Add your first one below.':'No matching notes.')+'</div>';document.getElementById('noteCount').textContent=state.notes.length;return;}
-  const projOpts='<option value="">No tag</option>'+state.projects.map(p=>'<option value="'+p.id+'">\u{1F4C2} '+esc(p.name)+'</option>').join('');
-  el.innerHTML=notes.map(n=>{
-    const hasProjClass=n.projectId?'has-proj':'';
-    return '<div class="note-card">'+
-      '<div class="note-header">'+
-        '<input class="note-label-input" id="nl_'+n.id+'" value="'+esc(n.label)+'" placeholder="Note label..." />'+
-        '<span class="note-date">'+n.date+' '+n.time+'</span>'+
-      '</div>'+
-      '<textarea class="note-body-input" id="nb_'+n.id+'" placeholder="Note content...">'+esc(n.body)+'</textarea>'+
-      '<div class="note-footer">'+
-        '<select class="note-cat-select '+hasProjClass+'" id="np_'+n.id+'" onchange="editNoteProject(\''+n.id+'\',this.value)">'+
-          projOpts+
-        '</select>'+
-        '<span class="note-delete" onclick="deleteNote(\''+n.id+'\')">\u2715 delete</span>'+
-      '</div>'+
-    '</div>';
-  }).join('');
-  document.getElementById('noteCount').textContent=state.notes.length;
-  notes.forEach(n=>{
-    const li=document.getElementById('nl_'+n.id);
-    if(li){li.addEventListener('blur',()=>editNoteLabel(n.id,li.value.trim()));}
-    const bi=document.getElementById('nb_'+n.id);
-    if(bi){
-      bi.style.height='auto';bi.style.height=bi.scrollHeight+'px';
-      bi.addEventListener('input',()=>autoResizeTextarea(bi));
-      bi.addEventListener('blur',()=>editNoteBody(n.id,bi.value));
-    }
-    const ps=document.getElementById('np_'+n.id);
-    if(ps){
-      ps.value=n.projectId||'';
-      ps.addEventListener('change',()=>{ps.className='note-cat-select'+(ps.value?' has-proj':'');});
-    }
-  });
-}
+function renderNotes(){updateNoteSelectors();const el=document.getElementById('notesList');const filter=document.getElementById('noteFilterProj').value;const search=document.getElementById('noteSearch').value.toLowerCase().trim();let notes=[...state.notes];if(filter==='none')notes=notes.filter(n=>!n.projectId);else if(filter!=='all')notes=notes.filter(n=>n.projectId===filter);if(search)notes=notes.filter(n=>(n.label+' '+n.body).toLowerCase().includes(search));notes.sort((a,b)=>b.created.localeCompare(a.created));
+if(notes.length===0){el.innerHTML='<div class="empty-state">'+(state.notes.length===0?'No notes yet. Add your first one below.':'No matching notes.')+'</div>';document.getElementById('noteCount').textContent=state.notes.length;return;}
+el.innerHTML=notes.map(n=>{const proj=state.projects.find(p=>p.id===n.projectId);return '<div class="note-card"><div class="note-header"><span class="note-label editable" id="nl_'+n.id+'">'+esc(n.label)+'</span><span class="note-date">'+n.date+' '+n.time+'</span></div><div class="note-body editable" id="nb_'+n.id+'">'+esc(n.body)+'</div><div class="note-footer">'+(proj?'<span class="note-tag">\u{1F4C2} '+esc(proj.name)+'</span>':'')+'<span class="note-delete" onclick="deleteNote(\''+n.id+'\')">\u2715 delete</span></div></div>';}).join('');
+document.getElementById('noteCount').textContent=state.notes.length;
+notes.forEach(n=>{const le=document.getElementById('nl_'+n.id);if(le)makeEditable(le,v=>editNoteLabel(n.id,v));const be=document.getElementById('nb_'+n.id);if(be)makeEditable(be,v=>editNoteBody(n.id,v));});refreshEditables();}
+
 // ROUTINES
 function checkDailyRoutineReset(){
   const today=todayStr();
@@ -1592,60 +1741,34 @@ function startBreathwork(){
   breathActive=true;
   initBreathVoice();
 
-  const isScan=(id==='scan');
-
+  // Show overlay
   const overlay=document.getElementById('breathOverlay');
   overlay.classList.add('active');
   document.getElementById('breathName').textContent=t.name;
 
-  document.getElementById('breathBarWrap').style.display=isScan?'none':'flex';
-  const scanWrap=document.getElementById('bodyScanWrap');
-  scanWrap.style.display=isScan?'flex':'none';
-  if(isScan){document.querySelectorAll('.scan-part').forEach(p=>{p.classList.remove('scan-lit','scan-glow');});}
-
-  const SCAN_MAP={
-    'Settle In':[],
-    'Feet & Legs':['sp-lleg','sp-rleg','sp-lfoot','sp-rfoot'],
-    'Torso & Hands':['sp-torso','sp-lhand','sp-rhand'],
-    'Arms & Shoulders':['sp-larm','sp-rarm'],
-    'Neck & Face':['sp-neck','sp-head'],
-    'Integrate':['sp-head','sp-neck','sp-torso','sp-larm','sp-rarm','sp-lhand','sp-rhand','sp-lleg','sp-rleg','sp-lfoot','sp-rfoot']
-  };
-
-  function updateBodyScan(phase){
-    document.querySelectorAll('.scan-part').forEach(p=>p.classList.remove('scan-lit','scan-glow'));
-    const parts=SCAN_MAP[phase]||[];
-    const isIntegrate=(phase==='Integrate');
-    parts.forEach(pid=>{const el=document.getElementById(pid);if(el)el.classList.add(isIntegrate?'scan-glow':'scan-lit');});
-  }
-
-  function updateBars(phase){
-    const bars=[document.getElementById('breathBarL'),document.getElementById('breathBarR')];
-    const p=phase.toLowerCase();
-    let bg,sh;
-    if(p.includes('inhale')||p.includes('sniff')||p.includes('in')){
-      bg='linear-gradient(to top,#0f1e4a,#1e4fa8)';sh='0 -4px 40px rgba(50,110,230,0.55),inset 0 0 24px rgba(80,150,255,0.15)';
-    } else if(p.includes('exhale')||p.includes('out')){
-      bg='linear-gradient(to top,#0a1535,#162d6e)';sh='0 -4px 24px rgba(30,70,160,0.35),inset 0 0 16px rgba(50,100,200,0.1)';
-    } else {
-      bg='linear-gradient(to top,#08112a,#101e50)';sh='0 -2px 16px rgba(20,50,120,0.25),inset 0 0 10px rgba(30,60,140,0.08)';
-    }
-    bars.forEach(b=>{if(b){b.style.background=bg;b.style.boxShadow=sh;}});
-  }
-
   let cycle=0,pi=0;
   let phaseStartTime=performance.now();
-  let phaseDuration=t.durations[pi]*1000;
+  let phaseDuration=t.durations[pi]*1000; // ms
   let lastCount=-1;
+
+  function updateOrb(phase){
+    const orb=document.getElementById('breathOrb');
+    orb.className='breath-orb';
+    const p=phase.toLowerCase();
+    if(p.includes('inhale')||p.includes('sniff')||p.includes('in')){orb.classList.add('inhale');}
+    else if(p.includes('exhale')||p.includes('out')){orb.classList.add('exhale');}
+  }
 
   function onNewPhase(){
     const phase=t.phases[pi];
+    const cue=t.cues[pi];
     document.getElementById('breathPhase').textContent=phase;
-    document.getElementById('breathInstruction').textContent=t.cues[pi];
+    document.getElementById('breathInstruction').textContent=cue;
     document.getElementById('breathCycleInfo').textContent=t.cycles>1?'Cycle '+(cycle+1)+' of '+t.cycles:'';
-    if(isScan)updateBodyScan(phase); else updateBars(phase);
+    updateOrb(phase);
     lastCount=-1;
-    speak(t.cues[pi]);
+    // Speak the cue
+    speak(cue);
   }
 
   function frame(now){
@@ -1655,33 +1778,32 @@ function startBreathwork(){
     const remaining=Math.max(0,dur-elapsed);
     const pct=Math.min(1,elapsed/dur);
 
-    if(!isScan){
-      const bars=[document.getElementById('breathBarL'),document.getElementById('breathBarR')];
-      const ph=t.phases[pi].toLowerCase();
-      if(ph.includes('inhale')||ph.includes('sniff')||ph.includes('in')){
-        bars.forEach(b=>{if(b)b.style.height=(pct*100)+'%';});
-      } else if(ph.includes('exhale')||ph.includes('out')){
-        bars.forEach(b=>{if(b)b.style.height=((1-pct)*100)+'%';});
-      }
+    // Smooth ring
+    const offset=CIRC*(1-pct);
+    document.getElementById('breathRingFill').style.strokeDashoffset=offset;
+    document.getElementById('breathRingGlow').style.strokeDashoffset=offset;
+
+    // Countdown (integer display)
+    const countDown=Math.ceil(remaining/1000);
+    if(countDown!==lastCount){
+      lastCount=countDown;
+      document.getElementById('breathCount').textContent=countDown>0?countDown:'';
     }
 
-    const countDown=Math.ceil(remaining/1000);
-    if(countDown!==lastCount){lastCount=countDown;document.getElementById('breathCount').textContent=countDown>0?countDown:'';}
-
+    // Phase complete?
     if(elapsed>=dur){
       pi++;
       if(pi>=t.phases.length){
         pi=0;cycle++;
         if(cycle>=t.cycles){
+          // Session complete
           document.getElementById('breathPhase').textContent='\u2713 Complete';
           document.getElementById('breathCount').textContent='';
           document.getElementById('breathInstruction').textContent='Well done. Take a moment before returning.';
           document.getElementById('breathCycleInfo').textContent='';
-          if(isScan){
-            document.querySelectorAll('.scan-part').forEach(p=>{p.classList.remove('scan-lit');p.classList.add('scan-glow');});
-          } else {
-            ['breathBarL','breathBarR'].forEach(bid=>{const b=document.getElementById(bid);if(b){b.style.height='100%';b.style.background='linear-gradient(to top,#0f1e4a,#2b5ea8)';}});
-          }
+          document.getElementById('breathRingFill').style.strokeDashoffset=0;
+          document.getElementById('breathRingGlow').style.strokeDashoffset=0;
+          document.getElementById('breathOrb').className='breath-orb';
           document.querySelector('.breath-content').classList.add('breath-complete');
           setTimeout(()=>{document.querySelector('.breath-content').classList.remove('breath-complete');},600);
           speak('Well done. Take a moment.');
@@ -1691,22 +1813,13 @@ function startBreathwork(){
       }
       phaseStartTime=now;
       phaseDuration=t.durations[pi]*1000;
-      // Briefly enable CSS transition so bar height changes smoothly at phase boundary
-      if(!isScan){
-        const bars=[document.getElementById('breathBarL'),document.getElementById('breathBarR')];
-        const nextPh=t.phases[pi].toLowerCase();
-        // On exhale start (bar at top), on inhale start (bar at bottom) — add 1s transition
-        bars.forEach(b=>{if(b){b.style.transition='height 0.9s ease-in-out, background 3s ease-in-out';
-          if(nextPh.includes('exhale')||nextPh.includes('out'))b.style.height='100%';
-          else if(nextPh.includes('inhale')||nextPh.includes('sniff')||nextPh.includes('in'))b.style.height='0%';
-          setTimeout(()=>{if(b)b.style.transition='background 3s ease-in-out';},950);
-        }});
-      }
       onNewPhase();
     }
+
     breathRAF=requestAnimationFrame(frame);
   }
 
+  // Start first phase
   onNewPhase();
   breathRAF=requestAnimationFrame(frame);
 }
@@ -1717,10 +1830,9 @@ function stopBreathwork(){
   clearInterval(breathInterval);breathInterval=null;
   try{speechSynthesis.cancel();}catch(e){}
   document.getElementById('breathOverlay').classList.remove('active');
-  ['breathBarL','breathBarR'].forEach(bid=>{const b=document.getElementById(bid);if(b){b.style.height='0%';b.style.background='linear-gradient(to top,#0f1e4a,#1a3870)';}});
-  document.getElementById('breathBarWrap').style.display='';
-  document.getElementById('bodyScanWrap').style.display='none';
-  document.querySelectorAll('.scan-part').forEach(p=>p.classList.remove('scan-lit','scan-glow'));
+  document.getElementById('breathRingFill').style.strokeDashoffset=CIRC;
+  document.getElementById('breathRingGlow').style.strokeDashoffset=CIRC;
+  document.getElementById('breathOrb').className='breath-orb';
 }
 
 // PANEL EXPAND/COLLAPSE
@@ -1733,81 +1845,6 @@ const _origRenderNotes=renderNotes;renderNotes=function(){_origRenderNotes();che
 const _origRenderRoutines=renderRoutines;renderRoutines=function(){_origRenderRoutines();checkOverflows();}
 
 // INIT - called after auth
-
-// ─── SHARE TARGET HANDLER ───────────────────────────────────────────────────
-// Activated when the app is opened via the OS Share sheet (Android/Chrome PWA).
-// Reads ?share_text=, ?share_title=, ?share_url= from the URL and shows an
-// inbox banner so the user can route the content to Brain Dump or Notes.
-function checkShareTarget(){
-  const p=new URLSearchParams(window.location.search);
-  const text=(p.get('share_text')||'').trim();
-  const title=(p.get('share_title')||'').trim();
-  const url=(p.get('share_url')||'').trim();
-  if(!text&&!title&&!url)return;
-
-  // Build a clean preview string
-  const parts=[];
-  if(title)parts.push(title);
-  if(text&&text!==title)parts.push(text);
-  if(url)parts.push(url);
-  const combined=parts.join('\n');
-
-  // Remove params from URL without reload
-  window.history.replaceState({},'',window.location.pathname);
-
-  // Build and show the inbox banner
-  const div=document.createElement('div');
-  div.className='share-inbox';
-  div.id='shareInbox';
-  div.innerHTML=`
-    <button class="share-inbox-dismiss" onclick="document.getElementById('shareInbox').remove()" title="Dismiss">&times;</button>
-    <div class="share-inbox-title">&#128228; Incoming Share</div>
-    <div class="share-inbox-preview" id="sharePreview">${esc(combined)}</div>
-    <div class="share-inbox-actions">
-      <button class="share-inbox-btn primary" onclick="shareIntoBrainDump()">&#129504; Brain Dump</button>
-      <button class="share-inbox-btn" onclick="shareIntoNote()">&#128221; Add as Note</button>
-      <button class="share-inbox-btn" onclick="shareIntoReminder()">&#128276; Add as Reminder</button>
-    </div>`;
-  // Store text on the element for the action functions
-  div._shareText=combined;
-  div._shareTitle=title||text.slice(0,40)||'Shared item';
-  document.body.appendChild(div);
-}
-
-function shareIntoBrainDump(){
-  const d=document.getElementById('shareInbox');if(!d)return;
-  const text=d._shareText;
-  state.thoughts.push({id:'th'+Date.now(),text:text});
-  save();renderThoughts();
-  // Make sure Brain Dump panel is visible and briefly highlight it
-  const bp=document.querySelector('[data-panel="brain"]');
-  if(bp){bp.scrollIntoView({behavior:'smooth',block:'nearest'});bp.style.outline='2px solid var(--accent)';setTimeout(()=>{bp.style.outline='';},1800);}
-  d.remove();
-  toast('Added to Brain Dump ✓');
-}
-
-function shareIntoNote(){
-  const d=document.getElementById('shareInbox');if(!d)return;
-  const now=new Date();
-  state.notes.push({id:'n'+Date.now(),label:d._shareTitle,body:d._shareText,projectId:'',created:now.toISOString(),date:now.toLocaleDateString('en-US',{month:'short',day:'numeric',year:'numeric'}),time:now.toLocaleTimeString('en-US',{hour:'numeric',minute:'2-digit'})});
-  save();renderNotes();
-  const np=document.querySelector('[data-panel="notes"]');
-  if(np){np.scrollIntoView({behavior:'smooth',block:'nearest'});np.style.outline='2px solid var(--accent)';setTimeout(()=>{np.style.outline='';},1800);}
-  d.remove();
-  toast('Added to Notes ✓');
-}
-
-function shareIntoReminder(){
-  const d=document.getElementById('shareInbox');if(!d)return;
-  state.reminders.push({id:'rem'+Date.now(),text:d._shareText,date:'',time:''});
-  save();renderReminders();
-  const rp=document.querySelector('[data-panel="reminders"]');
-  if(rp){rp.scrollIntoView({behavior:'smooth',block:'nearest'});rp.style.outline='2px solid var(--accent)';setTimeout(()=>{rp.style.outline='';},1800);}
-  d.remove();
-  toast('Added to Reminders ✓');
-}
-// ────────────────────────────────────────────────────────────────────────────
-
 async function initApp(){
 await load();
 initPanelVisibility();applyPanelOrder();applyPanelVisibility();updateLockUI();updateClock();setInterval(updateClock,1000);updateTimerDisplay();
@@ -1818,8 +1855,6 @@ showStateAdvice();updateWellnessVisibility();renderTrends();
 startRealtimeSync();
 showAdminPanel();
 if('serviceWorker' in navigator){navigator.serviceWorker.register('sw.js').catch(e=>console.log('SW:',e));}
-// Handle Web Share Target inbound data
-setTimeout(checkShareTarget, 400); // slight delay so panels render first
 }
 // Auth is handled by Firebase onAuthStateChanged listener in Script 1
 </script>
