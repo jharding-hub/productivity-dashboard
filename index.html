@@ -215,27 +215,7 @@ body.unlocked .date-editable:hover{border-bottom-color:var(--accent);background:
 .breath-orb{position:absolute;top:50%;left:50%;width:80px;height:80px;border-radius:50%;background:radial-gradient(circle,var(--teal) 0%,transparent 70%);opacity:0.15;transform:translate(-50%,-50%);transition:all 2s ease-in-out;}
 .breath-orb.inhale{width:160px;height:160px;opacity:0.25;transition:all 3.5s ease-in-out;}
 .breath-orb.exhale{width:50px;height:50px;opacity:0.08;transition:all 4s ease-in-out;}
-/* FLOATING TIMER */
-.float-timer{position:fixed;top:16px;left:50%;transform:translateX(-50%);z-index:400;background:var(--surface);border:1px solid var(--border);border-radius:var(--radius);padding:14px 20px;box-shadow:0 8px 32px rgba(0,0,0,0.4);display:none;align-items:center;gap:14px;transition:all 0.4s cubic-bezier(0.4,0,0.2,1);cursor:grab;user-select:none;-webkit-user-select:none;min-width:320px;}
-.float-timer.active{display:flex;}
-.float-timer.minimized{min-width:auto;padding:8px 14px;gap:8px;border-radius:20px;}
-.float-timer.minimized .ft-bar-wrap,.float-timer.minimized .ft-controls,.float-timer.minimized .ft-label{display:none;}
-.float-timer.minimized .ft-time{font-size:16px;}
-.float-timer:active{cursor:grabbing;}
-.ft-body{flex:1;min-width:0;}
-.ft-label{font-size:10px;color:var(--text-dim);text-transform:uppercase;letter-spacing:0.5px;margin-bottom:2px;}
-.ft-time{font-size:28px;font-weight:700;font-variant-numeric:tabular-nums;color:var(--text);line-height:1;}
-.ft-bar-wrap{width:100%;height:4px;background:var(--surface-hover);border-radius:2px;margin-top:6px;overflow:hidden;}
-.ft-bar{height:100%;background:var(--green);border-radius:2px;transition:width 1s linear;}
-.ft-controls{display:flex;gap:4px;margin-top:8px;}
-.ft-btn{background:var(--surface-raised);border:1px solid var(--border);color:var(--text-dim);padding:4px 10px;border-radius:var(--radius-sm);cursor:pointer;font-size:11px;font-family:inherit;transition:all 0.15s;}
-.ft-btn:hover{background:var(--surface-hover);color:var(--text);border-color:var(--border-focus);}
-.ft-minimize{background:none;border:none;color:var(--text-faint);cursor:pointer;font-size:16px;padding:2px 4px;transition:color 0.15s;flex-shrink:0;}
-.ft-minimize:hover{color:var(--accent);}
-.ft-close{background:none;border:none;color:var(--text-faint);cursor:pointer;font-size:14px;padding:2px 4px;transition:color 0.15s;flex-shrink:0;}
-.ft-close:hover{color:var(--red);}
-.float-timer.alarm .ft-time{animation:timerPulse 1s ease infinite;}
-@keyframes timerPulse{0%,100%{color:var(--text);}50%{color:var(--accent);}}
+
 /* ROUTINES */
 .routine-list{display:flex;flex-direction:column;gap:5px;}
 .routine-item{display:flex;align-items:center;gap:8px;padding:7px 10px;background:var(--surface-raised);border:1px solid var(--border);border-radius:var(--radius-sm);font-size:13px;transition:all 0.15s;}
@@ -441,7 +421,7 @@ body.unlocked .date-editable:hover{border-bottom-color:var(--accent);background:
 <div class="time-label">Focus Timer</div>
 <div class="time-value" id="timerDisplay">25:00</div>
 <div class="time-bar"><div class="time-bar-fill" id="timerBar" style="background:var(--green);width:100%"></div></div>
-<div class="timer-controls"><button class="btn btn-sm" onclick="startTimer()">&#9654; Start</button><button class="btn btn-sm" onclick="pauseTimer()">&#9208; Pause</button><button class="btn btn-sm" onclick="resetTimer()">&#8634; Reset</button>
+<div class="timer-controls"><button class="btn btn-sm" onclick="startTimer()">&#9654; Start (opens timer)</button><button class="btn btn-sm" onclick="pauseTimer()">&#9208; Pause</button><button class="btn btn-sm" onclick="resetTimer()">&#8634; Reset</button>
 <select id="timerPreset" onchange="setTimerPreset()" style="width:auto;padding:4px 8px;font-size:12px;"><option value="25">25 min</option><option value="15">15 min</option><option value="5">5 min break</option><option value="45">45 min</option></select></div>
 </div></div>
 
@@ -596,22 +576,7 @@ body.unlocked .date-editable:hover{border-bottom-color:var(--accent);background:
 </div>
 </div>
 </div>
-<div class="float-timer" id="floatTimer">
-<div class="ft-body">
-<div class="ft-label">Focus Timer</div>
-<div class="ft-time" id="ftTime">25:00</div>
-<div class="ft-bar-wrap"><div class="ft-bar" id="ftBar" style="width:100%"></div></div>
-<div class="ft-controls">
-<button class="ft-btn" onclick="pauseTimer()">&#9208; Pause</button>
-<button class="ft-btn" onclick="resetTimer()">&#8634; Reset</button>
-<select id="ftPreset" onchange="setTimerPresetFloat()" style="background:var(--surface-raised);border:1px solid var(--border);color:var(--text-dim);padding:3px 6px;border-radius:var(--radius-sm);font-size:11px;font-family:inherit;">
-<option value="25">25m</option><option value="15">15m</option><option value="5">5m</option><option value="45">45m</option>
-</select>
-</div>
-</div>
-<button class="ft-minimize" onclick="toggleMinimizeFloat()" title="Minimize">&#9866;</button>
-<button class="ft-close" onclick="closeFloat()" title="Close">&#10005;</button>
-</div>
+
 <div class="toast" id="toast"></div>
 </div><!-- end app-wrap -->
 
@@ -972,126 +937,142 @@ function updateClock(){const now=new Date();document.getElementById('clock').tex
 let timerTotal=25*60,timerLeft=25*60,timerInterval=null,timerRunning=false;
 let timerAlarmTimeout=null;
 let audioCtx=null;
+let timerPopup=null;
 
 function fmtTimer(secs){const m=Math.floor(secs/60),s=secs%60;return String(m).padStart(2,'0')+':'+String(s).padStart(2,'0');}
+
+// POPUP TIMER WINDOW HTML
+function getTimerPopupHTML(){
+  return `<!DOCTYPE html>
+<html><head><meta charset="UTF-8"><title>Focus Timer</title>
+<style>
+*{margin:0;padding:0;box-sizing:border-box;}
+body{font-family:'DM Sans',system-ui,sans-serif;background:#1a1917;color:#e8e2d6;display:flex;flex-direction:column;align-items:center;justify-content:center;height:100vh;padding:16px;user-select:none;-webkit-user-select:none;overflow:hidden;}
+.timer-display{font-size:64px;font-weight:700;font-variant-numeric:tabular-nums;color:#e8e2d6;margin-bottom:10px;line-height:1;transition:color 0.3s;}
+.timer-display.alarm{animation:pulse 1s ease infinite;}
+@keyframes pulse{0%,100%{color:#e8e2d6;}50%{color:#d4a853;}}
+.timer-label{font-size:11px;color:#a09882;text-transform:uppercase;letter-spacing:1px;margin-bottom:12px;}
+.bar-wrap{width:100%;max-width:260px;height:4px;background:#38362f;border-radius:2px;overflow:hidden;margin-bottom:16px;}
+.bar-fill{height:100%;background:#6bab73;border-radius:2px;transition:width 0.3s linear;}
+.controls{display:flex;gap:6px;flex-wrap:wrap;justify-content:center;}
+.btn{background:#2e2d29;border:1px solid #3d3b33;color:#a09882;padding:6px 14px;border-radius:6px;cursor:pointer;font-size:12px;font-family:inherit;transition:all 0.15s;}
+.btn:hover{background:#38362f;color:#e8e2d6;border-color:#6b6554;}
+select{background:#2e2d29;border:1px solid #3d3b33;color:#a09882;padding:5px 8px;border-radius:6px;font-size:12px;font-family:inherit;outline:none;}
+.status{font-size:11px;color:#6b6554;margin-top:12px;}
+</style></head>
+<body>
+<div class="timer-label" id="label">Focus Timer</div>
+<div class="timer-display" id="display">25:00</div>
+<div class="bar-wrap"><div class="bar-fill" id="bar" style="width:100%"></div></div>
+<div class="controls">
+<button class="btn" onclick="send('start')">&#9654; Start</button>
+<button class="btn" onclick="send('pause')">&#9208; Pause</button>
+<button class="btn" onclick="send('reset')">&#8634; Reset</button>
+<select id="preset" onchange="send('preset:'+this.value)">
+<option value="25">25 min</option><option value="15">15 min</option><option value="5">5 min</option><option value="45">45 min</option>
+</select>
+</div>
+<div class="status" id="status">Ready</div>
+<script>
+function send(cmd){if(window.opener&&!window.opener.closed){window.opener.postMessage({type:'timer',cmd:cmd},'*');}}
+window.addEventListener('message',function(e){
+  if(!e.data||e.data.type!=='timerSync')return;
+  var d=e.data;
+  document.getElementById('display').textContent=d.display;
+  document.getElementById('bar').style.width=d.pct+'%';
+  document.getElementById('status').textContent=d.status;
+  var disp=document.getElementById('display');
+  if(d.alarm){disp.classList.add('alarm');}else{disp.classList.remove('alarm');}
+  document.title=d.display+' - Focus';
+});
+send('sync');
+window.addEventListener('beforeunload',function(){send('popupClosed');});
+<\/script>
+</body></html>`;
+}
+
+function openTimerPopup(){
+  if(timerPopup&&!timerPopup.closed){timerPopup.focus();return;}
+  const w=320,h=280;
+  const left=window.screenX+window.outerWidth-w-30;
+  const top=window.screenY+30;
+  timerPopup=window.open('','timerPopup','width='+w+',height='+h+',left='+left+',top='+top+',resizable=yes,scrollbars=no,toolbar=no,menubar=no,location=no,status=no');
+  if(!timerPopup){toast('Popup blocked \u2014 allow popups for this site.');return;}
+  timerPopup.document.write(getTimerPopupHTML());
+  timerPopup.document.close();
+  syncPopup();
+}
+
+function syncPopup(){
+  if(!timerPopup||timerPopup.closed)return;
+  const pct=timerTotal>0?(timerLeft/timerTotal)*100:0;
+  const status=timerRunning?(timerLeft>0?'Running...':'Done!'):(timerLeft<timerTotal?'Paused':'Ready');
+  try{
+    timerPopup.postMessage({
+      type:'timerSync',
+      display:fmtTimer(timerLeft),
+      pct:pct,
+      status:status,
+      alarm:timerLeft<=0&&!timerRunning&&timerLeft<timerTotal
+    },'*');
+  }catch(e){}
+}
+
+// Listen for commands from popup
+window.addEventListener('message',function(e){
+  if(!e.data||e.data.type!=='timer')return;
+  const cmd=e.data.cmd;
+  if(cmd==='start')startTimer();
+  else if(cmd==='pause')pauseTimer();
+  else if(cmd==='reset')resetTimer();
+  else if(cmd==='sync')syncPopup();
+  else if(cmd==='popupClosed'){timerPopup=null;}
+  else if(cmd.startsWith('preset:')){
+    const v=parseInt(cmd.split(':')[1]);
+    timerTotal=v*60;timerLeft=timerTotal;pauseTimer();stopAlarm();updateTimerDisplay();
+    const pp=document.getElementById('timerPreset');if(pp)pp.value=v;
+  }
+});
 
 function updateTimerDisplay(){
   const display=fmtTimer(timerLeft);
   const pct=timerTotal>0?(timerLeft/timerTotal)*100:0;
-  // Panel timer
   const td=document.getElementById('timerDisplay');if(td)td.textContent=display;
   const tb=document.getElementById('timerBar');if(tb)tb.style.width=pct+'%';
-  // Floating timer
-  const ft=document.getElementById('ftTime');if(ft)ft.textContent=display;
-  const fb=document.getElementById('ftBar');if(fb)fb.style.width=pct+'%';
-  // Done?
+  syncPopup();
   if(timerLeft<=0&&timerRunning){
     pauseTimer();
     playAlarm();
-    const fl=document.getElementById('floatTimer');
-    if(fl)fl.classList.add('alarm');
     toast('\u23F0 Focus session complete!');
-    // Stop alarm after 12 seconds
-    timerAlarmTimeout=setTimeout(()=>{stopAlarm();const fl2=document.getElementById('floatTimer');if(fl2)fl2.classList.remove('alarm');},12000);
+    timerAlarmTimeout=setTimeout(()=>{stopAlarm();},12000);
   }
 }
 
 function startTimer(){
   if(timerRunning)return;
   stopAlarm();
-  const fl=document.getElementById('floatTimer');
-  if(fl){fl.classList.add('active');fl.classList.remove('alarm','minimized');}
   timerRunning=true;
   timerInterval=setInterval(()=>{timerLeft=Math.max(0,timerLeft-1);updateTimerDisplay();},1000);
+  openTimerPopup();
+  syncPopup();
 }
 
 function pauseTimer(){
   timerRunning=false;
   clearInterval(timerInterval);
+  syncPopup();
 }
 
 function resetTimer(){
   pauseTimer();stopAlarm();
   timerLeft=timerTotal;
-  const fl=document.getElementById('floatTimer');
-  if(fl)fl.classList.remove('alarm');
   updateTimerDisplay();
 }
 
 function setTimerPreset(){
   const v=parseInt(document.getElementById('timerPreset').value);
   timerTotal=v*60;timerLeft=timerTotal;pauseTimer();stopAlarm();updateTimerDisplay();
-  // Sync float preset
-  const fp=document.getElementById('ftPreset');if(fp)fp.value=v;
 }
-function setTimerPresetFloat(){
-  const v=parseInt(document.getElementById('ftPreset').value);
-  timerTotal=v*60;timerLeft=timerTotal;pauseTimer();stopAlarm();updateTimerDisplay();
-  const pp=document.getElementById('timerPreset');if(pp)pp.value=v;
-}
-
-function toggleMinimizeFloat(){
-  const fl=document.getElementById('floatTimer');
-  if(fl)fl.classList.toggle('minimized');
-}
-function closeFloat(){
-  pauseTimer();stopAlarm();
-  const fl=document.getElementById('floatTimer');
-  if(fl){fl.classList.remove('active','alarm','minimized');}
-}
-
-// DRAGGABLE FLOAT
-(function(){
-  let dragging=false,offsetX=0,offsetY=0;
-  document.addEventListener('mousedown',function(e){
-    const fl=document.getElementById('floatTimer');
-    if(!fl||!fl.contains(e.target))return;
-    if(e.target.tagName==='BUTTON'||e.target.tagName==='SELECT')return;
-    dragging=true;
-    const rect=fl.getBoundingClientRect();
-    offsetX=e.clientX-rect.left;offsetY=e.clientY-rect.top;
-    fl.style.transition='none';
-    e.preventDefault();
-  });
-  document.addEventListener('mousemove',function(e){
-    if(!dragging)return;
-    const fl=document.getElementById('floatTimer');if(!fl)return;
-    fl.style.left=(e.clientX-offsetX)+'px';
-    fl.style.top=(e.clientY-offsetY)+'px';
-    fl.style.transform='none';
-  });
-  document.addEventListener('mouseup',function(){
-    if(!dragging)return;
-    dragging=false;
-    const fl=document.getElementById('floatTimer');
-    if(fl)fl.style.transition='';
-  });
-  // Touch support
-  document.addEventListener('touchstart',function(e){
-    const fl=document.getElementById('floatTimer');
-    if(!fl||!fl.contains(e.target))return;
-    if(e.target.tagName==='BUTTON'||e.target.tagName==='SELECT')return;
-    dragging=true;
-    const rect=fl.getBoundingClientRect();
-    const touch=e.touches[0];
-    offsetX=touch.clientX-rect.left;offsetY=touch.clientY-rect.top;
-    fl.style.transition='none';
-  },{passive:true});
-  document.addEventListener('touchmove',function(e){
-    if(!dragging)return;
-    const fl=document.getElementById('floatTimer');if(!fl)return;
-    const touch=e.touches[0];
-    fl.style.left=(touch.clientX-offsetX)+'px';
-    fl.style.top=(touch.clientY-offsetY)+'px';
-    fl.style.transform='none';
-  },{passive:true});
-  document.addEventListener('touchend',function(){
-    if(!dragging)return;
-    dragging=false;
-    const fl=document.getElementById('floatTimer');
-    if(fl)fl.style.transition='';
-  });
-})();
 
 // SOFT ALARM — Web Audio API
 let alarmOscillators=[];
@@ -1107,7 +1088,6 @@ function playAlarm(){
     alarmGain.gain.value=0;
     alarmGain.connect(audioCtx.destination);
 
-    // Soft chime pattern: gentle tones that fade in and out
     function chime(freq,startTime,duration){
       const osc=audioCtx.createOscillator();
       const env=audioCtx.createGain();
@@ -1115,7 +1095,6 @@ function playAlarm(){
       osc.frequency.value=freq;
       osc.connect(env);
       env.connect(alarmGain);
-      // Gentle envelope
       env.gain.setValueAtTime(0,startTime);
       env.gain.linearRampToValueAtTime(0.12,startTime+duration*0.3);
       env.gain.linearRampToValueAtTime(0.08,startTime+duration*0.7);
@@ -1125,29 +1104,17 @@ function playAlarm(){
       alarmOscillators.push(osc);
     }
 
-    // Master volume fade in
     alarmGain.gain.setValueAtTime(0,audioCtx.currentTime);
     alarmGain.gain.linearRampToValueAtTime(0.35,audioCtx.currentTime+0.5);
 
-    // Three gentle chime sequences
     const baseTime=audioCtx.currentTime;
     const pattern=[
-      // Sequence 1 — soft two-note chime
-      {f:523.25,t:0,d:1.2},     // C5
-      {f:659.25,t:0.6,d:1.2},   // E5
-      // Sequence 2 (after pause)
-      {f:523.25,t:3,d:1.2},
-      {f:659.25,t:3.6,d:1.2},
-      // Sequence 3
-      {f:523.25,t:6,d:1.2},
-      {f:659.25,t:6.6,d:1.2},
-      {f:783.99,t:7.2,d:1.8},   // G5 — resolution
-      // Final soft tone
+      {f:523.25,t:0,d:1.2},{f:659.25,t:0.6,d:1.2},
+      {f:523.25,t:3,d:1.2},{f:659.25,t:3.6,d:1.2},
+      {f:523.25,t:6,d:1.2},{f:659.25,t:6.6,d:1.2},{f:783.99,t:7.2,d:1.8},
       {f:523.25,t:10,d:2.0},
     ];
     pattern.forEach(n=>{chime(n.f,baseTime+n.t,n.d);});
-
-    // Auto-stop after pattern ends
     setTimeout(()=>{stopAlarm();},13000);
   }catch(e){console.log('Audio alarm error:',e);}
 }
@@ -1162,443 +1129,6 @@ function stopAlarm(){
   }catch(e){}
 }
 
-// PROJECTS
-function addProject(){const n=document.getElementById('newProjName').value.trim();if(!n)return;state.projects.push({id:'p'+Date.now(),name:n,due:document.getElementById('newProjDue').value,expanded:true,subtasks:[]});document.getElementById('newProjName').value='';document.getElementById('newProjDue').value='';save();renderProjects();toast('Project added');}
-function deleteProject(id){if(!confirm('Delete project and all subtasks?'))return;state.projects=state.projects.filter(p=>p.id!==id);save();renderProjects();}
-function toggleProjectExpand(id){const p=state.projects.find(p=>p.id===id);if(p)p.expanded=!p.expanded;save();renderProjects();}
-function addSubtask(pid){const ne=document.getElementById('stN_'+pid),de=document.getElementById('stD_'+pid),pe=document.getElementById('stP_'+pid);const nm=ne.value.trim();if(!nm)return;const pr=state.projects.find(p=>p.id===pid);if(!pr)return;pr.subtasks.push({id:'st'+Date.now(),name:nm,due:de.value,priority:pe.value,done:false});ne.value='';de.value='';save();renderProjects();toast('Subtask added');}
-function toggleSubtask(pid,sid){const p=state.projects.find(p=>p.id===pid);const s=p&&p.subtasks.find(s=>s.id===sid);if(s)s.done=!s.done;save();renderProjects();}
-function deleteSubtask(pid,sid){const p=state.projects.find(p=>p.id===pid);if(p)p.subtasks=p.subtasks.filter(s=>s.id!==sid);save();renderProjects();}
-function editProjectName(pid,v){if(!v)return;const p=state.projects.find(p=>p.id===pid);if(p)p.name=v;save();}
-function editSubtaskName(pid,sid,v){if(!v)return;const p=state.projects.find(p=>p.id===pid);const s=p&&p.subtasks.find(s=>s.id===sid);if(s)s.name=v;save();}
-function editProjectDue(pid,v){const p=state.projects.find(p=>p.id===pid);if(p){p.due=v;save();renderProjects();}}
-function editSubtaskDue(pid,sid,v){const p=state.projects.find(p=>p.id===pid);const s=p&&p.subtasks.find(s=>s.id===sid);if(s){s.due=v;save();renderProjects();}}
-function editReminderDate(id,v){const r=state.reminders.find(r=>r.id===id);if(r){r.date=v;save();renderReminders();}}
-function editReminderTime(id,v){const r=state.reminders.find(r=>r.id===id);if(r){r.time=v;save();renderReminders();}}
-function makeDateClickable(el,currentVal,onSave){
-  el.addEventListener('click',function(e){
-    if(state.panelsLocked)return;
-    e.stopPropagation();
-    const inp=document.createElement('input');
-    inp.type='date';inp.className='date-edit-input';
-    inp.value=currentVal||'';
-    el.innerHTML='';el.appendChild(inp);
-    inp.focus();
-    inp.addEventListener('change',function(){onSave(inp.value);});
-    inp.addEventListener('blur',function(){onSave(inp.value);});
-  });
-}
-function makeTimeClickable(el,currentVal,onSave){
-  el.addEventListener('click',function(e){
-    if(state.panelsLocked)return;
-    e.stopPropagation();
-    const inp=document.createElement('input');
-    inp.type='time';inp.className='date-edit-input';inp.style.width='100px';
-    inp.value=currentVal||'';
-    el.innerHTML='';el.appendChild(inp);
-    inp.focus();
-    inp.addEventListener('change',function(){onSave(inp.value);});
-    inp.addEventListener('blur',function(){onSave(inp.value);});
-  });
-}
-
-function renderProjects(){const el=document.getElementById('projectList');const today=todayStr();if(state.projects.length===0){el.innerHTML='<div class="empty-state">No projects yet.</div>';document.getElementById('projCount').textContent='0';updateNoteSelectors();return;}
-el.innerHTML=state.projects.map(p=>{const total=p.subtasks.length,done=p.subtasks.filter(s=>s.done).length;const ov=p.due&&p.due<today;const ovc=p.subtasks.filter(s=>s.due&&s.due<today&&!s.done).length;const sorted=[...p.subtasks].sort((a,b)=>{if(a.done!==b.done)return a.done?1:-1;if(a.due&&b.due)return a.due.localeCompare(b.due);if(a.due)return -1;if(b.due)return 1;return 0;});
-return '<div class="project-card"><div class="proj-header" onclick="toggleProjectExpand(\''+p.id+'\')"><span class="proj-expand '+(p.expanded?'open':'')+'">\u25B6</span><div class="proj-info"><div class="proj-name editable" id="pn_'+p.id+'">'+esc(p.name)+'</div><div class="proj-meta"><span>'+done+'/'+total+' tasks</span>'+(p.due?'<span class="date-editable '+(ov?'overdue':'')+'" id="pd_'+p.id+'">Ends: '+fmtDate(p.due)+(ov?' \u26A0':'')+'</span>':'<span class="date-editable" id="pd_'+p.id+'" style="color:var(--text-faint);">+ set date</span>')+(ovc>0?'<span class="overdue">'+ovc+' overdue</span>':'')+'</div></div><div style="display:flex;gap:4px;" onclick="event.stopPropagation()"><span class="st-btn st-cal" onclick="exportProjectICS(\''+p.id+'\')">\u{1F4C5}</span><span class="proj-delete" onclick="deleteProject(\''+p.id+'\')">\u2715</span></div></div><div class="subtask-area '+(p.expanded?'open':'')+'"><div class="subtask-list">'+(sorted.length===0?'<div class="empty-state" style="padding:10px;">No subtasks yet.</div>':sorted.map(st=>{const so=st.due&&st.due<today&&!st.done;return '<div class="subtask-item '+(st.done?'st-done':'')+'"><div class="st-check '+(st.done?'checked':'')+'" onclick="toggleSubtask(\''+p.id+"','"+st.id+'\')">'+(st.done?'\u2713':'')+'</div><span class="st-name editable" id="sn_'+st.id+'"><span class="priority-dot priority-'+st.priority+'"></span>'+esc(st.name)+'</span>'+(st.due?'<span class="st-due date-editable '+(so?'overdue':'')+'" id="sd_'+st.id+'">'+(so?'\u26A0 ':'')+fmtDate(st.due)+'</span>':'<span class="st-due date-editable" id="sd_'+st.id+'" style="color:var(--text-faint);">+ date</span>')+'<div class="st-actions"><span class="st-btn st-cal" onclick="exportSubtaskICS(\''+p.id+"','"+st.id+'\')">\u{1F4C5}</span><span class="st-btn st-del" onclick="deleteSubtask(\''+p.id+"','"+st.id+'\')">\u2715</span></div></div>';}).join(''))+'</div><div class="subtask-add"><input type="text" id="stN_'+p.id+'" placeholder="New subtask..." onkeydown="if(event.key===\'Enter\')addSubtask(\''+p.id+'\')"><select id="stP_'+p.id+'"><option value="low">Low</option><option value="med" selected>Med</option><option value="high">High</option></select><input type="date" id="stD_'+p.id+'"><button class="btn btn-accent btn-sm" onclick="addSubtask(\''+p.id+'\')">+</button></div></div></div>';}).join('');
-document.getElementById('projCount').textContent=state.projects.length;
-state.projects.forEach(p=>{const pe=document.getElementById('pn_'+p.id);if(pe)makeEditable(pe,v=>editProjectName(p.id,v));p.subtasks.forEach(st=>{const se=document.getElementById('sn_'+st.id);if(se)makeEditable(se,v=>{editSubtaskName(p.id,st.id,v.trim());});});});
-// Attach date editors
-state.projects.forEach(p=>{const pde=document.getElementById('pd_'+p.id);if(pde)makeDateClickable(pde,p.due,v=>editProjectDue(p.id,v));p.subtasks.forEach(st=>{const sde=document.getElementById('sd_'+st.id);if(sde)makeDateClickable(sde,st.due,v=>editSubtaskDue(p.id,st.id,v));});});
-refreshEditables();updateNoteSelectors();}
-
-// REMINDERS
-function addReminder(){const t=document.getElementById('newRemText').value.trim();if(!t)return;state.reminders.push({id:'rem'+Date.now(),text:t,date:document.getElementById('newRemDate').value,time:document.getElementById('newRemTime').value});document.getElementById('newRemText').value='';document.getElementById('newRemDate').value='';document.getElementById('newRemTime').value='';save();renderReminders();toast('Reminder added');}
-function deleteReminder(id){state.reminders=state.reminders.filter(r=>r.id!==id);save();renderReminders();}
-function clearPastReminders(){state.reminders=state.reminders.filter(r=>!r.date||r.date>=todayStr());save();renderReminders();toast('Past cleared');}
-function editReminderText(id,v){if(!v)return;const r=state.reminders.find(r=>r.id===id);if(r)r.text=v;save();}
-function renderReminders(){const el=document.getElementById('reminderList');const today=todayStr();const sorted=[...state.reminders].sort((a,b)=>{if(a.date&&b.date){const d=a.date.localeCompare(b.date);if(d!==0)return d;}if(a.date&&!b.date)return -1;if(!a.date&&b.date)return 1;if(a.time&&b.time)return a.time.localeCompare(b.time);return 0;});
-if(sorted.length===0){el.innerHTML='<div class="empty-state">No reminders.</div>';document.getElementById('remCount').textContent='0';return;}
-el.innerHTML=sorted.map(r=>{const ov=r.date&&r.date<today;const it=r.date===today;return '<div class="reminder-item"><span class="rem-icon">'+(ov?'\u{1F534}':it?'\u{1F7E1}':'\u{1F535}')+'</span><div class="rem-body"><div class="rem-text editable" id="rt_'+r.id+'">'+esc(r.text)+'</div><div class="rem-when '+(ov?'overdue':'')+'">'+'<span class="date-editable" id="rd_'+r.id+'">'+(r.date?fmtDate(r.date):'+ set date')+'</span>'+(r.time?' at <span class="date-editable" id="rt2_'+r.id+'">'+fmtTime(r.time)+'</span>':' <span class="date-editable" id="rt2_'+r.id+'" style="color:var(--text-faint);">+ time</span>')+(ov?' \u2014 OVERDUE':it?' \u2014 TODAY':'')+'</div></div><div style="display:flex;gap:2px;"><span class="st-btn st-cal" onclick="exportReminderICS(\''+r.id+'\')">\u{1F4C5}</span><span class="st-btn st-del" onclick="deleteReminder(\''+r.id+'\')">\u2715</span></div></div>';}).join('');
-document.getElementById('remCount').textContent=sorted.filter(r=>!r.date||r.date>=today).length;
-state.reminders.forEach(r=>{const e=document.getElementById('rt_'+r.id);if(e)makeEditable(e,v=>editReminderText(r.id,v));const rde=document.getElementById('rd_'+r.id);if(rde)makeDateClickable(rde,r.date,v=>editReminderDate(r.id,v));const rte=document.getElementById('rt2_'+r.id);if(rte)makeTimeClickable(rte,r.time,v=>editReminderTime(r.id,v));});refreshEditables();}
-
-// ICS
-function generateICS(events){let ics='BEGIN:VCALENDAR\r\nVERSION:2.0\r\nPRODID:-//Productivity Dashboard//EN\r\nCALSCALE:GREGORIAN\r\nMETHOD:PUBLISH\r\n';events.forEach(ev=>{const uid='cd-'+Date.now()+'-'+Math.random().toString(36).substr(2,8);const d=ev.date?ev.date.replace(/-/g,''):new Date().toISOString().split('T')[0].replace(/-/g,'');ics+='BEGIN:VEVENT\r\nUID:'+uid+'\r\nDTSTAMP:'+new Date().toISOString().replace(/[-:]/g,'').split('.')[0]+'Z\r\n';if(ev.time){const t=ev.time.replace(':','')+'00';ics+='DTSTART:'+d+'T'+t+'\r\n';const sm=parseInt(ev.time.split(':')[0])*60+parseInt(ev.time.split(':')[1])+60;ics+='DTEND:'+d+'T'+String(Math.floor(sm/60)).padStart(2,'0')+String(sm%60).padStart(2,'0')+'00\r\n';}else{ics+='DTSTART;VALUE=DATE:'+d+'\r\nDTEND;VALUE=DATE:'+d+'\r\n';}ics+='SUMMARY:'+icsEsc(ev.title)+'\r\n';if(ev.description)ics+='DESCRIPTION:'+icsEsc(ev.description)+'\r\n';ics+='BEGIN:VALARM\r\nTRIGGER:-PT15M\r\nACTION:DISPLAY\r\nDESCRIPTION:Reminder\r\nEND:VALARM\r\nEND:VEVENT\r\n';});ics+='END:VCALENDAR\r\n';return ics;}
-function icsEsc(s){return s.replace(/[,;\\]/g,c=>'\\'+c).replace(/\n/g,'\\n');}
-function downloadICS(fn,ics){const b=new Blob([ics],{type:'text/calendar;charset=utf-8'});const u=URL.createObjectURL(b);const a=document.createElement('a');a.href=u;a.download=fn;document.body.appendChild(a);a.click();document.body.removeChild(a);URL.revokeObjectURL(u);toast('\u{1F4C5} .ics downloaded');}
-function showOutlookModal(title,date,time,desc){const ics=generateICS([{title,date,time,description:desc}]);const d=date||todayStr(),t=time||'09:00';const si=d+'T'+t+':00';const sm=parseInt(t.split(':')[0])*60+parseInt(t.split(':')[1])+60;const ei=d+'T'+String(Math.floor(sm/60)).padStart(2,'0')+':'+String(sm%60).padStart(2,'0')+':00';const wurl='https://outlook.live.com/calendar/0/action/compose?subject='+encodeURIComponent(title)+'&startdt='+si+'&enddt='+ei+'&body='+encodeURIComponent(desc||'');
-document.getElementById('modalContent').innerHTML='<h3>\u{1F4C5} Add to Outlook</h3><p><strong>'+esc(title)+'</strong><br>'+(date?fmtDate(date):'No date')+(time?' at '+fmtTime(time):'')+'</p><div class="modal-actions"><button class="btn btn-outlook" onclick="downloadICS(\'event.ics\',generateICS([{title:\''+title.replace(/'/g,"\\'")+'\',date:\''+(date||'')+'\',time:\''+(time||'')+'\',description:\''+(desc||'').replace(/'/g,"\\'")+'\'}]));closeModal();">\u2B07 Download .ics</button><a href="'+wurl+'" target="_blank" class="btn btn-outlook" style="text-decoration:none;" onclick="closeModal()">\u{1F310} Outlook Web</a><button class="btn" onclick="closeModal()">Cancel</button></div>';document.getElementById('modalOverlay').classList.add('show');}
-function closeModal(){document.getElementById('modalOverlay').classList.remove('show');}
-function exportSubtaskICS(pid,sid){const p=state.projects.find(p=>p.id===pid);const s=p&&p.subtasks.find(s=>s.id===sid);if(!s)return;showOutlookModal(s.name+' ['+p.name+']',s.due,null,'Project: '+p.name);}
-function exportProjectICS(pid){const p=state.projects.find(pr=>pr.id===pid);if(!p)return;const ev=p.subtasks.filter(s=>s.due&&!s.done).map(s=>({title:s.name+' ['+p.name+']',date:s.due,description:'Project: '+p.name}));if(ev.length===0){toast('No undone subtasks with dates.');return;}downloadICS(slugify(p.name)+'.ics',generateICS(ev));}
-function exportAllToICS(){const ev=[];state.projects.forEach(p=>{p.subtasks.filter(s=>s.due&&!s.done).forEach(s=>{ev.push({title:s.name+' ['+p.name+']',date:s.due,description:'Project: '+p.name});});});state.reminders.filter(r=>r.date).forEach(r=>{ev.push({title:r.text,date:r.date,time:r.time});});if(ev.length===0){toast('Nothing to export.');return;}downloadICS('productivity-dashboard-all.ics',generateICS(ev));}
-function exportReminderICS(id){const r=state.reminders.find(r=>r.id===id);if(!r)return;showOutlookModal(r.text,r.date,r.time,'Reminder');}
-
-// BRAIN DUMP
-function handleDumpKey(e){if(e.key==='Enter'&&!e.shiftKey){e.preventDefault();const t=document.getElementById('brainDump').value.trim();if(!t)return;state.thoughts.push({id:'th'+Date.now(),text:t});document.getElementById('brainDump').value='';save();renderThoughts();}}
-function deleteThought(id){state.thoughts=state.thoughts.filter(t=>t.id!==id);save();renderThoughts();}
-function promoteThought(id){const th=state.thoughts.find(t=>t.id===id);if(!th)return;if(state.projects.length>0){const c=prompt('Promote to which project?\n\n'+state.projects.map((p,i)=>(i+1)+'. '+p.name).join('\n')+'\n\n(0 = reminders)','1');if(c===null)return;const idx=parseInt(c)-1;if(idx>=0&&idx<state.projects.length){state.projects[idx].subtasks.push({id:'st'+Date.now(),name:th.text,due:'',priority:'med',done:false});deleteThought(id);renderProjects();toast('Added to '+state.projects[idx].name);return;}}state.reminders.push({id:'rem'+Date.now(),text:th.text,date:'',time:''});deleteThought(id);renderReminders();toast('Moved to reminders');}
-function editThought(id,v){if(!v)return;const t=state.thoughts.find(t=>t.id===id);if(t)t.text=v;save();}
-function renderThoughts(){document.getElementById('thoughtChips').innerHTML=state.thoughts.map(t=>'<div class="thought-chip"><span class="editable" id="tt_'+t.id+'">'+esc(t.text)+'</span><span class="chip-promote" onclick="promoteThought(\''+t.id+'\')">\u2197</span><span class="chip-x" onclick="deleteThought(\''+t.id+'\')">\u00D7</span></div>').join('');state.thoughts.forEach(t=>{const e=document.getElementById('tt_'+t.id);if(e)makeEditable(e,v=>editThought(t.id,v));});refreshEditables();}
-
-// ENERGY & MOOD
-function setEnergy(el,v){state.energy=v;document.querySelectorAll('#energyPills .em-pill').forEach(c=>c.classList.remove('selected'));el.classList.add('selected');logMoodEntry();save();showStateAdvice();updateWellnessVisibility();renderTrends();}
-function setMood(el,v){state.mood=v;document.querySelectorAll('#moodPills .em-pill').forEach(c=>c.classList.remove('selected'));el.classList.add('selected');logMoodEntry();save();showStateAdvice();updateWellnessVisibility();renderTrends();}
-const adviceMap={'high-focused':{t:'\u{1F525} Peak state \u2014 tackle your hardest task now.',c:'var(--green)'},'high-scattered':{t:'\u26A1 Energy but no focus. Start a Pomodoro.',c:'var(--orange)'},'high-anxious':{t:'\u{1F4A8} Burn off anxious energy with something physical.',c:'var(--orange)'},'high-calm':{t:'\u2728 Great for creative work or complex problems.',c:'var(--green)'},'good-focused':{t:'\u{1F44D} Solid state. Pick a medium-priority task.',c:'var(--green)'},'good-scattered':{t:'\u{1F4CB} List 3 things, do just the first one.',c:'var(--blue)'},'good-anxious':{t:'\u{1F4DD} Channel worry into a task with a clear endpoint.',c:'var(--blue)'},'good-calm':{t:'\u{1F33F} Good baseline. Handle routine tasks or admin.',c:'var(--green)'},'low-focused':{t:'\u{1F3AF} Low but present? Detail work \u2014 editing, reviewing.',c:'var(--blue)'},'low-scattered':{t:'\u{1FAE7} Not deep work time. 5-min break, then one tiny task.',c:'var(--purple)'},'low-anxious':{t:'\u{1F9CA} Pause. Check the Grounding Toolkit \u2192',c:'var(--purple)'},'low-calm':{t:'\u2601\uFE0F Rest state. Gentle tasks or a proper break.',c:'var(--blue)'},'crashed-focused':{t:'\u26A0\uFE0F Running on fumes. Only truly urgent items.',c:'var(--red)'},'crashed-scattered':{t:'\u{1F6D1} Brain needs a reset. Check the Grounding Toolkit \u2192',c:'var(--red)'},'crashed-anxious':{t:'\u{1FAC2} Hardest state. Grounding Toolkit first, then reassess.',c:'var(--red)'},'crashed-calm':{t:'\u{1F319} Depleted but peaceful. Gentle admin or rest.',c:'var(--purple)'}};
-function showStateAdvice(){const el=document.getElementById('stateAdvice');if(!state.energy||!state.mood){el.innerHTML='';return;}const k=state.energy+'-'+state.mood;const a=adviceMap[k];if(a)el.innerHTML='<div class="decision-prompt" style="border-left:3px solid '+a.c+';margin-bottom:0;">'+a.t+'</div>';}
-
-// WELLNESS TOOLKIT - conditional visibility
-const triggerStates=['low','crashed','anxious','scattered'];
-function shouldShowWellness(){return triggerStates.includes(state.energy)||triggerStates.includes(state.mood);}
-
-function updateWellnessVisibility(){
-  const wp=document.querySelector('[data-panel="wellness"]');
-  if(shouldShowWellness()){
-    wp.classList.remove('hidden-panel');
-    const triggers=[];
-    if(triggerStates.includes(state.energy))triggers.push(state.energy);
-    if(triggerStates.includes(state.mood))triggers.push(state.mood);
-    document.getElementById('wellnessTrigger').textContent=triggers.join(' + ');
-    populateWellnessDropdown();
-  }else{
-    wp.classList.add('hidden-panel');
-    stopGuided();
-  }
-}
-
-const wellnessTechniques=[
-{id:'grounding54321',name:'5-4-3-2-1 Grounding',icon:'\u{1F590}\uFE0F',source:'Ackerman, 2017 \u2014 sensory-based anxiety intervention',bestFor:['anxious','scattered'],steps:[{n:'5',t:'Name <strong>5 things you can see</strong>.'},{n:'4',t:'Touch <strong>4 things you can feel</strong>. Notice textures.'},{n:'3',t:'Identify <strong>3 things you can hear</strong>.'},{n:'2',t:'Notice <strong>2 things you can smell</strong>.'},{n:'1',t:'<strong>1 thing you can taste</strong>.'}],guided:false},
-{id:'box_breathing',name:'Box Breathing (4-4-4-4)',icon:'\u{1FAC1}',source:'Balban et al., 2023, Cell Reports Medicine \u2014 Navy SEAL protocol',bestFor:['anxious','crashed'],steps:[{n:'1',t:'<strong>Inhale</strong> through nose, 4 sec.'},{n:'2',t:'<strong>Hold</strong> 4 sec.'},{n:'3',t:'<strong>Exhale</strong> through mouth, 4 sec.'},{n:'4',t:'<strong>Hold empty</strong> 4 sec.'},{n:'\u2192',t:'Repeat 4\u20136 cycles. Activates parasympathetic nervous system.'}],guided:true,gd:{phases:['Inhale','Hold','Exhale','Hold'],dur:[4,4,4,4],cycles:5}},
-{id:'physiological_sigh',name:'Physiological Sigh',icon:'\u{1F4A8}',source:'Balban et al., 2023, Cell Reports Medicine \u2014 Stanford/Huberman Lab',bestFor:['anxious','crashed'],steps:[{n:'1',t:'<strong>Deep inhale</strong> through nose.'},{n:'2',t:'<strong>Second short sniff</strong> in through nose (reinflates alveoli).'},{n:'3',t:'<strong>Long slow exhale</strong> through mouth \u2014 2x inhale length.'},{n:'\u2192',t:'Fastest known voluntary method to reduce autonomic arousal. Even 1 cycle works.'}],guided:false},
-{id:'pmr',name:'Progressive Muscle Relaxation',icon:'\u{1F4AA}',source:'Jacobson, 1938; Toussaint et al., 2021 systematic review',bestFor:['anxious','low'],steps:[{n:'1',t:'<strong>Feet:</strong> Curl toes tight 5 sec, release.'},{n:'2',t:'<strong>Thighs:</strong> Squeeze 5 sec, release.'},{n:'3',t:'<strong>Fists:</strong> Clench 5 sec, release.'},{n:'4',t:'<strong>Shoulders:</strong> Shrug to ears 5 sec, drop.'},{n:'5',t:'<strong>Face:</strong> Scrunch everything 5 sec, release.'}],guided:false},
-{id:'breathing_478',name:'4-7-8 Breathing',icon:'\u{1F30A}',source:'Weil, 2015; pranayama \u2014 extended exhale activates vagus nerve',bestFor:['anxious','low','crashed'],steps:[{n:'1',t:'<strong>Inhale</strong> through nose, <strong>4</strong> sec.'},{n:'2',t:'<strong>Hold</strong> <strong>7</strong> sec.'},{n:'3',t:'<strong>Exhale</strong> through mouth, <strong>8</strong> sec.'},{n:'\u2192',t:'Extended exhale shifts to parasympathetic dominance. Do 4 cycles.'}],guided:true,gd:{phases:['Inhale','Hold','Exhale'],dur:[4,7,8],cycles:4}},
-{id:'body_scan',name:'2-Minute Body Scan',icon:'\u{1F9D8}',source:'Kabat-Zinn MBSR; Demarzo et al., 2017 meta-analysis',bestFor:['scattered','low','crashed'],steps:[{n:'1',t:'Close eyes. 3 slow breaths.'},{n:'2',t:'<strong>Scan feet to head.</strong> Notice without judgment.'},{n:'3',t:'Breathe <strong>into</strong> tension spots.'},{n:'4',t:'Open eyes slowly.'}],guided:false},
-{id:'dive_reflex',name:'Dive Reflex Reset',icon:'\u{1F9CA}',source:'Khurana & Wu, 2006 \u2014 mammalian dive reflex / vagal tone',bestFor:['anxious','crashed'],steps:[{n:'1',t:'Fill bowl with <strong>cold water</strong>.'},{n:'2',t:'Hold breath, <strong>submerge face</strong> 15\u201330 sec (or cold cloth to forehead).'},{n:'3',t:'Dive reflex triggers immediate parasympathetic response \u2014 HR drops, nervous system downshifts.'}],guided:false}
-];
-
-function populateWellnessDropdown(){
-  const sel=document.getElementById('wellnessSelect');
-  let sorted=[...wellnessTechniques];
-  const triggers=[state.energy,state.mood].filter(x=>triggerStates.includes(x));
-  sorted.sort((a,b)=>{const ar=triggers.some(t=>a.bestFor.includes(t))?0:1;const br=triggers.some(t=>b.bestFor.includes(t))?0:1;return ar-br;});
-  sel.innerHTML='<option value="">Choose a technique...</option>'+sorted.map(t=>{const rel=triggers.some(tr=>t.bestFor.includes(tr));return '<option value="'+t.id+'">'+(rel?'\u2605 ':'')+t.icon+' '+t.name+'</option>';}).join('');
-  document.getElementById('techniqueDetail').innerHTML='';
-}
-
-function showSelectedTechnique(){
-  const id=document.getElementById('wellnessSelect').value;
-  const el=document.getElementById('techniqueDetail');
-  if(!id){el.innerHTML='';return;}
-  const t=wellnessTechniques.find(t=>t.id===id);if(!t){el.innerHTML='';return;}
-  el.innerHTML='<div class="technique-detail"><div class="td-name">'+t.icon+' '+t.name+'</div><div class="td-source">'+t.source+'</div>'+t.steps.map(s=>'<div class="tc-step"><span class="tc-step-num">'+s.n+'</span><span>'+s.t+'</span></div>').join('')+(t.guided?'<button class="tc-timer-btn" onclick="startGuided(\''+t.id+'\')">\u25B6 Start Guided Timer</button>':'')+'</div>';
-}
-
-let guidedInterval=null;
-function startGuided(id){const t=wellnessTechniques.find(t=>t.id===id);if(!t||!t.guided)return;const disp=document.getElementById('guidedDisplay');disp.classList.add('active');disp.scrollIntoView({behavior:'smooth',block:'nearest'});const{phases,dur,cycles}=t.gd;let cycle=0,pi=0,count=dur[0];function tick(){document.getElementById('guidedPhase').textContent=phases[pi];document.getElementById('guidedCount').textContent=count;document.getElementById('guidedInstruction').textContent='Cycle '+(cycle+1)+' of '+cycles;count--;if(count<0){pi++;if(pi>=phases.length){pi=0;cycle++;if(cycle>=cycles){stopGuided();document.getElementById('guidedPhase').textContent='\u2713 Complete';document.getElementById('guidedCount').textContent='';document.getElementById('guidedInstruction').textContent='Well done. Take a moment.';return;}}count=dur[pi];}}tick();guidedInterval=setInterval(tick,1000);}
-function stopGuided(){clearInterval(guidedInterval);guidedInterval=null;document.getElementById('guidedDisplay').classList.remove('active');}
-
-// NOTES
-function addNote(){const label=document.getElementById('newNoteLabel').value.trim();const body=document.getElementById('newNoteBody').value.trim();if(!label&&!body)return;const projId=document.getElementById('newNoteProject').value;const now=new Date();state.notes.push({id:'n'+Date.now(),label:label||'Untitled',body:body,projectId:projId,created:now.toISOString(),date:now.toLocaleDateString('en-US',{month:'short',day:'numeric',year:'numeric'}),time:now.toLocaleTimeString('en-US',{hour:'numeric',minute:'2-digit'})});document.getElementById('newNoteLabel').value='';document.getElementById('newNoteBody').value='';save();renderNotes();toast('Note added');}
-function deleteNote(id){state.notes=state.notes.filter(n=>n.id!==id);save();renderNotes();}
-function editNoteLabel(id,v){if(!v)return;const n=state.notes.find(n=>n.id===id);if(n)n.label=v;save();}
-function editNoteBody(id,v){const n=state.notes.find(n=>n.id===id);if(n)n.body=v;save();}
-function updateNoteSelectors(){const opts='<option value="">No project tag</option>'+state.projects.map(p=>'<option value="'+p.id+'">'+esc(p.name)+'</option>').join('');document.getElementById('newNoteProject').innerHTML=opts;const fOpts='<option value="all">All projects</option><option value="none">Untagged</option>'+state.projects.map(p=>'<option value="'+p.id+'">'+esc(p.name)+'</option>').join('');document.getElementById('noteFilterProj').innerHTML=fOpts;}
-function renderNotes(){updateNoteSelectors();const el=document.getElementById('notesList');const filter=document.getElementById('noteFilterProj').value;const search=document.getElementById('noteSearch').value.toLowerCase().trim();let notes=[...state.notes];if(filter==='none')notes=notes.filter(n=>!n.projectId);else if(filter!=='all')notes=notes.filter(n=>n.projectId===filter);if(search)notes=notes.filter(n=>(n.label+' '+n.body).toLowerCase().includes(search));notes.sort((a,b)=>b.created.localeCompare(a.created));
-if(notes.length===0){el.innerHTML='<div class="empty-state">'+(state.notes.length===0?'No notes yet. Add your first one below.':'No matching notes.')+'</div>';document.getElementById('noteCount').textContent=state.notes.length;return;}
-el.innerHTML=notes.map(n=>{const proj=state.projects.find(p=>p.id===n.projectId);return '<div class="note-card"><div class="note-header"><span class="note-label editable" id="nl_'+n.id+'">'+esc(n.label)+'</span><span class="note-date">'+n.date+' '+n.time+'</span></div><div class="note-body editable" id="nb_'+n.id+'">'+esc(n.body)+'</div><div class="note-footer">'+(proj?'<span class="note-tag">\u{1F4C2} '+esc(proj.name)+'</span>':'')+'<span class="note-delete" onclick="deleteNote(\''+n.id+'\')">\u2715 delete</span></div></div>';}).join('');
-document.getElementById('noteCount').textContent=state.notes.length;
-notes.forEach(n=>{const le=document.getElementById('nl_'+n.id);if(le)makeEditable(le,v=>editNoteLabel(n.id,v));const be=document.getElementById('nb_'+n.id);if(be)makeEditable(be,v=>editNoteBody(n.id,v));});refreshEditables();}
-
-// ROUTINES
-function checkDailyRoutineReset(){
-  const today=todayStr();
-  if(state.lastRoutineReset===today)return;
-  // Reset all routine tabs
-  ['morning','evening','custom'].forEach(tab=>{
-    if(state.routines[tab])state.routines[tab].forEach(r=>r.done=false);
-  });
-  state.lastRoutineReset=today;
-  save();
-  renderRoutines();
-}
-function switchRoutineTab(tab,btn){state.currentRoutineTab=tab;document.querySelectorAll('.tab-btn').forEach(b=>b.classList.remove('active'));btn.classList.add('active');renderRoutines();}
-function toggleRoutine(tab,id){const r=state.routines[tab].find(r=>r.id===id);if(r)r.done=!r.done;save();renderRoutines();}
-function addRoutine(){const n=document.getElementById('newRoutineName').value.trim();if(!n)return;state.routines[state.currentRoutineTab].push({id:'r'+Date.now(),name:n,done:false});document.getElementById('newRoutineName').value='';save();renderRoutines();}
-function deleteRoutine(tab,id){state.routines[tab]=state.routines[tab].filter(r=>r.id!==id);save();renderRoutines();}
-function resetRoutines(){state.routines[state.currentRoutineTab].forEach(r=>r.done=false);save();renderRoutines();toast('Routines reset');}
-function editRoutineName(tab,id,v){if(!v)return;const r=state.routines[tab].find(r=>r.id===id);if(r)r.name=v;save();}
-function renderRoutines(){const tab=state.currentRoutineTab,items=state.routines[tab]||[];const el=document.getElementById('routineList');if(items.length===0){el.innerHTML='<div class="empty-state">No routine items.</div>';}else{el.innerHTML=items.map(r=>'<div class="routine-item '+(r.done?'r-done':'')+'"><div class="r-check '+(r.done?'r-checked':'')+'" onclick="toggleRoutine(\''+tab+"','"+r.id+'\')">'+(r.done?'\u2713':'')+'</div><span class="r-name editable" id="rn_'+r.id+'">'+esc(r.name)+'</span><span class="r-delete" onclick="deleteRoutine(\''+tab+"','"+r.id+'\')">\u2715</span></div>').join('');}const done=items.filter(r=>r.done).length;document.getElementById('routineProgress').textContent=done+'/'+items.length;items.forEach(r=>{const e=document.getElementById('rn_'+r.id);if(e)makeEditable(e,v=>editRoutineName(tab,r.id,v));});refreshEditables();}
-
-// DECISION
-const prompts=['<strong>Can\'t start?</strong> 2-minute rule: commit to just 2 minutes.','<strong>Overwhelmed?</strong> Brain Dump everything. Then pick the smallest item.','<strong>Can\'t decide?</strong> "Which will I regret NOT doing tomorrow?"','<strong>Procrastinating?</strong> Name the feeling behind it.','<strong>Task too big?</strong> Break it down until each step feels silly.','<strong>Context switching?</strong> Write one sentence about where you left off.','<strong>Forgetting?</strong> Under 2 min \u2192 do now. Otherwise \u2192 Brain Dump.','<strong>Stuck in a loop?</strong> Change your physical state.','<strong>Perfectionism?</strong> C-minus draft. Done > perfect.','<strong>No motivation?</strong> Motivation follows action.','<strong>Decision fatigue?</strong> Top 3 only.','<strong>Emotional flooding?</strong> Try 5-4-3-2-1 grounding.','<strong>Avoiding a follow-up?</strong> Draft it now. Sending is separate.'];
-function newDecisionPrompt(){const el=document.getElementById('decisionPrompt');el.innerHTML=prompts[Math.floor(Math.random()*prompts.length)];el.style.animation='none';el.offsetHeight;el.style.animation='chipIn 0.3s ease';}
-
-// MOBILE
-function showMobilePanel(nav,btn){document.querySelectorAll('.panel').forEach(p=>p.classList.remove('mobile-visible'));const panel=document.querySelector('.panel[data-nav="'+nav+'"]');if(panel&&!panel.classList.contains('hidden-panel'))panel.classList.add('mobile-visible');document.querySelectorAll('.nav-tab').forEach(t=>t.classList.remove('active'));btn.classList.add('active');}
-
-// UTILITY
-function esc(s){const d=document.createElement('div');d.textContent=s;return d.innerHTML;}
-function todayStr(){return new Date().toISOString().split('T')[0];}
-function fmtDate(d){return new Date(d+'T00:00:00').toLocaleDateString('en-US',{month:'short',day:'numeric',year:'numeric'});}
-function fmtTime(t){const[h,m]=t.split(':');const hr=parseInt(h);return(hr>12?hr-12:hr||12)+':'+m+(hr>=12?' PM':' AM');}
-function slugify(s){return s.toLowerCase().replace(/[^a-z0-9]+/g,'-').replace(/(^-|-$)/g,'');}
-function toast(msg){const el=document.getElementById('toast');el.textContent=msg;el.classList.add('show');setTimeout(()=>el.classList.remove('show'),2500);}
-document.addEventListener('keydown',e=>{if(e.target.tagName==='INPUT'||e.target.tagName==='TEXTAREA'||e.target.tagName==='SELECT'||e.target.isContentEditable)return;if(e.key==='b'||e.key==='B'){document.getElementById('brainDump').focus();e.preventDefault();}if(e.key==='s'||e.key==='S'){startTimer();e.preventDefault();}if(e.key==='p'||e.key==='P'){pauseTimer();e.preventDefault();}});
-
-// ═══════════════════════════════════════
-// MOOD/ENERGY LOGGING & TRENDS
-// ═══════════════════════════════════════
-const eScore={crashed:1,low:2,good:3,high:4};
-const mScore={anxious:1,scattered:2,calm:3,focused:4};
-const eLabel={1:'Crashed',2:'Low',3:'Good',4:'High'};
-const mLabel={1:'Anxious',2:'Scattered',3:'Calm',4:'Focused'};
-
-function logMoodEntry(){
-  if(!state.energy&&!state.mood)return;
-  const today=todayStr();
-  let entry=state.moodLog.find(e=>e.date===today);
-  if(!entry){entry={date:today};state.moodLog.push(entry);}
-  if(state.energy)entry.energy=state.energy;
-  if(state.mood)entry.mood=state.mood;
-  entry.ts=new Date().toISOString();
-  updateLogIndicator();
-}
-
-function updateLogIndicator(){
-  const el=document.getElementById('logIndicator');if(!el)return;
-  const entry=state.moodLog.find(e=>e.date===todayStr());
-  if(entry&&entry.energy&&entry.mood){el.className='log-indicator logged';el.innerHTML='\u2713 Logged today';}
-  else if(entry){el.className='log-indicator not-logged';el.innerHTML='\u25CB Set '+(entry.energy?'mood':'energy');}
-  else{el.className='log-indicator not-logged';el.innerHTML='\u25CB Not logged';}
-}
-
-let curView='daily',curMetric='energy';
-function setTrendView(v,btn){curView=v;btn.parentElement.querySelectorAll('.tc-btn').forEach((b,i)=>{if(i>=3)b.classList.remove('active');});btn.classList.add('active');renderTrends();}
-function setTrendMetric(m,btn){curMetric=m;const btns=[...btn.parentElement.querySelectorAll('.tc-btn')];btns.slice(0,3).forEach(b=>b.classList.remove('active'));btn.classList.add('active');renderTrends();}
-
-function dateRange(days){const d=[];const now=new Date();for(let i=days-1;i>=0;i--){const dt=new Date(now);dt.setDate(dt.getDate()-i);d.push(dt.toISOString().split('T')[0]);}return d;}
-function weekBuckets(log,weeks){const r=[];const now=new Date();for(let w=weeks-1;w>=0;w--){const we=new Date(now);we.setDate(we.getDate()-w*7);const ws=new Date(we);ws.setDate(ws.getDate()-6);const s=ws.toISOString().split('T')[0],e=we.toISOString().split('T')[0];r.push({label:(ws.getMonth()+1)+'/'+ws.getDate(),entries:log.filter(l=>l.date>=s&&l.date<=e)});}return r;}
-function monthBuckets(log,months){const r=[];const now=new Date();for(let m=months-1;m>=0;m--){const d=new Date(now.getFullYear(),now.getMonth()-m,1);const ms=d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0');r.push({label:d.toLocaleDateString('en-US',{month:'short'}),year:d.getFullYear(),entries:log.filter(l=>l.date.startsWith(ms))});}return r;}
-function avg(entries,field){const sm=field==='energy'?eScore:mScore;const v=entries.filter(e=>e[field]).map(e=>sm[e[field]]);return v.length?v.reduce((a,b)=>a+b,0)/v.length:null;}
-
-function priorYearLog(){
-  return state.moodLog.map(e=>{
-    const d=new Date(e.date+'T00:00:00');d.setFullYear(d.getFullYear()+1);
-    return {...e,date:d.toISOString().split('T')[0]};
-  });
-}
-
-function renderTrends(){
-  const chart=document.getElementById('trendChart');
-  const legend=document.getElementById('chartLegend');
-  const stats=document.getElementById('trendStats');
-  if(!chart)return;
-  updateLogIndicator();
-
-  if(state.moodLog.length<2){
-    chart.innerHTML='<div class="no-data-msg">Log your energy &amp; mood above daily.<br>Charts appear after a couple days.</div>';
-    legend.innerHTML='';stats.innerHTML='';return;
-  }
-
-  const metrics=curMetric==='both'?['energy','mood']:[curMetric];
-  let series=[];
-  let labels=[];
-
-  if(curView==='daily'){
-    const dates=dateRange(30);
-    labels=dates.map(d=>{const dt=new Date(d+'T00:00:00');return(dt.getMonth()+1)+'/'+dt.getDate();});
-    // Prior year dates
-    const pDates=dates.map(d=>{const dt=new Date(d+'T00:00:00');dt.setFullYear(dt.getFullYear()-1);return dt.toISOString().split('T')[0];});
-    metrics.forEach(metric=>{
-      const sm=metric==='energy'?eScore:mScore;
-      series.push({values:dates.map(d=>{const e=state.moodLog.find(l=>l.date===d);return e&&e[metric]?sm[e[metric]]:null;}),label:metric==='energy'?'Energy':'Mood',color:metric==='energy'?'var(--accent)':'var(--teal)'});
-      const pv=pDates.map(d=>{const e=state.moodLog.find(l=>l.date===d);return e&&e[metric]?sm[e[metric]]:null;});
-      if(pv.some(v=>v!==null))series.push({values:pv,label:(metric==='energy'?'Energy':'Mood')+' (yr ago)',color:metric==='energy'?'var(--orange)':'var(--purple)',dashed:true});
-    });
-  }else if(curView==='weekly'){
-    const wk=weekBuckets(state.moodLog,12);
-    const pwk=weekBuckets(priorYearLog(),12);
-    labels=wk.map(w=>'Wk '+w.label);
-    metrics.forEach(metric=>{
-      series.push({values:wk.map(w=>avg(w.entries,metric)),label:metric==='energy'?'Energy':'Mood',color:metric==='energy'?'var(--accent)':'var(--teal)'});
-      const pv=pwk.map(w=>avg(w.entries,metric));
-      if(pv.some(v=>v!==null))series.push({values:pv,label:(metric==='energy'?'Energy':'Mood')+' (yr ago)',color:metric==='energy'?'var(--orange)':'var(--purple)',dashed:true});
-    });
-  }else{
-    const mo=monthBuckets(state.moodLog,12);
-    const pmo=monthBuckets(priorYearLog(),12);
-    labels=mo.map(m=>m.label);
-    metrics.forEach(metric=>{
-      series.push({values:mo.map(m=>avg(m.entries,metric)),label:metric==='energy'?'Energy':'Mood',color:metric==='energy'?'var(--accent)':'var(--teal)'});
-      const pv=pmo.map(m=>avg(m.entries,metric));
-      if(pv.some(v=>v!==null))series.push({values:pv,label:(metric==='energy'?'Energy':'Mood')+' (yr ago)',color:metric==='energy'?'var(--orange)':'var(--purple)',dashed:true});
-    });
-  }
-
-  // DRAW SVG CHART
-  const W=chart.clientWidth-38,H=chart.clientHeight-28;
-  const minV=1,maxV=4;
-  const xStep=W/(labels.length-1||1);
-  function yPos(v){return H-((v-minV)/(maxV-minV))*H;}
-
-  let svg='<svg viewBox="0 0 '+(W+38)+' '+(H+28)+'" xmlns="http://www.w3.org/2000/svg">';
-  // Y-axis labels
-  const yLabels=curMetric==='mood'?mLabel:eLabel;
-  for(let i=1;i<=4;i++){
-    const y=yPos(i)+8;
-    svg+='<text x="28" y="'+y+'" text-anchor="end" fill="var(--text-faint)" font-size="9" font-family="DM Sans">'+yLabels[i]+'</text>';
-    svg+='<line x1="32" y1="'+(y-3)+'" x2="'+(W+34)+'" y2="'+(y-3)+'" stroke="var(--border)" stroke-width="0.5" stroke-dasharray="3,3"/>';
-  }
-  // X-axis labels (show subset)
-  const step=Math.max(1,Math.floor(labels.length/7));
-  for(let i=0;i<labels.length;i+=step){
-    svg+='<text x="'+(34+i*xStep)+'" y="'+(H+18)+'" text-anchor="middle" fill="var(--text-faint)" font-size="8" font-family="DM Sans">'+labels[i]+'</text>';
-  }
-  // Lines
-  series.forEach(s=>{
-    let path='';let dots='';let started=false;
-    s.values.forEach((v,i)=>{
-      if(v===null)return;
-      const x=34+i*xStep,y=yPos(v);
-      if(!started){path+='M'+x+','+y;started=true;}else{path+='L'+x+','+y;}
-      dots+='<circle cx="'+x+'" cy="'+y+'" r="2.5" fill="'+s.color+'" opacity="0.8"/>';
-    });
-    if(path)svg+='<path d="'+path+'" fill="none" stroke="'+s.color+'" stroke-width="2" '+(s.dashed?'stroke-dasharray="6,4" opacity="0.5"':'opacity="0.9"')+'/>';
-    svg+=dots;
-  });
-  svg+='</svg>';
-  chart.innerHTML=svg;
-
-  // LEGEND
-  legend.innerHTML=series.map(s=>'<div class="chart-legend-item"><span class="legend-line" style="background:'+s.color+';'+(s.dashed?'opacity:0.5;':'')+'"></span>'+s.label+'</div>').join('');
-
-  // STATS
-  const primary=series[0];
-  if(!primary){stats.innerHTML='';return;}
-  const vals=primary.values.filter(v=>v!==null);
-  const curAvg=vals.length?vals.reduce((a,b)=>a+b,0)/vals.length:0;
-  const recent=vals.slice(-7);
-  const recentAvg=recent.length?recent.reduce((a,b)=>a+b,0)/recent.length:0;
-  const prior=series.find(s=>s.dashed);
-  const priorVals=prior?prior.values.filter(v=>v!==null):[];
-  const priorAvg=priorVals.length?priorVals.reduce((a,b)=>a+b,0)/priorVals.length:0;
-
-  const lbl=curMetric==='mood'?mLabel:eLabel;
-  function scoreLbl(v){return lbl[Math.round(v)]||'--';}
-  function chg(cur,prev){if(!prev)return'<span class="ts-chg flat">no prior data</span>';const d=cur-prev;const cls=d>0.2?'up':d<-0.2?'down':'flat';const arrow=d>0.2?'\u2191':d<-0.2?'\u2193':'\u2192';return'<span class="ts-chg '+cls+'">'+arrow+' vs yr ago: '+scoreLbl(prev)+'</span>';}
-
-  stats.innerHTML='<div class="trend-stat"><div class="ts-val">'+scoreLbl(curAvg)+'</div><div class="ts-lbl">Period avg</div>'+chg(curAvg,priorAvg)+'</div>'
-    +'<div class="trend-stat"><div class="ts-val">'+scoreLbl(recentAvg)+'</div><div class="ts-lbl">Recent (7)</div></div>'
-    +'<div class="trend-stat"><div class="ts-val">'+vals.length+'</div><div class="ts-lbl">Days logged</div></div>';
-}
-
-// ═══════════════════════════════════════
-// ADMIN FUNCTIONS
-// ═══════════════════════════════════════
-function showAdminPanel(){
-  const ap=document.getElementById('adminPanel');
-  if(!ap)return;
-  if(isAdmin){
-    ap.classList.remove('hidden-panel');
-    document.getElementById('adminNavTab').style.display='';
-    renderAdminPanel();
-  }else{
-    ap.classList.add('hidden-panel');
-    document.getElementById('adminNavTab').style.display='none';
-  }
-}
-
-async function renderAdminPanel(){
-  if(!isAdmin||!db)return;
-  try{
-    const snap=await db.collection('users').get();
-    const users=[];
-    snap.forEach(doc=>{users.push({uid:doc.id,...doc.data()});});
-
-    // Stats
-    const total=users.length;
-    const active=users.filter(u=>!u.disabled).length;
-    const admins=users.filter(u=>u.admin).length;
-    document.getElementById('adminStats').innerHTML=
-      '<div class="admin-stat"><div class="as-val">'+total+'</div><div class="as-lbl">Total Users</div></div>'+
-      '<div class="admin-stat"><div class="as-val">'+active+'</div><div class="as-lbl">Active</div></div>'+
-      '<div class="admin-stat"><div class="as-val">'+admins+'</div><div class="as-lbl">Admins</div></div>';
-
-    // User list
-    const tbody=document.getElementById('adminUserList');
-    tbody.innerHTML=users.map(u=>{
-      const lastActive=u.lastActive?u.lastActive.toDate().toLocaleDateString('en-US',{month:'short',day:'numeric'}):'Never';
-      const isSelf=u.uid===currentUser.uid;
-      return '<tr><td>'+esc(u.email)+(u.admin?' <span class="admin-badge admin">Admin</span>':'')+'</td>'+
-        '<td><span class="admin-badge '+(u.disabled?'disabled':'active')+'">'+(u.disabled?'Disabled':'Active')+'</span></td>'+
-        '<td>'+lastActive+'</td>'+
-        '<td><div class="admin-actions">'+
-        (!isSelf&&!u.disabled?'<button class="admin-action danger" onclick="adminDisableUser(\''+u.uid+'\')">Disable</button>':'')+
-        (!isSelf&&u.disabled?'<button class="admin-action" onclick="adminEnableUser(\''+u.uid+'\')">Enable</button>':'')+
-        '<button class="admin-action" onclick="adminResetPassword(\''+u.email+'\')">Reset PW</button>'+
-        (!isSelf&&!u.admin?'<button class="admin-action" onclick="adminMakeAdmin(\''+u.uid+'\')">Make Admin</button>':'')+
-        (!isSelf?'<button class="admin-action danger" onclick="adminDeleteUser(\''+u.uid+'\',\''+esc(u.email)+'\')">Delete</button>':'')+
-        '</div></td></tr>';
-    }).join('');
-  }catch(e){console.log('Admin render error:',e);}
-}
-
-async function adminAddUser(){
-  if(!isAdmin)return;
-  const email=document.getElementById('adminNewEmail').value.trim();
-  const pass=document.getElementById('adminNewPass').value;
-  const err=document.getElementById('adminAddError');
-  err.textContent='';
-  if(!email||!pass){err.textContent='Enter email and password.';return;}
-  if(pass.length<6){err.textContent='Password must be at least 6 characters.';return;}
-  try{
-    // Use secondary app to create user without signing out admin
-    const secondaryApp=firebase.initializeApp(firebaseConfig,'secondary_'+Date.now());
-    const cred=await secondaryApp.auth().createUserWithEmailAndPassword(email,pass);
-    const newUid=cred.user.uid;
-    await secondaryApp.auth().signOut();
-    secondaryApp.delete();
-    // Create profile in Firestore
-    await db.collection('users').doc(newUid).set({
-      email:email,admin:false,disabled:false,
-      createdAt:firebase.firestore.FieldValue.serverTimestamp(),
-      lastActive:null
-    });
-    document.getElementById('adminNewEmail').value='';
-    document.getElementById('adminNewPass').value='';
-    toast('User '+email+' created');
-    renderAdminPanel();
-  }catch(e){err.textContent=e.message;}
-}
-
-async function adminDisableUser(uid){
-  if(!isAdmin)return;
-  try{await db.collection('users').doc(uid).update({disabled:true});toast('User disabled');renderAdminPanel();}catch(e){toast('Error: '+e.message);}
-}
-async function adminEnableUser(uid){
-  if(!isAdmin)return;
-  try{await db.collection('users').doc(uid).update({disabled:false});toast('User enabled');renderAdminPanel();}catch(e){toast('Error: '+e.message);}
-}
-async function adminResetPassword(email){
-  if(!isAdmin)return;
-  try{await firebase.auth().sendPasswordResetEmail(email);toast('Password reset sent to '+email);}catch(e){toast('Error: '+e.message);}
-}
-async function adminMakeAdmin(uid){
-  if(!isAdmin||!confirm('Make this user an admin?'))return;
-  try{await db.collection('users').doc(uid).update({admin:true});toast('Admin granted');renderAdminPanel();}catch(e){toast('Error: '+e.message);}
-}
-async function adminDeleteUser(uid,email){
-  if(!isAdmin||!confirm('Delete user '+email+'? Their data will also be deleted.'))return;
-  try{
-    // Delete user data
-    await db.collection('users').doc(uid).collection('data').doc('dashboard').delete();
-    await db.collection('users').doc(uid).delete();
-    toast('User '+email+' deleted');
-    renderAdminPanel();
-  }catch(e){toast('Error: '+e.message);}
-}
-
-// ═══════════════════════════════════════
 // BREATHWORK ENGINE
 // ═══════════════════════════════════════
 const breathTechniques={
