@@ -963,13 +963,111 @@ function initDragDrop(){document.querySelectorAll('.panel').forEach(panel=>{pane
 // CLOCK
 function updateClock(){const now=new Date();document.getElementById('clock').textContent=now.toLocaleTimeString('en-US',{hour12:true});document.getElementById('clockDate').textContent=now.toLocaleDateString('en-US',{weekday:'long',year:'numeric',month:'long',day:'numeric'});}
 
-// TIMER
+// TIMER (with popup window + soft alarm)
 let timerTotal=25*60,timerLeft=25*60,timerInterval=null,timerRunning=false;
-function updateTimerDisplay(){const m=Math.floor(timerLeft/60),s=timerLeft%60;document.getElementById('timerDisplay').textContent=String(m).padStart(2,'0')+':'+String(s).padStart(2,'0');document.getElementById('timerBar').style.width=(timerTotal>0?(timerLeft/timerTotal)*100:0)+'%';if(timerLeft<=0&&timerRunning){pauseTimer();toast('\u23F0 Timer done!');}}
-function startTimer(){if(timerRunning)return;timerRunning=true;timerInterval=setInterval(()=>{timerLeft=Math.max(0,timerLeft-1);updateTimerDisplay();},1000);}
-function pauseTimer(){timerRunning=false;clearInterval(timerInterval);}
-function resetTimer(){pauseTimer();timerLeft=timerTotal;updateTimerDisplay();}
-function setTimerPreset(){const v=parseInt(document.getElementById('timerPreset').value);timerTotal=v*60;timerLeft=timerTotal;pauseTimer();updateTimerDisplay();}
+let timerAlarmTimeout=null,audioCtx=null,timerPopup=null;
+let alarmOscillators=[],alarmGain=null,alarmPlaying=false;
+
+function fmtTimer(s){return String(Math.floor(s/60)).padStart(2,'0')+':'+String(s%60).padStart(2,'0');}
+
+function updateTimerDisplay(){
+  const display=fmtTimer(timerLeft);
+  const pct=timerTotal>0?(timerLeft/timerTotal)*100:0;
+  const td=document.getElementById('timerDisplay');if(td)td.textContent=display;
+  const tb=document.getElementById('timerBar');if(tb)tb.style.width=pct+'%';
+  syncPopup();
+  if(timerLeft<=0&&timerRunning){pauseTimer();playAlarm();toast('\u23F0 Focus session complete!');timerAlarmTimeout=setTimeout(function(){stopAlarm();},12000);}
+}
+function startTimer(){
+  if(timerRunning)return;stopAlarm();timerRunning=true;
+  timerInterval=setInterval(function(){timerLeft=Math.max(0,timerLeft-1);updateTimerDisplay();},1000);
+  openTimerPopup();
+}
+function pauseTimer(){timerRunning=false;clearInterval(timerInterval);syncPopup();}
+function resetTimer(){pauseTimer();stopAlarm();timerLeft=timerTotal;updateTimerDisplay();}
+function setTimerPreset(){var v=parseInt(document.getElementById('timerPreset').value);timerTotal=v*60;timerLeft=timerTotal;pauseTimer();stopAlarm();updateTimerDisplay();}
+
+// POPUP WINDOW
+function getTimerPopupHTML(){
+  var h='<!DOCTYPE html><html><head><meta charset="UTF-8"><title>Focus Timer</title><style>';
+  h+='*{margin:0;padding:0;box-sizing:border-box;}';
+  h+='body{font-family:system-ui,sans-serif;background:#1a1917;color:#e8e2d6;display:flex;flex-direction:column;align-items:center;justify-content:center;height:100vh;padding:16px;user-select:none;overflow:hidden;}';
+  h+='.td{font-size:64px;font-weight:700;font-variant-numeric:tabular-nums;color:#e8e2d6;margin-bottom:10px;line-height:1;transition:color 0.3s;}';
+  h+='.td.alarm{animation:p 1s ease infinite;}';
+  h+='@keyframes p{0%,100%{color:#e8e2d6;}50%{color:#d4a853;}}';
+  h+='.lbl{font-size:11px;color:#a09882;text-transform:uppercase;letter-spacing:1px;margin-bottom:12px;}';
+  h+='.bw{width:100%;max-width:260px;height:4px;background:#38362f;border-radius:2px;overflow:hidden;margin-bottom:16px;}';
+  h+='.bf{height:100%;background:#6bab73;border-radius:2px;transition:width 0.3s linear;}';
+  h+='.ctrls{display:flex;gap:6px;flex-wrap:wrap;justify-content:center;}';
+  h+='.b{background:#2e2d29;border:1px solid #3d3b33;color:#a09882;padding:6px 14px;border-radius:6px;cursor:pointer;font-size:12px;font-family:inherit;transition:all 0.15s;}';
+  h+='.b:hover{background:#38362f;color:#e8e2d6;border-color:#6b6554;}';
+  h+='select{background:#2e2d29;border:1px solid #3d3b33;color:#a09882;padding:5px 8px;border-radius:6px;font-size:12px;font-family:inherit;outline:none;}';
+  h+='.st{font-size:11px;color:#6b6554;margin-top:12px;}';
+  h+='</style></head><body>';
+  h+='<div class="lbl">Focus Timer</div>';
+  h+='<div class="td" id="d">25:00</div>';
+  h+='<div class="bw"><div class="bf" id="b" style="width:100%"></div></div>';
+  h+='<div class="ctrls">';
+  h+='<button class="b" onclick="snd(\'start\')">&#9654; Start</button>';
+  h+='<button class="b" onclick="snd(\'pause\')">&#9208; Pause</button>';
+  h+='<button class="b" onclick="snd(\'reset\')">&#8634; Reset</button>';
+  h+='<select onchange="snd(\'preset:\'+this.value)"><option value="25">25m</option><option value="15">15m</option><option value="5">5m</option><option value="45">45m</option></select>';
+  h+='</div><div class="st" id="s">Ready</div>';
+  h+='<scr'+'ipt>';
+  h+='function snd(c){if(window.opener&&!window.opener.closed)window.opener.postMessage({type:"timer",cmd:c},"*");}';
+  h+='window.addEventListener("message",function(e){if(!e.data||e.data.type!=="timerSync")return;var d=e.data;document.getElementById("d").textContent=d.display;document.getElementById("b").style.width=d.pct+"%";document.getElementById("s").textContent=d.status;var el=document.getElementById("d");if(d.alarm)el.classList.add("alarm");else el.classList.remove("alarm");document.title=d.display+" - Focus";});';
+  h+='snd("sync");window.addEventListener("beforeunload",function(){snd("popupClosed");});';
+  h+='</'+'scr'+'ipt></body></html>';
+  return h;
+}
+function openTimerPopup(){
+  if(timerPopup&&!timerPopup.closed){timerPopup.focus();return;}
+  var w=320,h=280,left=window.screenX+window.outerWidth-w-30,top=window.screenY+30;
+  timerPopup=window.open('','timerPop','width='+w+',height='+h+',left='+left+',top='+top+',resizable=yes,scrollbars=no,toolbar=no,menubar=no,location=no,status=no');
+  if(!timerPopup){toast('Popup blocked \u2014 allow popups for this site.');return;}
+  timerPopup.document.write(getTimerPopupHTML());
+  timerPopup.document.close();
+  syncPopup();
+}
+function syncPopup(){
+  if(!timerPopup||timerPopup.closed)return;
+  var pct=timerTotal>0?(timerLeft/timerTotal)*100:0;
+  var status=timerRunning?(timerLeft>0?'Running...':'Done!'):(timerLeft<timerTotal?'Paused':'Ready');
+  try{timerPopup.postMessage({type:'timerSync',display:fmtTimer(timerLeft),pct:pct,status:status,alarm:timerLeft<=0&&!timerRunning&&timerLeft<timerTotal},'*');}catch(e){}
+}
+window.addEventListener('message',function(e){
+  if(!e.data||e.data.type!=='timer')return;
+  var cmd=e.data.cmd;
+  if(cmd==='start')startTimer();
+  else if(cmd==='pause')pauseTimer();
+  else if(cmd==='reset')resetTimer();
+  else if(cmd==='sync')syncPopup();
+  else if(cmd==='popupClosed')timerPopup=null;
+  else if(cmd.indexOf('preset:')===0){var v=parseInt(cmd.split(':')[1]);timerTotal=v*60;timerLeft=timerTotal;pauseTimer();stopAlarm();updateTimerDisplay();var pp=document.getElementById('timerPreset');if(pp)pp.value=v;}
+});
+
+// SOFT ALARM (Web Audio)
+function playAlarm(){
+  if(alarmPlaying)return;
+  try{
+    if(!audioCtx)audioCtx=new(window.AudioContext||window.webkitAudioContext)();
+    alarmPlaying=true;
+    alarmGain=audioCtx.createGain();alarmGain.gain.value=0;alarmGain.connect(audioCtx.destination);
+    function chime(freq,st,dur){var osc=audioCtx.createOscillator(),env=audioCtx.createGain();osc.type='sine';osc.frequency.value=freq;osc.connect(env);env.connect(alarmGain);env.gain.setValueAtTime(0,st);env.gain.linearRampToValueAtTime(0.12,st+dur*0.3);env.gain.linearRampToValueAtTime(0.08,st+dur*0.7);env.gain.linearRampToValueAtTime(0,st+dur);osc.start(st);osc.stop(st+dur);alarmOscillators.push(osc);}
+    alarmGain.gain.setValueAtTime(0,audioCtx.currentTime);alarmGain.gain.linearRampToValueAtTime(0.35,audioCtx.currentTime+0.5);
+    var t=audioCtx.currentTime;
+    chime(523.25,t,1.2);chime(659.25,t+0.6,1.2);
+    chime(523.25,t+3,1.2);chime(659.25,t+3.6,1.2);
+    chime(523.25,t+6,1.2);chime(659.25,t+6.6,1.2);chime(783.99,t+7.2,1.8);
+    chime(523.25,t+10,2.0);
+    setTimeout(function(){stopAlarm();},13000);
+  }catch(e){console.log('Alarm error:',e);}
+}
+function stopAlarm(){
+  alarmPlaying=false;clearTimeout(timerAlarmTimeout);
+  try{alarmOscillators.forEach(function(o){try{o.stop();}catch(e){}});alarmOscillators=[];
+  if(alarmGain)try{alarmGain.gain.setValueAtTime(0,audioCtx.currentTime);}catch(e){}}catch(e){}
+}
 
 // PROJECTS
 function addProject(){const n=document.getElementById('newProjName').value.trim();if(!n)return;state.projects.push({id:'p'+Date.now(),name:n,due:document.getElementById('newProjDue').value,expanded:true,subtasks:[]});document.getElementById('newProjName').value='';document.getElementById('newProjDue').value='';save();renderProjects();toast('Project added');}
