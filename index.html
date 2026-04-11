@@ -228,6 +228,30 @@ body.unlocked .date-editable:hover{border-bottom-color:var(--accent);background:
 .tab-row{display:flex;gap:3px;margin-bottom:10px;}
 .tab-btn{background:none;border:none;color:var(--text-dim);padding:4px 10px;border-radius:var(--radius-sm);cursor:pointer;font-size:12px;font-family:inherit;transition:all 0.15s;}
 .tab-btn:hover{color:var(--text);}.tab-btn.active{background:var(--surface-raised);color:var(--accent);font-weight:600;}
+/* TASK LIST */
+.tasklist-controls{display:flex;gap:6px;margin-bottom:8px;align-items:center;flex-wrap:wrap;}
+.tasklist-controls select{width:auto;flex:none;font-size:12px;padding:4px 8px;}
+.tasklist-controls .tl-count{font-size:11px;color:var(--text-dim);margin-left:auto;}
+.tl-list{display:flex;flex-direction:column;gap:5px;}
+.tl-item{display:flex;align-items:center;gap:8px;padding:8px 10px;background:var(--surface-raised);border:1px solid var(--border);border-radius:var(--radius-sm);font-size:13px;transition:all 0.15s;}
+.tl-item:hover{background:var(--surface-hover);}
+.tl-item.tl-done{opacity:0.4;}.tl-item.tl-done .tl-name{text-decoration:line-through;}
+.tl-check{width:16px;height:16px;min-width:16px;border:2px solid var(--border-focus);border-radius:4px;cursor:pointer;display:flex;align-items:center;justify-content:center;font-size:10px;color:transparent;transition:all 0.15s;}
+.tl-check:hover{border-color:var(--accent);}.tl-check.checked{background:var(--accent);border-color:var(--accent);color:var(--bg);}
+.tl-body{flex:1;min-width:0;}
+.tl-name{font-weight:500;}
+.tl-meta{font-size:11px;color:var(--text-dim);display:flex;gap:8px;margin-top:2px;flex-wrap:wrap;}
+.tl-meta .overdue{color:var(--red);font-weight:600;}
+.tl-time-badge{font-size:10px;padding:1px 6px;border-radius:10px;background:var(--purple-dim);color:var(--purple);font-weight:500;}
+.tl-proj-badge{font-size:10px;padding:1px 6px;border-radius:10px;background:var(--accent-glow);color:var(--accent);}
+.tl-del{color:var(--text-faint);cursor:pointer;font-size:13px;opacity:0;transition:opacity 0.15s;}
+.tl-item:hover .tl-del{opacity:1;}.tl-del:hover{color:var(--red);}
+.tl-add-form{display:flex;flex-direction:column;gap:6px;margin-top:10px;padding-top:10px;border-top:1px solid var(--border);}
+.tl-add-row{display:flex;gap:6px;flex-wrap:wrap;}.tl-add-row>*{flex:1;min-width:0;}
+.tl-add-row select{min-width:80px;}
+.tl-or-new{font-size:11px;color:var(--text-faint);padding:2px 6px;cursor:pointer;border:1px dashed var(--border);border-radius:var(--radius-sm);text-align:center;}
+.tl-or-new:hover{color:var(--accent);border-color:var(--accent-dim);}
+.time-est-select{font-size:11px;padding:2px 6px;width:auto;min-width:60px;}
 /* NOTES */
 .notes-list{display:flex;flex-direction:column;gap:8px;overflow-y:auto;}
 .note-card{background:var(--surface-raised);border:1px solid var(--border);border-radius:var(--radius-sm);padding:12px;transition:border-color 0.15s;}
@@ -505,6 +529,38 @@ body.unlocked .date-editable:hover{border-bottom-color:var(--accent);background:
 
 
 
+<!-- 12. TASK LIST -->
+<div class="panel" data-panel="tasklist" data-nav="tasklist">
+<div class="panel-header"><div class="panel-title"><span class="drag-handle">&#10495;</span><span class="icon">&#128203;</span> Task List</div>
+<div style="display:flex;gap:6px;align-items:center;"><span class="panel-badge" id="taskListCount">0</span><button class="expand-btn" onclick="toggleExpand(this)" title="Expand/collapse"><span class="expand-arrow">&#9660;</span></button><span class="clear-done" onclick="clearDoneTasks()">clear done</span></div></div>
+<div class="tasklist-controls">
+<select id="tlSortBy" onchange="renderTaskList()" style="width:auto;padding:4px 8px;font-size:11px;">
+<option value="priority">Sort: Priority</option>
+<option value="time">Sort: Time Needed</option>
+<option value="project">Sort: Project</option>
+<option value="due">Sort: Due Date</option>
+</select>
+<select id="tlFilterProj" onchange="renderTaskList()" style="width:auto;padding:4px 8px;font-size:11px;">
+<option value="all">All Projects</option>
+</select>
+<label style="font-size:11px;color:var(--text-dim);display:flex;align-items:center;gap:3px;cursor:pointer;"><input type="checkbox" id="tlHideDone" onchange="renderTaskList()" style="width:auto;margin:0;"> Hide done</label>
+</div>
+<div class="panel-content" id="pc_tasklist">
+<div class="tl-list" id="taskListItems"></div>
+</div>
+<div class="tl-add-form">
+<div class="section-label">Add Task</div>
+<input type="text" id="tlNewName" placeholder="Task name..." onkeydown="if(event.key==='Enter')addStandaloneTask()">
+<div class="tl-add-row">
+<select id="tlNewProject"><option value="">No project</option><option value="__new__">+ New project...</option></select>
+<select id="tlNewPriority"><option value="low">Low</option><option value="med" selected>Med</option><option value="high">High</option></select>
+<select id="tlNewTime" class="time-est-select"><option value="">Time?</option><option value="30">30m</option><option value="60">1hr</option><option value="90">1.5hr</option><option value="120">2hr</option><option value="180">3hr</option><option value="240">4hr</option><option value="999">4hr+</option></select>
+<input type="date" id="tlNewDue" style="max-width:130px;">
+<button class="btn btn-accent btn-sm" onclick="addStandaloneTask()">+</button>
+</div>
+</div>
+</div>
+
 <!-- 11. STUCK HELPER -->
 <div class="panel panel-narrow" data-panel="decision" data-nav="help">
 <div class="panel-header"><div class="panel-title"><span class="drag-handle">&#10495;</span><span class="icon">&#129517;</span> Stuck? Start Here</div><div class="panel-badge">Decision Aid</div></div>
@@ -555,6 +611,7 @@ body.unlocked .date-editable:hover{border-bottom-color:var(--accent);background:
 <button class="nav-tab" onclick="showMobilePanel('routines',this)" data-navfor="routines"><span class="nt-icon">&#128257;</span>Routines</button>
 <button class="nav-tab" onclick="showMobilePanel('notes',this)" data-navfor="notes"><span class="nt-icon">&#128221;</span>Notes</button>
 <button class="nav-tab" onclick="showMobilePanel('help',this)" data-navfor="decision"><span class="nt-icon">&#129517;</span>Help</button>
+<button class="nav-tab" onclick="showMobilePanel('tasklist',this)" data-navfor="tasklist"><span class="nt-icon">&#128203;</span>Tasks</button>
 <button class="nav-tab" onclick="showMobilePanel('admin',this)" id="adminNavTab" style="display:none;"><span class="nt-icon">&#128737;</span>Admin</button>
 </div>
 
@@ -761,7 +818,7 @@ try {
 <!-- SCRIPT 3: APP LOGIC -->
 <script>
 // STATE
-let state={projects:[],reminders:[],thoughts:[],notes:[],moodLog:[],routines:{morning:[{id:'m1',name:'Hydrate \u2014 glass of water',done:false},{id:'m2',name:"Review today's calendar",done:false},{id:'m3',name:'Pick top 3 priorities',done:false},{id:'m4',name:'Quick workspace tidy',done:false}],evening:[{id:'e1',name:'Review what got done today',done:false},{id:'e2',name:"Brain dump tomorrow's thoughts",done:false},{id:'e3',name:"Set out tomorrow's essentials",done:false},{id:'e4',name:'Wind-down activity',done:false}],custom:[]},currentRoutineTab:'morning',energy:null,mood:null,panelOrder:['projects','reminders','time','energy','notes','brain','routines','wellness','decision','admin'],panelsLocked:true,lastRoutineReset:null,visiblePanels:{},knownPanels:[]};
+let state={projects:[],reminders:[],thoughts:[],notes:[],moodLog:[],tasks:[],routines:{morning:[{id:'m1',name:'Hydrate \u2014 glass of water',done:false},{id:'m2',name:"Review today's calendar",done:false},{id:'m3',name:'Pick top 3 priorities',done:false},{id:'m4',name:'Quick workspace tidy',done:false}],evening:[{id:'e1',name:'Review what got done today',done:false},{id:'e2',name:"Brain dump tomorrow's thoughts",done:false},{id:'e3',name:"Set out tomorrow's essentials",done:false},{id:'e4',name:'Wind-down activity',done:false}],custom:[]},currentRoutineTab:'morning',energy:null,mood:null,panelOrder:['projects','reminders','time','energy','tasklist','notes','brain','routines','wellness','decision','admin'],panelsLocked:true,lastRoutineReset:null,visiblePanels:{},knownPanels:[]};
 
 // SYNC STATUS
 function setSyncStatus(status,label){const el=document.getElementById('syncStatus');if(!el)return;el.className='sync-status '+status;el.innerHTML='<span class="sync-dot"></span> '+label;}
@@ -818,14 +875,15 @@ async function load(){
   // Ensure data integrity
   if(!state.routines)state.routines={morning:[],evening:[],custom:[]};
   if(!state.reminders)state.reminders=[];
-  if(!state.notes)state.notes=[];if(!state.moodLog)state.moodLog=[];if(!state.visiblePanels)state.visiblePanels={};if(!state.knownPanels)state.knownPanels=[];
-  if(!state.panelOrder)state.panelOrder=['projects','reminders','time','energy','notes','brain','routines','wellness','decision','admin'];
+  if(!state.notes)state.notes=[];if(!state.moodLog)state.moodLog=[];if(!state.tasks)state.tasks=[];if(!state.visiblePanels)state.visiblePanels={};if(!state.knownPanels)state.knownPanels=[];
+  if(!state.panelOrder)state.panelOrder=['projects','reminders','time','energy','tasklist','notes','brain','routines','wellness','decision','admin'];
   if(!state.panelOrder.includes('wellness'))state.panelOrder.splice(state.panelOrder.indexOf('energy')+1,0,'wellness');
   if(!state.panelOrder.includes('notes'))state.panelOrder.splice(state.panelOrder.indexOf('routines'),0,'notes');
   // Migrate to new 3-column layout order if still using old order
   const oldOrder='projects,reminders,brain,time,energy';
-  if(state.panelOrder.join(',').startsWith(oldOrder)){state.panelOrder=['projects','reminders','time','energy','notes','brain','routines','wellness','decision','admin'];}
+  if(state.panelOrder.join(',').startsWith(oldOrder)){state.panelOrder=['projects','reminders','time','energy','tasklist','notes','brain','routines','wellness','decision','admin'];}
   if(!state.panelOrder.includes('admin'))state.panelOrder.push('admin');
+  if(!state.panelOrder.includes('tasklist'))state.panelOrder.splice(state.panelOrder.indexOf('energy')+1,0,'tasklist');
   state.projects.forEach(p=>{if(!p.subtasks)p.subtasks=[];if(p.expanded===undefined)p.expanded=true;});
 }
 
@@ -839,7 +897,7 @@ function startRealtimeSync(){
     try{
       const cloud=JSON.parse(doc.data().state);
       state={...state,...cloud};
-      renderProjects();renderReminders();renderThoughts();renderNotes();renderRoutines();
+      renderProjects();renderReminders();renderThoughts();renderNotes();renderRoutines();renderTaskList();
       showStateAdvice();updateWellnessVisibility();renderTrends();
       setSyncStatus('synced','Synced');
     }catch(e){console.log('Realtime sync error:',e);}
@@ -854,6 +912,7 @@ const ALL_PANELS=[
   {id:'reminders',icon:'\u{1F514}',name:'Reminders',desc:'Date and time-based reminders'},
   {id:'time',icon:'\u23F1',name:'Time Awareness',desc:'Day progress bar and focus timer'},
   {id:'energy',icon:'\u{1F50B}',name:'Energy, Mood & Trends',desc:'Check-in and track patterns over time'},
+  {id:'tasklist',icon:'\u{1F4CB}',name:'Task List',desc:'Unified view of all tasks sorted by priority or time'},
   {id:'notes',icon:'\u{1F4DD}',name:'Notes',desc:'Labeled notes with project tags'},
   {id:'brain',icon:'\u{1F9E0}',name:'Brain Dump',desc:'Capture fleeting thoughts'},
   {id:'routines',icon:'\u{1F501}',name:'Routines',desc:'Morning, evening, and custom checklists'},
@@ -998,12 +1057,12 @@ function stopAlarm(){
 }
 
 // PROJECTS
-function addProject(){const n=document.getElementById('newProjName').value.trim();if(!n)return;state.projects.push({id:'p'+Date.now(),name:n,due:document.getElementById('newProjDue').value,expanded:true,subtasks:[]});document.getElementById('newProjName').value='';document.getElementById('newProjDue').value='';save();renderProjects();toast('Project added');}
-function deleteProject(id){if(!confirm('Delete project and all subtasks?'))return;state.projects=state.projects.filter(p=>p.id!==id);save();renderProjects();}
+function addProject(){const n=document.getElementById('newProjName').value.trim();if(!n)return;state.projects.push({id:'p'+Date.now(),name:n,due:document.getElementById('newProjDue').value,expanded:true,subtasks:[]});document.getElementById('newProjName').value='';document.getElementById('newProjDue').value='';save();renderProjects();renderTaskList();toast('Project added');}
+function deleteProject(id){if(!confirm('Delete project and all subtasks?'))return;state.projects=state.projects.filter(p=>p.id!==id);save();renderProjects();renderTaskList();}
 function toggleProjectExpand(id){const p=state.projects.find(p=>p.id===id);if(p)p.expanded=!p.expanded;save();renderProjects();}
-function addSubtask(pid){const ne=document.getElementById('stN_'+pid),de=document.getElementById('stD_'+pid),pe=document.getElementById('stP_'+pid);const nm=ne.value.trim();if(!nm)return;const pr=state.projects.find(p=>p.id===pid);if(!pr)return;pr.subtasks.push({id:'st'+Date.now(),name:nm,due:de.value,priority:pe.value,done:false});ne.value='';de.value='';save();renderProjects();toast('Subtask added');}
-function toggleSubtask(pid,sid){const p=state.projects.find(p=>p.id===pid);const s=p&&p.subtasks.find(s=>s.id===sid);if(s)s.done=!s.done;save();renderProjects();}
-function deleteSubtask(pid,sid){const p=state.projects.find(p=>p.id===pid);if(p)p.subtasks=p.subtasks.filter(s=>s.id!==sid);save();renderProjects();}
+function addSubtask(pid){const ne=document.getElementById('stN_'+pid),de=document.getElementById('stD_'+pid),pe=document.getElementById('stP_'+pid),te=document.getElementById('stT_'+pid);const nm=ne.value.trim();if(!nm)return;const pr=state.projects.find(p=>p.id===pid);if(!pr)return;pr.subtasks.push({id:'st'+Date.now(),name:nm,due:de.value,priority:pe.value,timeEst:te?te.value:'',done:false});ne.value='';de.value='';save();renderProjects();renderTaskList();toast('Subtask added');}
+function toggleSubtask(pid,sid){const p=state.projects.find(p=>p.id===pid);const s=p&&p.subtasks.find(s=>s.id===sid);if(s)s.done=!s.done;save();renderProjects();renderTaskList();}
+function deleteSubtask(pid,sid){const p=state.projects.find(p=>p.id===pid);if(p)p.subtasks=p.subtasks.filter(s=>s.id!==sid);save();renderProjects();renderTaskList();}
 function editProjectName(pid,v){if(!v)return;const p=state.projects.find(p=>p.id===pid);if(p)p.name=v;save();}
 function editSubtaskName(pid,sid,v){if(!v)return;const p=state.projects.find(p=>p.id===pid);const s=p&&p.subtasks.find(s=>s.id===sid);if(s)s.name=v;save();}
 function editProjectDue(pid,v){const p=state.projects.find(p=>p.id===pid);if(p){p.due=v;save();renderProjects();}}
@@ -1039,7 +1098,7 @@ function makeTimeClickable(el,currentVal,onSave){
 
 function renderProjects(){const el=document.getElementById('projectList');const today=todayStr();if(state.projects.length===0){el.innerHTML='<div class="empty-state">No projects yet.</div>';document.getElementById('projCount').textContent='0';updateNoteSelectors();return;}
 el.innerHTML=state.projects.map(p=>{const total=p.subtasks.length,done=p.subtasks.filter(s=>s.done).length;const ov=p.due&&p.due<today;const ovc=p.subtasks.filter(s=>s.due&&s.due<today&&!s.done).length;const sorted=[...p.subtasks].sort((a,b)=>{if(a.done!==b.done)return a.done?1:-1;if(a.due&&b.due)return a.due.localeCompare(b.due);if(a.due)return -1;if(b.due)return 1;return 0;});
-return '<div class="project-card"><div class="proj-header" onclick="toggleProjectExpand(\''+p.id+'\')"><span class="proj-expand '+(p.expanded?'open':'')+'">\u25B6</span><div class="proj-info"><div class="proj-name editable" id="pn_'+p.id+'">'+esc(p.name)+'</div><div class="proj-meta"><span>'+done+'/'+total+' tasks</span>'+(p.due?'<span class="date-editable '+(ov?'overdue':'')+'" id="pd_'+p.id+'">Ends: '+fmtDate(p.due)+(ov?' \u26A0':'')+'</span>':'<span class="date-editable" id="pd_'+p.id+'" style="color:var(--text-faint);">+ set date</span>')+(ovc>0?'<span class="overdue">'+ovc+' overdue</span>':'')+'</div></div><div style="display:flex;gap:4px;" onclick="event.stopPropagation()"><span class="st-btn st-cal" onclick="exportProjectICS(\''+p.id+'\')">\u{1F4C5}</span><span class="proj-delete" onclick="deleteProject(\''+p.id+'\')">\u2715</span></div></div><div class="subtask-area '+(p.expanded?'open':'')+'"><div class="subtask-list">'+(sorted.length===0?'<div class="empty-state" style="padding:10px;">No subtasks yet.</div>':sorted.map(st=>{const so=st.due&&st.due<today&&!st.done;return '<div class="subtask-item '+(st.done?'st-done':'')+'"><div class="st-check '+(st.done?'checked':'')+'" onclick="toggleSubtask(\''+p.id+"','"+st.id+'\')">'+(st.done?'\u2713':'')+'</div><span class="st-name editable" id="sn_'+st.id+'"><span class="priority-dot priority-'+st.priority+'"></span>'+esc(st.name)+'</span>'+(st.due?'<span class="st-due date-editable '+(so?'overdue':'')+'" id="sd_'+st.id+'">'+(so?'\u26A0 ':'')+fmtDate(st.due)+'</span>':'<span class="st-due date-editable" id="sd_'+st.id+'" style="color:var(--text-faint);">+ date</span>')+'<div class="st-actions"><span class="st-btn st-cal" onclick="exportSubtaskICS(\''+p.id+"','"+st.id+'\')">\u{1F4C5}</span><span class="st-btn st-del" onclick="deleteSubtask(\''+p.id+"','"+st.id+'\')">\u2715</span></div></div>';}).join(''))+'</div><div class="subtask-add"><input type="text" id="stN_'+p.id+'" placeholder="New subtask..." onkeydown="if(event.key===\'Enter\')addSubtask(\''+p.id+'\')"><select id="stP_'+p.id+'"><option value="low">Low</option><option value="med" selected>Med</option><option value="high">High</option></select><input type="date" id="stD_'+p.id+'"><button class="btn btn-accent btn-sm" onclick="addSubtask(\''+p.id+'\')">+</button></div></div></div>';}).join('');
+return '<div class="project-card"><div class="proj-header" onclick="toggleProjectExpand(\''+p.id+'\')"><span class="proj-expand '+(p.expanded?'open':'')+'">\u25B6</span><div class="proj-info"><div class="proj-name editable" id="pn_'+p.id+'">'+esc(p.name)+'</div><div class="proj-meta"><span>'+done+'/'+total+' tasks</span>'+(p.due?'<span class="date-editable '+(ov?'overdue':'')+'" id="pd_'+p.id+'">Ends: '+fmtDate(p.due)+(ov?' \u26A0':'')+'</span>':'<span class="date-editable" id="pd_'+p.id+'" style="color:var(--text-faint);">+ set date</span>')+(ovc>0?'<span class="overdue">'+ovc+' overdue</span>':'')+'</div></div><div style="display:flex;gap:4px;" onclick="event.stopPropagation()"><span class="st-btn st-cal" onclick="exportProjectICS(\''+p.id+'\')">\u{1F4C5}</span><span class="proj-delete" onclick="deleteProject(\''+p.id+'\')">\u2715</span></div></div><div class="subtask-area '+(p.expanded?'open':'')+'"><div class="subtask-list">'+(sorted.length===0?'<div class="empty-state" style="padding:10px;">No subtasks yet.</div>':sorted.map(st=>{const so=st.due&&st.due<today&&!st.done;return '<div class="subtask-item '+(st.done?'st-done':'')+'"><div class="st-check '+(st.done?'checked':'')+'" onclick="toggleSubtask(\''+p.id+"','"+st.id+'\')">'+(st.done?'\u2713':'')+'</div><span class="st-name editable" id="sn_'+st.id+'"><span class="priority-dot priority-'+st.priority+'"></span>'+esc(st.name)+'</span>'+(st.due?'<span class="st-due date-editable '+(so?'overdue':'')+'" id="sd_'+st.id+'">'+(so?'\u26A0 ':'')+fmtDate(st.due)+'</span>':'<span class="st-due date-editable" id="sd_'+st.id+'" style="color:var(--text-faint);">+ date</span>')+'<div class="st-actions">'+(st.timeEst?'<span class="tl-time-badge">'+fmtTimeEst(st.timeEst)+'</span>':'')+'<span class="st-btn st-cal" onclick="exportSubtaskICS(\''+p.id+"','"+st.id+'\')">\u{1F4C5}</span><span class="st-btn st-del" onclick="deleteSubtask(\''+p.id+"','"+st.id+'\')">\u2715</span></div></div>';}).join(''))+'</div><div class="subtask-add"><input type="text" id="stN_'+p.id+'" placeholder="New subtask..." onkeydown="if(event.key===\'Enter\')addSubtask(\''+p.id+'\')"><select id="stP_'+p.id+'"><option value="low">Low</option><option value="med" selected>Med</option><option value="high">High</option></select><select id="stT_'+p.id+'" class="time-est-select"><option value="">Time?</option><option value="30">30m</option><option value="60">1hr</option><option value="90">1.5hr</option><option value="120">2hr</option><option value="180">3hr</option><option value="240">4hr</option><option value="999">4hr+</option></select><input type="date" id="stD_'+p.id+'"><button class="btn btn-accent btn-sm" onclick="addSubtask(\''+p.id+'\')">+</button></div></div></div>';}).join('');
 document.getElementById('projCount').textContent=state.projects.length;
 state.projects.forEach(p=>{const pe=document.getElementById('pn_'+p.id);if(pe)makeEditable(pe,v=>editProjectName(p.id,v));p.subtasks.forEach(st=>{const se=document.getElementById('sn_'+st.id);if(se)makeEditable(se,v=>{editSubtaskName(p.id,st.id,v.trim());});});});
 // Attach date editors
@@ -1072,7 +1131,7 @@ function exportReminderICS(id){const r=state.reminders.find(r=>r.id===id);if(!r)
 // BRAIN DUMP
 function handleDumpKey(e){if(e.key==='Enter'&&!e.shiftKey){e.preventDefault();const t=document.getElementById('brainDump').value.trim();if(!t)return;state.thoughts.push({id:'th'+Date.now(),text:t});document.getElementById('brainDump').value='';save();renderThoughts();}}
 function deleteThought(id){state.thoughts=state.thoughts.filter(t=>t.id!==id);save();renderThoughts();}
-function promoteThought(id){const th=state.thoughts.find(t=>t.id===id);if(!th)return;if(state.projects.length>0){const c=prompt('Promote to which project?\n\n'+state.projects.map((p,i)=>(i+1)+'. '+p.name).join('\n')+'\n\n(0 = reminders)','1');if(c===null)return;const idx=parseInt(c)-1;if(idx>=0&&idx<state.projects.length){state.projects[idx].subtasks.push({id:'st'+Date.now(),name:th.text,due:'',priority:'med',done:false});deleteThought(id);renderProjects();toast('Added to '+state.projects[idx].name);return;}}state.reminders.push({id:'rem'+Date.now(),text:th.text,date:'',time:''});deleteThought(id);renderReminders();toast('Moved to reminders');}
+function promoteThought(id){const th=state.thoughts.find(t=>t.id===id);if(!th)return;if(state.projects.length>0){const c=prompt('Promote to which project?\n\n'+state.projects.map((p,i)=>(i+1)+'. '+p.name).join('\n')+'\n\n(0 = reminders)','1');if(c===null)return;const idx=parseInt(c)-1;if(idx>=0&&idx<state.projects.length){state.projects[idx].subtasks.push({id:'st'+Date.now(),name:th.text,due:'',priority:'med',timeEst:'',done:false});deleteThought(id);renderProjects();renderTaskList();toast('Added to '+state.projects[idx].name);return;}}state.reminders.push({id:'rem'+Date.now(),text:th.text,date:'',time:''});deleteThought(id);renderReminders();toast('Moved to reminders');}
 function editThought(id,v){if(!v)return;const t=state.thoughts.find(t=>t.id===id);if(t)t.text=v;save();}
 function renderThoughts(){document.getElementById('thoughtChips').innerHTML=state.thoughts.map(t=>'<div class="thought-chip"><span class="editable" id="tt_'+t.id+'">'+esc(t.text)+'</span><span class="chip-promote" onclick="promoteThought(\''+t.id+'\')">\u2197</span><span class="chip-x" onclick="deleteThought(\''+t.id+'\')">\u00D7</span></div>').join('');state.thoughts.forEach(t=>{const e=document.getElementById('tt_'+t.id);if(e)makeEditable(e,v=>editThought(t.id,v));});refreshEditables();}
 
@@ -1749,6 +1808,146 @@ function stopBreathwork(){
   document.querySelectorAll('.scan-part').forEach(p=>p.classList.remove('scan-lit','scan-glow'));
 }
 
+// ═══════════════════════════════════════
+// TASK LIST
+// ═══════════════════════════════════════
+const TIME_LABELS={'30':'30m','60':'1hr','90':'1.5hr','120':'2hr','180':'3hr','240':'4hr','999':'4hr+'};
+function fmtTimeEst(v){return TIME_LABELS[v]||'';}
+const PRIORITY_ORDER={high:0,med:1,low:2};
+const TIME_ORDER={'':9999,'30':30,'60':60,'90':90,'120':120,'180':180,'240':240,'999':999};
+
+function getAllTasks(){
+  var tasks=[];
+  // Pull subtasks from all projects
+  state.projects.forEach(function(p){
+    p.subtasks.forEach(function(st){
+      tasks.push({id:st.id,name:st.name,done:st.done,priority:st.priority||'med',timeEst:st.timeEst||'',due:st.due||'',projectId:p.id,projectName:p.name,source:'project'});
+    });
+  });
+  // Add standalone tasks
+  (state.tasks||[]).forEach(function(t){
+    var pName='';
+    if(t.projectId){var pr=state.projects.find(function(p){return p.id===t.projectId;});if(pr)pName=pr.name;}
+    tasks.push({id:t.id,name:t.name,done:t.done,priority:t.priority||'med',timeEst:t.timeEst||'',due:t.due||'',projectId:t.projectId||'',projectName:pName,source:'standalone'});
+  });
+  return tasks;
+}
+
+function renderTaskList(){
+  var el=document.getElementById('taskListItems');if(!el)return;
+  var all=getAllTasks();
+  var sortBy=document.getElementById('tlSortBy');var sort=sortBy?sortBy.value:'priority';
+  var filterProj=document.getElementById('tlFilterProj');var filt=filterProj?filterProj.value:'all';
+  var hideDone=document.getElementById('tlHideDone');var hd=hideDone?hideDone.checked:false;
+
+  // Filter
+  if(filt!=='all')all=all.filter(function(t){return t.projectId===filt;});
+  if(hd)all=all.filter(function(t){return !t.done;});
+
+  // Sort
+  if(sort==='priority'){
+    all.sort(function(a,b){var pa=PRIORITY_ORDER[a.priority]||1,pb=PRIORITY_ORDER[b.priority]||1;if(pa!==pb)return pa-pb;return (a.done?1:0)-(b.done?1:0);});
+  }else if(sort==='time'){
+    all.sort(function(a,b){var ta=TIME_ORDER[a.timeEst]||9999,tb=TIME_ORDER[b.timeEst]||9999;if(ta!==tb)return ta-tb;return (a.done?1:0)-(b.done?1:0);});
+  }else if(sort==='project'){
+    all.sort(function(a,b){var na=a.projectName||'zzz',nb=b.projectName||'zzz';return na.localeCompare(nb);});
+  }else if(sort==='due'){
+    all.sort(function(a,b){var da=a.due||'9999',db=b.due||'9999';return da.localeCompare(db);});
+  }
+
+  var today=new Date().toISOString().split('T')[0];
+  if(all.length===0){
+    el.innerHTML='<div class="empty-state">No tasks yet. Add one below or create subtasks in Projects.</div>';
+  }else{
+    el.innerHTML=all.map(function(t){
+      var overdue=t.due&&t.due<today&&!t.done;
+      return '<div class="tl-item '+(t.done?'tl-done':'')+'">'+
+        '<div class="tl-check '+(t.done?'checked':'')+'" onclick="toggleTaskDone(\''+t.id+'\',\''+t.source+'\',\''+t.projectId+'\')">'+(t.done?'\u2713':'')+'</div>'+
+        '<div class="tl-body"><div class="tl-name"><span class="priority-dot priority-'+t.priority+'"></span>'+esc(t.name)+'</div>'+
+        '<div class="tl-meta">'+(t.projectName?'<span class="tl-proj-badge">'+esc(t.projectName)+'</span>':'')+
+        (t.timeEst?'<span class="tl-time-badge">'+fmtTimeEst(t.timeEst)+'</span>':'')+
+        (t.due?'<span class="'+(overdue?'overdue':'')+'">'+fmtDate(t.due)+(overdue?' \u26A0':'')+'</span>':'')+
+        '</div></div>'+
+        (t.source==='standalone'?'<span class="tl-del" onclick="deleteStandaloneTask(\''+t.id+'\')">\u2715</span>':'')+
+        '</div>';
+    }).join('');
+  }
+  document.getElementById('taskListCount').textContent=all.filter(function(t){return !t.done;}).length;
+  updateTLProjectDropdowns();
+}
+
+function toggleTaskDone(id,source,projId){
+  if(source==='project'){
+    var p=state.projects.find(function(p){return p.id===projId;});
+    if(p){var s=p.subtasks.find(function(s){return s.id===id;});if(s)s.done=!s.done;}
+    renderProjects();
+  }else{
+    var t=state.tasks.find(function(t){return t.id===id;});if(t)t.done=!t.done;
+  }
+  save();renderTaskList();
+}
+
+function addStandaloneTask(){
+  var nameEl=document.getElementById('tlNewName');
+  var name=nameEl.value.trim();if(!name)return;
+  var projSel=document.getElementById('tlNewProject');
+  var projVal=projSel.value;
+  var priority=document.getElementById('tlNewPriority').value;
+  var timeEst=document.getElementById('tlNewTime').value;
+  var due=document.getElementById('tlNewDue').value;
+
+  // Create new project if requested
+  if(projVal==='__new__'){
+    var pname=prompt('New project name:');
+    if(!pname||!pname.trim()){return;}
+    var newProj={id:'p'+Date.now(),name:pname.trim(),due:'',expanded:true,subtasks:[]};
+    state.projects.push(newProj);
+    projVal=newProj.id;
+    renderProjects();
+    toast('Project "'+pname.trim()+'" created');
+  }
+
+  if(projVal){
+    // Add as subtask to the project
+    var pr=state.projects.find(function(p){return p.id===projVal;});
+    if(pr){pr.subtasks.push({id:'st'+Date.now(),name:name,due:due,priority:priority,timeEst:timeEst,done:false});}
+    renderProjects();
+  }else{
+    // Add as standalone task
+    state.tasks.push({id:'tk'+Date.now(),name:name,due:due,priority:priority,timeEst:timeEst,projectId:'',done:false});
+  }
+  nameEl.value='';document.getElementById('tlNewDue').value='';
+  save();renderTaskList();toast('Task added');
+}
+
+function deleteStandaloneTask(id){
+  state.tasks=state.tasks.filter(function(t){return t.id!==id;});
+  save();renderTaskList();
+}
+
+function clearDoneTasks(){
+  // Only clear standalone done tasks
+  state.tasks=state.tasks.filter(function(t){return !t.done;});
+  save();renderTaskList();toast('Done tasks cleared');
+}
+
+function updateTLProjectDropdowns(){
+  // Update filter dropdown
+  var filt=document.getElementById('tlFilterProj');
+  if(filt){
+    var cur=filt.value;
+    filt.innerHTML='<option value="all">All Projects</option>'+state.projects.map(function(p){return '<option value="'+p.id+'">'+esc(p.name)+'</option>';}).join('');
+    filt.value=cur;
+  }
+  // Update add-task project dropdown
+  var add=document.getElementById('tlNewProject');
+  if(add){
+    var cur2=add.value;
+    add.innerHTML='<option value="">No project</option><option value="__new__">+ New project...</option>'+state.projects.map(function(p){return '<option value="'+p.id+'">'+esc(p.name)+'</option>';}).join('');
+    if(cur2&&cur2!=='__new__')add.value=cur2;
+  }
+}
+
 // PANEL EXPAND/COLLAPSE
 function toggleExpand(btn){const panel=btn.closest('.panel');panel.classList.toggle('expanded');checkOverflows();}
 function checkOverflows(){document.querySelectorAll('.panel-content').forEach(pc=>{if(pc.scrollHeight>pc.clientHeight+10){pc.classList.add('has-overflow');}else{pc.classList.remove('has-overflow');}});}
@@ -1837,7 +2036,7 @@ function shareIntoReminder(){
 async function initApp(){
 await load();
 initPanelVisibility();applyPanelOrder();applyPanelVisibility();updateLockUI();updateClock();setInterval(updateClock,1000);updateTimerDisplay();
-renderProjects();renderReminders();renderThoughts();renderNotes();renderRoutines();checkDailyRoutineReset();newDecisionPrompt();initDragDrop();
+renderProjects();renderReminders();renderThoughts();renderNotes();renderRoutines();renderTaskList();checkDailyRoutineReset();newDecisionPrompt();initDragDrop();
 if(state.energy){const c=document.querySelectorAll('#energyPills .em-pill');const m=['high','good','low','crashed'];const i=m.indexOf(state.energy);if(i>=0)c[i].classList.add('selected');}
 if(state.mood){const c=document.querySelectorAll('#moodPills .em-pill');const m=['focused','scattered','anxious','calm'];const i=m.indexOf(state.mood);if(i>=0)c[i].classList.add('selected');}
 showStateAdvice();updateWellnessVisibility();renderTrends();
