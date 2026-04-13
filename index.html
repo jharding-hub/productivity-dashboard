@@ -862,6 +862,10 @@ async function load(){
   if(!state.panelOrder.includes('admin'))state.panelOrder.push('admin');
   if(!state.panelOrder.includes('tasklist'))state.panelOrder.splice(state.panelOrder.indexOf('time')+1,0,'tasklist');
   state.projects.forEach(p=>{if(!p.subtasks)p.subtasks=[];if(p.expanded===undefined)p.expanded=true;});
+  // Ensure every panel already in panelOrder is "known" — prevents initPanelVisibility
+  // from treating previously-seen panels as new and hiding them on refresh
+  if(!state.knownPanels) state.knownPanels=[];
+  state.panelOrder.forEach(id=>{if(!state.knownPanels.includes(id))state.knownPanels.push(id);});
 }
 
 // REAL-TIME LISTENER — syncs changes from other devices (per-user)
@@ -873,8 +877,16 @@ function startRealtimeSync(){
     if(!doc.exists||!doc.data().state)return;
     try{
       const cloud=JSON.parse(doc.data().state);
+      // Preserve panel visibility/knownPanels from current session — these were
+      // already initialized by initPanelVisibility() and must not be overwritten
+      // by an onSnapshot firing with stale Firestore data (race condition fix)
+      const localVP=state.visiblePanels;
+      const localKP=state.knownPanels;
       state={...state,...cloud};
+      state.visiblePanels=Object.assign({},cloud.visiblePanels||{},localVP);
+      state.knownPanels=localKP&&localKP.length>=(cloud.knownPanels||[]).length?localKP:cloud.knownPanels||localKP;
       renderProjects();renderReminders();renderThoughts();renderNotes();renderRoutines();renderTaskList();
+      applyPanelVisibility();
       showStateAdvice();updateWellnessVisibility();
       setSyncStatus('synced','Synced');
     }catch(e){console.log('Realtime sync error:',e);}
