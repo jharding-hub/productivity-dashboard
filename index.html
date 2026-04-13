@@ -176,9 +176,25 @@ body.unlocked .date-editable:hover{border-bottom-color:var(--accent);background:
 .breath-overlay.active{visibility:visible;opacity:1;pointer-events:auto;}
 .breath-backdrop{position:absolute;inset:0;background:rgba(26,25,23,0.88);backdrop-filter:blur(16px);-webkit-backdrop-filter:blur(16px);transition:opacity 0.8s ease;}
 .breath-content{position:relative;z-index:1;text-align:center;padding:30px 20px;width:80vw;max-width:800px;}
-.breath-bar-wrap{margin:14px auto 10px;width:100%;display:flex;justify-content:center;gap:20px;}
-.breath-bar-track{position:relative;width:min(27.5vw,163px);height:min(47.5vw,280px);background:rgba(6,14,38,0.75);border:1px solid rgba(30,70,160,0.3);border-radius:50% 50% 22% 22% / 46% 46% 16% 16%;overflow:hidden;box-shadow:inset 0 6px 28px rgba(0,0,0,0.65),inset 0 0 0 1px rgba(255,255,255,0.03),0 0 18px rgba(20,60,160,0.12);}
-.breath-bar{position:absolute;bottom:0;left:0;width:100%;height:0%;background:linear-gradient(to top,#0f1e4a,#1a3870);box-shadow:0 -6px 30px rgba(40,90,200,0.4),inset 0 0 20px rgba(60,120,255,0.1);transition:background 3s ease-in-out;}
+/* BREATH ORB — GPU-composited, no layout reflow */
+.breath-orb-wrap{position:relative;display:flex;justify-content:center;align-items:center;margin:18px auto 12px;width:180px;height:180px;}
+.breath-orb{width:160px;height:160px;border-radius:50%;background:radial-gradient(circle at 38% 32%,rgba(90,160,255,0.95) 0%,rgba(25,65,190,0.88) 40%,rgba(8,16,52,0.97) 100%);transform:scale(0.35);will-change:transform;position:relative;z-index:1;flex-shrink:0;}
+.breath-orb-glow{position:absolute;width:240px;height:240px;top:50%;left:50%;transform:translate(-50%,-50%);border-radius:50%;background:radial-gradient(circle,rgba(50,120,255,0.45) 0%,rgba(30,80,210,0.18) 45%,transparent 70%);opacity:0;will-change:opacity;pointer-events:none;z-index:0;}
+/* Default @keyframes for box breathing (4-4-4-4 = 16s). Overwritten per-technique at runtime. */
+@keyframes breathCycle{
+  0%   {transform:scale(0.35);animation-timing-function:cubic-bezier(0.4,0,0.2,1);}
+  25%  {transform:scale(1.0); animation-timing-function:linear;}
+  50%  {transform:scale(1.0); animation-timing-function:cubic-bezier(0.4,0,0.2,1);}
+  75%  {transform:scale(0.35);animation-timing-function:linear;}
+  100% {transform:scale(0.35);}
+}
+@keyframes breathGlow{
+  0%   {opacity:0;animation-timing-function:cubic-bezier(0.4,0,0.2,1);}
+  25%  {opacity:1;animation-timing-function:linear;}
+  50%  {opacity:1;animation-timing-function:cubic-bezier(0.4,0,0.2,1);}
+  75%  {opacity:0;animation-timing-function:linear;}
+  100% {opacity:0;}
+}
 .body-scan-wrap{margin:14px auto 10px;width:100%;display:none;justify-content:center;}
 .body-scan-wrap.active{display:flex;}
 .scan-svg{width:min(38vw,170px);height:auto;overflow:visible;}
@@ -598,13 +614,9 @@ body.unlocked .date-editable:hover{border-bottom-color:var(--accent);background:
 <div class="breath-count" id="breathCount">&mdash;</div>
 <div class="breath-instruction" id="breathInstruction"></div>
 <div class="breath-cycle-info" id="breathCycleInfo"></div>
-<div class="breath-bar-wrap" id="breathBarWrap">
-<div class="breath-bar-track">
-<div class="breath-bar" id="breathBarL"></div>
-</div>
-<div class="breath-bar-track">
-<div class="breath-bar" id="breathBarR"></div>
-</div>
+<div class="breath-orb-wrap" id="breathOrbWrap">
+<div class="breath-orb-glow" id="breathOrbGlow"></div>
+<div class="breath-orb" id="breathOrb"></div>
 </div>
 <div class="body-scan-wrap" id="bodyScanWrap">
 <svg class="scan-svg" viewBox="0 0 160 268" xmlns="http://www.w3.org/2000/svg">
@@ -1444,7 +1456,6 @@ function showBreathDesc(){
 }
 
 let breathInterval=null;
-let breathRAF=null;
 let breathActive=false;
 const CIRC=628.3; // 2 * PI * 100
 let breathVoice=null;
@@ -1499,6 +1510,45 @@ function speak(text){
   }catch(e){console.log('Speech error:',e);}
 }
 
+
+// ─── Breathwork: compute per-technique @keyframes and inject into <style id="breathKF"> ───
+function buildBreathKeyframes(t){
+  const total=t.durations.reduce((a,b)=>a+b,0);
+  const SMIN=0.35,SMAX=1.0;
+  const EASE='cubic-bezier(0.4,0,0.2,1)';
+
+  function classify(phase){
+    const p=phase.toLowerCase();
+    if(p.includes('exhale')||p.includes('out')) return 'exhale';
+    if(p.includes('inhale')||p.includes('sniff')||p.includes(' in')||p==='inhale') return 'inhale';
+    return 'hold';
+  }
+
+  let kfOrb='@keyframes breathCycle {\n';
+  let kfGlow='@keyframes breathGlow {\n';
+  let cumSec=0,curScale=SMIN;
+
+  t.phases.forEach((phase,i)=>{
+    const pct=parseFloat((cumSec/total*100).toFixed(2));
+    const type=classify(phase);
+    const target=type==='inhale'?SMAX:type==='exhale'?SMIN:curScale;
+    const seg=(type==='inhale'||type==='exhale')?EASE:'linear';
+    const glowNow=parseFloat(((curScale-SMIN)/(SMAX-SMIN)).toFixed(2));
+    kfOrb+=`  ${pct}%{transform:scale(${curScale});animation-timing-function:${seg};}\n`;
+    kfGlow+=`  ${pct}%{opacity:${glowNow};animation-timing-function:${seg};}\n`;
+    cumSec+=t.durations[i];
+    curScale=target;
+  });
+
+  const finalGlow=parseFloat(((curScale-SMIN)/(SMAX-SMIN)).toFixed(2));
+  kfOrb+=`  100%{transform:scale(${curScale});}\n}`;
+  kfGlow+=`  100%{opacity:${finalGlow};}\n}`;
+
+  let el=document.getElementById('breathKF');
+  if(!el){el=document.createElement('style');el.id='breathKF';document.head.appendChild(el);}
+  el.textContent=kfOrb+'\n'+kfGlow;
+}
+
 function startBreathwork(){
   const id=document.getElementById('breathSelect').value;
   if(!id)return;
@@ -1507,16 +1557,32 @@ function startBreathwork(){
   initBreathVoice();
 
   const isScan=(id==='scan');
+  const totalCycleSec=t.durations.reduce((a,b)=>a+b,0);
 
-  const overlay=document.getElementById('breathOverlay');
-  overlay.classList.add('active');
+  document.getElementById('breathOverlay').classList.add('active');
   document.getElementById('breathName').textContent=t.name;
 
-  document.getElementById('breathBarWrap').style.display=isScan?'none':'flex';
+  // Show correct visual
+  const orbWrap=document.getElementById('breathOrbWrap');
   const scanWrap=document.getElementById('bodyScanWrap');
+  orbWrap.style.display=isScan?'none':'flex';
   scanWrap.style.display=isScan?'flex':'none';
-  if(isScan){document.querySelectorAll('.scan-part').forEach(p=>{p.classList.remove('scan-lit','scan-glow');});}
 
+  if(isScan){
+    document.querySelectorAll('.scan-part').forEach(p=>p.classList.remove('scan-lit','scan-glow'));
+  } else {
+    // Inject technique-specific @keyframes then apply CSS animation — zero rAF height writes
+    buildBreathKeyframes(t);
+    const orb=document.getElementById('breathOrb');
+    const glow=document.getElementById('breathOrbGlow');
+    orb.style.animation='none';
+    glow.style.animation='none';
+    void orb.offsetWidth; // flush so the new animation fires from frame 0
+    orb.style.animation=`breathCycle ${totalCycleSec}s linear ${t.cycles} forwards`;
+    glow.style.animation=`breathGlow ${totalCycleSec}s linear ${t.cycles} forwards`;
+  }
+
+  // ── Tick: updates TEXT only (countdown + phase label). No layout-triggering properties. ──
   const SCAN_MAP={
     'Settle In':[],
     'Feet & Legs':['sp-lleg','sp-rleg','sp-lfoot','sp-rfoot'],
@@ -1533,109 +1599,72 @@ function startBreathwork(){
     parts.forEach(pid=>{const el=document.getElementById(pid);if(el)el.classList.add(isIntegrate?'scan-glow':'scan-lit');});
   }
 
-  function updateBars(phase){
-    const bars=[document.getElementById('breathBarL'),document.getElementById('breathBarR')];
-    const p=phase.toLowerCase();
-    let bg,sh;
-    if(p.includes('inhale')||p.includes('sniff')||p.includes('in')){
-      bg='linear-gradient(to top,#0f1e4a,#1e4fa8)';sh='0 -4px 40px rgba(50,110,230,0.55),inset 0 0 24px rgba(80,150,255,0.15)';
-    } else if(p.includes('exhale')||p.includes('out')){
-      bg='linear-gradient(to top,#0a1535,#162d6e)';sh='0 -4px 24px rgba(30,70,160,0.35),inset 0 0 16px rgba(50,100,200,0.1)';
-    } else {
-      bg='linear-gradient(to top,#08112a,#101e50)';sh='0 -2px 16px rgba(20,50,120,0.25),inset 0 0 10px rgba(30,60,140,0.08)';
-    }
-    bars.forEach(b=>{if(b){b.style.background=bg;b.style.boxShadow=sh;}});
+  function onBreathComplete(){
+    clearInterval(breathInterval);breathInterval=null;
+    document.getElementById('breathPhase').textContent='\u2713 Complete';
+    document.getElementById('breathCount').textContent='';
+    document.getElementById('breathInstruction').textContent='Well done. Take a moment before returning.';
+    document.getElementById('breathCycleInfo').textContent='';
+    if(isScan){document.querySelectorAll('.scan-part').forEach(p=>{p.classList.remove('scan-lit');p.classList.add('scan-glow');});}
+    document.querySelector('.breath-content').classList.add('breath-complete');
+    setTimeout(()=>{document.querySelector('.breath-content').classList.remove('breath-complete');},600);
+    speak('Well done. Take a moment.');
+    setTimeout(()=>{if(breathActive)stopBreathwork();},6000);
   }
 
-  let cycle=0,pi=0;
-  let phaseStartTime=performance.now();
-  let phaseDuration=t.durations[pi]*1000;
-  let lastCount=-1;
+  const sessionStart=performance.now();
+  let lastPhaseKey='';
 
-  function onNewPhase(){
-    const phase=t.phases[pi];
-    document.getElementById('breathPhase').textContent=phase;
-    document.getElementById('breathInstruction').textContent=t.cues[pi];
-    document.getElementById('breathCycleInfo').textContent=t.cycles>1?'Cycle '+(cycle+1)+' of '+t.cycles:'';
-    if(isScan)updateBodyScan(phase); else updateBars(phase);
-    lastCount=-1;
-    speak(t.cues[pi]);
-  }
-
-  function frame(now){
+  function tick(){
     if(!breathActive)return;
-    const elapsed=now-phaseStartTime;
-    const dur=phaseDuration;
-    const remaining=Math.max(0,dur-elapsed);
-    const pct=Math.min(1,elapsed/dur);
+    const elapsed=(performance.now()-sessionStart)/1000;
+    const currentCycle=Math.floor(elapsed/totalCycleSec);
+    if(currentCycle>=t.cycles){onBreathComplete();return;}
 
-    if(!isScan){
-      const bars=[document.getElementById('breathBarL'),document.getElementById('breathBarR')];
-      const ph=t.phases[pi].toLowerCase();
-      if(ph.includes('inhale')||ph.includes('sniff')||ph.includes('in')){
-        bars.forEach(b=>{if(b)b.style.height=(pct*100)+'%';});
-      } else if(ph.includes('exhale')||ph.includes('out')){
-        bars.forEach(b=>{if(b)b.style.height=((1-pct)*100)+'%';});
-      }
+    const posInCycle=elapsed%totalCycleSec;
+    let acc=0,pi=0;
+    for(let i=0;i<t.phases.length;i++){
+      acc+=t.durations[i];
+      if(posInCycle<acc){pi=i;break;}
+      if(i===t.phases.length-1)pi=i;
     }
+    const phaseStart=acc-t.durations[pi];
+    const remaining=t.durations[pi]-(posInCycle-phaseStart);
+    const countDown=Math.ceil(remaining);
+    const phaseKey=currentCycle+'-'+pi;
 
-    const countDown=Math.ceil(remaining/1000);
-    if(countDown!==lastCount){lastCount=countDown;document.getElementById('breathCount').textContent=countDown>0?countDown:'';}
+    // textContent writes — safe, no layout reflow
+    document.getElementById('breathPhase').textContent=t.phases[pi];
+    document.getElementById('breathCount').textContent=countDown>0?countDown:'';
+    document.getElementById('breathInstruction').textContent=t.cues[pi];
+    if(t.cycles>1)document.getElementById('breathCycleInfo').textContent='Cycle '+(currentCycle+1)+' of '+t.cycles;
 
-    if(elapsed>=dur){
-      pi++;
-      if(pi>=t.phases.length){
-        pi=0;cycle++;
-        if(cycle>=t.cycles){
-          document.getElementById('breathPhase').textContent='\u2713 Complete';
-          document.getElementById('breathCount').textContent='';
-          document.getElementById('breathInstruction').textContent='Well done. Take a moment before returning.';
-          document.getElementById('breathCycleInfo').textContent='';
-          if(isScan){
-            document.querySelectorAll('.scan-part').forEach(p=>{p.classList.remove('scan-lit');p.classList.add('scan-glow');});
-          } else {
-            ['breathBarL','breathBarR'].forEach(bid=>{const b=document.getElementById(bid);if(b){b.style.height='100%';b.style.background='linear-gradient(to top,#0f1e4a,#2b5ea8)';}});
-          }
-          document.querySelector('.breath-content').classList.add('breath-complete');
-          setTimeout(()=>{document.querySelector('.breath-content').classList.remove('breath-complete');},600);
-          speak('Well done. Take a moment.');
-          setTimeout(()=>{if(breathActive)stopBreathwork();},6000);
-          return;
-        }
-      }
-      phaseStartTime=now;
-      phaseDuration=t.durations[pi]*1000;
-      // Briefly enable CSS transition so bar height changes smoothly at phase boundary
-      if(!isScan){
-        const bars=[document.getElementById('breathBarL'),document.getElementById('breathBarR')];
-        const nextPh=t.phases[pi].toLowerCase();
-        // On exhale start (bar at top), on inhale start (bar at bottom) — add 1s transition
-        bars.forEach(b=>{if(b){b.style.transition='height 0.9s ease-in-out, background 3s ease-in-out';
-          if(nextPh.includes('exhale')||nextPh.includes('out'))b.style.height='100%';
-          else if(nextPh.includes('inhale')||nextPh.includes('sniff')||nextPh.includes('in'))b.style.height='0%';
-          setTimeout(()=>{if(b)b.style.transition='background 3s ease-in-out';},950);
-        }});
-      }
-      onNewPhase();
+    if(phaseKey!==lastPhaseKey){
+      lastPhaseKey=phaseKey;
+      if(isScan)updateBodyScan(t.phases[pi]);
+      speak(t.cues[pi]);
     }
-    breathRAF=requestAnimationFrame(frame);
   }
 
-  onNewPhase();
-  breathRAF=requestAnimationFrame(frame);
+  tick();
+  breathInterval=setInterval(tick,100); // text-only, 100ms is plenty
 }
 
 function stopBreathwork(){
   breathActive=false;
-  if(breathRAF){cancelAnimationFrame(breathRAF);breathRAF=null;}
   clearInterval(breathInterval);breathInterval=null;
   try{speechSynthesis.cancel();}catch(e){}
+  // Snap orb back to resting state without triggering layout
+  const orb=document.getElementById('breathOrb');
+  const glow=document.getElementById('breathOrbGlow');
+  if(orb){orb.style.animation='none';orb.style.transform='scale(0.35)';}
+  if(glow){glow.style.animation='none';glow.style.opacity='0';}
   document.getElementById('breathOverlay').classList.remove('active');
-  ['breathBarL','breathBarR'].forEach(bid=>{const b=document.getElementById(bid);if(b){b.style.height='0%';b.style.background='linear-gradient(to top,#0f1e4a,#1a3870)';}});
-  document.getElementById('breathBarWrap').style.display='';
   document.getElementById('bodyScanWrap').style.display='none';
   document.querySelectorAll('.scan-part').forEach(p=>p.classList.remove('scan-lit','scan-glow'));
 }
+
+
 
 // ═══════════════════════════════════════
 // TASK LIST
