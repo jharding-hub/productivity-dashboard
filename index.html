@@ -300,6 +300,10 @@ body.unlocked .date-editable:hover{border-bottom-color:var(--accent);background:
 .share-inbox-dismiss:hover{color:var(--text);}
 .empty-state{text-align:center;padding:20px;color:var(--text-faint);font-size:13px;}
 .clear-done{font-size:11px;color:var(--text-faint);cursor:pointer;text-decoration:underline;}.clear-done:hover{color:var(--text-dim);}
+.mic-btn{background:var(--surface-raised);border:1px solid var(--border);color:var(--text-dim);padding:5px 9px;border-radius:var(--radius-sm);cursor:pointer;font-size:13px;font-family:inherit;transition:all 0.2s;flex-shrink:0;line-height:1;}
+.mic-btn:hover{border-color:var(--teal);color:var(--teal);}
+.mic-btn.listening{background:var(--red-dim);border-color:var(--red);color:var(--red);animation:micPulse 1s ease-in-out infinite;}
+@keyframes micPulse{0%,100%{opacity:1;}50%{opacity:0.5;}}
 .section-label{font-size:11px;color:var(--text-dim);text-transform:uppercase;letter-spacing:0.5px;margin:8px 0 4px;}
 @media(max-width:1100px){.dashboard{grid-template-columns:1fr 1fr;}.panel-narrow{grid-column:span 1;}}
 @media(max-width:768px){.dashboard{grid-template-columns:1fr;padding:12px 14px 16px;gap:12px;}.header{padding:14px 14px 10px;}.header h1{font-size:18px;}.header h1 span{display:none;}.nav-tabs{display:flex;}.panel{display:none;}.panel.mobile-visible{display:flex;}.panel.hidden-panel{display:none!important;}.panel.user-hidden{display:none!important;}.drag-handle{display:none!important;}.dynamic-panels{padding:0 14px 90px;}}
@@ -419,7 +423,7 @@ body.unlocked .date-editable:hover{border-bottom-color:var(--accent);background:
 <div class="project-list" id="projectList"></div>
 </div>
 <div class="section-label" style="margin-top:12px;">Add Project</div>
-<div class="add-row"><input type="text" id="newProjName" placeholder="Project name..."><input type="date" id="newProjDue"><button class="btn btn-accent" onclick="addProject()">+</button></div></div>
+<div class="add-row"><input type="text" id="newProjName" placeholder="Project name..."><button class="mic-btn" id="projMicBtn" onclick="toggleMic('newProjName','projMicBtn')" title="Voice input">&#127908;</button><input type="date" id="newProjDue"><button class="btn btn-accent" onclick="addProject()">+</button></div></div>
 
 <!-- 2. REMINDERS -->
 <div class="panel" data-panel="reminders" data-nav="reminders">
@@ -429,7 +433,7 @@ body.unlocked .date-editable:hover{border-bottom-color:var(--accent);background:
 <div class="reminder-list" id="reminderList"></div>
 </div>
 <div class="section-label" style="margin-top:10px;">Add Reminder</div>
-<input type="text" id="newRemText" placeholder="Reminder text..." style="margin-bottom:6px;">
+<div style="display:flex;gap:6px;margin-bottom:6px;"><input type="text" id="newRemText" placeholder="Reminder text..." style="flex:1;"><button class="mic-btn" id="remMicBtn" onclick="toggleMic('newRemText','remMicBtn')" title="Voice input">&#127908;</button></div>
 <div class="add-row" style="margin-top:0;"><input type="date" id="newRemDate"><input type="time" id="newRemTime"><button class="btn btn-accent" onclick="addReminder()">+</button></div></div>
 
 <!-- 3. BRAIN DUMP -->
@@ -530,7 +534,7 @@ body.unlocked .date-editable:hover{border-bottom-color:var(--accent);background:
 </div>
 <div class="tl-add-form">
 <div class="section-label">Add Task</div>
-<input type="text" id="tlNewName" placeholder="Task name..." onkeydown="if(event.key==='Enter')addStandaloneTask()">
+<div style="display:flex;gap:6px;"><input type="text" id="tlNewName" placeholder="Task name..." onkeydown="if(event.key==='Enter')addStandaloneTask()" style="flex:1;"><button class="mic-btn" id="taskMicBtn" onclick="toggleMic('tlNewName','taskMicBtn')" title="Voice input">&#127908;</button></div>
 <div class="tl-add-row">
 <select id="tlNewProject"><option value="">No project</option><option value="__new__">+ New project...</option></select>
 <select id="tlNewPriority"><option value="low">Low</option><option value="med" selected>Med</option><option value="high">High</option></select>
@@ -1086,7 +1090,7 @@ function makeTimeClickable(el,currentVal,onSave){
 
 function renderProjects(){const el=document.getElementById('projectList');const today=todayStr();if(state.projects.length===0){el.innerHTML='<div class="empty-state">No projects yet.</div>';document.getElementById('projCount').textContent='0';updateNoteSelectors();return;}
 el.innerHTML=state.projects.map(p=>{const total=p.subtasks.length,done=p.subtasks.filter(s=>s.done).length;const ov=p.due&&p.due<today;const ovc=p.subtasks.filter(s=>s.due&&s.due<today&&!s.done).length;const sorted=[...p.subtasks].sort((a,b)=>{if(a.done!==b.done)return a.done?1:-1;if(a.due&&b.due)return a.due.localeCompare(b.due);if(a.due)return -1;if(b.due)return 1;return 0;});
-return '<div class="project-card"><div class="proj-header" onclick="toggleProjectExpand(\''+p.id+'\')"><span class="proj-expand '+(p.expanded?'open':'')+'">\u25B6</span><div class="proj-info"><div class="proj-name editable" id="pn_'+p.id+'">'+esc(p.name)+'</div><div class="proj-meta"><span>'+done+'/'+total+' tasks</span>'+(p.due?'<span class="date-editable '+(ov?'overdue':'')+'" id="pd_'+p.id+'">Ends: '+fmtDate(p.due)+(ov?' \u26A0':'')+'</span>':'<span class="date-editable" id="pd_'+p.id+'" style="color:var(--text-faint);">+ set date</span>')+(ovc>0?'<span class="overdue">'+ovc+' overdue</span>':'')+'</div></div><div style="display:flex;gap:4px;" onclick="event.stopPropagation()"><span class="st-btn st-cal" onclick="exportProjectICS(\''+p.id+'\')">\u{1F4C5}</span><span class="proj-delete" onclick="deleteProject(\''+p.id+'\')">\u2715</span></div></div><div class="subtask-area '+(p.expanded?'open':'')+'"><div class="subtask-list">'+(sorted.length===0?'<div class="empty-state" style="padding:10px;">No subtasks yet.</div>':sorted.map(st=>{const so=st.due&&st.due<today&&!st.done;return '<div class="subtask-item '+(st.done?'st-done':'')+'"><div class="st-check '+(st.done?'checked':'')+'" onclick="toggleSubtask(\''+p.id+"','"+st.id+'\')">'+(st.done?'\u2713':'')+'</div><span class="st-name editable" id="sn_'+st.id+'"><span class="priority-dot priority-'+st.priority+'"></span>'+esc(st.name)+'</span>'+(st.due?'<span class="st-due date-editable '+(so?'overdue':'')+'" id="sd_'+st.id+'">'+(so?'\u26A0 ':'')+fmtDate(st.due)+'</span>':'<span class="st-due date-editable" id="sd_'+st.id+'" style="color:var(--text-faint);">+ date</span>')+'<div class="st-actions">'+(st.timeEst?'<span class="tl-time-badge">'+fmtTimeEst(st.timeEst)+'</span>':'')+'<span class="st-btn st-cal" onclick="exportSubtaskICS(\''+p.id+"','"+st.id+'\')">\u{1F4C5}</span><span class="st-btn st-del" onclick="deleteSubtask(\''+p.id+"','"+st.id+'\')">\u2715</span></div></div>';}).join(''))+'</div><div class="subtask-add"><input type="text" id="stN_'+p.id+'" placeholder="New subtask..." onkeydown="if(event.key===\'Enter\')addSubtask(\''+p.id+'\')"><select id="stP_'+p.id+'"><option value="low">Low</option><option value="med" selected>Med</option><option value="high">High</option></select><select id="stT_'+p.id+'" class="time-est-select"><option value="">Time?</option><option value="30">30m</option><option value="60">1hr</option><option value="90">1.5hr</option><option value="120">2hr</option><option value="180">3hr</option><option value="240">4hr</option><option value="999">4hr+</option></select><input type="date" id="stD_'+p.id+'"><button class="btn btn-accent btn-sm" onclick="addSubtask(\''+p.id+'\')">+</button></div></div></div>';}).join('');
+return '<div class="project-card"><div class="proj-header" onclick="toggleProjectExpand(\''+p.id+'\')"><span class="proj-expand '+(p.expanded?'open':'')+'">\u25B6</span><div class="proj-info"><div class="proj-name editable" id="pn_'+p.id+'">'+esc(p.name)+'</div><div class="proj-meta"><span>'+done+'/'+total+' tasks</span>'+(p.due?'<span class="date-editable '+(ov?'overdue':'')+'" id="pd_'+p.id+'">Ends: '+fmtDate(p.due)+(ov?' \u26A0':'')+'</span>':'<span class="date-editable" id="pd_'+p.id+'" style="color:var(--text-faint);">+ set date</span>')+(ovc>0?'<span class="overdue">'+ovc+' overdue</span>':'')+'</div></div><div style="display:flex;gap:4px;" onclick="event.stopPropagation()"><span class="st-btn st-cal" onclick="exportProjectICS(\''+p.id+'\')">\u{1F4C5}</span><span class="proj-delete" onclick="deleteProject(\''+p.id+'\')">\u2715</span></div></div><div class="subtask-area '+(p.expanded?'open':'')+'"><div class="subtask-list">'+(sorted.length===0?'<div class="empty-state" style="padding:10px;">No subtasks yet.</div>':sorted.map(st=>{const so=st.due&&st.due<today&&!st.done;return '<div class="subtask-item '+(st.done?'st-done':'')+'"><div class="st-check '+(st.done?'checked':'')+'" onclick="toggleSubtask(\''+p.id+"','"+st.id+'\')">'+(st.done?'\u2713':'')+'</div><span class="st-name editable" id="sn_'+st.id+'"><span class="priority-dot priority-'+st.priority+'"></span>'+esc(st.name)+'</span>'+(st.due?'<span class="st-due date-editable '+(so?'overdue':'')+'" id="sd_'+st.id+'">'+(so?'\u26A0 ':'')+fmtDate(st.due)+'</span>':'<span class="st-due date-editable" id="sd_'+st.id+'" style="color:var(--text-faint);">+ date</span>')+'<div class="st-actions">'+(st.timeEst?'<span class="tl-time-badge">'+fmtTimeEst(st.timeEst)+'</span>':'')+'<span class="st-btn st-cal" onclick="exportSubtaskICS(\''+p.id+"','"+st.id+'\')">\u{1F4C5}</span><span class="st-btn st-del" onclick="deleteSubtask(\''+p.id+"','"+st.id+'\')">\u2715</span></div></div>';}).join(''))+'</div><div class="subtask-add"><input type="text" id="stN_'+p.id+'" placeholder="New subtask..." onkeydown="if(event.key===\'Enter\')addSubtask(\''+p.id+'\')"><button class="mic-btn" id="stMic_'+p.id+'" onclick="toggleMic(\'stN_'+p.id+'\',\'stMic_'+p.id+'\')" title="Voice input">&#127908;</button><select id="stP_'+p.id+'"><option value="low">Low</option><option value="med" selected>Med</option><option value="high">High</option></select><select id="stT_'+p.id+'" class="time-est-select"><option value="">Time?</option><option value="30">30m</option><option value="60">1hr</option><option value="90">1.5hr</option><option value="120">2hr</option><option value="180">3hr</option><option value="240">4hr</option><option value="999">4hr+</option></select><input type="date" id="stD_'+p.id+'"><button class="btn btn-accent btn-sm" onclick="addSubtask(\''+p.id+'\')">+</button></div></div></div>';}).join('');
 document.getElementById('projCount').textContent=state.projects.length;
 state.projects.forEach(p=>{const pe=document.getElementById('pn_'+p.id);if(pe)makeEditable(pe,v=>editProjectName(p.id,v));p.subtasks.forEach(st=>{const se=document.getElementById('sn_'+st.id);if(se)makeEditable(se,v=>{editSubtaskName(p.id,st.id,v.trim());});});});
 // Attach date editors
@@ -1902,6 +1906,51 @@ function shareIntoReminder(){
   toast('Added to Reminders ✓');
 }
 // ────────────────────────────────────────────────────────────────────────────
+
+// ═══════════════════════════════════════
+// VOICE INPUT
+// ═══════════════════════════════════════
+var _micRec=null,_micBtn=null;
+function toggleMic(targetId,btnId){
+  const btn=document.getElementById(btnId);
+  const target=document.getElementById(targetId);
+  if(!btn||!target){return;}
+  // If already listening on this button, stop
+  if(_micBtn===btnId&&_micRec){_micRec.stop();return;}
+  // Stop any other active mic first
+  if(_micRec){_micRec.stop();}
+  if(!('SpeechRecognition' in window||'webkitSpeechRecognition' in window)){
+    toast('Voice input not supported in this browser');return;
+  }
+  const SR=window.SpeechRecognition||window.webkitSpeechRecognition;
+  const rec=new SR();
+  rec.lang='en-US';rec.continuous=true;rec.interimResults=true;
+  var base='';
+  rec.onstart=function(){
+    _micRec=rec;_micBtn=btnId;
+    base=target.value?target.value.trimEnd()+' ':'';
+    btn.classList.add('listening');btn.textContent='\u23F9 Stop';
+  };
+  rec.onresult=function(e){
+    var interim='',final=base;
+    for(var i=e.resultIndex;i<e.results.length;i++){
+      if(e.results[i].isFinal)final+=e.results[i][0].transcript;
+      else interim+=e.results[i][0].transcript;
+    }
+    // Update base on each final chunk so next interim appends correctly
+    if(e.results[e.results.length-1].isFinal)base=final;
+    target.value=final+interim;
+    target.dispatchEvent(new Event('input'));
+  };
+  rec.onerror=function(e){if(e.error!=='aborted')toast('Mic: '+e.error);stopMic(btnId);};
+  rec.onend=function(){stopMic(btnId);};
+  rec.start();
+}
+function stopMic(btnId){
+  const btn=document.getElementById(btnId);
+  if(btn){btn.classList.remove('listening');btn.textContent='\uD83C\uDFA4';}
+  _micRec=null;_micBtn=null;
+}
 
 async function initApp(){
 await load();
