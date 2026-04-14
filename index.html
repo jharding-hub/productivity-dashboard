@@ -298,7 +298,13 @@ body.unlocked .date-editable:hover{border-bottom-color:var(--accent);background:
 .share-inbox-btn.primary:hover{background:var(--accent);color:var(--bg);}
 .share-inbox-dismiss{position:absolute;top:10px;right:12px;background:none;border:none;color:var(--text-faint);font-size:18px;cursor:pointer;line-height:1;padding:2px;}
 .share-inbox-dismiss:hover{color:var(--text);}
-.empty-state{text-align:center;padding:20px;color:var(--text-faint);font-size:13px;}
+/* MIC BUTTON — voice input */
+.mic-btn{background:var(--surface-raised);border:1px solid var(--border);color:var(--text-dim);padding:4px 9px;border-radius:var(--radius-sm);cursor:pointer;font-size:13px;font-family:inherit;transition:all 0.2s;white-space:nowrap;line-height:1;}
+.mic-btn:hover{border-color:var(--teal);color:var(--teal);}
+.mic-btn.listening{background:var(--red-dim);border-color:var(--red);color:var(--red);animation:micPulse 1s ease-in-out infinite;}
+@keyframes micPulse{0%,100%{opacity:1;}50%{opacity:0.5;}}
+/* FIREWORK CANVAS */
+#fireworkCanvas{position:fixed;inset:0;pointer-events:none;z-index:9998;}
 .clear-done{font-size:11px;color:var(--text-faint);cursor:pointer;text-decoration:underline;}.clear-done:hover{color:var(--text-dim);}
 .section-label{font-size:11px;color:var(--text-dim);text-transform:uppercase;letter-spacing:0.5px;margin:8px 0 4px;}
 @media(max-width:1100px){.dashboard{grid-template-columns:1fr 1fr;}.panel-narrow{grid-column:span 1;}}
@@ -434,9 +440,9 @@ body.unlocked .date-editable:hover{border-bottom-color:var(--accent);background:
 
 <!-- 3. BRAIN DUMP -->
 <div class="panel panel-narrow" data-panel="brain" data-nav="brain">
-<div class="panel-header"><div class="panel-title"><span class="drag-handle">&#10495;</span><span class="icon">&#129504;</span> Brain Dump</div><div class="panel-badge">Working Memory</div></div>
-<p style="font-size:11px;color:var(--text-dim);margin-bottom:6px;">Catch thoughts before they vanish. Press Enter to save. &#8599; promotes to subtask.</p>
-<textarea class="brain-dump-area" id="brainDump" placeholder="Ideas, stray thoughts, that thing you keep forgetting..." onkeydown="handleDumpKey(event)"></textarea>
+<div class="panel-header"><div class="panel-title"><span class="drag-handle">&#10495;</span><span class="icon">&#129504;</span> Executive Sandbox</div><div class="panel-badge">Lateral Thinking</div></div>
+<p style="font-size:11px;color:var(--text-dim);margin-bottom:6px;">Free, uncategorized thoughts. Press Enter to capture. &#8599; promotes to subtask.</p>
+<textarea class="brain-dump-area" id="brainDump" placeholder="Loose ideas, half-baked plans, that thing circling your mind..." onkeydown="handleDumpKey(event)"></textarea>
 <div class="thought-chips" id="thoughtChips"></div></div>
 
 <!-- 4. TIME AWARENESS -->
@@ -501,7 +507,7 @@ body.unlocked .date-editable:hover{border-bottom-color:var(--accent);background:
 </div>
 <div class="note-form">
 <input type="text" id="newNoteLabel" placeholder="Note label...">
-<textarea class="note-textarea" id="newNoteBody" placeholder="Note content..."></textarea>
+<div style="display:flex;gap:6px;align-items:flex-start;"><textarea class="note-textarea" id="newNoteBody" placeholder="Note content..." style="flex:1;"></textarea><button class="mic-btn" id="noteMicBtn" onclick="toggleMic('newNoteBody','noteMicBtn')" title="Dictate note content" style="margin-top:2px;">&#127908;</button></div>
 <div class="note-form-row">
 <select id="newNoteProject"><option value="">No project tag</option></select>
 <button class="btn btn-accent" onclick="addNote()">Add Note</button>
@@ -530,7 +536,7 @@ body.unlocked .date-editable:hover{border-bottom-color:var(--accent);background:
 </div>
 <div class="tl-add-form">
 <div class="section-label">Add Task</div>
-<input type="text" id="tlNewName" placeholder="Task name..." onkeydown="if(event.key==='Enter')addStandaloneTask()">
+<div style="display:flex;gap:6px;align-items:center;"><input type="text" id="tlNewName" placeholder="Task name..." onkeydown="if(event.key==='Enter')addStandaloneTask()" style="flex:1;"><button class="mic-btn" id="taskMicBtn" onclick="toggleMic('tlNewName','taskMicBtn')" title="Voice input">&#127908;</button></div>
 <div class="tl-add-row">
 <select id="tlNewProject"><option value="">No project</option><option value="__new__">+ New project...</option></select>
 <select id="tlNewPriority"><option value="low">Low</option><option value="med" selected>Med</option><option value="high">High</option></select>
@@ -585,7 +591,7 @@ body.unlocked .date-editable:hover{border-bottom-color:var(--accent);background:
 <div class="nav-tabs" id="navTabs">
 <button class="nav-tab active" onclick="showMobilePanel('projects',this)" data-navfor="projects"><span class="nt-icon">&#128194;</span>Projects</button>
 <button class="nav-tab" onclick="showMobilePanel('reminders',this)" data-navfor="reminders"><span class="nt-icon">&#128276;</span>Remind</button>
-<button class="nav-tab" onclick="showMobilePanel('brain',this)" data-navfor="brain"><span class="nt-icon">&#129504;</span>Dump</button>
+<button class="nav-tab" onclick="showMobilePanel('brain',this)" data-navfor="brain"><span class="nt-icon">&#129504;</span>Sandbox</button>
 <button class="nav-tab" onclick="showMobilePanel('time',this)" data-navfor="time"><span class="nt-icon">&#9201;</span>Timer</button>
 <button class="nav-tab" onclick="showMobilePanel('routines',this)" data-navfor="routines"><span class="nt-icon">&#128257;</span>Routines</button>
 <button class="nav-tab" onclick="showMobilePanel('notes',this)" data-navfor="notes"><span class="nt-icon">&#128221;</span>Notes</button>
@@ -902,7 +908,7 @@ const ALL_PANELS=[
   {id:'time',icon:'\u23F1',name:'Time Awareness',desc:'Breathwork, energy/mood check-in, and focus timer'},
   {id:'tasklist',icon:'\u{1F4CB}',name:'Task List',desc:'Unified view of all tasks sorted by priority or time'},
   {id:'notes',icon:'\u{1F4DD}',name:'Notes',desc:'Labeled notes with project tags'},
-  {id:'brain',icon:'\u{1F9E0}',name:'Brain Dump',desc:'Capture fleeting thoughts'},
+  {id:'brain',icon:'\u{1F9E0}',name:'Executive Sandbox',desc:'Free lateral thoughts, uncategorized ideas'},
   {id:'routines',icon:'\u{1F501}',name:'Routines',desc:'Morning, evening, and custom checklists'},
   {id:'wellness',icon:'\u{1F9FA}',name:'Grounding Toolkit',desc:'Breathing and grounding techniques (auto-shows when needed)'},
   {id:'decision',icon:'\u{1F9ED}',name:'Stuck? Start Here',desc:'Decision aid prompts'},
@@ -1253,7 +1259,7 @@ function editRoutineName(tab,id,v){if(!v)return;const r=state.routines[tab].find
 function renderRoutines(){const tab=state.currentRoutineTab,items=state.routines[tab]||[];const el=document.getElementById('routineList');if(items.length===0){el.innerHTML='<div class="empty-state">No routine items.</div>';}else{el.innerHTML=items.map(r=>'<div class="routine-item '+(r.done?'r-done':'')+'"><div class="r-check '+(r.done?'r-checked':'')+'" onclick="toggleRoutine(\''+tab+"','"+r.id+'\')">'+(r.done?'\u2713':'')+'</div><span class="r-name editable" id="rn_'+r.id+'">'+esc(r.name)+'</span><span class="r-delete" onclick="deleteRoutine(\''+tab+"','"+r.id+'\')">\u2715</span></div>').join('');}const done=items.filter(r=>r.done).length;document.getElementById('routineProgress').textContent=done+'/'+items.length;items.forEach(r=>{const e=document.getElementById('rn_'+r.id);if(e)makeEditable(e,v=>editRoutineName(tab,r.id,v));});refreshEditables();}
 
 // DECISION
-const prompts=['<strong>Can\'t start?</strong> 2-minute rule: commit to just 2 minutes.','<strong>Overwhelmed?</strong> Brain Dump everything. Then pick the smallest item.','<strong>Can\'t decide?</strong> "Which will I regret NOT doing tomorrow?"','<strong>Procrastinating?</strong> Name the feeling behind it.','<strong>Task too big?</strong> Break it down until each step feels silly.','<strong>Context switching?</strong> Write one sentence about where you left off.','<strong>Forgetting?</strong> Under 2 min \u2192 do now. Otherwise \u2192 Brain Dump.','<strong>Stuck in a loop?</strong> Change your physical state.','<strong>Perfectionism?</strong> C-minus draft. Done > perfect.','<strong>No motivation?</strong> Motivation follows action.','<strong>Decision fatigue?</strong> Top 3 only.','<strong>Emotional flooding?</strong> Try 5-4-3-2-1 grounding.','<strong>Avoiding a follow-up?</strong> Draft it now. Sending is separate.'];
+const prompts=['<strong>Can\'t start?</strong> 2-minute rule: commit to just 2 minutes.','<strong>Overwhelmed?</strong> Executive Sandbox everything. Then pick the smallest item.','<strong>Can\'t decide?</strong> "Which will I regret NOT doing tomorrow?"','<strong>Procrastinating?</strong> Name the feeling behind it.','<strong>Task too big?</strong> Break it down until each step feels silly.','<strong>Context switching?</strong> Write one sentence about where you left off.','<strong>Forgetting?</strong> Under 2 min \u2192 do now. Otherwise \u2192 Executive Sandbox.','<strong>Stuck in a loop?</strong> Change your physical state.','<strong>Perfectionism?</strong> C-minus draft. Done > perfect.','<strong>No motivation?</strong> Motivation follows action.','<strong>Decision fatigue?</strong> Top 3 only.','<strong>Emotional flooding?</strong> Try 5-4-3-2-1 grounding.','<strong>Avoiding a follow-up?</strong> Draft it now. Sending is separate.'];
 function newDecisionPrompt(){const el=document.getElementById('decisionPrompt');el.innerHTML=prompts[Math.floor(Math.random()*prompts.length)];el.style.animation='none';el.offsetHeight;el.style.animation='chipIn 0.3s ease';}
 
 // MOBILE
@@ -1747,14 +1753,16 @@ function renderTaskList(){
 }
 
 function toggleTaskDone(id,source,projId){
+  var wasAlreadyDone=false;
   if(source==='project'){
     var p=state.projects.find(function(p){return p.id===projId;});
-    if(p){var s=p.subtasks.find(function(s){return s.id===id;});if(s)s.done=!s.done;}
+    if(p){var s=p.subtasks.find(function(s){return s.id===id;});if(s){wasAlreadyDone=s.done;s.done=!s.done;}}
     renderProjects();
   }else{
-    var t=state.tasks.find(function(t){return t.id===id;});if(t)t.done=!t.done;
+    var t=state.tasks.find(function(t){return t.id===id;});if(t){wasAlreadyDone=t.done;t.done=!t.done;}
   }
   save();renderTaskList();
+  if(!wasAlreadyDone) celebrateTaskDone(); // only fire when checking OFF → ON
 }
 
 function addStandaloneTask(){
@@ -1790,7 +1798,138 @@ function addStandaloneTask(){
   save();renderTaskList();toast('Task added');
 }
 
-function deleteStandaloneTask(id){
+// ═══════════════════════════════════════
+// VOICE INPUT (Web Speech API)
+// ═══════════════════════════════════════
+var activeRecognition=null;
+var activeMicTargetId=null;
+var activeMicBtnId=null;
+
+function toggleMic(targetId,btnId){
+  // If already listening on this button, stop
+  if(activeMicBtnId===btnId&&activeRecognition){
+    activeRecognition.stop();
+    return;
+  }
+  // Stop any other active recognition first
+  if(activeRecognition){activeRecognition.stop();}
+
+  if(!('SpeechRecognition' in window||'webkitSpeechRecognition' in window)){
+    toast('Voice input not supported in this browser');return;
+  }
+  const SR=window.SpeechRecognition||window.webkitSpeechRecognition;
+  const rec=new SR();
+  rec.lang='en-US';
+  rec.continuous=true;
+  rec.interimResults=true;
+
+  const btn=document.getElementById(btnId);
+  const target=document.getElementById(targetId);
+  if(!btn||!target)return;
+
+  let finalTranscript='';
+  const existing=target.value||'';
+
+  rec.onstart=function(){
+    activeRecognition=rec;activeMicTargetId=targetId;activeMicBtnId=btnId;
+    btn.classList.add('listening');btn.textContent='⏹ Stop';
+    finalTranscript=existing?existing+' ':'';
+  };
+  rec.onresult=function(e){
+    let interim='';
+    for(let i=e.resultIndex;i<e.results.length;i++){
+      if(e.results[i].isFinal) finalTranscript+=e.results[i][0].transcript+' ';
+      else interim+=e.results[i][0].transcript;
+    }
+    target.value=finalTranscript+interim;
+    // Auto-resize textareas
+    if(target.tagName==='TEXTAREA'){target.style.height='auto';target.style.height=target.scrollHeight+'px';}
+  };
+  rec.onerror=function(e){
+    if(e.error!=='aborted')toast('Mic error: '+e.error);
+    stopMic(btnId);
+  };
+  rec.onend=function(){stopMic(btnId);};
+  rec.start();
+}
+
+function stopMic(btnId){
+  const btn=document.getElementById(btnId);
+  if(btn){btn.classList.remove('listening');btn.textContent='\uD83C\uDFA4';}
+  activeRecognition=null;activeMicTargetId=null;activeMicBtnId=null;
+}
+
+// ═══════════════════════════════════════
+// FIREWORK + TADA — task completion reward
+// ═══════════════════════════════════════
+function playTada(){
+  try{
+    const ctx=new (window.AudioContext||window.webkitAudioContext)();
+    // Short cheerful 3-note tada: E5 → G5 → C6
+    const notes=[659,784,1047];
+    notes.forEach(function(freq,i){
+      const o=ctx.createOscillator();
+      const g=ctx.createGain();
+      o.connect(g);g.connect(ctx.destination);
+      o.type='triangle';
+      o.frequency.value=freq;
+      const t=ctx.currentTime+i*0.12;
+      g.gain.setValueAtTime(0,t);
+      g.gain.linearRampToValueAtTime(0.18,t+0.03);
+      g.gain.exponentialRampToValueAtTime(0.001,t+0.28);
+      o.start(t);o.stop(t+0.3);
+    });
+  }catch(e){}
+}
+
+function launchFireworks(){
+  const canvas=document.getElementById('fireworkCanvas');
+  if(!canvas)return;
+  canvas.width=window.innerWidth;
+  canvas.height=window.innerHeight;
+  const ctx=canvas.getContext('2d');
+  const particles=[];
+  const COLORS=['#d4a853','#6bab73','#5fafb0','#9b7ec7','#c75f5f','#e8e2d6','#5f8fc7'];
+
+  // 3 burst origins spread across upper third
+  [0.25,0.5,0.75].forEach(function(xFrac,bi){
+    const ox=canvas.width*xFrac;
+    const oy=canvas.height*(0.2+bi*0.08);
+    for(let i=0;i<52;i++){
+      const angle=(Math.PI*2/52)*i;
+      const speed=2+Math.random()*4.5;
+      particles.push({
+        x:ox,y:oy,
+        vx:Math.cos(angle)*speed,vy:Math.sin(angle)*speed-2,
+        alpha:1,color:COLORS[Math.floor(Math.random()*COLORS.length)],
+        size:2.5+Math.random()*2.5,decay:0.022+Math.random()*0.012,
+        gravity:0.12
+      });
+    }
+  });
+
+  function draw(){
+    ctx.clearRect(0,0,canvas.width,canvas.height);
+    particles.forEach(function(p){
+      p.x+=p.vx;p.y+=p.vy;p.vy+=p.gravity;
+      p.alpha-=p.decay;
+      ctx.globalAlpha=Math.max(0,p.alpha);
+      ctx.fillStyle=p.color;
+      ctx.beginPath();ctx.arc(p.x,p.y,p.size,0,Math.PI*2);ctx.fill();
+    });
+    ctx.globalAlpha=1;
+    if(particles.some(function(p){return p.alpha>0;})){requestAnimationFrame(draw);}
+    else{ctx.clearRect(0,0,canvas.width,canvas.height);}
+  }
+  draw();
+}
+
+function celebrateTaskDone(){
+  playTada();
+  launchFireworks();
+}
+
+
   state.tasks=state.tasks.filter(function(t){return t.id!==id;});
   save();renderTaskList();
 }
@@ -1859,7 +1998,7 @@ function checkShareTarget(){
     <div class="share-inbox-title">&#128228; Incoming Share</div>
     <div class="share-inbox-preview" id="sharePreview">${esc(combined)}</div>
     <div class="share-inbox-actions">
-      <button class="share-inbox-btn primary" onclick="shareIntoBrainDump()">&#129504; Brain Dump</button>
+      <button class="share-inbox-btn primary" onclick="shareIntoBrainDump()">&#129504; Sandbox</button>
       <button class="share-inbox-btn" onclick="shareIntoNote()">&#128221; Add as Note</button>
       <button class="share-inbox-btn" onclick="shareIntoReminder()">&#128276; Add as Reminder</button>
     </div>`;
@@ -1878,7 +2017,7 @@ function shareIntoBrainDump(){
   const bp=document.querySelector('[data-panel="brain"]');
   if(bp){bp.scrollIntoView({behavior:'smooth',block:'nearest'});bp.style.outline='2px solid var(--accent)';setTimeout(()=>{bp.style.outline='';},1800);}
   d.remove();
-  toast('Added to Brain Dump ✓');
+  toast('Added to Executive Sandbox ✓');
 }
 
 function shareIntoNote(){
@@ -1918,5 +2057,6 @@ setTimeout(checkShareTarget, 400); // slight delay so panels render first
 }
 // Auth is handled by Firebase onAuthStateChanged listener in Script 1
 </script>
+<canvas id="fireworkCanvas"></canvas>
 </body>
 </html>
