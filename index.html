@@ -18,8 +18,8 @@
 *{margin:0;padding:0;box-sizing:border-box;}
 body{font-family:'DM Sans',sans-serif;background:var(--bg);color:var(--text);min-height:100vh;min-height:100dvh;line-height:1.5;padding-top:env(safe-area-inset-top);padding-bottom:env(safe-area-inset-bottom);}
 .header{padding:20px 24px 14px;display:flex;align-items:center;justify-content:space-between;border-bottom:1px solid var(--border);position:sticky;top:0;background:var(--bg);z-index:50;}
-.header h1{font-family:'Fraunces',serif;font-size:22px;font-weight:600;color:var(--accent);letter-spacing:-0.5px;}
-.header h1 span{color:var(--text-dim);font-weight:400;font-size:15px;margin-left:8px;}
+.header h1{font-family:'Fraunces',serif;font-size:16.5px;font-weight:600;color:var(--accent);letter-spacing:-0.5px;}
+.header h1 span{display:none;}
 .header-right{display:flex;align-items:center;gap:14px;}
 .clock{font-variant-numeric:tabular-nums;font-size:20px;font-weight:600;color:var(--text);letter-spacing:1px;}
 .clock-date{font-size:12px;color:var(--text-dim);text-align:right;}
@@ -438,8 +438,35 @@ body.unlocked .date-editable:hover{border-bottom-color:var(--accent);background:
 .np-btn{width:64px;height:52px;border-radius:var(--radius-sm);border:1px solid var(--border);background:var(--surface-raised);color:var(--text);font-size:18px;font-weight:600;font-family:inherit;cursor:pointer;transition:all 0.12s;}
 .np-btn:hover{background:var(--surface-hover);border-color:var(--border-focus);}
 .np-btn:active{transform:scale(0.94);}
-.np-clear{font-size:12px;color:var(--text-dim);}
-.np-del{font-size:16px;}
+/* ── BREATHWORK & TIMER BANNER BUTTONS ── */
+.breathwork-btn,.timer-btn{background:var(--surface-raised);border:1.5px solid var(--border);color:var(--text-dim);padding:7px 14px;border-radius:var(--radius-sm);cursor:pointer;font-size:13px;font-weight:600;font-family:inherit;transition:all 0.2s;}
+.breathwork-btn:hover{border-color:var(--teal);color:var(--teal);}
+.timer-btn:hover{border-color:var(--green);color:var(--green);}
+
+/* ── SHARED MODAL OVERLAY (breathwork picker + timer) ── */
+.modal-blur-overlay{position:fixed;inset:0;z-index:800;display:flex;align-items:center;justify-content:center;visibility:hidden;opacity:0;transition:opacity 0.3s ease,visibility 0.3s ease;}
+.modal-blur-overlay.open{visibility:visible;opacity:1;}
+.modal-blur-backdrop{position:absolute;inset:0;background:rgba(10,9,8,0.55);backdrop-filter:blur(6px);-webkit-backdrop-filter:blur(6px);}
+.modal-blur-panel{position:relative;z-index:1;background:var(--surface);border:1px solid var(--border);border-radius:var(--radius);width:min(680px,92vw);max-height:88vh;display:flex;flex-direction:column;overflow:hidden;box-shadow:0 24px 60px rgba(0,0,0,0.6);animation:journalSlideIn 0.3s cubic-bezier(0.22,1,0.36,1) both;}
+.modal-blur-header{display:flex;align-items:center;justify-content:space-between;padding:16px 20px 12px;border-bottom:1px solid var(--border);flex-shrink:0;}
+.modal-blur-title{font-family:'Fraunces',serif;font-size:18px;font-weight:600;color:var(--accent);display:flex;align-items:center;gap:8px;}
+.modal-blur-close{background:none;border:none;color:var(--text-faint);cursor:pointer;font-size:18px;padding:4px 6px;line-height:1;transition:color 0.15s;}
+.modal-blur-close:hover{color:var(--text);}
+.modal-blur-body{padding:20px;overflow-y:auto;flex:1;}
+
+/* ── TIMER MODAL SPECIFIC ── */
+.timer-modal-display{font-size:72px;font-weight:700;font-variant-numeric:tabular-nums;color:var(--text);text-align:center;letter-spacing:-2px;margin:8px 0;}
+.timer-modal-bar{width:100%;height:8px;background:var(--surface-hover);border-radius:4px;overflow:hidden;margin-bottom:24px;}
+.timer-modal-bar-fill{height:100%;border-radius:4px;background:var(--green);transition:width 1s linear;}
+.timer-modal-controls{display:flex;gap:10px;justify-content:center;flex-wrap:wrap;margin-bottom:20px;}
+.timer-modal-controls .btn{padding:10px 22px;font-size:14px;}
+.timer-modal-presets{display:flex;gap:8px;justify-content:center;flex-wrap:wrap;}
+.timer-preset-btn{background:var(--surface-raised);border:1px solid var(--border);color:var(--text-dim);padding:7px 16px;border-radius:20px;cursor:pointer;font-size:13px;font-family:inherit;transition:all 0.15s;}
+.timer-preset-btn:hover{border-color:var(--green);color:var(--green);}
+.timer-preset-btn.active{background:var(--green-dim);border-color:var(--green);color:var(--green);font-weight:600;}
+
+/* ── JOURNAL PANEL — upsized ── */
+.journal-panel{position:relative;z-index:1;background:var(--surface);border:1px solid var(--border);border-radius:var(--radius);width:min(1100px,95vw);max-height:92vh;display:flex;flex-direction:column;overflow:hidden;box-shadow:0 24px 60px rgba(0,0,0,0.6);animation:journalSlideIn 0.3s cubic-bezier(0.22,1,0.36,1) both;}
 </style>
 </head>
 <body>
@@ -471,11 +498,13 @@ body.unlocked .date-editable:hover{border-bottom-color:var(--accent);background:
 <!-- APP (hidden until auth) -->
 <div class="app-wrap" id="appWrap">
 <div class="header">
-<h1>Productivity Dashboard <span>Personal Workspace</span></h1>
+<h1>Productivity Dashboard</h1>
 <div class="header-right">
 <span class="user-email-display" id="userEmail"></span>
 <button class="logout-btn" onclick="doLogout()" title="Sign out">Sign out</button>
 <span class="sync-status offline" id="syncStatus"><span class="sync-dot"></span> Local</span>
+<button class="breathwork-btn" onclick="openBreathworkModal()" title="Breathwork">&#129651; Breathwork</button>
+<button class="timer-btn" onclick="openTimerModal()" title="Focus Timer">&#9201; Timer</button>
 <button class="journal-btn" onclick="openJournal()" title="Open Journal">&#128221; Journal</button>
 <button class="customize-btn" onclick="openCustomize()" title="Show/hide panels">&#9881; Panels</button>
 <button class="lock-btn" id="lockBtn" onclick="toggleLock()" title="Lock/unlock layout and editing">&#128274; Locked</button>
@@ -514,21 +543,7 @@ body.unlocked .date-editable:hover{border-bottom-color:var(--accent);background:
 
 <!-- 4. TIME AWARENESS -->
 <div class="panel panel-narrow" data-panel="time" data-nav="time">
-<div class="panel-header"><div class="panel-title"><span class="drag-handle">&#10495;</span><span class="icon">&#9201;</span> Time Awareness</div><div class="panel-badge">Focus &amp; State</div></div>
-<div class="time-block">
-<div class="time-label">Breathwork</div>
-<select class="breathwork-select" id="breathSelect" onchange="showBreathDesc()">
-<option value="">Choose a technique...</option>
-<option value="box">&#129697; Box Breathing (4-4-4-4) &mdash; 2 min</option>
-<option value="478">&#127754; 4-7-8 Breathing &mdash; 2.5 min</option>
-<option value="sigh">&#128168; Physiological Sigh &mdash; 1 min</option>
-<option value="scan">&#129496; 2-Minute Body Scan</option>
-<option value="resonance">&#127908; Resonance Breathing (5.5-5.5) &mdash; 2 min</option>
-<option value="alternate">&#128067; Alternate Nostril (Nadi Shodhana) &mdash; 2 min</option>
-<option value="22exhale">&#127754; 2:1 Extended Exhale (4-8) &mdash; 2 min</option>
-</select>
-<button class="breathwork-start" id="breathStartBtn" onclick="startBreathwork()" style="display:none;">&#9654; Begin Session</button>
-</div>
+<div class="panel-header"><div class="panel-title"><span class="drag-handle">&#10495;</span><span class="icon">&#9201;</span> Time Awareness</div><div class="panel-badge">State Check-In</div></div>
 <div class="time-block">
 <div class="time-label">Energy &amp; Mood</div>
 <div class="em-row"><span class="em-label">Energy</span><div class="em-pills" id="energyPills">
@@ -544,13 +559,6 @@ body.unlocked .date-editable:hover{border-bottom-color:var(--accent);background:
 <span class="em-pill" onclick="setMood(this,'calm')"><span class="em-ico">&#129496;</span>Calm</span>
 </div></div>
 <div id="stateAdvice"></div>
-</div>
-<div class="time-block">
-<div class="time-label">Focus Timer</div>
-<div class="time-value" id="timerDisplay">25:00</div>
-<div class="time-bar"><div class="time-bar-fill" id="timerBar" style="background:var(--green);width:100%"></div></div>
-<div class="timer-controls"><button class="btn btn-sm" onclick="startTimer()">&#9654; Start</button><button class="btn btn-sm" onclick="pauseTimer()">&#9208; Pause</button><button class="btn btn-sm" onclick="resetTimer()">&#8634; Reset</button>
-<select id="timerPreset" onchange="setTimerPreset()" style="width:auto;padding:4px 8px;font-size:12px;"><option value="25">25 min</option><option value="15">15 min</option><option value="5">5 min break</option><option value="45">45 min</option></select></div>
 </div></div>
 
 
@@ -712,6 +720,60 @@ body.unlocked .date-editable:hover{border-bottom-color:var(--accent);background:
 </div>
 </div>
 </div>
+<!-- BREATHWORK MODAL -->
+<div class="modal-blur-overlay" id="breathworkModal">
+<div class="modal-blur-backdrop" onclick="closeBreathworkModal()"></div>
+<div class="modal-blur-panel">
+  <div class="modal-blur-header">
+    <div class="modal-blur-title">&#129651; Breathwork</div>
+    <button class="modal-blur-close" onclick="closeBreathworkModal()">&#10005;</button>
+  </div>
+  <div class="modal-blur-body">
+    <p style="font-size:13px;color:var(--text-dim);margin-bottom:16px;line-height:1.6;">Choose a technique. Each is evidence-based and takes 1–3 minutes.</p>
+    <select class="breathwork-select" id="breathSelect" onchange="showBreathDesc()" style="margin-bottom:12px;">
+      <option value="">Choose a technique...</option>
+      <option value="box">&#129697; Box Breathing (4-4-4-4) &mdash; 2 min</option>
+      <option value="478">&#127754; 4-7-8 Breathing &mdash; 2.5 min</option>
+      <option value="sigh">&#128168; Physiological Sigh &mdash; 1 min</option>
+      <option value="scan">&#129496; 2-Minute Body Scan</option>
+      <option value="resonance">&#127908; Resonance Breathing (5.5-5.5) &mdash; 2 min</option>
+      <option value="alternate">&#128067; Alternate Nostril (Nadi Shodhana) &mdash; 2 min</option>
+      <option value="22exhale">&#127754; 2:1 Extended Exhale (4-8) &mdash; 2 min</option>
+    </select>
+    <div class="breathwork-desc" id="breathDesc" style="font-size:12px;color:var(--text-dim);margin-bottom:16px;line-height:1.6;"></div>
+    <button class="breathwork-start" id="breathStartBtn" onclick="startBreathworkFromModal()" style="display:none;">&#9654; Begin Session</button>
+  </div>
+</div>
+</div>
+
+<!-- TIMER MODAL -->
+<div class="modal-blur-overlay" id="timerModal">
+<div class="modal-blur-backdrop" onclick="closeTimerModal()"></div>
+<div class="modal-blur-panel">
+  <div class="modal-blur-header">
+    <div class="modal-blur-title">&#9201; Focus Timer</div>
+    <button class="modal-blur-close" onclick="closeTimerModal()">&#10005;</button>
+  </div>
+  <div class="modal-blur-body">
+    <div class="timer-modal-display" id="timerDisplay">25:00</div>
+    <div class="timer-modal-bar"><div class="timer-modal-bar-fill" id="timerBar" style="width:100%"></div></div>
+    <div class="timer-modal-controls">
+      <button class="btn" onclick="startTimer()">&#9654; Start</button>
+      <button class="btn" onclick="pauseTimer()">&#9208; Pause</button>
+      <button class="btn" onclick="resetTimer()">&#8634; Reset</button>
+    </div>
+    <div class="timer-modal-presets">
+      <button class="timer-preset-btn active" id="tp25" onclick="setTimerPresetDirect(25,this)">25 min</button>
+      <button class="timer-preset-btn" id="tp15" onclick="setTimerPresetDirect(15,this)">15 min</button>
+      <button class="timer-preset-btn" id="tp5"  onclick="setTimerPresetDirect(5,this)">5 min break</button>
+      <button class="timer-preset-btn" id="tp45" onclick="setTimerPresetDirect(45,this)">45 min</button>
+    </div>
+    <!-- hidden select kept for existing setTimerPreset() compatibility -->
+    <select id="timerPreset" onchange="setTimerPreset()" style="display:none;"><option value="25">25</option><option value="15">15</option><option value="5">5</option><option value="45">45</option></select>
+  </div>
+</div>
+</div>
+
 <!-- JOURNAL OVERLAY -->
 <div class="journal-overlay" id="journalOverlay">
 <div class="journal-backdrop" id="journalBackdrop" onclick="closeJournal()"></div>
@@ -1626,8 +1688,11 @@ const breathTechniques={
 
 function showBreathDesc(){
   const id=document.getElementById('breathSelect').value;
+  const desc=document.getElementById('breathDesc');
   const btn=document.getElementById('breathStartBtn');
-  if(!id){btn.style.display='none';return;}
+  if(!id){if(desc)desc.innerHTML='';btn.style.display='none';return;}
+  const t=breathTechniques[id];
+  if(desc)desc.innerHTML='<strong style="color:var(--teal);">'+t.name+'</strong><br>'+t.desc+'<br><span style="color:var(--text-faint);font-size:10px;">'+t.source+'</span>';
   btn.style.display='block';
 }
 
@@ -1830,7 +1895,6 @@ function stopBreathwork(){
   breathActive=false;
   clearInterval(breathInterval);breathInterval=null;
   try{speechSynthesis.cancel();}catch(e){}
-  // Snap orb back to resting state without triggering layout
   const orb=document.getElementById('breathOrb');
   const glow=document.getElementById('breathOrbGlow');
   if(orb){orb.style.animation='none';orb.style.transform='scale(0.35)';}
@@ -1838,6 +1902,7 @@ function stopBreathwork(){
   document.getElementById('breathOverlay').classList.remove('active');
   document.getElementById('bodyScanWrap').style.display='none';
   document.querySelectorAll('.scan-part').forEach(p=>p.classList.remove('scan-lit','scan-glow'));
+  _unblurDashboard();
 }
 
 
@@ -2113,6 +2178,51 @@ function stopMic(btnId){
 }
 
 // ═══════════════════════════════════════
+// BREATHWORK MODAL
+// ═══════════════════════════════════════
+function _blurDashboard(){document.getElementById('dashboard').style.filter='blur(3px)';document.getElementById('dashboard').style.pointerEvents='none';}
+function _unblurDashboard(){document.getElementById('dashboard').style.filter='';document.getElementById('dashboard').style.pointerEvents='';}
+
+function openBreathworkModal(){
+  document.getElementById('breathworkModal').classList.add('open');
+  _blurDashboard();
+}
+function closeBreathworkModal(){
+  document.getElementById('breathworkModal').classList.remove('open');
+  _unblurDashboard();
+}
+function startBreathworkFromModal(){
+  // Close the picker but keep dashboard blurred (breath-overlay has its own dark backdrop)
+  document.getElementById('breathworkModal').classList.remove('open');
+  startBreathwork();
+}
+
+// ═══════════════════════════════════════
+// TIMER MODAL
+// ═══════════════════════════════════════
+function openTimerModal(){
+  document.getElementById('timerModal').classList.add('open');
+  _blurDashboard();
+  _syncTimerPresetBtns();
+}
+function closeTimerModal(){
+  document.getElementById('timerModal').classList.remove('open');
+  _unblurDashboard();
+}
+function setTimerPresetDirect(mins,btn){
+  document.getElementById('timerPreset').value=String(mins);
+  setTimerPreset();
+  _syncTimerPresetBtns();
+}
+function _syncTimerPresetBtns(){
+  const val=document.getElementById('timerPreset').value;
+  ['25','15','5','45'].forEach(function(v){
+    const b=document.getElementById('tp'+v);
+    if(b)b.classList.toggle('active',v===val);
+  });
+}
+
+// ═══════════════════════════════════════
 // JOURNAL
 // ═══════════════════════════════════════
 var _journalUnlocked=false;
@@ -2123,18 +2233,14 @@ var _setPinFirst='';
 
 function openJournal(){
   _journalUnlocked=false;
-  const ov=document.getElementById('journalOverlay');
-  ov.classList.add('open');
-  // Blur the dashboard behind
-  document.getElementById('dashboard').style.filter='blur(3px)';
-  document.getElementById('dashboard').style.pointerEvents='none';
+  document.getElementById('journalOverlay').classList.add('open');
+  _blurDashboard();
   _journalShowMain();
 }
 
 function closeJournal(){
   document.getElementById('journalOverlay').classList.remove('open');
-  document.getElementById('dashboard').style.filter='';
-  document.getElementById('dashboard').style.pointerEvents='';
+  _unblurDashboard();
   _journalUnlocked=false;
   _pinBuffer='';_setPinBuffer='';_setPinStage=0;_setPinFirst='';
 }
