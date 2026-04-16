@@ -1263,12 +1263,64 @@ function updateClock(){const now=new Date();document.getElementById('clock').tex
 let timerTotal=25*60,timerLeft=25*60,timerInterval=null,timerRunning=false;
 let timerAlarmTimeout=null,audioCtx=null;
 let alarmOscillators=[],alarmGain=null,alarmPlaying=false;
+let timerEndAt=null; // absolute ms timestamp when timer will reach 0
 
-function updateTimerDisplay(){const m=Math.floor(timerLeft/60),s=timerLeft%60;document.getElementById('timerDisplay').textContent=String(m).padStart(2,'0')+':'+String(s).padStart(2,'0');document.getElementById('timerBar').style.width=(timerTotal>0?(timerLeft/timerTotal)*100:0)+'%';if(timerLeft<=0&&timerRunning){pauseTimer();playAlarm();toast('\u23F0 Focus session complete!');timerAlarmTimeout=setTimeout(function(){stopAlarm();},12000);}}
-function startTimer(){if(timerRunning)return;stopAlarm();timerRunning=true;timerInterval=setInterval(function(){timerLeft=Math.max(0,timerLeft-1);updateTimerDisplay();},1000);}
-function pauseTimer(){timerRunning=false;clearInterval(timerInterval);}
-function resetTimer(){pauseTimer();stopAlarm();timerLeft=timerTotal;updateTimerDisplay();}
-function setTimerPreset(){var v=parseInt(document.getElementById('timerPreset').value);timerTotal=v*60;timerLeft=timerTotal;pauseTimer();stopAlarm();updateTimerDisplay();}
+function updateTimerDisplay(){
+  const m=Math.floor(timerLeft/60),s=timerLeft%60;
+  document.getElementById('timerDisplay').textContent=String(m).padStart(2,'0')+':'+String(s).padStart(2,'0');
+  document.getElementById('timerBar').style.width=(timerTotal>0?(timerLeft/timerTotal)*100:0)+'%';
+  if(timerLeft<=0&&timerRunning){
+    timerRunning=false;clearInterval(timerInterval);timerInterval=null;timerEndAt=null;
+    playAlarm();toast('\u23F0 Focus session complete!');
+    timerAlarmTimeout=setTimeout(function(){stopAlarm();},12000);
+  }
+}
+
+function _tickTimer(){
+  // Recompute from wall clock — immune to sleep, throttling, and tab hiding
+  if(timerEndAt!==null){
+    timerLeft=Math.max(0,Math.round((timerEndAt-Date.now())/1000));
+  }
+  updateTimerDisplay();
+}
+
+function startTimer(){
+  if(timerRunning)return;
+  stopAlarm();
+  timerRunning=true;
+  // Set end time from current timerLeft so a paused timer resumes correctly
+  timerEndAt=Date.now()+(timerLeft*1000);
+  timerInterval=setInterval(_tickTimer,500); // 500ms poll — catches up fast after sleep
+}
+
+function pauseTimer(){
+  if(!timerRunning)return;
+  // Snapshot the real remaining time before stopping
+  if(timerEndAt!==null)timerLeft=Math.max(0,Math.round((timerEndAt-Date.now())/1000));
+  timerRunning=false;timerEndAt=null;
+  clearInterval(timerInterval);timerInterval=null;
+  updateTimerDisplay();
+}
+
+function resetTimer(){
+  pauseTimer();stopAlarm();
+  timerLeft=timerTotal;timerEndAt=null;
+  updateTimerDisplay();
+}
+
+function setTimerPreset(){
+  var v=parseInt(document.getElementById('timerPreset').value);
+  timerTotal=v*60;timerLeft=timerTotal;timerEndAt=null;
+  pauseTimer();stopAlarm();updateTimerDisplay();
+}
+
+// Reconcile when page becomes visible after sleep or tab switch
+document.addEventListener('visibilitychange',function(){
+  if(document.visibilityState==='visible'&&timerRunning&&timerEndAt!==null){
+    timerLeft=Math.max(0,Math.round((timerEndAt-Date.now())/1000));
+    updateTimerDisplay();
+  }
+});
 
 // SOFT ALARM (Web Audio)
 function playAlarm(){
