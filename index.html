@@ -132,7 +132,7 @@ body.unlocked .date-editable:hover{border-bottom-color:var(--accent);background:
 .time-block .em-row{margin-bottom:4px;}
 .time-block .em-pill{padding:3px 7px;font-size:10px;}
 .time-block .em-label{font-size:10px;min-width:44px;}
-.time-block #stateAdvice .decision-prompt{padding:6px 8px;font-size:11px;margin-top:4px;line-height:1.4;}
+#stateAdvice .decision-prompt{padding:6px 8px;font-size:11px;margin-top:4px;line-height:1.4;}
 .time-value{font-size:26px;font-weight:700;font-variant-numeric:tabular-nums;}
 .time-bar{width:100%;height:5px;background:var(--surface-hover);border-radius:3px;margin-top:6px;overflow:hidden;}
 .time-bar-fill{height:100%;border-radius:3px;transition:width 1s linear;}
@@ -467,6 +467,15 @@ body.unlocked .date-editable:hover{border-bottom-color:var(--accent);background:
 
 /* ── JOURNAL PANEL — upsized ── */
 .journal-panel{position:relative;z-index:1;background:var(--surface);border:1px solid var(--border);border-radius:var(--radius);width:min(1100px,95vw);max-height:92vh;display:flex;flex-direction:column;overflow:hidden;box-shadow:0 24px 60px rgba(0,0,0,0.6);animation:journalSlideIn 0.3s cubic-bezier(0.22,1,0.36,1) both;}
+/* ── TOOL KIT PANEL BUTTONS ── */
+.toolkit-grid{display:grid;grid-template-columns:1fr 1fr;gap:10px;padding:4px 0;}
+.toolkit-btn{display:flex;flex-direction:column;align-items:center;justify-content:center;gap:7px;padding:18px 10px;border-radius:var(--radius-sm);border:1.5px solid var(--border);background:var(--surface-raised);cursor:pointer;font-family:inherit;font-size:22px;transition:all 0.18s;color:var(--text-dim);}
+.toolkit-btn span{font-size:12px;font-weight:600;letter-spacing:0.3px;}
+.toolkit-btn:hover{transform:translateY(-2px);box-shadow:0 4px 14px rgba(0,0,0,0.3);}
+.toolkit-breath:hover{border-color:var(--teal);color:var(--teal);background:var(--teal-dim);}
+.toolkit-timer:hover{border-color:var(--green);color:var(--green);background:var(--green-dim);}
+.toolkit-mood:hover{border-color:var(--accent);color:var(--accent);background:var(--accent-glow);}
+.toolkit-journal:hover{border-color:var(--purple);color:var(--purple);background:var(--purple-dim);}
 </style>
 </head>
 <body>
@@ -503,9 +512,6 @@ body.unlocked .date-editable:hover{border-bottom-color:var(--accent);background:
 <span class="user-email-display" id="userEmail"></span>
 <button class="logout-btn" onclick="doLogout()" title="Sign out">Sign out</button>
 <span class="sync-status offline" id="syncStatus"><span class="sync-dot"></span> Local</span>
-<button class="breathwork-btn" onclick="openBreathworkModal()" title="Breathwork">&#129651; Breathwork</button>
-<button class="timer-btn" onclick="openTimerModal()" title="Focus Timer">&#9201; Timer</button>
-<button class="journal-btn" onclick="openJournal()" title="Open Journal">&#128221; Journal</button>
 <button class="customize-btn" onclick="openCustomize()" title="Show/hide panels">&#9881; Panels</button>
 <button class="lock-btn" id="lockBtn" onclick="toggleLock()" title="Lock/unlock layout and editing">&#128274; Locked</button>
 <div><div class="clock" id="clock">--:--</div><div class="clock-date" id="clockDate"></div></div>
@@ -541,25 +547,16 @@ body.unlocked .date-editable:hover{border-bottom-color:var(--accent);background:
 <textarea class="brain-dump-area" id="brainDump" placeholder="Ideas, stray thoughts, that thing you keep forgetting..." onkeydown="handleDumpKey(event)"></textarea>
 <div class="thought-chips" id="thoughtChips"></div></div>
 
-<!-- 4. TIME AWARENESS -->
+<!-- 4. TOOL KIT -->
 <div class="panel panel-narrow" data-panel="time" data-nav="time">
-<div class="panel-header"><div class="panel-title"><span class="drag-handle">&#10495;</span><span class="icon">&#9201;</span> Time Awareness</div><div class="panel-badge">State Check-In</div></div>
-<div class="time-block">
-<div class="time-label">Energy &amp; Mood</div>
-<div class="em-row"><span class="em-label">Energy</span><div class="em-pills" id="energyPills">
-<span class="em-pill" onclick="setEnergy(this,'high')"><span class="em-ico">&#9889;</span>High</span>
-<span class="em-pill" onclick="setEnergy(this,'good')"><span class="em-ico">&#9728;&#65039;</span>Good</span>
-<span class="em-pill" onclick="setEnergy(this,'low')"><span class="em-ico">&#127781;&#65039;</span>Low</span>
-<span class="em-pill" onclick="setEnergy(this,'crashed')"><span class="em-ico">&#129707;</span>Crash</span>
-</div></div>
-<div class="em-row"><span class="em-label">Mood</span><div class="em-pills" id="moodPills">
-<span class="em-pill" onclick="setMood(this,'focused')"><span class="em-ico">&#127919;</span>Focus</span>
-<span class="em-pill" onclick="setMood(this,'scattered')"><span class="em-ico">&#127744;</span>Scatter</span>
-<span class="em-pill" onclick="setMood(this,'anxious')"><span class="em-ico">&#128560;</span>Anxious</span>
-<span class="em-pill" onclick="setMood(this,'calm')"><span class="em-ico">&#129496;</span>Calm</span>
-</div></div>
-<div id="stateAdvice"></div>
-</div></div>
+<div class="panel-header"><div class="panel-title"><span class="drag-handle">&#10495;</span><span class="icon">&#129521;</span> Tool Kit</div><div class="panel-badge">Quick Launch</div></div>
+<div class="toolkit-grid">
+  <button class="toolkit-btn toolkit-breath" onclick="openBreathworkModal()">&#129651;<span>Breathwork</span></button>
+  <button class="toolkit-btn toolkit-timer" onclick="openTimerModal()">&#9201;<span>Timer</span></button>
+  <button class="toolkit-btn toolkit-mood" onclick="openEnergyModal()">&#9889;<span>Energy &amp; Mood</span></button>
+  <button class="toolkit-btn toolkit-journal" onclick="openJournal()">&#128221;<span>Journal</span></button>
+</div>
+</div>
 
 
 <!-- 7. ROUTINES -->
@@ -667,7 +664,7 @@ body.unlocked .date-editable:hover{border-bottom-color:var(--accent);background:
 <button class="nav-tab active" onclick="showMobilePanel('projects',this)" data-navfor="projects"><span class="nt-icon">&#128194;</span>Projects</button>
 <button class="nav-tab" onclick="showMobilePanel('reminders',this)" data-navfor="reminders"><span class="nt-icon">&#128276;</span>Remind</button>
 <button class="nav-tab" onclick="showMobilePanel('brain',this)" data-navfor="brain"><span class="nt-icon">&#129504;</span>Dump</button>
-<button class="nav-tab" onclick="showMobilePanel('time',this)" data-navfor="time"><span class="nt-icon">&#9201;</span>Timer</button>
+<button class="nav-tab" onclick="showMobilePanel('time',this)" data-navfor="time"><span class="nt-icon">&#129521;</span>Tools</button>
 <button class="nav-tab" onclick="showMobilePanel('routines',this)" data-navfor="routines"><span class="nt-icon">&#128257;</span>Routines</button>
 <button class="nav-tab" onclick="showMobilePanel('notes',this)" data-navfor="notes"><span class="nt-icon">&#128221;</span>Notes</button>
 <button class="nav-tab" onclick="showMobilePanel('help',this)" data-navfor="decision"><span class="nt-icon">&#129517;</span>Help</button>
@@ -720,6 +717,32 @@ body.unlocked .date-editable:hover{border-bottom-color:var(--accent);background:
 </div>
 </div>
 </div>
+<!-- ENERGY & MOOD MODAL -->
+<div class="modal-blur-overlay" id="energyModal">
+<div class="modal-blur-backdrop" onclick="closeEnergyModal()"></div>
+<div class="modal-blur-panel" style="width:min(520px,92vw);">
+  <div class="modal-blur-header">
+    <div class="modal-blur-title">&#9889; Energy &amp; Mood</div>
+    <button class="modal-blur-close" onclick="closeEnergyModal()">&#10005;</button>
+  </div>
+  <div class="modal-blur-body">
+    <div class="em-row" style="margin-bottom:14px;"><span class="em-label" style="min-width:60px;font-size:13px;">Energy</span><div class="em-pills" id="energyPills">
+      <span class="em-pill" onclick="setEnergy(this,'high')"><span class="em-ico">&#9889;</span>High</span>
+      <span class="em-pill" onclick="setEnergy(this,'good')"><span class="em-ico">&#9728;&#65039;</span>Good</span>
+      <span class="em-pill" onclick="setEnergy(this,'low')"><span class="em-ico">&#127781;&#65039;</span>Low</span>
+      <span class="em-pill" onclick="setEnergy(this,'crashed')"><span class="em-ico">&#129707;</span>Crash</span>
+    </div></div>
+    <div class="em-row" style="margin-bottom:16px;"><span class="em-label" style="min-width:60px;font-size:13px;">Mood</span><div class="em-pills" id="moodPills">
+      <span class="em-pill" onclick="setMood(this,'focused')"><span class="em-ico">&#127919;</span>Focus</span>
+      <span class="em-pill" onclick="setMood(this,'scattered')"><span class="em-ico">&#127744;</span>Scatter</span>
+      <span class="em-pill" onclick="setMood(this,'anxious')"><span class="em-ico">&#128560;</span>Anxious</span>
+      <span class="em-pill" onclick="setMood(this,'calm')"><span class="em-ico">&#129496;</span>Calm</span>
+    </div></div>
+    <div id="stateAdvice"></div>
+  </div>
+</div>
+</div>
+
 <!-- BREATHWORK MODAL -->
 <div class="modal-blur-overlay" id="breathworkModal">
 <div class="modal-blur-backdrop" onclick="closeBreathworkModal()"></div>
@@ -1125,7 +1148,7 @@ function startRealtimeSync(){
 const ALL_PANELS=[
   {id:'projects',icon:'\u{1F4C2}',name:'Projects',desc:'Track projects with subtasks and due dates'},
   {id:'reminders',icon:'\u{1F514}',name:'Reminders',desc:'Date and time-based reminders'},
-  {id:'time',icon:'\u23F1',name:'Time Awareness',desc:'Breathwork, energy/mood check-in, and focus timer'},
+  {id:'time',icon:'\u{1F9F0}',name:'Tool Kit',desc:'Breathwork, timer, energy/mood, and journal launcher'},
   {id:'tasklist',icon:'\u{1F4CB}',name:'Task List',desc:'Unified view of all tasks sorted by priority or time'},
   {id:'notes',icon:'\u{1F4DD}',name:'Notes',desc:'Labeled notes with project tags'},
   {id:'brain',icon:'\u{1F9E0}',name:'Brain Dump',desc:'Capture fleeting thoughts'},
@@ -2182,6 +2205,22 @@ function stopMic(btnId){
 // ═══════════════════════════════════════
 function _blurDashboard(){document.getElementById('dashboard').style.filter='blur(3px)';document.getElementById('dashboard').style.pointerEvents='none';}
 function _unblurDashboard(){document.getElementById('dashboard').style.filter='';document.getElementById('dashboard').style.pointerEvents='';}
+
+// ═══════════════════════════════════════
+// ENERGY & MOOD MODAL
+// ═══════════════════════════════════════
+function openEnergyModal(){
+  document.getElementById('energyModal').classList.add('open');
+  _blurDashboard();
+  // Restore selected pill states
+  if(state.energy){const pills=document.querySelectorAll('#energyPills .em-pill');['high','good','low','crashed'].forEach((v,i)=>{pills[i]&&pills[i].classList.toggle('selected',v===state.energy);});}
+  if(state.mood){const pills=document.querySelectorAll('#moodPills .em-pill');['focused','scattered','anxious','calm'].forEach((v,i)=>{pills[i]&&pills[i].classList.toggle('selected',v===state.mood);});}
+  showStateAdvice();
+}
+function closeEnergyModal(){
+  document.getElementById('energyModal').classList.remove('open');
+  _unblurDashboard();
+}
 
 function openBreathworkModal(){
   document.getElementById('breathworkModal').classList.add('open');
