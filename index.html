@@ -468,9 +468,8 @@ body.unlocked .date-editable:hover{border-bottom-color:var(--accent);background:
 /* ── JOURNAL PANEL — upsized ── */
 .journal-panel{position:relative;z-index:1;background:var(--surface);border:1px solid var(--border);border-radius:var(--radius);width:min(1100px,95vw);max-height:92vh;display:flex;flex-direction:column;overflow:hidden;box-shadow:0 24px 60px rgba(0,0,0,0.6);animation:journalSlideIn 0.3s cubic-bezier(0.22,1,0.36,1) both;}
 /* ── TOOL KIT PANEL BUTTONS ── */
-.toolkit-grid{display:grid;grid-template-columns:1fr 1fr 1fr;gap:10px;padding:4px 0;}
-.toolkit-grid .toolkit-btn:nth-child(4){grid-column:1/span 2;}
-.toolkit-grid .toolkit-btn:nth-child(5){grid-column:3;}
+.toolkit-grid{display:grid;grid-template-columns:1fr 1fr;gap:10px;padding:4px 0;}
+.toolkit-grid .toolkit-btn:last-child:nth-child(odd){grid-column:1/-1;}
 .toolkit-btn{display:flex;flex-direction:column;align-items:center;justify-content:center;gap:7px;padding:18px 10px;border-radius:var(--radius-sm);border:1.5px solid var(--border);background:var(--surface-raised);cursor:pointer;font-family:inherit;font-size:22px;transition:all 0.18s;color:var(--text-dim);}
 .toolkit-btn span{font-size:12px;font-weight:600;letter-spacing:0.3px;}
 .toolkit-btn:hover{transform:translateY(-2px);box-shadow:0 4px 14px rgba(0,0,0,0.3);}
@@ -728,26 +727,11 @@ body.unlocked .date-editable:hover{border-bottom-color:var(--accent);background:
   <div class="modal-blur-header">
     <div class="modal-blur-title">&#127956; Radar &mdash; Greenwood, IN 46142</div>
     <div style="display:flex;gap:8px;align-items:center;">
-      <a id="radarExternalLink" href="https://www.wunderground.com/wundermap?lat=39.6139&lon=-86.1069&zoom=9&type=bestresolution&base=dp&rad=1&wxstn=0" target="_blank" rel="noopener" style="font-size:12px;color:var(--text-dim);text-decoration:none;padding:4px 10px;border:1px solid var(--border);border-radius:var(--radius-sm);transition:all 0.15s;" onmouseover="this.style.color='var(--blue)';this.style.borderColor='var(--blue)'" onmouseout="this.style.color='var(--text-dim)';this.style.borderColor='var(--border)'">&#8599; Open full site</a>
+      <span id="radarTimestamp" style="font-size:11px;color:var(--text-faint);"></span>
       <button class="modal-blur-close" onclick="closeRadarModal()">&#10005;</button>
     </div>
   </div>
-  <div style="flex:1;overflow:hidden;position:relative;min-height:500px;">
-    <iframe id="radarFrame"
-      src="about:blank"
-      style="width:100%;height:100%;min-height:560px;border:none;display:block;"
-      title="Weather Underground Radar — Greenwood IN 46142"
-      loading="lazy"
-      sandbox="allow-scripts allow-same-origin allow-forms allow-popups allow-popups-to-escape-sandbox">
-    </iframe>
-    <div id="radarFallback" style="display:none;flex-direction:column;align-items:center;justify-content:center;gap:16px;padding:40px 24px;text-align:center;position:absolute;inset:0;background:var(--surface);">
-      <div style="font-size:48px;">&#127956;</div>
-      <div style="font-size:16px;font-weight:600;color:var(--text);">Radar blocked by browser</div>
-      <p style="font-size:13px;color:var(--text-dim);max-width:380px;line-height:1.6;">Weather Underground doesn't allow embedding in iframes. Open the radar directly in a new tab.</p>
-      <a href="https://www.wunderground.com/wundermap?lat=39.6139&lon=-86.1069&zoom=9&type=bestresolution&base=dp&rad=1&wxstn=0" target="_blank" rel="noopener" style="background:var(--blue-dim);border:1.5px solid var(--blue);color:var(--blue);padding:10px 24px;border-radius:var(--radius-sm);font-weight:600;font-size:14px;text-decoration:none;font-family:inherit;">&#8599; Open Radar on Weather Underground</a>
-      <a href="https://radar.weather.gov/station/KIND/standard" target="_blank" rel="noopener" style="font-size:12px;color:var(--text-dim);text-decoration:underline;">Or use NWS Indianapolis radar (KIND)</a>
-    </div>
-  </div>
+  <div id="radarMapContainer" style="flex:1;min-height:560px;position:relative;"></div>
 </div>
 </div>
 
@@ -2293,43 +2277,115 @@ function _blurDashboard(){document.getElementById('dashboard').style.filter='blu
 function _unblurDashboard(){document.getElementById('dashboard').style.filter='';document.getElementById('dashboard').style.pointerEvents='';}
 
 // ═══════════════════════════════════════
-// RADAR MODAL
+// RADAR MODAL — Leaflet + RainViewer API
 // ═══════════════════════════════════════
-var _radarLoaded=false;
+var _radarMap=null,_radarLayers=[],_radarFrames=[],_radarAnimIdx=0,_radarAnimTimer=null;
+var RADAR_LAT=39.6139,RADAR_LON=-86.1069,RADAR_ZOOM=8;
+
 function openRadarModal(){
   document.getElementById('radarModal').classList.add('open');
   _blurDashboard();
-  if(!_radarLoaded){
-    var frame=document.getElementById('radarFrame');
-    var fallback=document.getElementById('radarFallback');
-    var url='https://www.wunderground.com/wundermap?lat=39.6139&lon=-86.1069&zoom=9&type=bestresolution&base=dp&rad=1&wxstn=0';
-    frame.onload=function(){
-      // Try to detect blocked iframe (cross-origin contentDocument will be null or throw)
-      try{
-        var d=frame.contentDocument||frame.contentWindow.document;
-        // If we can read contentDocument title and it's empty/error, show fallback
-        if(!d||d.title==='')throw new Error('blocked');
-      }catch(e){
-        frame.style.display='none';
-        fallback.style.display='flex';
-      }
-    };
-    frame.onerror=function(){frame.style.display='none';fallback.style.display='flex';};
-    frame.src=url;
-    _radarLoaded=true;
-    // Safety timeout — if iframe stays blank, show fallback
-    setTimeout(function(){
-      try{
-        var d=frame.contentDocument||frame.contentWindow.document;
-        if(!d||!d.body||d.body.innerHTML===''){frame.style.display='none';fallback.style.display='flex';}
-      }catch(e){frame.style.display='none';fallback.style.display='flex';}
-    },5000);
-  }
+  if(!_radarMap) _initRadarMap();
 }
+
 function closeRadarModal(){
   document.getElementById('radarModal').classList.remove('open');
   _unblurDashboard();
 }
+
+function _initRadarMap(){
+  // Inject Leaflet CSS + JS from CDN, then build the map
+  if(!document.getElementById('leafletCSS')){
+    var lc=document.createElement('link');
+    lc.id='leafletCSS';lc.rel='stylesheet';
+    lc.href='https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.css';
+    document.head.appendChild(lc);
+  }
+  if(window.L){_buildRadarMap();return;}
+  var ls=document.createElement('script');
+  ls.src='https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.js';
+  ls.onload=function(){_buildRadarMap();};
+  document.head.appendChild(ls);
+}
+
+function _buildRadarMap(){
+  var container=document.getElementById('radarMapContainer');
+  container.style.height='560px';
+
+  _radarMap=L.map(container,{
+    center:[RADAR_LAT,RADAR_LON],
+    zoom:RADAR_ZOOM,
+    zoomControl:true,
+    attributionControl:true
+  });
+
+  // Dark-friendly base tile — CartoDB Dark Matter
+  L.tileLayer('https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png',{
+    attribution:'&copy; <a href="https://carto.com/">CARTO</a> &copy; <a href="https://www.openstreetmap.org/copyright">OSM</a>',
+    subdomains:'abcd',maxZoom:19
+  }).addTo(_radarMap);
+
+  // Location marker for Greenwood
+  L.circleMarker([RADAR_LAT,RADAR_LON],{
+    radius:7,color:'#d4a853',fillColor:'#d4a853',fillOpacity:0.9,weight:2
+  }).addTo(_radarMap).bindPopup('<strong>Greenwood, IN 46142</strong>');
+
+  // Fetch RainViewer API and load animated radar frames
+  fetch('https://api.rainviewer.com/public/weather-maps.json')
+    .then(function(r){return r.json();})
+    .then(function(data){
+      var host=data.host;
+      var frames=data.radar.past.concat(data.radar.nowcast||[]);
+      _radarFrames=frames;
+      // Pre-create all tile layers (hidden)
+      _radarLayers=frames.map(function(f){
+        return L.tileLayer(host+f.path+'/256/{z}/{x}/{y}/2/1_1.png',{
+          tileSize:256,opacity:0,zIndex:10,
+          attribution:'RainViewer'
+        }).addTo(_radarMap);
+      });
+      // Show the most recent frame first
+      _radarAnimIdx=_radarLayers.length-1;
+      _radarLayers[_radarAnimIdx].setOpacity(0.7);
+      _updateRadarTimestamp();
+      _startRadarAnimation();
+    })
+    .catch(function(e){
+      document.getElementById('radarTimestamp').textContent='Radar data unavailable';
+    });
+}
+
+function _updateRadarTimestamp(){
+  if(!_radarFrames.length)return;
+  var f=_radarFrames[_radarAnimIdx];
+  var d=new Date(f.time*1000);
+  var label=f.path.includes('nowcast')?'Forecast: ':'Radar: ';
+  document.getElementById('radarTimestamp').textContent=
+    label+d.toLocaleDateString('en-US',{month:'short',day:'numeric'})+
+    ' '+d.toLocaleTimeString('en-US',{hour:'numeric',minute:'2-digit'});
+}
+
+function _stepRadarFrame(){
+  if(!_radarLayers.length)return;
+  _radarLayers[_radarAnimIdx].setOpacity(0);
+  _radarAnimIdx=(_radarAnimIdx+1)%_radarLayers.length;
+  _radarLayers[_radarAnimIdx].setOpacity(0.7);
+  _updateRadarTimestamp();
+}
+
+function _startRadarAnimation(){
+  if(_radarAnimTimer)clearInterval(_radarAnimTimer);
+  // Pause 1.5s on the latest frame, 600ms on history frames
+  function scheduleNext(){
+    var isLatest=(_radarAnimIdx===_radarLayers.length-1);
+    _radarAnimTimer=setTimeout(function(){
+      _stepRadarFrame();scheduleNext();
+    },isLatest?1500:600);
+  }
+  scheduleNext();
+}
+
+
 
 // ═══════════════════════════════════════
 // ENERGY & MOOD MODAL
