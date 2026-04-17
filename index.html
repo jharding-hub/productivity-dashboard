@@ -468,7 +468,9 @@ body.unlocked .date-editable:hover{border-bottom-color:var(--accent);background:
 /* ── JOURNAL PANEL — upsized ── */
 .journal-panel{position:relative;z-index:1;background:var(--surface);border:1px solid var(--border);border-radius:var(--radius);width:min(1100px,95vw);max-height:92vh;display:flex;flex-direction:column;overflow:hidden;box-shadow:0 24px 60px rgba(0,0,0,0.6);animation:journalSlideIn 0.3s cubic-bezier(0.22,1,0.36,1) both;}
 /* ── TOOL KIT PANEL BUTTONS ── */
-.toolkit-grid{display:grid;grid-template-columns:1fr 1fr;gap:10px;padding:4px 0;}
+.toolkit-grid{display:grid;grid-template-columns:1fr 1fr 1fr;gap:10px;padding:4px 0;}
+.toolkit-grid .toolkit-btn:nth-child(4){grid-column:1/span 2;}
+.toolkit-grid .toolkit-btn:nth-child(5){grid-column:3;}
 .toolkit-btn{display:flex;flex-direction:column;align-items:center;justify-content:center;gap:7px;padding:18px 10px;border-radius:var(--radius-sm);border:1.5px solid var(--border);background:var(--surface-raised);cursor:pointer;font-family:inherit;font-size:22px;transition:all 0.18s;color:var(--text-dim);}
 .toolkit-btn span{font-size:12px;font-weight:600;letter-spacing:0.3px;}
 .toolkit-btn:hover{transform:translateY(-2px);box-shadow:0 4px 14px rgba(0,0,0,0.3);}
@@ -476,6 +478,7 @@ body.unlocked .date-editable:hover{border-bottom-color:var(--accent);background:
 .toolkit-timer:hover{border-color:var(--green);color:var(--green);background:var(--green-dim);}
 .toolkit-mood:hover{border-color:var(--accent);color:var(--accent);background:var(--accent-glow);}
 .toolkit-journal:hover{border-color:var(--purple);color:var(--purple);background:var(--purple-dim);}
+.toolkit-radar:hover{border-color:var(--blue);color:var(--blue);background:var(--blue-dim);}
 </style>
 </head>
 <body>
@@ -555,6 +558,7 @@ body.unlocked .date-editable:hover{border-bottom-color:var(--accent);background:
   <button class="toolkit-btn toolkit-timer" onclick="openTimerModal()">&#9201;<span>Timer</span></button>
   <button class="toolkit-btn toolkit-mood" onclick="openEnergyModal()">&#9889;<span>Energy &amp; Mood</span></button>
   <button class="toolkit-btn toolkit-journal" onclick="openJournal()">&#128221;<span>Journal</span></button>
+  <button class="toolkit-btn toolkit-radar" onclick="openRadarModal()">&#127956;<span>Radar</span></button>
 </div>
 </div>
 
@@ -717,6 +721,36 @@ body.unlocked .date-editable:hover{border-bottom-color:var(--accent);background:
 </div>
 </div>
 </div>
+<!-- RADAR MODAL -->
+<div class="modal-blur-overlay" id="radarModal">
+<div class="modal-blur-backdrop" onclick="closeRadarModal()"></div>
+<div class="modal-blur-panel" style="width:min(1000px,95vw);max-height:92vh;">
+  <div class="modal-blur-header">
+    <div class="modal-blur-title">&#127956; Radar &mdash; Greenwood, IN 46142</div>
+    <div style="display:flex;gap:8px;align-items:center;">
+      <a id="radarExternalLink" href="https://www.wunderground.com/wundermap?lat=39.6139&lon=-86.1069&zoom=9&type=bestresolution&base=dp&rad=1&wxstn=0" target="_blank" rel="noopener" style="font-size:12px;color:var(--text-dim);text-decoration:none;padding:4px 10px;border:1px solid var(--border);border-radius:var(--radius-sm);transition:all 0.15s;" onmouseover="this.style.color='var(--blue)';this.style.borderColor='var(--blue)'" onmouseout="this.style.color='var(--text-dim)';this.style.borderColor='var(--border)'">&#8599; Open full site</a>
+      <button class="modal-blur-close" onclick="closeRadarModal()">&#10005;</button>
+    </div>
+  </div>
+  <div style="flex:1;overflow:hidden;position:relative;min-height:500px;">
+    <iframe id="radarFrame"
+      src="about:blank"
+      style="width:100%;height:100%;min-height:560px;border:none;display:block;"
+      title="Weather Underground Radar — Greenwood IN 46142"
+      loading="lazy"
+      sandbox="allow-scripts allow-same-origin allow-forms allow-popups allow-popups-to-escape-sandbox">
+    </iframe>
+    <div id="radarFallback" style="display:none;flex-direction:column;align-items:center;justify-content:center;gap:16px;padding:40px 24px;text-align:center;position:absolute;inset:0;background:var(--surface);">
+      <div style="font-size:48px;">&#127956;</div>
+      <div style="font-size:16px;font-weight:600;color:var(--text);">Radar blocked by browser</div>
+      <p style="font-size:13px;color:var(--text-dim);max-width:380px;line-height:1.6;">Weather Underground doesn't allow embedding in iframes. Open the radar directly in a new tab.</p>
+      <a href="https://www.wunderground.com/wundermap?lat=39.6139&lon=-86.1069&zoom=9&type=bestresolution&base=dp&rad=1&wxstn=0" target="_blank" rel="noopener" style="background:var(--blue-dim);border:1.5px solid var(--blue);color:var(--blue);padding:10px 24px;border-radius:var(--radius-sm);font-weight:600;font-size:14px;text-decoration:none;font-family:inherit;">&#8599; Open Radar on Weather Underground</a>
+      <a href="https://radar.weather.gov/station/KIND/standard" target="_blank" rel="noopener" style="font-size:12px;color:var(--text-dim);text-decoration:underline;">Or use NWS Indianapolis radar (KIND)</a>
+    </div>
+  </div>
+</div>
+</div>
+
 <!-- ENERGY & MOOD MODAL -->
 <div class="modal-blur-overlay" id="energyModal">
 <div class="modal-blur-backdrop" onclick="closeEnergyModal()"></div>
@@ -2257,6 +2291,45 @@ function stopMic(btnId){
 // ═══════════════════════════════════════
 function _blurDashboard(){document.getElementById('dashboard').style.filter='blur(3px)';document.getElementById('dashboard').style.pointerEvents='none';}
 function _unblurDashboard(){document.getElementById('dashboard').style.filter='';document.getElementById('dashboard').style.pointerEvents='';}
+
+// ═══════════════════════════════════════
+// RADAR MODAL
+// ═══════════════════════════════════════
+var _radarLoaded=false;
+function openRadarModal(){
+  document.getElementById('radarModal').classList.add('open');
+  _blurDashboard();
+  if(!_radarLoaded){
+    var frame=document.getElementById('radarFrame');
+    var fallback=document.getElementById('radarFallback');
+    var url='https://www.wunderground.com/wundermap?lat=39.6139&lon=-86.1069&zoom=9&type=bestresolution&base=dp&rad=1&wxstn=0';
+    frame.onload=function(){
+      // Try to detect blocked iframe (cross-origin contentDocument will be null or throw)
+      try{
+        var d=frame.contentDocument||frame.contentWindow.document;
+        // If we can read contentDocument title and it's empty/error, show fallback
+        if(!d||d.title==='')throw new Error('blocked');
+      }catch(e){
+        frame.style.display='none';
+        fallback.style.display='flex';
+      }
+    };
+    frame.onerror=function(){frame.style.display='none';fallback.style.display='flex';};
+    frame.src=url;
+    _radarLoaded=true;
+    // Safety timeout — if iframe stays blank, show fallback
+    setTimeout(function(){
+      try{
+        var d=frame.contentDocument||frame.contentWindow.document;
+        if(!d||!d.body||d.body.innerHTML===''){frame.style.display='none';fallback.style.display='flex';}
+      }catch(e){frame.style.display='none';fallback.style.display='flex';}
+    },5000);
+  }
+}
+function closeRadarModal(){
+  document.getElementById('radarModal').classList.remove('open');
+  _unblurDashboard();
+}
 
 // ═══════════════════════════════════════
 // ENERGY & MOOD MODAL
