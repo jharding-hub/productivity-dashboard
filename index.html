@@ -478,6 +478,69 @@ body.unlocked .date-editable:hover{border-bottom-color:var(--accent);background:
 .toolkit-mood:hover{border-color:var(--accent);color:var(--accent);background:var(--accent-glow);}
 .toolkit-journal:hover{border-color:var(--purple);color:var(--purple);background:var(--purple-dim);}
 .toolkit-radar:hover{border-color:var(--blue);color:var(--blue);background:var(--blue-dim);}
+/* ── Gym Routine Panel ── */
+.gym-body{padding:8px 10px;font-size:14px}
+.gym-tabs{display:flex;gap:5px;flex-wrap:wrap;margin-bottom:10px}
+.gym-tab{padding:6px 10px;border-radius:20px;border:1px solid var(--border);background:var(--surface-raised);color:var(--text-dim);font-size:11px;cursor:pointer;font-family:inherit;min-height:32px;transition:all .15s}
+.gym-tab:hover{background:var(--surface-hover)}
+.gym-tab.gym-on{background:var(--accent);color:#fff;border-color:var(--accent);font-weight:600}
+.gym-tab.gym-wk{font-style:italic;opacity:.8}
+.gym-chips{display:flex;flex-wrap:wrap;gap:4px;margin-bottom:8px}
+.gym-chip{font-size:10px;padding:2px 8px;border-radius:20px;font-weight:600;line-height:1.6}
+.gym-cw{background:rgba(79,142,247,.15);color:var(--accent)}
+.gym-cl{background:rgba(74,185,122,.15);color:#2d8a58}
+.gym-cc{background:rgba(245,158,11,.15);color:#b45309}
+.gym-ct{background:var(--surface-raised);color:var(--text);border:1px solid var(--border)}
+.gym-ss{background:var(--surface);border:1px solid var(--border);border-radius:8px;padding:8px 10px;margin-bottom:8px}
+.gym-ss-hd{display:flex;align-items:center;gap:7px;margin-bottom:8px}
+.gym-badge{font-size:10px;font-weight:700;padding:2px 8px;border-radius:20px;text-transform:uppercase;letter-spacing:.4px}
+.gym-bp{background:rgba(139,92,246,.15);color:#6d28d9}
+.gym-bl{background:rgba(16,185,129,.15);color:#065f46}
+.gym-bg{background:rgba(239,68,68,.15);color:#991b1b}
+.gym-mscl{font-size:11px;color:var(--text-dim)}
+.gym-pair{display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:7px}
+.gym-ex{background:var(--surface-raised);border-radius:7px;border:1px solid transparent;overflow:hidden;transition:border-color .15s}
+.gym-ex.gym-xo{border-color:var(--accent);background:var(--surface)}
+.gym-ex-hd{padding:8px 9px 0;cursor:pointer;display:flex;gap:6px;align-items:flex-start}
+.gym-ex-inf{flex:1;min-width:0}
+.gym-ex-lbl{font-size:10px;color:var(--text-dim);font-weight:600;text-transform:uppercase;letter-spacing:.4px;margin-bottom:2px}
+.gym-ex-nm{font-size:12px;font-weight:600;color:var(--text);display:flex;align-items:center;justify-content:space-between;margin-bottom:2px}
+.gym-chev{font-size:9px;color:var(--text-dim);transition:transform .2s;flex-shrink:0}
+.gym-ex.gym-xo .gym-chev{transform:rotate(180deg)}
+.gym-ex-sets{font-size:11px;color:var(--text-dim);padding-bottom:7px}
+.gym-wt-row{padding:0 9px 7px;display:flex;align-items:center;gap:5px;border-bottom:1px solid var(--border)}
+.gym-wt-lbl{font-size:10px;color:var(--text-dim);white-space:nowrap}
+.gym-wt{width:68px;font-size:12px;padding:4px 6px;border-radius:5px;border:1px solid var(--border);background:var(--surface);color:var(--text);min-height:28px;font-family:inherit}
+.gym-wt:focus{outline:none;border-color:var(--accent)}
+.gym-saved{font-size:10px;color:var(--green,#2d8a58);opacity:0;transition:opacity .3s;margin-left:2px}
+.gym-desc{max-height:0;overflow:hidden;transition:max-height .28s ease,opacity .2s;opacity:0;padding:0 9px}
+.gym-ex.gym-xo .gym-desc{max-height:400px;opacity:1;padding:7px 9px 0}
+.gym-intro{font-size:11px;color:var(--text-dim);margin:0 0 5px;line-height:1.5}
+.gym-steps{list-style:none;padding:0;margin:0 0 5px}
+.gym-steps li{font-size:11px;color:var(--text-dim);padding:2px 0 2px 14px;position:relative;line-height:1.5}
+.gym-steps li::before{content:attr(data-n);position:absolute;left:0;font-size:10px;font-weight:700;color:var(--text-dim);top:3px}
+.gym-cues{display:flex;flex-wrap:wrap;gap:3px;margin-bottom:3px}
+.gym-cue{font-size:10px;font-weight:600;padding:2px 6px;border-radius:20px;background:var(--surface-raised);border:1px solid var(--border);color:var(--text-dim)}
+.gym-alts-btn{padding:6px 9px;font-size:11px;color:var(--text-dim);cursor:pointer;border-top:1px solid var(--border);display:flex;align-items:center;gap:5px;user-select:none;min-height:32px;transition:background .15s}
+.gym-alts-btn:hover{background:var(--surface-raised)}
+.gym-aarr{font-size:9px;transition:transform .2s}
+.gym-ex.gym-ao .gym-aarr{transform:rotate(180deg)}
+.gym-alts{max-height:0;overflow:hidden;transition:max-height .32s ease,opacity .2s;opacity:0}
+.gym-ex.gym-ao .gym-alts{max-height:700px;opacity:1}
+.gym-alt{border-top:1px solid var(--border)}
+.gym-alt-hd{padding:6px 9px;font-size:11px;cursor:pointer;display:flex;justify-content:space-between;align-items:center;min-height:33px;color:var(--text);transition:background .15s}
+.gym-alt-hd:hover{background:var(--surface-raised)}
+.gym-achev{font-size:9px;color:var(--text-dim);transition:transform .2s;flex-shrink:0}
+.gym-alt.gym-open .gym-achev{transform:rotate(180deg)}
+.gym-alt-body{max-height:0;overflow:hidden;transition:max-height .24s ease,opacity .2s;opacity:0;padding:0 9px}
+.gym-alt.gym-open .gym-alt-body{max-height:280px;opacity:1;padding:5px 9px 8px}
+.gym-rest{display:flex;align-items:center;gap:6px;font-size:10px;color:var(--text-dim);margin:5px 0 1px}
+.gym-rl{flex:1;height:1px;background:var(--border)}
+.gym-walk{background:var(--surface-raised);border-radius:7px;padding:16px;text-align:center}
+.gym-walk p:first-child{font-size:13px;font-weight:600;color:var(--text);margin:0 0 4px}
+.gym-walk p{font-size:11px;color:var(--text-dim);margin:0}
+.gym-hint{font-size:10px;color:var(--text-dim);text-align:right;margin-bottom:5px}
+@media(max-width:360px){.gym-pair{grid-template-columns:1fr}}
 </style>
 </head>
 <body>
@@ -659,6 +722,14 @@ body.unlocked .date-editable:hover{border-bottom-color:var(--accent);background:
 </div>
 <div class="login-error" id="adminAddError" style="text-align:left;"></div>
 </div>
+</div>
+</div>
+
+<div class="panel hidden-panel" data-panel="gym" data-nav="gym" id="panel-gym">
+<div class="panel-header"><div class="panel-title"><span class="drag-handle">&#10495;</span><span class="icon">&#127947;</span> Gym Routine</div><div class="panel-badge">M/W/F</div></div>
+<div class="panel-content gym-body" id="gym-body">
+<div class="gym-tabs" id="gym-tabs"></div>
+<div id="gym-content"></div>
 </div>
 </div>
 
@@ -1059,7 +1130,7 @@ try {
 <!-- SCRIPT 3: APP LOGIC -->
 <script>
 // STATE
-let state={projects:[],reminders:[],thoughts:[],notes:[],moodLog:[],tasks:[],journal:[],journalPin:'',routines:{morning:[{id:'m1',name:'Hydrate \u2014 glass of water',done:false},{id:'m2',name:"Review today's calendar",done:false},{id:'m3',name:'Pick top 3 priorities',done:false},{id:'m4',name:'Quick workspace tidy',done:false}],evening:[{id:'e1',name:'Review what got done today',done:false},{id:'e2',name:"Brain dump tomorrow's thoughts",done:false},{id:'e3',name:"Set out tomorrow's essentials",done:false},{id:'e4',name:'Wind-down activity',done:false}],custom:[]},currentRoutineTab:'morning',energy:null,mood:null,panelOrder:['projects','reminders','time','tasklist','notes','brain','routines','wellness','decision','admin'],panelsLocked:true,lastRoutineReset:null,visiblePanels:{},knownPanels:[]};
+let state={projects:[],reminders:[],thoughts:[],notes:[],moodLog:[],tasks:[],journal:[],journalPin:'',routines:{morning:[{id:'m1',name:'Hydrate \u2014 glass of water',done:false},{id:'m2',name:"Review today's calendar",done:false},{id:'m3',name:'Pick top 3 priorities',done:false},{id:'m4',name:'Quick workspace tidy',done:false}],evening:[{id:'e1',name:'Review what got done today',done:false},{id:'e2',name:"Brain dump tomorrow's thoughts",done:false},{id:'e3',name:"Set out tomorrow's essentials",done:false},{id:'e4',name:'Wind-down activity',done:false}],custom:[]},currentRoutineTab:'morning',energy:null,mood:null,panelOrder:['projects','reminders','time','tasklist','notes','brain','routines','wellness','decision','admin','gym'],panelsLocked:true,lastRoutineReset:null,visiblePanels:{},knownPanels:[]};
 
 // SYNC STATUS
 function setSyncStatus(status,label){const el=document.getElementById('syncStatus');if(!el)return;el.className='sync-status '+status;el.innerHTML='<span class="sync-dot"></span> '+label;}
@@ -1118,15 +1189,16 @@ async function load(){
   if(!state.reminders)state.reminders=[];
   if(!state.notes)state.notes=[];if(!state.moodLog)state.moodLog=[];if(!state.tasks)state.tasks=[];if(!state.visiblePanels)state.visiblePanels={};if(!state.knownPanels)state.knownPanels=[];
   if(!state.journal)state.journal=[];if(!state.journalPin)state.journalPin='';
-  if(!state.panelOrder)state.panelOrder=['projects','reminders','time','tasklist','notes','brain','routines','wellness','decision','admin'];
+  if(!state.panelOrder)state.panelOrder=['projects','reminders','time','tasklist','notes','brain','routines','wellness','decision','admin','gym'];
   // Remove legacy 'energy' panel id from any saved order
   state.panelOrder=state.panelOrder.filter(id=>id!=='energy');
   if(!state.panelOrder.includes('wellness'))state.panelOrder.splice(state.panelOrder.indexOf('time')+1,0,'wellness');
   if(!state.panelOrder.includes('notes'))state.panelOrder.splice(state.panelOrder.indexOf('routines'),0,'notes');
   // Migrate to new 3-column layout order if still using old order
   const oldOrder='projects,reminders,brain,time';
-  if(state.panelOrder.join(',').startsWith(oldOrder)){state.panelOrder=['projects','reminders','time','tasklist','notes','brain','routines','wellness','decision','admin'];}
+  if(state.panelOrder.join(',').startsWith(oldOrder)){state.panelOrder=['projects','reminders','time','tasklist','notes','brain','routines','wellness','decision','admin','gym'];}
   if(!state.panelOrder.includes('admin'))state.panelOrder.push('admin');
+  if(!state.panelOrder.includes('gym'))state.panelOrder.push('gym');
   if(!state.panelOrder.includes('tasklist'))state.panelOrder.splice(state.panelOrder.indexOf('time')+1,0,'tasklist');
   state.projects.forEach(p=>{if(!p.subtasks)p.subtasks=[];if(p.expanded===undefined)p.expanded=true;});
   // Ensure every panel already in panelOrder is "known" — prevents initPanelVisibility
@@ -2686,6 +2758,171 @@ if('serviceWorker' in navigator){navigator.serviceWorker.register('sw.js').catch
 // Handle Web Share Target inbound data
 setTimeout(checkShareTarget, 400); // slight delay so panels render first
 }
+// Auth is handled by Firebase onAuthStateChanged listener in Script 1
+
+// ── Gym Routine Panel ─────────────────────────────────────────────────────
+(function(){
+var GD={
+mon:{lbl:'Mon',short:'Push',supersets:[
+{id:'ma',type:'push',lbl:'A',mscl:'Chest + Shoulders \u00b7 3 rounds',ex:[
+{id:'ma1',nm:'DB Bench Press',sets:'3\u00d710\u201312',intro:'Flat bench. DBs at chest, palms forward.',steps:['Lie back, DBs at chest, elbows 45\u00b0 to torso','Lower just outside chest \u2014 feel the stretch','Press up and slightly inward, DBs nearly touch at top','2-count controlled descent'],cues:['chest up','feet flat','blades pinched'],alts:[
+{n:'Barbell Bench Press',s:['Grip 1.5\u00d7 shoulder-width','Lower bar to lower chest','Drive up in slight arc','Full lockout'],c:['arch back','drive feet']},
+{n:'DB Chest Fly',s:['Lie flat, DBs above chest, slight elbow bend','Lower in wide arc to pec stretch','Return in same arc \u2014 do not press'],c:['arc not press','control down']},
+{n:'Cable Chest Press',s:['Cables at chest height, split stance','Press forward and together','Return under control \u2014 constant tension'],c:['squeeze at press','constant tension']},
+{n:'Push-up',s:['Hands slightly wider than shoulders','Lower chest, elbows at 45\u00b0','Press to full extension \u2014 rigid plank'],c:['rigid plank','full ROM']}]},
+{id:'ma2',nm:'Arnold Press',sets:'3\u00d710\u201312',intro:'Named for the rotation through the press.',steps:['Start DBs at shoulders, palms facing you','Press up while rotating palms outward','Fully extend \u2014 palms now facing forward','Reverse the rotation on the way down'],cues:['core braced','full rotation'],alts:[
+{n:'DB Overhead Press',s:['DBs at shoulder height, palms forward','Press straight up to full extension','Lower slowly back to start'],c:['no lean back','controlled down']},
+{n:'Barbell Military Press',s:['Bar at shoulder height','Grip just outside shoulder-width','Press straight up \u2014 vertical bar path','Lower to clavicle'],c:['vertical path','full lockout']},
+{n:'Machine Shoulder Press',s:['Seat so handles align with shoulder','Press without shrugging','Lower before weight stack rests'],c:['no shrug','controlled descent']},
+{n:'Pike Push-up',s:['Downward dog, hips high','Bend elbows \u2014 lower crown toward floor','Press back to start'],c:['hips high','shoulder-width elbows']}]}]},
+{id:'mb',type:'push',lbl:'B',mscl:'Upper chest + Lateral deltoid \u00b7 3 rounds',ex:[
+{id:'mb1',nm:'Incline DB Press',sets:'3\u00d710\u201312',intro:'Set bench 30\u201345\u00b0. Higher angle shifts load toward shoulders.',steps:['Sit on incline bench, kick DBs up as you lie back','Press from upper chest, elbows at 45\u00b0','Squeeze at top; lower until DBs reach chest'],cues:['30\u00b0 is ideal','squeeze at top'],alts:[
+{n:'Barbell Incline Press',s:['Set bench 30\u201345\u00b0','Lower bar to upper chest','Press up in slight arc'],c:['upper chest target','45\u00b0 elbow angle']},
+{n:'Incline DB Fly',s:['Incline bench, DBs above upper chest, slight elbow bend','Lower in wide arc until deep pec stretch','Return in same arc'],c:['slight elbow bend','arc motion']},
+{n:'Cable Incline Fly',s:['Set pulleys low, lie on incline bench between them','Arc handles upward toward center','Squeeze pecs at top'],c:['constant tension','arc not press']},
+{n:'Landmine Press',s:['Load barbell into corner or landmine anchor','Grip end at shoulder, one hand','Press upward in an arc','Lower controlled'],c:['single-arm option','core braced']}]},
+{id:'mb2',nm:'Lateral Raise',sets:'3\u00d712\u201315',intro:'Light weight, slow eccentric. More effective than going heavy.',steps:['DBs at sides, soft elbow bend \u2014 lock it there','Lead with elbows, raise to shoulder height','Lower over 3 counts \u2014 that is where gains come from'],cues:['lead elbows','no shrugging','3-sec down'],alts:[
+{n:'Cable Lateral Raise',s:['Low pulley at side, grip handle','Raise arm to shoulder height \u2014 lead elbow','Lower slowly'],c:['constant tension','lean slightly away']},
+{n:'Machine Lateral Raise',s:['Seat so pads align with elbows','Lead elbows to shoulder level','Lower with control'],c:['elbow-pad contact','no shrug']},
+{n:'Upright Row',s:['DBs hanging front, shoulder-width grip','Lead elbows up and out','Raise to chin \u2014 elbows above hands'],c:['elbows lead','stop at chin']},
+{n:'Prone W-Raise',s:['Face down on bench or floor','Raise arms out and up forming a W','Squeeze rear delts and traps at top'],c:['thumbs up','squeeze at top']}]}]},
+{id:'mc',type:'push',lbl:'C',mscl:'Triceps + Core \u00b7 3 rounds',ex:[
+{id:'mc1',nm:'OH Tricep Extension',sets:'3\u00d712',intro:'Single DB with both hands. Full stretch at bottom.',steps:['Hold DB vertically, both hands cupping top plate','Extend fully overhead \u2014 elbows close to ears','Lower behind head until tricep stretch','Press back up; only forearms move'],cues:['elbows in','full extension'],alts:[
+{n:'Rope Pushdown',s:['Rope on high cable pulley','Elbows at sides, push rope down and slightly outward','Full extension at bottom','Return slowly \u2014 feel stretch at top'],c:['elbows fixed','flare at bottom']},
+{n:'DB Skull Crusher',s:['Lie on bench, DBs above chest, palms facing each other','Bend only at elbows \u2014 lower DBs to sides of head','Press back \u2014 elbows stay fixed'],c:['elbows point up','no flaring']},
+{n:'Close-grip Push-up',s:['Hands directly under shoulders','Lower chest between hands \u2014 elbows close to ribs','Press back to full extension'],c:['elbows track back','rigid body']},
+{n:'Bench Dip',s:['Hands on bench behind you, feet forward','Lower hips \u2014 bend elbows to 90\u00b0','Press to full extension'],c:['upright torso','full lockout']}]},
+{id:'mc2',nm:'Dead Bug',sets:'3\u00d78/side',intro:'Anti-extension core. Low back stays pressed down always.',steps:['Lie on back, arms up, knees bent 90\u00b0 in air','Press lower back firmly into floor \u2014 hold it there','Lower opposite arm and leg slowly toward floor','Return before any back lift; repeat other side'],cues:['back flat always','exhale on lower'],alts:[
+{n:'Plank',s:['Forearms on floor, body in straight line','Squeeze glutes and abs \u2014 no sagging','Hold for time, breathing normally'],c:['squeeze glutes','no sagging']},
+{n:'Bird Dog',s:['All fours, spine neutral','Extend one arm forward and opposite leg back','Hold 2 sec, return without touching floor','Alternate \u2014 no hip rotation'],c:['level hips','extend fully']},
+{n:'Ab Wheel Rollout',s:['Kneel with wheel under shoulders','Roll forward until nearly parallel to floor','Pull back using abs \u2014 no momentum'],c:['hollow body','do not drop hips']},
+{n:'Hollow Body Hold',s:['Lie on back, arms overhead, legs straight','Press lower back into floor','Raise shoulders and legs \u2014 back stays flat','Legs lower = harder'],c:['low back flat','breathe normally']}]}]}]},
+wed:{lbl:'Wed',short:'Pull',supersets:[
+{id:'wa',type:'pull',lbl:'A',mscl:'Back vertical + horizontal \u00b7 3 rounds',ex:[
+{id:'wa1',nm:'Pull-ups',sets:'3\u00d7max',intro:'Full dead hang at bottom. No half reps.',steps:['Grip bar slightly wider than shoulders, palms away','Dead hang \u2014 full arm extension, shoulders active','Pull elbows down and back \u2014 chin clears bar','Lower all the way, 2-sec descent'],cues:['full dead hang','elbows to pockets','add weight if >12'],alts:[
+{n:'Lat Pulldown',s:['Sit, thighs secured, grip just outside shoulder-width','Pull bar to upper chest \u2014 lead with elbows','Return slowly to full extension'],c:['lean back slightly','elbows down']},
+{n:'Assisted Pull-up',s:['Set machine to assist your bodyweight','Same form \u2014 full hang at bottom','Pull until chin clears bar','Lower fully with control'],c:['full range','reduce assist over time']},
+{n:'TRX Row',s:['Grip TRX handles, lean back until arms straight','Keep body rigid as a plank','Pull chest to hands \u2014 elbows drive back','Lower with control'],c:['body rigid','elbows drive back']},
+{n:'Cable Straight-arm Pulldown',s:['Straight bar on high cable, stand back','Arms straight, soft elbow bend throughout','Pull bar to thighs using lats only','Return slowly overhead'],c:['arms stay straight','lats only']}]},
+{id:'wa2',nm:'DB Bent-over Row',sets:'3\u00d710\u201312/side',intro:'Hinge at hip. Row to hip, not armpit.',steps:['Hinge forward ~45\u00b0, neutral spine, soft knees','Let DB hang from straight arm','Pull DB to hip \u2014 elbow drives back','Squeeze shoulder blade at top, lower slowly'],cues:['flat back','row to hip','squeeze top'],alts:[
+{n:'Seated Cable Row',s:['Sit at machine, feet on platform','Pull to lower chest \u2014 elbows drive back','Squeeze shoulder blades fully','Return to full arm extension'],c:['chest up','blades together']},
+{n:'Chest-supported Row',s:['Lie face down on incline bench','DB or cables \u2014 row elbows back and up','Squeeze at top, lower slowly'],c:['no momentum','strict form']},
+{n:'T-Bar Row',s:['Straddle loaded bar, hinge forward','Row bar to lower chest','Squeeze mid-back at top'],c:['flat back','mid-back squeeze']},
+{n:'Machine Row',s:['Chest against pad, adjust seat height','Pull elbows back fully','Squeeze at end range, return slowly'],c:['chest on pad','full ROM']}]}]},
+{id:'wb',type:'pull',lbl:'B',mscl:'Biceps + Rear delt \u00b7 3 rounds',ex:[
+{id:'wb1',nm:'DB Bicep Curl',sets:'3\u00d712',intro:'Alternate arms. Supinate on the way up.',steps:['Stand, DBs at sides, palms neutral','Curl one DB \u2014 rotate palm upward as it rises','Fully supinate at top \u2014 pinky toward ceiling','Lower slowly with full extension at bottom'],cues:['no swinging','full supination','slow down'],alts:[
+{n:'Cable Curl',s:['Low pulley, straight bar','Curl to chin height \u2014 elbows stay at sides','Lower under complete control'],c:['constant tension','elbows fixed']},
+{n:'Preacher Curl',s:['Upper arms on pad, start at full extension','Curl to shoulder height','Lower slowly \u2014 full extension every rep'],c:['no swing possible','full ROM']},
+{n:'Barbell Curl',s:['Grip shoulder-width, palms up','Curl from hips to chin \u2014 elbows at sides','Lower with control, full extension'],c:['no swinging','elbows fixed']},
+{n:'Incline DB Curl',s:['Sit on incline bench, arms hanging back for extra stretch','Curl both DBs simultaneously','Lower to full extension'],c:['arms hang back','full stretch at bottom']}]},
+{id:'wb2',nm:'DB Reverse Fly',sets:'3\u00d712\u201315',intro:'Go light \u2014 rear delt is small and traps will cheat.',steps:['Hinge forward ~45\u00b0, DBs hanging below chest','Soft elbow bend \u2014 lock it, do not change it','Raise arms out to sides like wings \u2014 lead elbows','Squeeze rear delts at top, lower slowly'],cues:['light weight','no trap shrug','elbows lead'],alts:[
+{n:'Face Pull',s:['Rope at eye level on cable','Pull rope to face \u2014 hands split to ears at end','Squeeze externally rotated position 1 sec','Return slowly'],c:['elbows high','squeeze at face']},
+{n:'Cable Reverse Fly',s:['Cross cables at chest height','Step back, uncross arms in wide arc','Squeeze rear delts at full extension'],c:['constant tension','slow and controlled']},
+{n:'Machine Rear Delt Fly',s:['Chest on pad, grip handles in wide fly position','Squeeze arms back and wide \u2014 elbows slightly bent','Return under complete control'],c:['strict form','no momentum']},
+{n:'Band Pull-apart',s:['Hold band at shoulder height, arms straight, palms down','Pull band apart until it touches chest','Control return to start'],c:['squeeze shoulder blades','full pull-apart']}]}]},
+{id:'wc',type:'pull',lbl:'C',mscl:'Hammer grip + Anti-rotation core \u00b7 3 rounds',ex:[
+{id:'wc1',nm:'DB Hammer Curl',sets:'3\u00d712',intro:'Neutral grip throughout. Targets brachialis.',steps:['DBs at sides, palms facing body \u2014 neutral grip throughout','Curl both DBs simultaneously or alternate','Thumbs toward shoulders at top','Lower slowly \u2014 3-sec descent'],cues:['palms always neutral','3-sec descent'],alts:[
+{n:'Cross-body Hammer Curl',s:['DB at side, neutral grip','Curl DB across body toward opposite shoulder','Lower back and repeat other side'],c:['diagonal path','neutral grip']},
+{n:'Cable Hammer Curl',s:['Rope attachment on low cable','Neutral grip throughout the curl','Curl to shoulder height, lower slowly'],c:['constant tension','neutral grip']},
+{n:'Reverse Curl',s:['Barbell or DBs, palms facing down','Curl to shoulder height \u2014 wrists stay straight','Lower slowly'],c:['wrists straight','brachioradialis focus']},
+{n:'Zottman Curl',s:['Curl up with supinated palms','Rotate to pronated grip at top','Lower slowly with palms facing down','Rotate back to supinated at bottom'],c:['rotation at top','slow eccentric']}]},
+{id:'wc2',nm:'Pallof Press',sets:'3\u00d710/side',intro:'Anti-rotation core. You are resisting the pull, not generating force.',steps:['Cable or band at chest height; stand sideways to anchor','Step away until there is real tension; feet shoulder-width','Hold handle at chest, press straight out in front','Hold 1 sec extended \u2014 resist rotation \u2014 return to chest'],cues:['hips square','do not rotate','step further for more'],alts:[
+{n:'Side Plank',s:['Forearm on floor, body in straight line','Stack hips \u2014 do not let them sag','Hold for time; progress by raising top arm or leg'],c:['hips high','straight line']},
+{n:'Cable Woodchop',s:['High cable, stand sideways','Pull handle diagonally down and across body','Rotate through torso \u2014 controlled','Return slowly to start'],c:['pivot back foot','controlled rotation']},
+{n:'Landmine Rotation',s:['Hold barbell end with both hands extended','Rotate side to side through full range','Control the arc both directions'],c:['full rotation','arms extended']},
+{n:'Suitcase Carry',s:['Hold one heavy DB at side','Walk for prescribed distance or time','Resist leaning toward the weight \u2014 stay tall'],c:['resist the lean','core braced throughout']}]}]}]},
+fri:{lbl:'Fri',short:'Legs',supersets:[
+{id:'fa',type:'legs',lbl:'A',mscl:'Quads + Glutes \u00b7 3 rounds',ex:[
+{id:'fa1',nm:'Goblet Squat',sets:'3\u00d712',intro:'Hold DB vertically at chest. Elbows track inside knees at bottom.',steps:['Hold DB vertically by top plate at chest','Feet shoulder-width, toes slightly out','Sit back and down \u2014 elbows inside knees at bottom','Drive through heels, squeeze glutes at top'],cues:['elbows inside knees','chest tall','heels on floor'],alts:[
+{n:'DB Sumo Squat',s:['Wide stance, toes out 45\u00b0, one DB between legs','Sit straight down \u2014 torso stays upright','Drive through heels, squeeze glutes at top'],c:['wide stance','torso upright']},
+{n:'Bulgarian Split Squat',s:['Rear foot elevated on bench, front foot forward','Lower back knee toward floor','Drive through front heel to stand','All reps one side, then switch'],c:['front knee over ankle','upright torso']},
+{n:'Barbell Back Squat',s:['Bar across traps, feet shoulder-width','Sit back and down to parallel or below','Drive knees out, press through heels'],c:['knees out','drive heels','neutral spine']},
+{n:'Leg Press',s:['Feet shoulder-width on platform, mid placement','Lower sled until knees near 90\u00b0 \u2014 do not bounce','Press back through heels to near lockout'],c:['heels on platform','no knee lockout']}]},
+{id:'fa2',nm:'Weighted Step-up',sets:'3\u00d710/leg',intro:'The slow step-down is as important as the step-up.',steps:['DBs at sides, stand facing the box','Place full foot on box \u2014 not just the toe','Drive through heel of elevated foot to stand fully','Lower the trailing leg slowly \u2014 resist the descent'],cues:['drive through heel','full foot on box','slow step-down'],alts:[
+{n:'Reverse Lunge',s:['Step one foot back, lower back knee to floor','Front foot stays planted \u2014 push back through it','Alternate or all one side'],c:['controlled step back','front heel stays']},
+{n:'Box Jump',s:['Quarter squat then explode onto box','Land softly with both feet \u2014 full foot','Stand tall at top, step down (do not jump down)'],c:['soft landing','step down safely']},
+{n:'Single-leg Press',s:['One foot on platform, other hanging','Press through heel \u2014 full single-leg extension','Lower with control, knee tracks over toes'],c:['heel-drive','no knee cave']},
+{n:'Lateral Step-up',s:['Box to your side, step up sideways with near foot','Drive through that heel to stand on box','Lower slowly and repeat'],c:['lateral hip focus','control descent']}]}]},
+{id:'fb',type:'legs',lbl:'B',mscl:'Hamstrings + Glute bridge \u00b7 3 rounds',ex:[
+{id:'fb1',nm:'DB Romanian Deadlift',sets:'3\u00d710\u201312',intro:'Stop when hamstrings are taut \u2014 not when weight hits the floor.',steps:['Stand tall, DBs in front of thighs, slight knee bend','Push hips back as if closing a door with your glutes','Lower DBs along legs \u2014 keep them close','Stop at hamstring taut, drive hips forward to stand'],cues:['hips back first','neutral spine','DBs stay close'],alts:[
+{n:'Single-leg RDL',s:['Hold one or two DBs, slight bend in standing knee','Hinge at hip \u2014 trail leg rises as torso falls','Stop at hamstring stretch, drive hip forward to return'],c:['hip hinge pattern','do not round back']},
+{n:'Barbell RDL',s:['Bar in overhand grip at hip level','Push hips back, lower bar along shins','Stop at mid-shin or hamstring taut, drive hips through'],c:['bar stays close','neutral spine']},
+{n:'Good Morning',s:['Bar on upper back, feet shoulder-width','Slight knee bend, hinge at hip toward parallel','Drive hips forward to stand'],c:['hinge not squat','neutral spine']},
+{n:'Nordic Hamstring Curl',s:['Kneel, feet anchored under barbell or by a partner','Lower toward floor controlling descent with hamstrings only','Catch with hands if needed, push back to start'],c:['hamstrings control descent','hardest exercise here']}]},
+{id:'fb2',nm:'Weighted Glute Bridge',sets:'3\u00d715',intro:'DB on hips. 2-second hold at top builds real glute strength.',steps:['Lie on back, feet flat and hip-width, DB on hips','Drive hips up by squeezing glutes \u2014 not by arching lower back','Hold top for 2 full seconds \u2014 glutes fully contracted','Lower slowly \u2014 hips almost touch floor, repeat'],cues:['squeeze glutes','2-sec hold','ribs down'],alts:[
+{n:'Barbell Hip Thrust',s:['Upper back on bench, bar across hips (use pad)','Drive hips up \u2014 full glute contraction at top','Hold 1 sec, lower with control'],c:['upper back on bench','full hip extension']},
+{n:'Single-leg Glute Bridge',s:['Lie on back, one foot flat, one leg raised','Drive through heel of flat foot to raise hips','Hold at top 2 sec, lower slowly'],c:['hips level','squeeze active glute']},
+{n:'Cable Pull-through',s:['Low cable behind you, grip rope between legs','Hinge forward at hip, then drive hips through','Squeeze glutes fully at standing extension'],c:['hip hinge pattern','full extension']},
+{n:'Donkey Kick (weighted)',s:['On all fours, ankle weight or band on leg','Kick foot toward ceiling \u2014 squeeze glute at top','Lower and repeat without knee touching floor'],c:['squeeze at top','hips level']}]}]},
+{id:'fc',type:'legs',lbl:'C',mscl:'Unilateral legs + Core \u00b7 3 rounds',ex:[
+{id:'fc1',nm:'DB Walking Lunge',sets:'3\u00d710/leg',intro:'Keep torso upright. Resist the lean-forward tendency.',steps:['DBs at sides, step forward with one leg','Lower back knee to floor \u2014 stop an inch before it hits','Push off front foot, bring feet together briefly','Alternate legs, continue walking forward'],cues:['chest up','front knee over ankle'],alts:[
+{n:'Reverse Lunge',s:['Step one foot back, lower back knee toward floor','Front foot stays planted \u2014 push back through it','Alternate legs'],c:['controlled step back','front heel stays']},
+{n:'Lateral Lunge',s:['Wide step to one side, push hips back over that foot','Lower into that leg \u2014 keep other leg straight','Push back to center'],c:['hips back and down','straight stationary leg']},
+{n:'DB Bulgarian Split Squat',s:['Rear foot on bench, front foot forward','Lower back knee toward floor','Drive through front heel \u2014 all reps one side then switch'],c:['front knee over ankle','upright torso']},
+{n:'Step-down',s:['Stand on box, one foot over edge','Lower hanging foot toward floor by bending standing knee','Return without touching the foot down'],c:['eccentric control','knee tracks over toe']}]},
+{id:'fc2',nm:'Hollow Body Hold',sets:'3\u00d720\u201330 sec',intro:'Looks easy. Back stays flat \u2014 that is everything.',steps:['Lie on back, arms overhead, legs straight','Press lower back INTO the floor \u2014 this is the whole point','Raise shoulders and legs until back tries to arch','Back stays down: that is your range \u2014 hold it there'],cues:['low back flat','breathe normally','legs lower = harder'],alts:[
+{n:'Plank',s:['Forearms on floor, body in straight line from head to heels','Squeeze glutes and abs \u2014 no sagging','Hold for time, breathing normally'],c:['squeeze glutes','no sagging']},
+{n:'V-Up',s:['Lie flat, arms overhead','Simultaneously raise legs and torso \u2014 reach toward feet','Lower with control \u2014 feet do not touch floor'],c:['controlled movement','meet in middle']},
+{n:'Hanging Leg Raise',s:['Hang from pull-up bar','Raise both legs to parallel or above \u2014 controlled','Lower without swinging'],c:['no swing','control the descent']},
+{n:'Ab Wheel Rollout',s:['Kneel with wheel under shoulders','Roll forward until nearly parallel to floor','Pull back using abs \u2014 no hip drop or momentum'],c:['hollow position','do not drop hips']}]}]}]}};
+
+var GW_KEY='gym_weights_v2';
+function gLoadW(){try{return JSON.parse(localStorage.getItem(GW_KEY)||'{}')}catch(e){return{}}}
+function gSaveW(id,val){try{var w=gLoadW();w[id]=val;localStorage.setItem(GW_KEY,JSON.stringify(w))}catch(e){}}
+function gBadge(t){return{push:'gym-bp',pull:'gym-bl',legs:'gym-bg'}[t]||'gym-bp'}
+function gNum(id){return id.endsWith('1')?'exercise 1':'exercise 2'}
+
+function gAlt(a,exId,i){
+  return '<div class="gym-alt" id="gya-'+exId+'-'+i+'"><div class="gym-alt-hd" onclick="gymTAlt(\''+exId+'\','+i+')">'+a.n+'<span class="gym-achev">\u25be</span></div><div class="gym-alt-body"><ol class="gym-steps">'+a.s.map(function(s,j){return'<li data-n="'+(j+1)+'">'+s+'</li>'}).join('')+'</ol><div class="gym-cues">'+a.c.map(function(c){return'<span class="gym-cue">'+c+'</span>'}).join('')+'</div></div></div>';
+}
+function gEx(ex){
+  var w=gLoadW(),wv=w[ex.id]||'';
+  return '<div class="gym-ex" id="gye-'+ex.id+'"><div class="gym-ex-hd" onclick="gymTEx(\''+ex.id+'\')"><div class="gym-ex-inf"><div class="gym-ex-lbl">'+gNum(ex.id)+'</div><div class="gym-ex-nm">'+ex.nm+'<span class="gym-chev">\u25be</span></div><div class="gym-ex-sets">'+ex.sets+'</div></div></div><div class="gym-wt-row"><span class="gym-wt-lbl">logged weight</span><input class="gym-wt" type="text" placeholder="lbs / kg" value="'+wv+'" onclick="event.stopPropagation()" onchange="gymTW(\''+ex.id+'\',this)" onblur="gymTW(\''+ex.id+'\',this)"><span class="gym-saved" id="gys-'+ex.id+'">saved</span></div><div class="gym-desc" id="gyd-'+ex.id+'"><p class="gym-intro">'+ex.intro+'</p><ol class="gym-steps">'+ex.steps.map(function(s,i){return'<li data-n="'+(i+1)+'">'+s+'</li>'}).join('')+'</ol><div class="gym-cues">'+ex.cues.map(function(c){return'<span class="gym-cue">'+c+'</span>'}).join('')+'</div></div><div class="gym-alts-btn" onclick="event.stopPropagation();gymTAlts(\''+ex.id+'\')"><span class="gym-aarr" id="gyar-'+ex.id+'">\u25be</span> '+ex.alts.length+' alternates</div><div class="gym-alts" id="gyal-'+ex.id+'">'+ex.alts.map(function(a,i){return gAlt(a,ex.id,i)}).join('')+'</div></div>';
+}
+function gSS(ss){
+  return '<div class="gym-ss"><div class="gym-ss-hd"><span class="gym-badge '+gBadge(ss.type)+'">SS-'+ss.lbl+'</span><span class="gym-mscl">'+ss.mscl+'</span></div><div class="gym-pair">'+ss.ex.map(gEx).join('')+'</div><div class="gym-rest"><div class="gym-rl"></div>3 min rest between rounds<div class="gym-rl"></div></div></div>';
+}
+function gDayHTML(key){
+  if(!GD[key]){var msgs={tue:'Mon push recovery.',thu:'Wed pull recovery.',sat:'Bridges legs day to rest.',sun:'Full rest \u2014 sleep, eat, recover.'};return'<div class="gym-walk"><p>'+key.charAt(0).toUpperCase()+key.slice(1)+' \u2014 Walk 45 min</p><p>'+(msgs[key]||'Recovery day.')+'</p></div>';}
+  var d=GD[key];
+  return'<div class="gym-chips"><span class="gym-chip gym-cw">10 min treadmill</span><span class="gym-chip gym-cl">~38 min lifting</span><span class="gym-chip gym-cc">7 min stretch</span><span class="gym-chip gym-ct">\u224255 min</span></div><p class="gym-hint">tap any exercise for form cues</p>'+d.supersets.map(gSS).join('');
+}
+
+function gymInitPanel(){
+  var tabs=document.getElementById('gym-tabs');
+  if(!tabs)return;
+  var days=[['mon','Mon \u2014 Push',false],['tue','Tue',true],['wed','Wed \u2014 Pull',false],['thu','Thu',true],['fri','Fri \u2014 Legs',false],['sat','Sat',true],['sun','Sun',true]];
+  tabs.innerHTML=days.map(function(d){return'<button class="gym-tab'+(d[2]?' gym-wk':'')+'" id="gyt-'+d[0]+'" onclick="gymDay(\''+d[0]+'\')">'+d[1]+'</button>'}).join('');
+  var todayKey=['sun','mon','tue','wed','thu','fri','sat'][new Date().getDay()];
+  gymDay(todayKey);
+}
+function gymDay(k){
+  document.querySelectorAll('.gym-tab').forEach(function(t){t.classList.remove('gym-on')});
+  var tb=document.getElementById('gyt-'+k);if(tb)tb.classList.add('gym-on');
+  var c=document.getElementById('gym-content');if(c)c.innerHTML=gDayHTML(k);
+}
+function gymTEx(id){var el=document.getElementById('gye-'+id);if(el)el.classList.toggle('gym-xo')}
+function gymTAlts(id){
+  var el=document.getElementById('gye-'+id);if(!el)return;
+  var open=el.classList.toggle('gym-ao');
+  var arr=document.getElementById('gyar-'+id);if(arr)arr.style.transform=open?'rotate(180deg)':'';
+}
+function gymTAlt(exId,i){
+  var el=document.getElementById('gya-'+exId+'-'+i);
+  var blk=document.getElementById('gyal-'+exId);if(!el||!blk)return;
+  blk.querySelectorAll('.gym-alt').forEach(function(a){if(a!==el)a.classList.remove('gym-open')});
+  el.classList.toggle('gym-open');
+}
+function gymTW(id,inp){
+  gSaveW(id,inp.value);
+  var s=document.getElementById('gys-'+id);
+  if(s){s.style.opacity='1';setTimeout(function(){s.style.opacity='0'},1400);}
+}
+document.addEventListener('DOMContentLoaded',gymInitPanel);
+if(document.readyState!=='loading')gymInitPanel();
+})();
+// ── End Gym Routine Panel ─────────────────────────────────────────────────
+
 // Auth is handled by Firebase onAuthStateChanged listener in Script 1
 </script>
 </body>
