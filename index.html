@@ -515,7 +515,7 @@ body.unlocked .date-editable:hover{border-bottom-color:var(--accent);background:
 .wo-modal-steps li::before{content:attr(data-n);position:absolute;left:0;color:var(--accent);font-weight:700;font-size:12px;}
 .wo-modal-tip{font-size:12px;color:var(--text-faint);background:var(--surface-raised);border-left:3px solid var(--accent);padding:8px 10px;border-radius:0 var(--radius-sm) var(--radius-sm) 0;line-height:1.5;}
 @media(max-width:768px){.wo-log-row{gap:4px;}.wo-log-input{width:70px;}.wo-day-tab{font-size:10px;padding:5px 3px;}}
-</style>
+/* ── TOOL KIT PANEL BUTTONS ── */
 .toolkit-grid{display:grid;grid-template-columns:1fr 1fr;gap:10px;padding:4px 0;}
 .toolkit-grid .toolkit-btn:last-child:nth-child(odd){grid-column:1/-1;}
 .toolkit-btn{display:flex;flex-direction:column;align-items:center;justify-content:center;gap:7px;padding:18px 10px;border-radius:var(--radius-sm);border:1.5px solid var(--border);background:var(--surface-raised);cursor:pointer;font-family:inherit;font-size:22px;transition:all 0.18s;color:var(--text-dim);}
@@ -674,9 +674,9 @@ body.unlocked .date-editable:hover{border-bottom-color:var(--accent);background:
 <div class="panel" data-panel="workout" data-nav="workout" style="grid-column:span 2;">
 <div class="panel-header">
   <div class="panel-title"><span class="drag-handle">&#10495;</span><span class="icon">&#127947;</span> Workout</div>
-  <div style="display:flex;gap:6px;align-items:center;"><span class="panel-badge" id="woBadge">Today</span></div>
+  <div style="display:flex;gap:6px;align-items:center;"><span class="panel-badge" id="woBadge">Today</span><button class="expand-btn" onclick="toggleExpand(this)" title="Expand/collapse"><span class="expand-arrow">▼</span></button></div>
 </div>
-<div id="woContent"></div>
+<div class="panel-content" id="woContent"></div>
 </div>
 
 <!-- 11. STUCK HELPER -->
