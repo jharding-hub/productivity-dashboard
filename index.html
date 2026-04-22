@@ -526,6 +526,7 @@ body.unlocked .date-editable:hover{border-bottom-color:var(--accent);background:
 .toolkit-mood:hover{border-color:var(--accent);color:var(--accent);background:var(--accent-glow);}
 .toolkit-journal:hover{border-color:var(--purple);color:var(--purple);background:var(--purple-dim);}
 .toolkit-radar:hover{border-color:var(--blue);color:var(--blue);background:var(--blue-dim);}
+.toolkit-workout:hover{border-color:var(--orange);color:var(--orange);background:var(--orange-dim);}
 </style>
 </head>
 <body>
@@ -606,6 +607,7 @@ body.unlocked .date-editable:hover{border-bottom-color:var(--accent);background:
   <button class="toolkit-btn toolkit-mood" onclick="openEnergyModal()">&#9889;<span>Energy &amp; Mood</span></button>
   <button class="toolkit-btn toolkit-journal" onclick="openJournal()">&#128221;<span>Journal</span></button>
   <button class="toolkit-btn toolkit-radar" onclick="openRadarModal()">&#127956;<span>Radar</span></button>
+  <button class="toolkit-btn toolkit-workout" onclick="openWorkoutModal()">&#127947;<span>Workout</span></button>
 </div>
 </div>
 
@@ -670,14 +672,6 @@ body.unlocked .date-editable:hover{border-bottom-color:var(--accent);background:
 </div>
 </div>
 
-<!-- WORKOUT PANEL -->
-<div class="panel" data-panel="workout" data-nav="workout" style="grid-column:span 2;">
-<div class="panel-header">
-  <div class="panel-title"><span class="drag-handle">&#10495;</span><span class="icon">&#127947;</span> Workout</div>
-  <div style="display:flex;gap:6px;align-items:center;"><span class="panel-badge" id="woBadge">Today</span><button class="expand-btn" onclick="toggleExpand(this)" title="Expand/collapse"><span class="expand-arrow">▼</span></button></div>
-</div>
-<div class="panel-content" id="woContent"></div>
-</div>
 
 <!-- 11. STUCK HELPER -->
 <div class="panel panel-narrow" data-panel="decision" data-nav="help">
@@ -729,7 +723,6 @@ body.unlocked .date-editable:hover{border-bottom-color:var(--accent);background:
 <button class="nav-tab" onclick="showMobilePanel('notes',this)" data-navfor="notes"><span class="nt-icon">&#128221;</span>Notes</button>
 <button class="nav-tab" onclick="showMobilePanel('help',this)" data-navfor="decision"><span class="nt-icon">&#129517;</span>Help</button>
 <button class="nav-tab" onclick="showMobilePanel('tasklist',this)" data-navfor="tasklist"><span class="nt-icon">&#128203;</span>Tasks</button>
-<button class="nav-tab" onclick="showMobilePanel('workout',this)" data-navfor="workout"><span class="nt-icon">&#127947;</span>Workout</button>
 <button class="nav-tab" onclick="showMobilePanel('admin',this)" id="adminNavTab" style="display:none;"><span class="nt-icon">&#128737;</span>Admin</button>
 </div>
 
@@ -790,6 +783,21 @@ body.unlocked .date-editable:hover{border-bottom-color:var(--accent);background:
     </div>
   </div>
   <div id="radarMapContainer" style="flex:1;min-height:560px;position:relative;"></div>
+</div>
+</div>
+
+<!-- WORKOUT MODAL -->
+<div class="modal-blur-overlay" id="workoutModal">
+<div class="modal-blur-backdrop" onclick="closeWorkoutModal()"></div>
+<div class="modal-blur-panel" style="width:min(860px,96vw);max-height:92vh;">
+  <div class="modal-blur-header">
+    <div class="modal-blur-title">&#127947; Workout</div>
+    <div style="display:flex;gap:10px;align-items:center;">
+      <select id="woDaySelect" onchange="woSetDay(parseInt(this.value))" style="font-size:13px;padding:5px 10px;background:var(--surface-raised);border:1px solid var(--border);border-radius:var(--radius-sm);color:var(--text);font-family:inherit;cursor:pointer;outline:none;"></select>
+      <button class="modal-blur-close" onclick="closeWorkoutModal()">&#10005;</button>
+    </div>
+  </div>
+  <div class="modal-blur-body" id="woContent" style="padding:16px 20px;"></div>
 </div>
 </div>
 
@@ -1187,7 +1195,6 @@ async function load(){
   if(state.panelOrder.join(',').startsWith(oldOrder)){state.panelOrder=['projects','reminders','time','tasklist','notes','brain','routines','wellness','decision','admin'];}
   if(!state.panelOrder.includes('admin'))state.panelOrder.push('admin');
   if(!state.panelOrder.includes('tasklist'))state.panelOrder.splice(state.panelOrder.indexOf('time')+1,0,'tasklist');
-  if(!state.panelOrder.includes('workout'))state.panelOrder.splice(state.panelOrder.indexOf('tasklist')+1,0,'workout');
   state.projects.forEach(p=>{if(!p.subtasks)p.subtasks=[];if(p.expanded===undefined)p.expanded=true;});
   // Ensure every panel already in panelOrder is "known" — prevents initPanelVisibility
   // from treating previously-seen panels as new and hiding them on refresh
@@ -1228,7 +1235,6 @@ const ALL_PANELS=[
   {id:'reminders',icon:'\u{1F514}',name:'Reminders',desc:'Date and time-based reminders'},
   {id:'time',icon:'\u{1F9F0}',name:'Tool Kit',desc:'Breathwork, timer, energy/mood, and journal launcher'},
   {id:'tasklist',icon:'\u{1F4CB}',name:'Task List',desc:'Unified view of all tasks sorted by priority or time'},
-  {id:'workout',icon:'\u{1F3CB}',name:'Workout',desc:'Weekly lifting and walking plan with exercise logs'},
   {id:'notes',icon:'\u{1F4DD}',name:'Notes',desc:'Labeled notes with project tags'},
   {id:'brain',icon:'\u{1F9E0}',name:'Brain Dump',desc:'Capture fleeting thoughts'},
   {id:'routines',icon:'\u{1F501}',name:'Routines',desc:'Morning, evening, and custom checklists'},
@@ -2735,6 +2741,19 @@ function deleteJournalEntry(id){
 }
 
 // ═══════════════════════════════════════
+// WORKOUT MODAL
+// ═══════════════════════════════════════
+function openWorkoutModal(){
+  document.getElementById('workoutModal').classList.add('open');
+  _blurDashboard();
+  renderWorkout();
+}
+function closeWorkoutModal(){
+  document.getElementById('workoutModal').classList.remove('open');
+  _unblurDashboard();
+}
+
+// ═══════════════════════════════════════
 // WORKOUT PANEL
 // ═══════════════════════════════════════
 var WO_ACTIVE_DAY=null;
@@ -2967,30 +2986,26 @@ const WO_COOLDOWN=[
 
 function renderWorkout(){
   var today=new Date().getDay(); // 0=Sun
-  var dayMap=[6,0,1,2,3,4,5]; // Sun=6,Mon=0,Tue=1...
+  var dayMap=[6,0,1,2,3,4,5]; // map JS day → WO_DAYS index (Mon=0)
   var todayIdx=dayMap[today];
   if(WO_ACTIVE_DAY===null)WO_ACTIVE_DAY=todayIdx;
 
-  var dayType=WO_DAYS[WO_ACTIVE_DAY].type;
-  var badge=document.getElementById('woBadge');
-  if(badge){
-    badge.textContent=WO_DAYS[WO_ACTIVE_DAY].label+' — '+(dayType==='lift'?'Weights':'Walk');
+  // Populate day dropdown
+  var sel=document.getElementById('woDaySelect');
+  if(sel){
+    sel.innerHTML=WO_DAYS.map(function(d,i){
+      var label=d.label+' \u2014 '+(d.type==='lift'?'\uD83C\uDFCB Weights':d.type==='walk'?'\uD83D\UDEB6 Walk':'\uD83D\uDCA4 Rest');
+      var selected=i===WO_ACTIVE_DAY?' selected':'';
+      return '<option value="'+i+'"'+selected+'>'+label+(i===todayIdx?' \u2605':'')+' </option>';
+    }).join('');
   }
 
-  var html='<div class="wo-day-tabs">';
-  WO_DAYS.forEach(function(d,i){
-    var cls='wo-day-tab';
-    if(i===WO_ACTIVE_DAY)cls+=' active';
-    if(i===todayIdx)cls+=' today';
-    if(d.type==='rest')cls+=' rest';
-    html+='<button class="'+cls+'" onclick="woSetDay('+i+')">'+d.label+'</button>';
-  });
-  html+='</div>';
-
+  var dayType=WO_DAYS[WO_ACTIVE_DAY].type;
+  var html='';
   if(dayType==='walk'){
     html+=_renderWalkDay();
   }else if(dayType==='rest'){
-    html+='<div class="wo-walk-card"><div class="wo-walk-icon">&#128564;</div><div class="wo-walk-title">Rest Day</div><div class="wo-walk-desc">Recovery is where the adaptation happens.<br>Sleep well, stay hydrated, eat protein.</div></div>';
+    html='<div class="wo-walk-card"><div class="wo-walk-icon">&#128564;</div><div class="wo-walk-title">Rest Day</div><div class="wo-walk-desc">Recovery is where the adaptation happens.<br>Sleep well, stay hydrated, eat protein.</div></div>';
   }else{
     html+=_renderLiftDay();
   }
@@ -3039,31 +3054,43 @@ function _renderLiftDay(){
 function _renderExercise(ex){
   var exData=WO_EXERCISES[ex.id];
   var log=(state.workoutLog&&state.workoutLog[ex.id])||{weight:'',reps:''};
-  var altsHtml=exData.alts.map(function(aid){
-    var a=WO_EXERCISES[aid];
-    return '<div class="wo-alt-item" onclick="showExerciseInfo(\''+aid+'\')">'+a.name+'</div>';
+  var altOpts=exData.alts.map(function(aid){
+    return '<option value="'+aid+'">'+WO_EXERCISES[aid].name+'</option>';
   }).join('');
   return '<div class="wo-exercise">'
     +'<div class="wo-ex-top">'
-    +'<span class="wo-ex-name" onclick="showExerciseInfo(\''+ex.id+'\')" title="Tap for instructions">'+exData.name+'</span>'
+    +'<span class="wo-ex-name" onclick="showExerciseInfo(\''+ex.id+'\')" title="Tap for how-to">'+exData.name+' <span style="font-size:10px;color:var(--text-faint);">&#9432;</span></span>'
     +'<span class="wo-ex-sets">'+ex.sets+'</span>'
     +'</div>'
     +'<div class="wo-log-row">'
     +'<span class="wo-log-label">Last:</span>'
-    +'<input class="wo-log-input" type="text" placeholder="Weight (lbs)" value="'+esc(log.weight)+'" oninput="woLog(\''+ex.id+'\',\'weight\',this.value)" title="Weight used">'
-    +'<input class="wo-log-input" type="text" placeholder="Reps" value="'+esc(log.reps)+'" oninput="woLog(\''+ex.id+'\',\'reps\',this.value)" title="Reps completed">'
-    +'<button class="wo-alts-toggle" onclick="woToggleAlts(this)">&#43; Alternates</button>'
+    +'<input class="wo-log-input" type="number" inputmode="decimal" placeholder="lbs" value="'+esc(log.weight)+'" oninput="woLog(\''+ex.id+'\',\'weight\',this.value)" title="Weight used">'
+    +'<input class="wo-log-input" type="number" inputmode="numeric" placeholder="reps" value="'+esc(log.reps)+'" oninput="woLog(\''+ex.id+'\',\'reps\',this.value)" title="Reps completed">'
     +'</div>'
-    +'<div class="wo-alts">'+altsHtml+'</div>'
+    +'<div class="wo-alts-row" style="display:flex;align-items:center;gap:6px;margin-top:7px;">'
+    +'<span style="font-size:10px;color:var(--text-faint);white-space:nowrap;">Swap:</span>'
+    +'<select class="wo-alts-select" onchange="woAltChanged(this,\''+ex.id+'\')" style="flex:1;font-size:11px;padding:4px 6px;background:var(--surface);border:1px solid var(--border);border-radius:var(--radius-sm);color:var(--text-dim);font-family:inherit;cursor:pointer;">'
+    +'<option value="">— Alternate exercises —</option>'
+    +altOpts
+    +'</select>'
+    +'<button class="btn btn-sm" onclick="woViewAlt(this)" data-altfor="'+ex.id+'" style="font-size:11px;padding:3px 8px;display:none;">&#9432; How-to</button>'
+    +'</div>'
     +'</div>';
 }
 
-function woToggleAlts(btn){
-  var alts=btn.closest('.wo-exercise').querySelector('.wo-alts');
-  if(alts){
-    alts.classList.toggle('open');
-    btn.textContent=alts.classList.contains('open')?'\u2212 Alternates':'\u002B Alternates';
+function woAltChanged(sel,mainId){
+  var btn=sel.parentElement.querySelector('button');
+  if(sel.value){
+    btn.style.display='inline-block';
+    btn.setAttribute('data-altid',sel.value);
+  }else{
+    btn.style.display='none';
   }
+}
+
+function woViewAlt(btn){
+  var altId=btn.getAttribute('data-altid');
+  if(altId)showExerciseInfo(altId);
 }
 
 function woLog(exId,field,val){
@@ -3097,7 +3124,7 @@ function showExerciseInfo(exId){
 async function initApp(){
 await load();
 initPanelVisibility();applyPanelOrder();applyPanelVisibility();updateLockUI();updateClock();setInterval(updateClock,1000);updateTimerDisplay();
-renderProjects();renderReminders();renderThoughts();renderNotes();renderRoutines();renderTaskList();renderWorkout();checkDailyRoutineReset();newDecisionPrompt();initDragDrop();
+renderProjects();renderReminders();renderThoughts();renderNotes();renderRoutines();renderTaskList();checkDailyRoutineReset();newDecisionPrompt();initDragDrop();
 if(state.energy){const c=document.querySelectorAll('#energyPills .em-pill');const m=['high','good','low','crashed'];const i=m.indexOf(state.energy);if(i>=0)c[i].classList.add('selected');}
 if(state.mood){const c=document.querySelectorAll('#moodPills .em-pill');const m=['focused','scattered','anxious','calm'];const i=m.indexOf(state.mood);if(i>=0)c[i].classList.add('selected');}
 showStateAdvice();updateWellnessVisibility();
