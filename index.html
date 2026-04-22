@@ -468,43 +468,38 @@ body.unlocked .date-editable:hover{border-bottom-color:var(--accent);background:
 /* ── JOURNAL PANEL — upsized ── */
 .journal-panel{position:relative;z-index:1;background:var(--surface);border:1px solid var(--border);border-radius:var(--radius);width:min(1100px,95vw);max-height:92vh;display:flex;flex-direction:column;overflow:hidden;box-shadow:0 24px 60px rgba(0,0,0,0.6);animation:journalSlideIn 0.3s cubic-bezier(0.22,1,0.36,1) both;}
 /* ── WORKOUT PANEL ── */
-.wo-day-tabs{display:flex;gap:4px;margin-bottom:14px;flex-wrap:wrap;}
-.wo-day-tab{flex:1;min-width:36px;padding:6px 4px;border:1px solid var(--border);border-radius:var(--radius-sm);background:none;color:var(--text-dim);font-size:11px;font-weight:600;font-family:inherit;cursor:pointer;text-align:center;transition:all 0.15s;}
-.wo-day-tab:hover{border-color:var(--green);color:var(--green);}
-.wo-day-tab.active{background:var(--green-dim);border-color:var(--green);color:var(--green);}
-.wo-day-tab.today{box-shadow:0 0 0 2px var(--accent);}
-.wo-day-tab.rest{color:var(--text-faint);}
 .wo-section{margin-bottom:12px;}
-.wo-section-title{font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:1px;color:var(--text-faint);margin-bottom:8px;display:flex;align-items:center;gap:6px;}
-.wo-section-title::after{content:'';flex:1;height:1px;background:var(--border);}
-.wo-superset{background:var(--surface-raised);border:1px solid var(--border);border-radius:var(--radius-sm);margin-bottom:10px;overflow:hidden;}
-.wo-superset-header{display:flex;align-items:center;gap:8px;padding:8px 12px;border-bottom:1px solid var(--border);background:var(--surface-hover);}
-.wo-superset-label{font-size:11px;font-weight:700;color:var(--accent);text-transform:uppercase;letter-spacing:0.5px;}
-.wo-superset-meta{font-size:10px;color:var(--text-faint);margin-left:auto;}
-.wo-exercise{padding:10px 12px;border-bottom:1px solid var(--border);}
+.wo-section-title{font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:1px;color:#7a6a50;margin-bottom:8px;display:flex;align-items:center;gap:6px;}
+.wo-section-title::after{content:'';flex:1;height:1px;background:#d0c8b8;}
+.wo-superset{background:#ffffff;border:1.5px solid #c8bfa8;border-radius:var(--radius-sm);margin-bottom:10px;overflow:hidden;box-shadow:0 2px 6px rgba(0,0,0,0.12);}
+.wo-superset-header{display:flex;align-items:center;gap:8px;padding:8px 12px;border-bottom:1.5px solid #c8bfa8;background:#eeebe3;}
+.wo-superset-label{font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:0.5px;}
+.wo-superset-meta{font-size:10px;color:#7a6a50;margin-left:auto;}
+.wo-exercise{padding:10px 12px;border-bottom:1px solid #ddd8cc;background:#fff;}
 .wo-exercise:last-child{border-bottom:none;}
-.wo-ex-top{display:flex;align-items:flex-start;gap:8px;margin-bottom:6px;}
-.wo-ex-name{font-size:13px;font-weight:600;color:var(--blue);cursor:pointer;text-decoration:underline;text-decoration-style:dotted;flex:1;}
-.wo-ex-name:hover{color:var(--text);}
-.wo-ex-sets{font-size:11px;color:var(--text-dim);white-space:nowrap;}
+.wo-ex-top{display:flex;align-items:center;gap:6px;margin-bottom:6px;}
+.wo-ex-select{flex:1;font-family:inherit;font-size:13px;font-weight:700;color:#0a3d8f;background:#fff;border:none;border-bottom:2px solid #0a3d8f;padding:2px 0;cursor:pointer;outline:none;-webkit-appearance:none;appearance:none;background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='10' height='7'%3E%3Cpath d='M0 0l5 7 5-7z' fill='%230a3d8f'/%3E%3C/svg%3E");background-repeat:no-repeat;background-position:right 2px center;padding-right:16px;}
+.wo-ex-select option{color:#1a1510;background:#fff;font-weight:500;}
+.wo-ex-note{font-size:10px;color:#7a6a50;margin-bottom:6px;}
 .wo-log-row{display:flex;gap:6px;align-items:center;flex-wrap:wrap;}
-.wo-log-input{width:80px;padding:4px 8px;font-size:12px;background:var(--surface);border:1px solid var(--border);border-radius:var(--radius-sm);color:var(--text);font-family:inherit;}
-.wo-log-input:focus{border-color:var(--accent-dim);outline:none;}
-.wo-log-label{font-size:11px;color:var(--text-faint);}
-.wo-alts-toggle{font-size:10px;color:var(--text-faint);cursor:pointer;padding:2px 6px;border:1px solid var(--border);border-radius:20px;background:none;font-family:inherit;transition:all 0.15s;white-space:nowrap;}
-.wo-alts-toggle:hover{border-color:var(--accent-dim);color:var(--accent);}
-.wo-alts{display:none;margin-top:8px;padding:8px 10px;background:var(--surface);border-radius:var(--radius-sm);border:1px solid var(--border);}
-.wo-alts.open{display:block;}
-.wo-alt-item{font-size:12px;color:var(--teal);cursor:pointer;padding:3px 0;text-decoration:underline;text-decoration-style:dotted;}
-.wo-alt-item:hover{color:var(--text);}
-.wo-rest-badge{display:inline-flex;align-items:center;gap:4px;font-size:11px;color:var(--orange);background:var(--orange-dim);border:1px solid var(--orange);border-radius:20px;padding:3px 10px;margin:4px 0 2px;}
-.wo-walk-card{background:var(--teal-dim);border:1px solid var(--teal);border-radius:var(--radius-sm);padding:16px;text-align:center;}
+.wo-log-input{width:64px;padding:5px 6px;font-size:12px;font-weight:600;background:#fff;border:1.5px solid #a09070;border-radius:var(--radius-sm);color:#1a1510;font-family:inherit;text-align:center;}
+.wo-log-input:focus{border-color:#0a3d8f;outline:none;box-shadow:0 0 0 2px rgba(10,61,143,0.15);}
+.wo-log-input::placeholder{color:#b0a898;font-weight:400;}
+.wo-log-label{font-size:10px;color:#7a6a50;font-weight:600;text-transform:uppercase;letter-spacing:0.4px;}
+.wo-rest-badge{display:inline-flex;align-items:center;gap:4px;font-size:11px;color:#7a4010;background:rgba(199,146,95,0.18);border:1px solid #c07830;border-radius:20px;padding:3px 10px;margin:4px 0 2px;}
+.wo-walk-card{background:#e6f4ec;border:1.5px solid #3a9a5a;border-radius:var(--radius-sm);padding:16px;text-align:center;}
+.wo-walk-title{font-size:15px;font-weight:700;color:#1a6a3a;margin-bottom:4px;}
+.wo-walk-desc{font-size:12px;color:#2a4a32;line-height:1.6;}
 .wo-walk-icon{font-size:36px;margin-bottom:8px;}
-.wo-walk-title{font-size:15px;font-weight:600;color:var(--teal);margin-bottom:4px;}
-.wo-walk-desc{font-size:12px;color:var(--text-dim);line-height:1.6;}
-.wo-cooldown{background:var(--surface-raised);border:1px solid var(--border);border-radius:var(--radius-sm);padding:10px 12px;}
-.wo-cooldown-item{font-size:12px;color:var(--text-dim);padding:3px 0;display:flex;align-items:center;gap:6px;}
-.wo-cooldown-item::before{content:'•';color:var(--green);}
+.wo-cooldown{background:#f4f2ee;border:1px solid #c8bfa8;border-radius:var(--radius-sm);padding:10px 12px;}
+.wo-cooldown-item{font-size:12px;color:#2a2218;padding:3px 0;display:flex;align-items:center;gap:6px;}
+.wo-cooldown-item::before{content:'•';color:#1a7a3a;font-weight:700;}
+.wo-day-rationale{margin-bottom:10px;padding:8px 12px;background:rgba(10,61,143,0.08);border:1px solid rgba(10,61,143,0.2);border-radius:var(--radius-sm);font-size:11px;color:#0a3d8f;line-height:1.5;}
+.wo-day-rationale strong{color:#082b6a;}
+/* Workout modal body — light/bright for gym visibility */
+#workoutModal .modal-blur-body{background:#f4f2ee;padding:14px 16px;}
+#workoutModal .modal-blur-header{background:#eeebe3;border-color:#c8bfa8;}
+#workoutModal .modal-blur-title{color:#1a1510;}
 /* Exercise info modal */
 .wo-modal{max-width:520px;}
 .wo-modal-name{font-size:18px;font-weight:700;color:var(--accent);font-family:'Fraunces',serif;margin-bottom:6px;}
@@ -514,7 +509,8 @@ body.unlocked .date-editable:hover{border-bottom-color:var(--accent);background:
 .wo-modal-steps li:last-child{border-bottom:none;}
 .wo-modal-steps li::before{content:attr(data-n);position:absolute;left:0;color:var(--accent);font-weight:700;font-size:12px;}
 .wo-modal-tip{font-size:12px;color:var(--text-faint);background:var(--surface-raised);border-left:3px solid var(--accent);padding:8px 10px;border-radius:0 var(--radius-sm) var(--radius-sm) 0;line-height:1.5;}
-@media(max-width:768px){.wo-log-row{gap:4px;}.wo-log-input{width:70px;}.wo-day-tab{font-size:10px;padding:5px 3px;}}
+@media(max-width:768px){.wo-log-row{gap:4px;}.wo-log-input{width:56px;}}
+
 /* ── TOOL KIT PANEL BUTTONS ── */
 .toolkit-grid{display:grid;grid-template-columns:1fr 1fr;gap:10px;padding:4px 0;}
 .toolkit-grid .toolkit-btn:last-child:nth-child(odd){grid-column:1/-1;}
@@ -2759,23 +2755,478 @@ function closeWorkoutModal(){
 var WO_ACTIVE_DAY=null;
 
 const WO_DAYS=[
-  {label:'Mon',short:'M',type:'lift'},
-  {label:'Tue',short:'T',type:'walk'},
-  {label:'Wed',short:'W',type:'lift'},
-  {label:'Thu',short:'Th',type:'walk'},
-  {label:'Fri',short:'F',type:'lift'},
-  {label:'Sat',short:'Sa',type:'walk'},
-  {label:'Sun',short:'Su',type:'rest'}
+  {label:'Mon',type:'lift',prog:0},
+  {label:'Tue',type:'walk'},
+  {label:'Wed',type:'lift',prog:1},
+  {label:'Thu',type:'walk'},
+  {label:'Fri',type:'lift',prog:2},
+  {label:'Sat',type:'walk'},
+  {label:'Sun',type:'rest'}
 ];
 
-// Exercise database — each has description steps, muscles, tip, and alternates
+// ── Exercise database ──────────────────────────────────────────────────────
 const WO_EXERCISES={
-  db_bench:{
-    name:'Dumbbell Bench Press',muscles:'Chest · Anterior Deltoid · Triceps',
-    steps:['Lie flat on a bench, feet flat on floor. Hold a dumbbell in each hand at chest level, palms facing forward.','Press both dumbbells up together until arms are nearly locked out, keeping a slight bend in the elbows.','Lower slowly back to chest level over 2–3 seconds, feeling a stretch in your chest.','Keep shoulder blades pinched back and down throughout — no shrugging.'],
-    tip:'Control the descent — it builds more muscle than the press up. If no bench is available, floor press is a solid substitute.',
-    alts:['db_incline','db_floor_press','cable_chest','pushup_weighted']
+  // HORIZONTAL PUSH
+  db_bench:{name:'DB Bench Press',muscles:'Chest · Anterior Deltoid · Triceps',
+    steps:['Lie flat, feet on floor. Dumbbells at chest, palms forward.','Press upward until arms nearly locked, slight arc inward.','Lower slowly 2–3 s, feel chest stretch.','Shoulder blades pinched back throughout — no shrugging.'],
+    tip:'Control the descent. If no bench, do floor press.',
+    alts:['db_incline','db_floor_press','cable_chest','pushup_weighted','pec_deck','dips_chest','cable_crossover','smith_bench','chest_press_machine']},
+  db_incline:{name:'Incline DB Press',muscles:'Upper Chest · Anterior Deltoid · Triceps',
+    steps:['Set bench 30–45°. Kick DBs up as you lie back.','Press upward at bench angle, not straight up.','Lower to outside upper chest, elbows ~60°.','Pause at bottom, drive back up.'],
+    tip:'Upper chest is often underdeveloped. Go lighter than flat press.',
+    alts:['db_bench','db_floor_press','cable_chest','pushup_weighted','pec_deck','dips_chest','cable_crossover','smith_bench','chest_press_machine']},
+  db_floor_press:{name:'DB Floor Press',muscles:'Chest · Triceps',
+    steps:['Lie on floor, knees bent. DBs at chest, elbows on floor.','Press to full extension, squeeze chest at top.','Lower until elbows touch floor — that is the ROM.','Great option when bench is taken.'],
+    tip:'Floor limits shoulder strain. Excellent for shoulder-sensitive days.',
+    alts:['db_bench','db_incline','cable_chest','pushup_weighted','pec_deck','dips_chest','cable_crossover','smith_bench','chest_press_machine']},
+  cable_chest:{name:'Cable Chest Fly',muscles:'Chest (inner) · Anterior Deltoid',
+    steps:['Cables at chest height, stand center, one foot forward.','Arms slightly bent — hug a tree arc.','Bring hands together, squeeze pec at end.','Open slowly, control the stretch.'],
+    tip:'Lead with elbows, not hands. Keep bend consistent.',
+    alts:['db_bench','db_incline','db_floor_press','pushup_weighted','pec_deck','dips_chest','cable_crossover','smith_bench','chest_press_machine']},
+  pushup_weighted:{name:'Weighted Push-Up',muscles:'Chest · Triceps · Core',
+    steps:['Plate on upper back or weighted vest. High plank.','Lower chest near floor, elbows 45° from torso.','Press back up, squeeze chest at top.','Body straight line throughout.'],
+    tip:'Backpack with books works if no vest or plates.',
+    alts:['db_bench','db_incline','db_floor_press','cable_chest','pec_deck','dips_chest','cable_crossover','smith_bench','chest_press_machine']},
+  pec_deck:{name:'Pec Deck Machine',muscles:'Chest (isolation) · Anterior Deltoid',
+    steps:['Adjust seat so handles are at chest height.','Grip handles, elbows bent ~90°.','Bring handles together in front of chest.','Open slowly — feel the stretch.'],
+    tip:'Machine keeps you in the groove. Great finishing move or when the free weights area is packed.',
+    alts:['db_bench','db_incline','cable_chest','pushup_weighted','dips_chest','cable_crossover','smith_bench','chest_press_machine','db_floor_press']},
+  dips_chest:{name:'Chest Dips (Weighted)',muscles:'Lower Chest · Triceps · Anterior Deltoid',
+    steps:['Grip parallel bars, lean torso forward ~30°.','Lower until upper arms parallel to floor.','Drive up, squeezing chest — slight forward lean maintained.','Add dip belt with plates as you progress.'],
+    tip:'The forward lean is what makes it a chest dip vs tricep dip.',
+    alts:['db_bench','db_incline','cable_chest','pushup_weighted','pec_deck','cable_crossover','smith_bench','chest_press_machine','db_floor_press']},
+  cable_crossover:{name:'Cable Crossover',muscles:'Chest (full sweep) · Anterior Deltoid',
+    steps:['High cables. Step forward, one foot staggered.','Pull handles down and in, crossing slightly at the bottom.','Squeeze hard at crossover point.','Return slowly to stretch.'],
+    tip:'Different angle than standard fly — great for the lower-chest sweep.',
+    alts:['db_bench','cable_chest','pec_deck','dips_chest','pushup_weighted','db_incline','db_floor_press','smith_bench','chest_press_machine']},
+  smith_bench:{name:'Smith Machine Bench',muscles:'Chest · Triceps · Anterior Deltoid',
+    steps:['Lie on bench under Smith bar. Grip shoulder-width.','Unrack and lower to lower chest.','Press back up, lock out at top.','Fixed path reduces stabilizer demand — good for overload.'],
+    tip:'Good for going heavy when no spotter is available.',
+    alts:['db_bench','db_incline','pec_deck','cable_chest','chest_press_machine','pushup_weighted','dips_chest','cable_crossover','db_floor_press']},
+  chest_press_machine:{name:'Chest Press Machine',muscles:'Chest · Triceps · Anterior Deltoid',
+    steps:['Set seat so handles are at chest height.','Grip handles, elbows bent, pull shoulder blades back.','Press forward to full extension.','Control return — do not let the stack slam.'],
+    tip:'Zero balance required. Great for focusing purely on pressing strength.',
+    alts:['db_bench','db_incline','pec_deck','cable_chest','smith_bench','pushup_weighted','dips_chest','cable_crossover','db_floor_press']},
+
+  // KNEE-DOMINANT / QUADS
+  goblet_squat:{name:'Goblet Squat',muscles:'Quads · Glutes · Core',
+    steps:['Hold one heavy DB at chest, cupping the top end.','Feet shoulder-width, toes slightly out.','Knees out as you sit straight down, chest tall.','Drive through heels, squeeze glutes at top.'],
+    tip:'The DB counterbalances you. Go heavy — it\'s stable.',
+    alts:['db_front_squat','leg_press','hack_squat','box_squat','sumo_squat','smith_squat','walking_lunge','wall_sit','db_step_up_squat']},
+  db_front_squat:{name:'DB Front Squat',muscles:'Quads · Glutes · Upper Back · Core',
+    steps:['DBs at shoulder height, elbows high.','Squat down keeping elbows up — forces upright torso.','Drive back up through heels.'],
+    tip:'Elbows high is the key cue. Cross arms to support DBs if wrists bother you.',
+    alts:['goblet_squat','leg_press','hack_squat','box_squat','sumo_squat','smith_squat','walking_lunge','wall_sit','db_step_up_squat']},
+  leg_press:{name:'Leg Press',muscles:'Quads · Glutes · Hamstrings',
+    steps:['Feet hip-width on platform. Knees ~90° when loaded.','Release safety and lower platform controlled.','Stop at 90° — knees don\'t collapse.','Press through heels, don\'t lock out.'],
+    tip:'Higher foot position = more glutes; lower = more quads.',
+    alts:['goblet_squat','db_front_squat','hack_squat','box_squat','sumo_squat','smith_squat','walking_lunge','wall_sit','db_step_up_squat']},
+  hack_squat:{name:'Hack Squat (DB)',muscles:'Quads (primary) · Glutes',
+    steps:['DBs at sides, heels elevated 1–2 in on a plate.','Squat straight down, torso upright.','Knees travel over toes — intended.','Drive through balls of feet.'],
+    tip:'Heel elevation is the key for quad emphasis.',
+    alts:['goblet_squat','db_front_squat','leg_press','box_squat','sumo_squat','smith_squat','walking_lunge','wall_sit','db_step_up_squat']},
+  box_squat:{name:'Box Squat (DB)',muscles:'Glutes · Hamstrings · Quads',
+    steps:['Box behind you at knee height. DBs at sides.','Sit BACK (not down) onto the box, hip hinge.','Briefly pause, drive up through heels, squeeze glutes.'],
+    tip:'Reinforces sit-back hip pattern. Great for glutes.',
+    alts:['goblet_squat','db_front_squat','leg_press','hack_squat','sumo_squat','smith_squat','walking_lunge','wall_sit','db_step_up_squat']},
+  sumo_squat:{name:'Sumo Squat (DB)',muscles:'Quads · Glutes · Adductors',
+    steps:['Wide stance, toes turned out 45°. Hold one heavy DB between legs.','Lower straight down, chest tall.','Inner thighs and glutes drive up.','Wider stance = more inner thigh and glute.'],
+    tip:'Comfortable for people with hip mobility limitations.',
+    alts:['goblet_squat','db_front_squat','leg_press','hack_squat','box_squat','smith_squat','walking_lunge','wall_sit','db_step_up_squat']},
+  smith_squat:{name:'Smith Machine Squat',muscles:'Quads · Glutes · Hamstrings',
+    steps:['Bar on upper traps. Feet slightly forward of hips.','Squat to parallel or below.','Drive up, push head back into bar at top.'],
+    tip:'Fixed path lets you focus on depth and quad tension without balance concerns.',
+    alts:['goblet_squat','db_front_squat','leg_press','hack_squat','box_squat','sumo_squat','walking_lunge','wall_sit','db_step_up_squat']},
+  walking_lunge:{name:'Walking Lunge (DB)',muscles:'Quads · Glutes · Balance',
+    steps:['DBs at sides. Step forward into a lunge.','Back knee drops toward floor without touching.','Step the back foot up to meet the front.','Continue forward alternating legs.'],
+    tip:'Excellent for space and athleticism. 10 reps each leg.',
+    alts:['goblet_squat','db_front_squat','leg_press','hack_squat','box_squat','sumo_squat','smith_squat','wall_sit','db_step_up_squat']},
+
+  // VERTICAL PULL / BACK
+  pullups:{name:'Pull-Ups',muscles:'Lats · Biceps · Rear Deltoid · Core',
+    steps:['Overhand grip, hands just outside shoulders.','Depress shoulder blades first.','Drive elbows toward hips.','Lower slowly 2–3 s.'],
+    tip:'Joe\'s favorite. Band or negatives if needed. Earn the reps.',
+    alts:['lat_pulldown','assisted_pullup','db_row','cable_row','t_bar_row','chest_supported_row','straight_arm_pulldown','ring_row','close_grip_pulldown']},
+  lat_pulldown:{name:'Lat Pulldown',muscles:'Lats · Biceps · Rear Deltoid',
+    steps:['Overhand, just outside shoulder width. Lean back 10–15°.','Drive elbows down to hips.','Pull to upper chest. Control return.'],
+    tip:'Focus on elbow path — lats pull the arm down.',
+    alts:['pullups','assisted_pullup','db_row','cable_row','t_bar_row','chest_supported_row','straight_arm_pulldown','ring_row','close_grip_pulldown']},
+  assisted_pullup:{name:'Assisted Pull-Up',muscles:'Lats · Biceps · Core',
+    steps:['Set assistance weight. Grip just outside shoulders.','Same motion: shoulder blades down, elbows to hips.','Lower slowly. Reduce assistance 5 lbs every 2–3 weeks.'],
+    tip:'A progression tool. Track it and chip away.',
+    alts:['pullups','lat_pulldown','db_row','cable_row','t_bar_row','chest_supported_row','straight_arm_pulldown','ring_row','close_grip_pulldown']},
+  db_row:{name:'Single-Arm DB Row',muscles:'Lats · Rhomboids · Rear Delt · Biceps',
+    steps:['One hand and knee on bench. Row DB toward hip, not shoulder.','Elbow behind body at top — hold 1 s.','Lower slowly. Finish all reps one side, then switch.'],
+    tip:'Pulling to the hip is key. Allows heavy loading with good form.',
+    alts:['pullups','lat_pulldown','assisted_pullup','cable_row','t_bar_row','chest_supported_row','straight_arm_pulldown','ring_row','close_grip_pulldown']},
+  cable_row:{name:'Seated Cable Row',muscles:'Lats · Rhomboids · Biceps · Rear Delt',
+    steps:['Low cable row. Feet on platform, knees slightly bent.','Retract shoulder blades before pulling.','Pull handle to lower abdomen, elbows close.','Control return — slight forward lean only.'],
+    tip:'Keep torso upright. Leaning back makes it a lower-back exercise.',
+    alts:['pullups','lat_pulldown','assisted_pullup','db_row','t_bar_row','chest_supported_row','straight_arm_pulldown','ring_row','close_grip_pulldown']},
+  t_bar_row:{name:'T-Bar Row',muscles:'Lats · Rhomboids · Rear Delt · Biceps',
+    steps:['Straddle the barbell/T-bar handle. Hip hinge, flat back.','Row to lower chest, elbows close.','Squeeze shoulder blades together at top.','Lower with control.'],
+    tip:'One of the heaviest row variations. Great for thickness.',
+    alts:['pullups','lat_pulldown','db_row','cable_row','assisted_pullup','chest_supported_row','straight_arm_pulldown','ring_row','close_grip_pulldown']},
+  chest_supported_row:{name:'Chest-Supported DB Row',muscles:'Rhomboids · Rear Delt · Lats · Biceps',
+    steps:['Set incline bench to 30–45°. Lie chest-down, DBs hanging.','Row both DBs up toward hips simultaneously.','Squeeze shoulder blades together.','Lower slowly — full stretch.'],
+    tip:'Chest support eliminates lower-back fatigue. Pure back work.',
+    alts:['pullups','lat_pulldown','db_row','cable_row','t_bar_row','assisted_pullup','straight_arm_pulldown','ring_row','close_grip_pulldown']},
+  straight_arm_pulldown:{name:'Straight-Arm Pulldown',muscles:'Lats (isolation) · Core',
+    steps:['High cable, rope or straight bar. Arms nearly straight.','Pull bar down to thighs with a sweeping arc.','Feel the lat stretch at top — that\'s the money.','Return slowly.'],
+    tip:'Pure lat isolation. Great as a warm-up or finishing move.',
+    alts:['pullups','lat_pulldown','db_row','cable_row','t_bar_row','chest_supported_row','assisted_pullup','ring_row','close_grip_pulldown']},
+  close_grip_pulldown:{name:'Close-Grip Pulldown',muscles:'Lats (lower) · Biceps',
+    steps:['Use close neutral-grip handle. Sit tall.','Drive elbows straight down to sides.','Pull to upper chest.','Full stretch at top.'],
+    tip:'Neutral grip is easier on the shoulders and hits lower lats well.',
+    alts:['pullups','lat_pulldown','db_row','cable_row','t_bar_row','chest_supported_row','straight_arm_pulldown','assisted_pullup','ring_row']},
+  ring_row:{name:'Ring Row (TRX Row)',muscles:'Lats · Rhomboids · Rear Delt · Core',
+    steps:['Set rings or TRX at waist height. Grip and lean back.','Body straight like a plank. Pull chest to handles.','Elbows drive back past body.','Lower with control. Walk feet out to increase difficulty.'],
+    tip:'Bodyweight but surprisingly tough. Angle your body for the right challenge.',
+    alts:['pullups','lat_pulldown','db_row','cable_row','t_bar_row','chest_supported_row','straight_arm_pulldown','close_grip_pulldown','assisted_pullup']},
+
+  // HIP-DOMINANT / POSTERIOR CHAIN
+  rdl:{name:'Romanian Deadlift (DB)',muscles:'Hamstrings · Glutes · Lower Back',
+    steps:['DBs at thighs, soft knee bend, feet hip-width.','Hinge at hips, pushing butt backward.','Lower to mid-shin (feel stretch).','Drive hips forward, squeeze glutes at top.'],
+    tip:'Hip hinge, not squat. Keep DBs close to legs.',
+    alts:['leg_curl','good_morning','kb_swing','stiff_leg_dl','nordic_curl','hip_thrust','sumo_rdl','single_leg_rdl','cable_pull_through']},
+  leg_curl:{name:'Lying Leg Curl',muscles:'Hamstrings (isolated)',
+    steps:['Face down, pad just above ankles.','Curl heels toward glutes, full ROM.','Hold 1 s at top.','Lower slowly — eccentric is key.'],
+    tip:'Standing single-leg cable curl is a great substitute.',
+    alts:['rdl','good_morning','kb_swing','stiff_leg_dl','nordic_curl','hip_thrust','sumo_rdl','single_leg_rdl','cable_pull_through']},
+  good_morning:{name:'Good Morning',muscles:'Hamstrings · Glutes · Lower Back',
+    steps:['Light DB at chest or bar across upper traps.','Feet hip-width, soft knee bend.','Hinge forward until torso near parallel — feel hamstring stretch.','Drive hips forward to return.'],
+    tip:'GO LIGHT. This is a hamstring stretch strengthener, not a max effort move.',
+    alts:['rdl','leg_curl','kb_swing','stiff_leg_dl','nordic_curl','hip_thrust','sumo_rdl','single_leg_rdl','cable_pull_through']},
+  kb_swing:{name:'Kettlebell Swing',muscles:'Hamstrings · Glutes · Core · Shoulders',
+    steps:['KB between legs. Hike it back with a hip hinge.','Explosively snap hips forward.','Let momentum swing weight to chest height — arms guide only.','Control the hike back pattern.'],
+    tip:'Power comes entirely from the hip snap. Think "hip, not arms."',
+    alts:['rdl','leg_curl','good_morning','stiff_leg_dl','nordic_curl','hip_thrust','sumo_rdl','single_leg_rdl','cable_pull_through']},
+  stiff_leg_dl:{name:'Stiff-Leg Deadlift (DB)',muscles:'Hamstrings · Glutes · Lower Back',
+    steps:['DBs at thighs, legs nearly straight (not locked).','Hinge forward, flat back, lower toward floor.','Stop at your flexibility limit.','Drive up with hamstrings and glutes.'],
+    tip:'More hamstring stretch than RDL. Good for mobility gains.',
+    alts:['rdl','leg_curl','good_morning','kb_swing','nordic_curl','hip_thrust','sumo_rdl','single_leg_rdl','cable_pull_through']},
+  nordic_curl:{name:'Nordic Curl',muscles:'Hamstrings (eccentric, very high demand)',
+    steps:['Kneel on mat, feet anchored under a bench or bar.','Keep body straight hip-to-knee as you lower torso toward floor.','Lower as slowly as possible — use arms to catch if needed.','Pull back up using hamstrings (or push up from floor).'],
+    tip:'Regarded as one of the most effective hamstring exercises in sports science research. Very hard — start with negatives only.',
+    alts:['rdl','leg_curl','good_morning','kb_swing','stiff_leg_dl','hip_thrust','sumo_rdl','single_leg_rdl','cable_pull_through']},
+  hip_thrust:{name:'Hip Thrust (DB or Barbell)',muscles:'Glutes (primary) · Hamstrings',
+    steps:['Sit with upper back against a bench. Bar or DB on hips.','Feet flat, knees ~90° at top.','Drive hips up until body is straight hip to shoulder.','Squeeze glutes hard at top for 1 s — lower controlled.'],
+    tip:'The single most effective glute exercise per EMG research (Contreras et al., 2015). Go heavy.',
+    alts:['rdl','leg_curl','good_morning','kb_swing','stiff_leg_dl','nordic_curl','sumo_rdl','single_leg_rdl','cable_pull_through']},
+  sumo_rdl:{name:'Sumo RDL (DB)',muscles:'Hamstrings · Glutes · Adductors',
+    steps:['Wide stance, toes turned out 45°. DBs between legs.','Hinge at hips keeping chest tall.','Lower DBs along inner legs to mid-shin.','Drive hips through, squeeze glutes.'],
+    tip:'Wider stance shifts some load to adductors and changes glute activation angle.',
+    alts:['rdl','leg_curl','good_morning','kb_swing','stiff_leg_dl','nordic_curl','hip_thrust','single_leg_rdl','cable_pull_through']},
+  single_leg_rdl:{name:'Single-Leg RDL (DB)',muscles:'Hamstrings · Glutes · Balance · Core',
+    steps:['Hold one or two DBs. Stand on one leg, soft bend.','Hinge at hip, extending free leg behind you for balance.','Lower DB to mid-shin on standing leg side.','Drive back up — same hip hinges both ways.'],
+    tip:'Outstanding for addressing leg imbalances. Balance will improve quickly.',
+    alts:['rdl','leg_curl','good_morning','kb_swing','stiff_leg_dl','nordic_curl','hip_thrust','sumo_rdl','cable_pull_through']},
+  cable_pull_through:{name:'Cable Pull-Through',muscles:'Glutes · Hamstrings · Lower Back',
+    steps:['Low cable behind you, rope attachment. Straddle cable.','Hip hinge forward, grabbing rope between legs.','Drive hips forward explosively to standing.','Control the hinge back.'],
+    tip:'Hip hinge pattern with constant cable tension. Teaches the RDL/swing pattern very well.',
+    alts:['rdl','leg_curl','good_morning','kb_swing','stiff_leg_dl','nordic_curl','hip_thrust','sumo_rdl','single_leg_rdl']},
+
+  // UNILATERAL LOWER
+  step_ups:{name:'Weighted Step-Ups',muscles:'Glutes · Quads · Hamstrings · Core',
+    steps:['DBs at sides. Box at knee height.','Entire foot on box — don\'t use trailing leg to push.','Drive through heel to step up, knee lifts opposite leg.','Step back down controlled. All reps one leg, then switch.'],
+    tip:'Joe\'s favorite. Heel drive is everything.',
+    alts:['reverse_lunge','split_squat','bulgarian_split','db_lateral_lunge','hip_thrust','curtsy_lunge','single_leg_rdl','walking_lunge','step_mill']},
+  reverse_lunge:{name:'Reverse Lunge (DB)',muscles:'Glutes · Quads · Hamstrings · Balance',
+    steps:['DBs at sides, feet hip-width.','Step one foot back and lower back knee near floor.','Front knee stays over ankle.','Push through front heel to return. Alternate.'],
+    tip:'Easier on knees than forward lunge. Better glute activation.',
+    alts:['step_ups','split_squat','bulgarian_split','db_lateral_lunge','hip_thrust','curtsy_lunge','single_leg_rdl','walking_lunge','step_mill']},
+  split_squat:{name:'Split Squat (DB)',muscles:'Quads · Glutes · Hip Flexors',
+    steps:['Long split stance — front forward, back extended. DBs at sides.','Lower straight down until back knee near floor.','Front shin stays as vertical as possible.','All reps one side then switch.'],
+    tip:'Static stance — no movement. Purely a drop and drive.',
+    alts:['step_ups','reverse_lunge','bulgarian_split','db_lateral_lunge','hip_thrust','curtsy_lunge','single_leg_rdl','walking_lunge','step_mill']},
+  bulgarian_split:{name:'Bulgarian Split Squat',muscles:'Glutes · Quads · Hip Flexors · Balance',
+    steps:['Rear foot on bench. DBs at sides.','Lower until front thigh parallel — front shin vertical at bottom.','Drive through front heel to return.','Go lighter than you think — this is brutal.'],
+    tip:'Often called the king of lower body. Use Smith machine or TRX initially.',
+    alts:['step_ups','reverse_lunge','split_squat','db_lateral_lunge','hip_thrust','curtsy_lunge','single_leg_rdl','walking_lunge','step_mill']},
+  db_lateral_lunge:{name:'Lateral Lunge (DB)',muscles:'Glutes (lateral) · Adductors · Quads',
+    steps:['DBs at sides. Wide step to one side, bend that knee.','Other leg stays straight. Sit into the hip.','Push through bent leg heel to return. Alternate.'],
+    tip:'Frontal plane movement — often neglected. Great complement to step-ups.',
+    alts:['step_ups','reverse_lunge','split_squat','bulgarian_split','hip_thrust','curtsy_lunge','single_leg_rdl','walking_lunge','step_mill']},
+  curtsy_lunge:{name:'Curtsy Lunge (DB)',muscles:'Glutes (lateral) · Adductors · Quads',
+    steps:['DBs at sides. Step one foot diagonally BEHIND and across.','Lower back knee toward floor in a curtsy pattern.','Drive through front heel to return.','Alternate sides.'],
+    tip:'Hits the lateral glute in a unique way. Great variety for glute development.',
+    alts:['step_ups','reverse_lunge','split_squat','bulgarian_split','db_lateral_lunge','hip_thrust','single_leg_rdl','walking_lunge','step_mill']},
+
+  // SHOULDER / OVERHEAD PUSH
+  db_shoulder_press:{name:'DB Shoulder Press',muscles:'Anterior & Lateral Delt · Triceps',
+    steps:['Seated or standing. DBs at shoulder height, palms forward.','Press upward — hands arc slightly inward at top.','Stop just before lockout.','Lower to shoulder height with control.'],
+    tip:'Seated with back support reduces lower-back strain.',
+    alts:['arnold_press','lateral_raise','db_upright_row','machine_shoulder','cable_lateral','rear_delt_fly','db_front_raise','face_pull','overhead_press_machine']},
+  arnold_press:{name:'Arnold Press',muscles:'All 3 Delt Heads · Triceps · Rotator Cuff',
+    steps:['Start with palms facing YOU at shoulder height.','Press and rotate — palms face FORWARD at top.','Reverse on the way down.','Rotation recruits all three delt heads.'],
+    tip:'Named after Arnold. Go slightly lighter — wider ROM.',
+    alts:['db_shoulder_press','lateral_raise','db_upright_row','machine_shoulder','cable_lateral','rear_delt_fly','db_front_raise','face_pull','overhead_press_machine']},
+  lateral_raise:{name:'Lateral Raise (DB)',muscles:'Lateral Delt (isolated)',
+    steps:['Light DBs at sides, slight elbow bend.','Raise arms out to shoulder height — no higher.','Pause, lower over 3 s.','Lead with elbows, pinky slightly higher than thumb.'],
+    tip:'Start at 8–15 lbs. Most people go too heavy and it becomes a trap shrug.',
+    alts:['db_shoulder_press','arnold_press','db_upright_row','machine_shoulder','cable_lateral','rear_delt_fly','db_front_raise','face_pull','overhead_press_machine']},
+  db_upright_row:{name:'DB Upright Row',muscles:'Lateral Delt · Upper Traps · Biceps',
+    steps:['DBs at thighs, overhand, close grip.','Pull straight up toward chin, elbows lead.','Elbows higher than wrists throughout.','Stop at chest height.'],
+    tip:'Wide grip = more delt; narrow = more trap. Stop at chest to protect shoulder.',
+    alts:['db_shoulder_press','arnold_press','lateral_raise','machine_shoulder','cable_lateral','rear_delt_fly','db_front_raise','face_pull','overhead_press_machine']},
+  machine_shoulder:{name:'Shoulder Press Machine',muscles:'Anterior & Lateral Delt · Triceps',
+    steps:['Seat adjusted so handles are at shoulder height.','Press upward to near extension.','Lower with control.'],
+    tip:'Fixed path. Good for overloading when shoulder stability is an issue.',
+    alts:['db_shoulder_press','arnold_press','lateral_raise','db_upright_row','cable_lateral','rear_delt_fly','db_front_raise','face_pull','overhead_press_machine']},
+  cable_lateral:{name:'Cable Lateral Raise',muscles:'Lateral Delt (constant tension)',
+    steps:['Single low cable, handle in outside hand.','Raise arm to shoulder height, arc slightly across body.','Control return — cable maintains tension at bottom.','Complete all reps, switch sides.'],
+    tip:'Cable provides tension at the bottom where DBs are easiest — better overall stimulus.',
+    alts:['db_shoulder_press','arnold_press','lateral_raise','machine_shoulder','rear_delt_fly','db_front_raise','face_pull','overhead_press_machine','db_upright_row']},
+  rear_delt_fly:{name:'Rear Delt Fly (DB)',muscles:'Rear Deltoid · Rhomboids · Lower Traps',
+    steps:['Seated, lean forward until torso nearly parallel.','DBs hanging, slight elbow bend.','Raise arms out to sides — pinch shoulder blades.','Hold 1 s at top, lower slowly.'],
+    tip:'Rear delts are chronically underdeveloped. Light weight, high reps.',
+    alts:['db_shoulder_press','arnold_press','lateral_raise','machine_shoulder','cable_lateral','db_front_raise','face_pull','overhead_press_machine','db_upright_row']},
+  overhead_press_machine:{name:'Overhead Press Machine',muscles:'Anterior & Lateral Delt · Triceps',
+    steps:['Set seat. Grip handles at shoulder level.','Press overhead to near full extension.','Lower controlled.'],
+    tip:'Overhead press machines vary — some allow more freedom of movement than others.',
+    alts:['db_shoulder_press','arnold_press','lateral_raise','machine_shoulder','cable_lateral','rear_delt_fly','db_front_raise','face_pull','db_upright_row']},
+
+  // REAR DELT / ROTATOR CUFF
+  face_pull:{name:'Face Pull',muscles:'Rear Deltoid · Rotator Cuff · Rear Traps',
+    steps:['High cable with rope attachment. Grab ends with palms down.','Pull rope toward face, elbows flare wide and high.','External rotate at end — elbows behind the rope at top.','Return slowly — this range of motion is rare and valuable.'],
+    tip:'One of the best shoulder health exercises. Often called "the most important exercise you\'re not doing." 15–20 reps every session.',
+    alts:['rear_delt_fly','lateral_raise','cable_lateral','machine_shoulder','db_upright_row','arnold_press','db_shoulder_press','ring_row','overhead_press_machine']},
+
+  // TRICEPS
+  db_tricep_ext:{name:'DB Tricep Extension (Overhead)',muscles:'Triceps (long head emphasis)',
+    steps:['Seated or standing. Hold one DB with both hands overhead.','Lower DB behind head, elbows pointing forward.','Press back up to full extension — squeeze triceps.','Keep elbows from flaring out.'],
+    tip:'Overhead position puts the long head of the tricep in a stretched position — highest growth stimulus.',
+    alts:['cable_pushdown','skull_crusher','close_grip_press','db_kickback','bench_dip','diamond_pushup','tricep_machine','cable_overhead_tri','dips_chest']},
+  cable_pushdown:{name:'Cable Pushdown (Rope)',muscles:'Triceps (all heads)',
+    steps:['High cable, rope attachment. Elbows fixed at sides.','Push rope down and out — separate at bottom.','Full extension, squeeze triceps.','Control return — stop when forearms are parallel.'],
+    tip:'Keep elbows pinned to sides throughout. If they drift forward, reduce weight.',
+    alts:['db_tricep_ext','skull_crusher','close_grip_press','db_kickback','bench_dip','diamond_pushup','tricep_machine','cable_overhead_tri','dips_chest']},
+  skull_crusher:{name:'Skull Crushers (DB)',muscles:'Triceps (all heads)',
+    steps:['Lie flat, DBs extended above chest.','Lower DBs toward temples by bending only at elbow.','Extend back up — keep upper arms vertical.'],
+    tip:'Keep upper arms still. Only the forearms move. Go lighter than you think.',
+    alts:['db_tricep_ext','cable_pushdown','close_grip_press','db_kickback','bench_dip','diamond_pushup','tricep_machine','cable_overhead_tri','dips_chest']},
+  close_grip_press:{name:'Close-Grip DB Press',muscles:'Triceps · Chest (inner)',
+    steps:['Hold DBs together at chest, palms facing each other.','Press straight up while keeping DBs touching.','Lower slowly.'],
+    tip:'Neutral grip targets triceps more than standard bench.',
+    alts:['db_tricep_ext','cable_pushdown','skull_crusher','db_kickback','bench_dip','diamond_pushup','tricep_machine','cable_overhead_tri','dips_chest']},
+  db_kickback:{name:'DB Tricep Kickback',muscles:'Triceps (all heads)',
+    steps:['Hinge forward 45°, upper arm parallel to floor.','Extend forearm back to full lockout.','Hold 1 s, lower slowly.'],
+    tip:'Light weight only. The lockout is where triceps fully contract.',
+    alts:['db_tricep_ext','cable_pushdown','skull_crusher','close_grip_press','bench_dip','diamond_pushup','tricep_machine','cable_overhead_tri','dips_chest']},
+
+  // BICEPS
+  db_bicep_curl:{name:'DB Bicep Curl',muscles:'Biceps · Brachialis · Brachioradialis',
+    steps:['Stand or sit, DBs at sides, palms forward.','Curl both up simultaneously — elbows stay pinned to sides.','Squeeze biceps at top.','Lower slowly — 2–3 s.'],
+    tip:'Slow the lowering — the eccentric builds more muscle.',
+    alts:['hammer_curl','incline_curl','concentration_curl','cable_curl','preacher_curl','db_21s','reverse_curl','cable_hammer_curl','machine_curl']},
+  hammer_curl:{name:'Hammer Curl',muscles:'Brachialis · Biceps · Brachioradialis',
+    steps:['DBs at sides, palms facing each other (hammer grip).','Curl upward — no rotation.','Hold 1 s, lower slowly.'],
+    tip:'Brachialis sits under the bicep and when built, pushes the bicep up making your arm look bigger. Very underrated.',
+    alts:['db_bicep_curl','incline_curl','concentration_curl','cable_curl','preacher_curl','db_21s','reverse_curl','cable_hammer_curl','machine_curl']},
+  incline_curl:{name:'Incline DB Curl',muscles:'Biceps (long head peak)',
+    steps:['Lie back on incline bench (45–60°). Arms hang behind body.','Curl DBs up without moving upper arms.','Full stretch at bottom is the key stimulus.'],
+    tip:'The incline position creates a unique stretch on the long head of the bicep — excellent for peak development.',
+    alts:['db_bicep_curl','hammer_curl','concentration_curl','cable_curl','preacher_curl','db_21s','reverse_curl','cable_hammer_curl','machine_curl']},
+  concentration_curl:{name:'Concentration Curl',muscles:'Biceps (isolated peak)',
+    steps:['Seated, lean forward, elbow braced against inner thigh.','Curl DB up fully, rotating wrist outward at top.','Lower fully.','Complete all reps one arm, then switch.'],
+    tip:'Maximum isolation with zero body swing. Quality over quantity.',
+    alts:['db_bicep_curl','hammer_curl','incline_curl','cable_curl','preacher_curl','db_21s','reverse_curl','cable_hammer_curl','machine_curl']},
+  preacher_curl:{name:'Preacher Curl (DB or Cable)',muscles:'Biceps (lower/short head)',
+    steps:['Arms over preacher pad, elbows at edge of pad.','Curl up — full contraction.','Lower fully — critical to get the stretch.','Do not let elbows lift off pad.'],
+    tip:'Eliminates any cheating. Great for adding lower bicep thickness.',
+    alts:['db_bicep_curl','hammer_curl','incline_curl','cable_curl','concentration_curl','db_21s','reverse_curl','cable_hammer_curl','machine_curl']},
+  cable_curl:{name:'Cable Curl',muscles:'Biceps (constant tension)',
+    steps:['Low cable, straight bar or EZ bar. Stand shoulder-width.','Curl up — keep elbows still.','Cable provides tension at the bottom where DBs are lightest.'],
+    tip:'Constant tension throughout the movement is the advantage over DBs.',
+    alts:['db_bicep_curl','hammer_curl','incline_curl','concentration_curl','preacher_curl','db_21s','reverse_curl','cable_hammer_curl','machine_curl']},
+
+  // DEADLIFT / HIP HINGE COMPOUND
+  db_deadlift:{name:'DB Deadlift',muscles:'Hamstrings · Glutes · Lower Back · Quads · Traps',
+    steps:['DBs on floor outside feet. Hinge and grip.','Flat back, chest tall, hips above knees.','Drive through floor — hips and shoulders rise together.','Stand tall, squeeze glutes. Lower with control.'],
+    tip:'Think "push the floor away" not "pull the weight up." Full compound movement.',
+    alts:['rdl','hip_thrust','kb_swing','stiff_leg_dl','sumo_rdl','trap_bar_dl','good_morning','cable_pull_through','nordic_curl']},
+  trap_bar_dl:{name:'Trap Bar Deadlift',muscles:'Quads · Glutes · Hamstrings · Lower Back',
+    steps:['Stand inside hex bar. Grip handles.','Hinge to grab, flat back, hips above knees.','Drive through floor simultaneously with hips and shoulders.','Lockout — squeeze glutes, stand tall.'],
+    tip:'Trap bar reduces lower back stress vs conventional. Higher quad involvement. Excellent for athletes.',
+    alts:['db_deadlift','rdl','hip_thrust','kb_swing','stiff_leg_dl','sumo_rdl','good_morning','cable_pull_through','nordic_curl']}
+};
+
+// ── 3-Day Evidence-Based Whole-Body Program ───────────────────────────────
+// Basis: Schoenfeld et al. (2016) — twice-weekly frequency per muscle group optimal.
+// Each day trains upper AND lower body. Days alternate push/pull emphasis to allow
+// recovery while maintaining frequency. Non-competing supersets (Weakley 2017).
+const WO_PROGRAM=[
+  {
+    day:'A',name:'Push + Knee-Dominant',
+    rationale:'Horizontal push + quad-dominant lower. Vertical push + unilateral. Tricep isolation.',
+    supersets:[
+      {id:'ss1',label:'Superset 1',col:'#1a6eb5',meta:'3 sets · 10–12 reps each · 3 min rest',
+       exA:{id:'db_bench',sets:'10–12',note:'Horizontal push'},
+       exB:{id:'goblet_squat',sets:'12–15',note:'Knee-dominant lower'}},
+      {id:'ss2',label:'Superset 2',col:'#157a5e',meta:'3 sets · 10–12 reps each · 3 min rest',
+       exA:{id:'db_shoulder_press',sets:'10–12',note:'Vertical push'},
+       exB:{id:'step_ups',sets:'10 each leg',note:'Unilateral quad/glute'}},
+      {id:'ss3',label:'Superset 3',col:'#7a3a9e',meta:'3 sets · 12–15 reps each · 3 min rest',
+       exA:{id:'db_tricep_ext',sets:'12–15',note:'Tricep long-head'},
+       exB:{id:'leg_press',sets:'12–15',note:'Bilateral quad load'}}
+    ]
   },
+  {
+    day:'B',name:'Pull + Hip-Dominant',
+    rationale:'Vertical pull + hip-hinge posterior. Horizontal pull + unilateral lower. Rear delt + bicep.',
+    supersets:[
+      {id:'ss1',label:'Superset 1',col:'#1a6eb5',meta:'3 sets · 8–10 reps each · 3 min rest',
+       exA:{id:'pullups',sets:'max (5–10)',note:'Vertical pull'},
+       exB:{id:'rdl',sets:'10–12',note:'Hip-dominant posterior'}},
+      {id:'ss2',label:'Superset 2',col:'#157a5e',meta:'3 sets · 10 reps each side · 3 min rest',
+       exA:{id:'db_row',sets:'10 each side',note:'Horizontal pull'},
+       exB:{id:'bulgarian_split',sets:'10 each leg',note:'Unilateral posterior'}},
+      {id:'ss3',label:'Superset 3',col:'#7a3a9e',meta:'3 sets · 12–20 reps each · 3 min rest',
+       exA:{id:'face_pull',sets:'15–20',note:'Rear delt / rotator cuff'},
+       exB:{id:'db_bicep_curl',sets:'12–15',note:'Bicep isolation'}}
+    ]
+  },
+  {
+    day:'C',name:'Full-Body Compound',
+    rationale:'Hip hinge compound + upper chest. Horizontal pull + quad variation. Lateral delt + frontal plane lower.',
+    supersets:[
+      {id:'ss1',label:'Superset 1',col:'#1a6eb5',meta:'3 sets · 8–10 reps each · 3 min rest',
+       exA:{id:'db_deadlift',sets:'8–10',note:'Full compound hip hinge'},
+       exB:{id:'db_incline',sets:'10–12',note:'Upper chest push'}},
+      {id:'ss2',label:'Superset 2',col:'#157a5e',meta:'3 sets · 10–12 reps each · 3 min rest',
+       exA:{id:'cable_row',sets:'10–12',note:'Horizontal pull'},
+       exB:{id:'hack_squat',sets:'12–15',note:'Quad-dominant variation'}},
+      {id:'ss3',label:'Superset 3',col:'#7a3a9e',meta:'3 sets · 12 reps each · 3 min rest',
+       exA:{id:'lateral_raise',sets:'12–15',note:'Lateral delt isolation'},
+       exB:{id:'db_lateral_lunge',sets:'12 each side',note:'Frontal plane lower'}}
+    ]
+  }
+];
+
+const WO_COOLDOWN=[
+  'Chest doorway stretch — 30 sec each side',
+  'Standing hamstring stretch — 30 sec each leg',
+  'Hip flexor lunge stretch — 30 sec each side',
+  'Lat stretch (hang or overhead reach) — 30 sec',
+  'Shoulder cross-body stretch — 30 sec each arm',
+  'Quad stretch standing — 30 sec each leg',
+  "Child's pose (back/hip opener) — 60 sec"
+];
+
+function renderWorkout(){
+  var today=new Date().getDay();
+  var dayMap=[6,0,1,2,3,4,5];
+  var todayIdx=dayMap[today];
+  if(WO_ACTIVE_DAY===null)WO_ACTIVE_DAY=todayIdx;
+  var sel=document.getElementById('woDaySelect');
+  if(sel){
+    sel.innerHTML=WO_DAYS.map(function(d,i){
+      var icon=d.type==='lift'?'\uD83C\uDFCB':d.type==='walk'?'\uD83D\UDEB6':'\uD83D\uDCA4';
+      var star=i===todayIdx?' \u2605':'';
+      return '<option value="'+i+'"'+(i===WO_ACTIVE_DAY?' selected':'')+'>'+d.label+' '+icon+star+'</option>';
+    }).join('');
+  }
+  var dayType=WO_DAYS[WO_ACTIVE_DAY].type;
+  var html='';
+  if(dayType==='lift') html+=_renderLiftDay();
+  else if(dayType==='walk') html+=_renderWalkDay();
+  else html='<div class="wo-walk-card" style="background:#f0eee8;border-color:#c0b890;"><div class="wo-walk-icon">&#128564;</div><div class="wo-walk-title" style="color:#4a3e28;">Rest Day</div><div class="wo-walk-desc" style="color:#3a3028;">Recovery is where the adaptation happens.<br>Sleep well, stay hydrated, eat protein.</div></div>';
+  document.getElementById('woContent').innerHTML=html;
+}
+
+function woSetDay(idx){WO_ACTIVE_DAY=idx;renderWorkout();}
+
+function _renderWalkDay(){
+  return '<div class="wo-walk-card"><div class="wo-walk-icon">&#127939;</div>'
+    +'<div class="wo-walk-title">45-Minute Walk</div>'
+    +'<div class="wo-walk-desc"><strong>Goal:</strong> 45 min at conversational pace.<br>'
+    +'<strong>Heart rate:</strong> 100–120 bpm (Zone 2 aerobic).<br>'
+    +'<strong>Tip:</strong> Vary terrain for challenge without impact. Active recovery supports the lifting days.</div></div>';
+}
+
+function _renderLiftDay(){
+  var liftDayMap={0:0,2:1,4:2};
+  var progIdx=liftDayMap[WO_ACTIVE_DAY];
+  if(progIdx===undefined)progIdx=0;
+  var prog=WO_PROGRAM[progIdx];
+  var html='<div class="wo-section"><div class="wo-section-title">Warmup (10 min)</div>'
+    +'<div class="wo-cooldown"><div class="wo-cooldown-item">Treadmill walk at warmup pace — 10 minutes</div></div></div>';
+  html+='<div class="wo-day-rationale"><strong>Day '+prog.day+': '+prog.name+'</strong><br>'+prog.rationale+'</div>';
+  prog.supersets.forEach(function(ss){
+    html+='<div class="wo-section"><div class="wo-superset">'
+      +'<div class="wo-superset-header"><span class="wo-superset-label" style="color:'+ss.col+';">'+ss.label+'</span><span class="wo-superset-meta">'+ss.meta+'</span></div>';
+    html+=_renderExercise(ss.exA,ss.id+'_a');
+    html+='<div style="text-align:center;padding:4px 0;"><span class="wo-rest-badge">&#9202; 3 min rest between sets</span></div>';
+    html+=_renderExercise(ss.exB,ss.id+'_b');
+    html+='</div></div>';
+  });
+  html+='<div class="wo-section"><div class="wo-section-title">Cooldown (5–10 min)</div><div class="wo-cooldown">';
+  WO_COOLDOWN.forEach(function(s){html+='<div class="wo-cooldown-item">'+s+'</div>';});
+  html+='</div></div>';
+  return html;
+}
+
+function _renderExercise(ex,slotId){
+  var exData=WO_EXERCISES[ex.id];
+  var log=(state.workoutLog&&state.workoutLog[ex.id])||{weight:'',reps:'',sets:''};
+  var opts='<option value="'+ex.id+'">'+exData.name+'</option>'
+    +exData.alts.map(function(aid){var a=WO_EXERCISES[aid];return a?'<option value="'+aid+'">'+a.name+'</option>':'';}).join('');
+  return '<div class="wo-exercise">'
+    +'<div class="wo-ex-top">'
+    +'<select class="wo-ex-select" data-primary="'+ex.id+'" onchange="woExChanged(this)">'+opts+'</select>'
+    +'<button class="btn btn-sm" onclick="showExerciseInfo(this.closest(\'.wo-exercise\').querySelector(\'.wo-ex-select\').value)" style="font-size:11px;padding:3px 9px;flex-shrink:0;">&#9432; How-to</button>'
+    +'</div>'
+    +'<div class="wo-ex-note">'+ex.sets+' reps &bull; '+ex.note+'</div>'
+    +'<div class="wo-log-row">'
+    +'<span class="wo-log-label">Log:</span>'
+    +'<input class="wo-log-input" type="number" inputmode="numeric" placeholder="sets" value="'+esc(log.sets||'')+'" oninput="woLog(this.closest(\'.wo-exercise\').querySelector(\'.wo-ex-select\').value,\'sets\',this.value)" title="Sets done">'
+    +'<span class="wo-log-label">×</span>'
+    +'<input class="wo-log-input" type="number" inputmode="decimal" placeholder="lbs" value="'+esc(log.weight||'')+'" oninput="woLog(this.closest(\'.wo-exercise\').querySelector(\'.wo-ex-select\').value,\'weight\',this.value)" title="Weight used">'
+    +'<span class="wo-log-label">@</span>'
+    +'<input class="wo-log-input" type="number" inputmode="numeric" placeholder="reps" value="'+esc(log.reps||'')+'" oninput="woLog(this.closest(\'.wo-exercise\').querySelector(\'.wo-ex-select\').value,\'reps\',this.value)" title="Reps done">'
+    +'</div>'
+    +'</div>';
+}
+
+function woExChanged(sel){
+  var exId=sel.value;
+  var container=sel.closest('.wo-exercise');
+  var log=(state.workoutLog&&state.workoutLog[exId])||{weight:'',reps:'',sets:''};
+  var inputs=container.querySelectorAll('.wo-log-input');
+  if(inputs[0])inputs[0].value=log.sets||'';
+  if(inputs[1])inputs[1].value=log.weight||'';
+  if(inputs[2])inputs[2].value=log.reps||'';
+}
+
+function woLog(exId,field,val){
+  if(!state.workoutLog)state.workoutLog={};
+  if(!state.workoutLog[exId])state.workoutLog[exId]={weight:'',reps:'',sets:''};
+  state.workoutLog[exId][field]=val;
+  save();
+}
+
+function showExerciseInfo(exId){
+  var ex=WO_EXERCISES[exId];if(!ex)return;
+  var stepsHtml=ex.steps.map(function(s,i){return '<li data-n="'+(i+1)+'">'+s+'</li>';}).join('');
+  var altsHtml=ex.alts.slice(0,6).map(function(aid){
+    var a=WO_EXERCISES[aid];
+    return a?'<span style="display:inline-block;margin:3px 4px 0 0;padding:3px 10px;background:var(--surface-raised);border:1px solid var(--border);border-radius:20px;font-size:12px;color:var(--teal);cursor:pointer;" onclick="showExerciseInfo(\''+aid+'\')">'+a.name+'</span>':'';
+  }).join('');
+  var html='<div class="wo-modal">'
+    +'<div class="wo-modal-name">'+ex.name+'</div>'
+    +'<div class="wo-modal-muscles">'+ex.muscles+'</div>'
+    +'<ol class="wo-modal-steps">'+stepsHtml+'</ol>'
+    +'<div class="wo-modal-tip"><strong>Tip:</strong> '+ex.tip+'</div>'
+    +(altsHtml?'<div style="margin-top:12px;"><div style="font-size:11px;font-weight:700;color:var(--text-faint);text-transform:uppercase;letter-spacing:0.5px;margin-bottom:6px;">Related Exercises</div>'+altsHtml+'</div>':'')
+    +'</div>';
+  document.getElementById('modalContent').innerHTML=html;
+  document.getElementById('modalOverlay').classList.add('show');
+}
+
+
+
+
+async function initApp(){
   db_incline:{
     name:'Incline DB Press',muscles:'Upper Chest · Anterior Deltoid · Triceps',
     steps:['Set bench to 30–45°. Sit back with dumbbells on thighs, then kick them up as you lie back.','Press upward at the angle of the bench — not straight up.','Lower to just outside your upper chest, elbows at about 60° from your torso.','Pause briefly at the bottom, then drive back up.'],
@@ -2983,143 +3434,6 @@ const WO_COOLDOWN=[
   'Quad stretch standing — 30 sec each leg',
   'Child\'s pose (back/hip opener) — 60 sec'
 ];
-
-function renderWorkout(){
-  var today=new Date().getDay(); // 0=Sun
-  var dayMap=[6,0,1,2,3,4,5]; // map JS day → WO_DAYS index (Mon=0)
-  var todayIdx=dayMap[today];
-  if(WO_ACTIVE_DAY===null)WO_ACTIVE_DAY=todayIdx;
-
-  // Populate day dropdown
-  var sel=document.getElementById('woDaySelect');
-  if(sel){
-    sel.innerHTML=WO_DAYS.map(function(d,i){
-      var label=d.label+' \u2014 '+(d.type==='lift'?'\uD83C\uDFCB Weights':d.type==='walk'?'\uD83D\UDEB6 Walk':'\uD83D\uDCA4 Rest');
-      var selected=i===WO_ACTIVE_DAY?' selected':'';
-      return '<option value="'+i+'"'+selected+'>'+label+(i===todayIdx?' \u2605':'')+' </option>';
-    }).join('');
-  }
-
-  var dayType=WO_DAYS[WO_ACTIVE_DAY].type;
-  var html='';
-  if(dayType==='walk'){
-    html+=_renderWalkDay();
-  }else if(dayType==='rest'){
-    html='<div class="wo-walk-card"><div class="wo-walk-icon">&#128564;</div><div class="wo-walk-title">Rest Day</div><div class="wo-walk-desc">Recovery is where the adaptation happens.<br>Sleep well, stay hydrated, eat protein.</div></div>';
-  }else{
-    html+=_renderLiftDay();
-  }
-
-  document.getElementById('woContent').innerHTML=html;
-}
-
-function woSetDay(idx){
-  WO_ACTIVE_DAY=idx;
-  renderWorkout();
-}
-
-function _renderWalkDay(){
-  return '<div class="wo-walk-card"><div class="wo-walk-icon">&#127939;</div>'
-    +'<div class="wo-walk-title">45-Minute Walk</div>'
-    +'<div class="wo-walk-desc">'
-    +'<strong>Goal:</strong> 45 min at a comfortable, conversational pace.<br>'
-    +'<strong>Heart rate:</strong> 100–120 bpm (Zone 2 aerobic).<br>'
-    +'<strong>Tip:</strong> Vary terrain (hills, trails) to add challenge without impact. Active recovery days support the lifting days.'
-    +'</div></div>';
-}
-
-function _renderLiftDay(){
-  var html='';
-  html+='<div class="wo-section"><div class="wo-section-title">Warmup (10 min)</div>';
-  html+='<div class="wo-cooldown"><div class="wo-cooldown-item" style="margin-bottom:0;">Treadmill walk at warmup pace — 10 minutes</div></div></div>';
-
-  WO_PROGRAM.forEach(function(ss){
-    html+='<div class="wo-section"><div class="wo-section-title" style="color:'+ss.color+';">'+ss.label+'</div>';
-    html+='<div class="wo-superset">';
-    html+='<div class="wo-superset-header"><span class="wo-superset-label" style="color:'+ss.color+';">'+ss.label+'</span><span class="wo-superset-meta">'+ss.meta+'</span></div>';
-    html+=_renderExercise(ss.exA);
-    html+='<div style="text-align:center;padding:4px 0;"><span class="wo-rest-badge">&#9202; 3 min rest between sets</span></div>';
-    html+=_renderExercise(ss.exB);
-    html+='</div></div>';
-  });
-
-  html+='<div class="wo-section"><div class="wo-section-title">Cooldown (5–10 min)</div>';
-  html+='<div class="wo-cooldown">';
-  WO_COOLDOWN.forEach(function(s){html+='<div class="wo-cooldown-item">'+s+'</div>';});
-  html+='</div></div>';
-
-  return html;
-}
-
-function _renderExercise(ex){
-  var exData=WO_EXERCISES[ex.id];
-  var log=(state.workoutLog&&state.workoutLog[ex.id])||{weight:'',reps:''};
-  var altOpts=exData.alts.map(function(aid){
-    return '<option value="'+aid+'">'+WO_EXERCISES[aid].name+'</option>';
-  }).join('');
-  return '<div class="wo-exercise">'
-    +'<div class="wo-ex-top">'
-    +'<span class="wo-ex-name" onclick="showExerciseInfo(\''+ex.id+'\')" title="Tap for how-to">'+exData.name+' <span style="font-size:10px;color:var(--text-faint);">&#9432;</span></span>'
-    +'<span class="wo-ex-sets">'+ex.sets+'</span>'
-    +'</div>'
-    +'<div class="wo-log-row">'
-    +'<span class="wo-log-label">Last:</span>'
-    +'<input class="wo-log-input" type="number" inputmode="decimal" placeholder="lbs" value="'+esc(log.weight)+'" oninput="woLog(\''+ex.id+'\',\'weight\',this.value)" title="Weight used">'
-    +'<input class="wo-log-input" type="number" inputmode="numeric" placeholder="reps" value="'+esc(log.reps)+'" oninput="woLog(\''+ex.id+'\',\'reps\',this.value)" title="Reps completed">'
-    +'</div>'
-    +'<div class="wo-alts-row" style="display:flex;align-items:center;gap:6px;margin-top:7px;">'
-    +'<span style="font-size:10px;color:var(--text-faint);white-space:nowrap;">Swap:</span>'
-    +'<select class="wo-alts-select" onchange="woAltChanged(this,\''+ex.id+'\')" style="flex:1;font-size:11px;padding:4px 6px;background:var(--surface);border:1px solid var(--border);border-radius:var(--radius-sm);color:var(--text-dim);font-family:inherit;cursor:pointer;">'
-    +'<option value="">— Alternate exercises —</option>'
-    +altOpts
-    +'</select>'
-    +'<button class="btn btn-sm" onclick="woViewAlt(this)" data-altfor="'+ex.id+'" style="font-size:11px;padding:3px 8px;display:none;">&#9432; How-to</button>'
-    +'</div>'
-    +'</div>';
-}
-
-function woAltChanged(sel,mainId){
-  var btn=sel.parentElement.querySelector('button');
-  if(sel.value){
-    btn.style.display='inline-block';
-    btn.setAttribute('data-altid',sel.value);
-  }else{
-    btn.style.display='none';
-  }
-}
-
-function woViewAlt(btn){
-  var altId=btn.getAttribute('data-altid');
-  if(altId)showExerciseInfo(altId);
-}
-
-function woLog(exId,field,val){
-  if(!state.workoutLog)state.workoutLog={};
-  if(!state.workoutLog[exId])state.workoutLog[exId]={weight:'',reps:''};
-  state.workoutLog[exId][field]=val;
-  save();
-}
-
-function showExerciseInfo(exId){
-  var ex=WO_EXERCISES[exId];if(!ex)return;
-  var stepsHtml=ex.steps.map(function(s,i){
-    return '<li data-n="'+(i+1)+'">'+s+'</li>';
-  }).join('');
-  var altsHtml=ex.alts.map(function(aid){
-    var a=WO_EXERCISES[aid];
-    return '<span class="wo-alt-item" onclick="showExerciseInfo(\''+aid+'\')" style="display:inline-block;margin:3px 4px 0 0;padding:3px 10px;background:var(--surface-raised);border:1px solid var(--border);border-radius:20px;">'+a.name+'</span>';
-  }).join('');
-  var html='<div class="wo-modal">'
-    +'<div class="wo-modal-name">'+ex.name+'</div>'
-    +'<div class="wo-modal-muscles">'+ex.muscles+'</div>'
-    +'<ol class="wo-modal-steps">'+stepsHtml+'</ol>'
-    +'<div class="wo-modal-tip"><strong>Tip:</strong> '+ex.tip+'</div>'
-    +'<div style="margin-top:12px;"><div style="font-size:11px;font-weight:700;color:var(--text-faint);text-transform:uppercase;letter-spacing:0.5px;margin-bottom:6px;">Alternate Exercises</div>'
-    +altsHtml+'</div></div>';
-  document.getElementById('modalContent').innerHTML=html;
-  document.getElementById('modalOverlay').classList.add('show');
-}
-
 
 async function initApp(){
 await load();
