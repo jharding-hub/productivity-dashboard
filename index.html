@@ -491,6 +491,19 @@ body.unlocked .date-editable:hover{border-bottom-color:var(--accent);background:
 .wo-walk-title{font-size:15px;font-weight:700;color:#1a6a3a;margin-bottom:4px;}
 .wo-walk-desc{font-size:12px;color:#2a4a32;line-height:1.6;}
 .wo-walk-icon{font-size:36px;margin-bottom:8px;}
+.wo-recovery-header{font-size:13px;font-weight:700;color:#1a3a28;margin-bottom:12px;text-align:center;padding:0 4px;}
+.wo-activity-tabs{display:flex;gap:8px;margin-bottom:14px;}
+.wo-activity-tab{flex:1;padding:10px 6px;border:1.5px solid #a8c8b0;border-radius:var(--radius-sm);background:#fff;font-family:inherit;font-size:12px;font-weight:700;color:#3a6a4a;cursor:pointer;text-align:center;transition:all 0.15s;}
+.wo-activity-tab:hover{border-color:#3a9a5a;color:#1a6a3a;}
+.wo-activity-tab.active{background:#3a9a5a;border-color:#3a9a5a;color:#fff;}
+.wo-activity-detail{background:#fff;border:1.5px solid #c8d8c0;border-radius:var(--radius-sm);padding:14px;}
+.wo-activity-icon{font-size:32px;margin-bottom:8px;text-align:center;}
+.wo-activity-name{font-size:14px;font-weight:700;color:#1a4a2a;margin-bottom:6px;}
+.wo-activity-desc{font-size:12px;color:#2a4a32;line-height:1.65;}
+.wo-activity-options{margin-top:10px;border-top:1px solid #d0e0c8;padding-top:10px;}
+.wo-activity-options-title{font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:0.5px;color:#5a7a5a;margin-bottom:6px;}
+.wo-activity-option{font-size:12px;color:#2a6a3a;padding:3px 0;display:flex;align-items:flex-start;gap:6px;}
+.wo-activity-option::before{content:'•';color:#3a9a5a;font-weight:700;flex-shrink:0;}
 .wo-cooldown{background:#f4f2ee;border:1px solid #c8bfa8;border-radius:var(--radius-sm);padding:10px 12px;}
 .wo-cooldown-item{font-size:12px;color:#2a2218;padding:3px 0;display:flex;align-items:center;gap:6px;}
 .wo-cooldown-item::before{content:'•';color:#1a7a3a;font-weight:700;}
@@ -2755,13 +2768,13 @@ function closeWorkoutModal(){
 var WO_ACTIVE_DAY=null;
 
 const WO_DAYS=[
-  {label:'Mon',type:'lift',prog:0},
-  {label:'Tue',type:'walk'},
-  {label:'Wed',type:'lift',prog:1},
-  {label:'Thu',type:'walk'},
-  {label:'Fri',type:'lift',prog:2},
-  {label:'Sat',type:'walk'},
-  {label:'Sun',type:'rest'}
+  {label:'Monday',type:'lift',prog:0},
+  {label:'Tuesday',type:'walk'},
+  {label:'Wednesday',type:'lift',prog:1},
+  {label:'Thursday',type:'walk'},
+  {label:'Friday',type:'lift',prog:2},
+  {label:'Saturday',type:'walk'},
+  {label:'Sunday',type:'rest'}
 ];
 
 // ── Exercise database ──────────────────────────────────────────────────────
@@ -3121,9 +3134,9 @@ function renderWorkout(){
   var sel=document.getElementById('woDaySelect');
   if(sel){
     sel.innerHTML=WO_DAYS.map(function(d,i){
-      var icon=d.type==='lift'?'\uD83C\uDFCB':d.type==='walk'?'\uD83D\UDEB6':'\uD83D\uDCA4';
+      var typeLabel=d.type==='lift'?' — Weights':d.type==='walk'?' — Active Recovery':' — Rest';
       var star=i===todayIdx?' \u2605':'';
-      return '<option value="'+i+'"'+(i===WO_ACTIVE_DAY?' selected':'')+'>'+d.label+' '+icon+star+'</option>';
+      return '<option value="'+i+'"'+(i===WO_ACTIVE_DAY?' selected':'')+'>'+d.label+typeLabel+star+'</option>';
     }).join('');
   }
   var dayType=WO_DAYS[WO_ACTIVE_DAY].type;
@@ -3137,11 +3150,87 @@ function renderWorkout(){
 function woSetDay(idx){WO_ACTIVE_DAY=idx;renderWorkout();}
 
 function _renderWalkDay(){
-  return '<div class="wo-walk-card"><div class="wo-walk-icon">&#127939;</div>'
-    +'<div class="wo-walk-title">45-Minute Walk</div>'
-    +'<div class="wo-walk-desc"><strong>Goal:</strong> 45 min at conversational pace.<br>'
-    +'<strong>Heart rate:</strong> 100–120 bpm (Zone 2 aerobic).<br>'
-    +'<strong>Tip:</strong> Vary terrain for challenge without impact. Active recovery supports the lifting days.</div></div>';
+  var dayName=WO_DAYS[WO_ACTIVE_DAY].label;
+  var activeActivity=WO_ACTIVE_DAY===5?'hike':'walk'; // Saturday default hike, others walk
+  var activities={
+    walk:{
+      icon:'&#127939;',name:'Walk',
+      desc:'45 minutes at a conversational, Zone 2 pace (100–120 bpm). The gold standard for aerobic base building and active recovery.',
+      options:[
+        'Flat neighborhood or trail — maintain easy breathing','Treadmill incline 3–5% for extra challenge without impact',
+        'Aim for 4,000–6,000 steps minimum','Swing your arms naturally — activates core and improves gait'
+      ]
+    },
+    hike:{
+      icon:'&#9968;',name:'Hike',
+      desc:'45–60 minutes on uneven terrain. Improves balance, recruits stabilizers, and burns more calories than flat walking at the same pace.',
+      options:[
+        'Choose trails with moderate elevation change','Trekking poles reduce knee strain on descents',
+        'Uneven ground activates glutes and ankles differently than pavement','Watch footing — proprioception work is the bonus'
+      ]
+    },
+    yoga:{
+      icon:'&#129335;',name:'Yoga / Mobility',
+      desc:'30–45 minutes of movement-based recovery. Targets the exact muscles loaded in your lifting sessions: hip flexors, hamstrings, lats, chest, and thoracic spine.',
+      options:[
+        'Sun salutations × 5 — warm up the whole chain','Pigeon pose — 90 sec each side for hip flexors and glutes',
+        'Thread-the-needle — 60 sec each side for thoracic rotation','Downward dog — calf and hamstring lengthening',
+        'Child\'s pose wide — lat stretch','Cat-cow × 10 — spinal decompression after deadlifts'
+      ]
+    }
+  };
+
+  var html='<div class="wo-recovery-header">&#127807; '+dayName+' — Active Recovery</div>'
+    +'<div class="wo-activity-tabs">';
+  ['walk','hike','yoga'].forEach(function(key){
+    var a=activities[key];
+    var cls='wo-activity-tab'+(key===activeActivity?' active':'');
+    html+='<button class="'+cls+'" onclick="woSwitchActivity(this,\''+key+'\')">'
+      +a.icon+'<br>'+a.name+'</button>';
+  });
+  html+='</div>';
+
+  // Render details for active activity
+  html+=_renderActivityDetail(activities[activeActivity]);
+  return html;
+}
+
+function _renderActivityDetail(a){
+  var optHtml=a.options.map(function(o){return '<div class="wo-activity-option">'+o+'</div>';}).join('');
+  return '<div class="wo-activity-detail">'
+    +'<div class="wo-activity-icon">'+a.icon+'</div>'
+    +'<div class="wo-activity-name">'+a.name+'</div>'
+    +'<div class="wo-activity-desc">'+a.desc+'</div>'
+    +'<div class="wo-activity-options"><div class="wo-activity-options-title">How to do it well</div>'+optHtml+'</div>'
+    +'</div>';
+}
+
+function woSwitchActivity(btn,key){
+  // Update active tab
+  btn.closest('.modal-blur-body').querySelectorAll('.wo-activity-tab').forEach(function(t){t.classList.remove('active');});
+  btn.classList.add('active');
+  // Re-render detail panel
+  var activities={
+    walk:{icon:'&#127939;',name:'Walk',
+      desc:'45 minutes at a conversational, Zone 2 pace (100–120 bpm). The gold standard for aerobic base building and active recovery.',
+      options:['Flat neighborhood or trail — maintain easy breathing','Treadmill incline 3–5% for extra challenge without impact',
+        'Aim for 4,000–6,000 steps minimum','Swing your arms naturally — activates core and improves gait']},
+    hike:{icon:'&#9968;',name:'Hike',
+      desc:'45–60 minutes on uneven terrain. Improves balance, recruits stabilizers, and burns more calories than flat walking at the same pace.',
+      options:['Choose trails with moderate elevation change','Trekking poles reduce knee strain on descents',
+        'Uneven ground activates glutes and ankles differently than pavement','Watch footing — proprioception work is the bonus']},
+    yoga:{icon:'&#129335;',name:'Yoga / Mobility',
+      desc:'30–45 minutes of movement-based recovery. Targets the exact muscles loaded in your lifting sessions.',
+      options:['Sun salutations × 5 — warm up the whole chain','Pigeon pose — 90 sec each side for hip flexors and glutes',
+        'Thread-the-needle — 60 sec each side for thoracic rotation','Downward dog — calf and hamstring lengthening',
+        "Child's pose wide — lat stretch",'Cat-cow × 10 — spinal decompression after deadlifts']}
+  };
+  var existing=btn.closest('.modal-blur-body').querySelector('.wo-activity-detail');
+  if(existing){
+    var tmp=document.createElement('div');
+    tmp.innerHTML=_renderActivityDetail(activities[key]);
+    existing.replaceWith(tmp.firstChild);
+  }
 }
 
 function _renderLiftDay(){
