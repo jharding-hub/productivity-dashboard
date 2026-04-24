@@ -26,9 +26,24 @@ body{font-family:'DM Sans',sans-serif;background:var(--bg);color:var(--text);min
 .lock-btn{background:none;border:1px solid var(--border);color:var(--text-dim);padding:4px 10px;border-radius:var(--radius-sm);cursor:pointer;font-size:12px;font-family:inherit;transition:all 0.15s;}
 .lock-btn:hover{border-color:var(--accent-dim);color:var(--accent);}
 .lock-btn.unlocked{background:var(--accent-glow);color:var(--accent);border-color:var(--accent-dim);}
-.nav-tabs{display:none;position:fixed;bottom:0;left:0;right:0;background:var(--surface);border-top:1px solid var(--border);padding:6px 8px env(safe-area-inset-bottom);z-index:100;overflow-x:auto;white-space:nowrap;gap:2px;}
-.nav-tab{display:inline-flex;flex-direction:column;align-items:center;gap:2px;padding:6px 12px;border:none;background:none;color:var(--text-dim);font-size:10px;font-family:inherit;cursor:pointer;border-radius:var(--radius-sm);}
-.nav-tab .nt-icon{font-size:18px;}.nav-tab.active{color:var(--accent);background:var(--accent-glow);}
+/* MOBILE NAV — hidden on desktop, home tile grid on mobile */
+.nav-tabs{display:none;}
+.mobile-home{display:none;position:fixed;inset:0;top:0;bottom:0;z-index:50;background:var(--bg);overflow-y:auto;padding:14px 14px calc(env(safe-area-inset-bottom)+14px);}
+.mobile-home-header{display:flex;align-items:center;justify-content:space-between;margin-bottom:16px;padding-top:env(safe-area-inset-top);}
+.mobile-home-title{font-family:'Fraunces',serif;font-size:20px;font-weight:600;color:var(--accent);}
+.mobile-home-time{font-size:13px;color:var(--text-dim);}
+.mobile-panel-grid{display:grid;grid-template-columns:1fr 1fr;gap:12px;}
+.mobile-panel-tile{display:flex;flex-direction:column;align-items:center;justify-content:center;gap:8px;padding:22px 12px 18px;background:var(--surface);border:1.5px solid var(--border);border-radius:var(--radius);cursor:pointer;text-align:center;transition:all 0.15s;min-height:100px;position:relative;-webkit-tap-highlight-color:transparent;}
+.mobile-panel-tile:active{transform:scale(0.96);border-color:var(--accent-dim);background:var(--accent-glow);}
+.mobile-panel-tile .mpt-icon{font-size:32px;line-height:1;}
+.mobile-panel-tile .mpt-label{font-size:13px;font-weight:700;color:var(--text);letter-spacing:0.2px;}
+.mobile-panel-tile .mpt-badge{position:absolute;top:10px;right:10px;background:var(--accent);color:var(--bg);font-size:10px;font-weight:700;padding:2px 7px;border-radius:20px;min-width:20px;text-align:center;display:none;}
+.mobile-panel-tile .mpt-badge.visible{display:block;}
+.mobile-panel-tile.toolkit-tile{grid-column:1/-1;min-height:76px;flex-direction:row;gap:14px;padding:18px 20px;}
+.mobile-panel-tile.toolkit-tile .mpt-icon{font-size:28px;}
+.mobile-back-bar{display:none;position:fixed;top:0;left:0;right:0;z-index:60;background:var(--surface);border-bottom:1px solid var(--border);padding:10px 16px calc(10px + env(safe-area-inset-top));padding-top:calc(10px + env(safe-area-inset-top));}
+.mobile-back-btn{display:flex;align-items:center;gap:8px;background:none;border:none;color:var(--accent);font-size:15px;font-weight:600;font-family:inherit;cursor:pointer;padding:0;}
+.mobile-back-btn::before{content:'‹';font-size:22px;line-height:1;}
 .dashboard{display:grid;grid-template-columns:2fr 2fr 1fr;gap:16px;padding:16px 24px 24px;max-width:1600px;margin:0 auto;align-items:stretch;}
 .panel-narrow{min-width:0;}
 .panel{background:var(--surface);border:1px solid var(--border);border-radius:var(--radius);padding:18px;animation:fadeUp 0.4s ease both;transition:box-shadow 0.2s,opacity 0.2s,transform 0.2s;display:flex;flex-direction:column;}
@@ -306,7 +321,25 @@ body.unlocked .date-editable:hover{border-bottom-color:var(--accent);background:
 @keyframes micPulse{0%,100%{opacity:1;}50%{opacity:0.5;}}
 .section-label{font-size:11px;color:var(--text-dim);text-transform:uppercase;letter-spacing:0.5px;margin:8px 0 4px;}
 @media(max-width:1100px){.dashboard{grid-template-columns:1fr 1fr;}.panel-narrow{grid-column:span 1;}}
-@media(max-width:768px){.dashboard{grid-template-columns:1fr;padding:12px 14px 16px;gap:12px;}.header{padding:14px 14px 10px;}.header h1{font-size:18px;}.header h1 span{display:none;}.nav-tabs{display:flex;}.panel{display:none;}.panel.mobile-visible{display:flex;}.panel.hidden-panel{display:none!important;}.panel.user-hidden{display:none!important;}.drag-handle{display:none!important;}.dynamic-panels{padding:0 14px 90px;}}
+@media(max-width:768px){
+  .dashboard{grid-template-columns:1fr;padding:12px 14px 16px;gap:12px;}
+  .header{padding:14px 14px 10px;}
+  .header h1{font-size:18px;}
+  .header h1 span{display:none;}
+  .panel{display:none;}
+  .panel.mobile-visible{display:flex;}
+  .panel.hidden-panel{display:none!important;}
+  .panel.user-hidden{display:none!important;}
+  .drag-handle{display:none!important;}
+  .dynamic-panels{padding:0 14px 16px;}
+  /* Mobile home screen active */
+  .mobile-home.active{display:block;}
+  .mobile-back-bar.active{display:flex;align-items:center;}
+  /* Panel content pushed below back bar when shown */
+  .app-wrap.panel-open{padding-top:52px;}
+  .header{display:none;}
+  .header.mobile-visible{display:flex;}
+}
 /* AUTH GATE */
 .login-gate{position:fixed;inset:0;background:var(--bg);z-index:9999;display:flex;align-items:center;justify-content:center;padding:20px;}
 .login-gate.hidden{display:none;}
@@ -723,17 +756,20 @@ body.unlocked .date-editable:hover{border-bottom-color:var(--accent);background:
 </div>
 
 <!-- MOBILE NAV -->
-<div class="nav-tabs" id="navTabs">
-<button class="nav-tab active" onclick="showMobilePanel('projects',this)" data-navfor="projects"><span class="nt-icon">&#128194;</span>Projects</button>
-<button class="nav-tab" onclick="showMobilePanel('reminders',this)" data-navfor="reminders"><span class="nt-icon">&#128276;</span>Remind</button>
-<button class="nav-tab" onclick="showMobilePanel('brain',this)" data-navfor="brain"><span class="nt-icon">&#129504;</span>Dump</button>
-<button class="nav-tab" onclick="showMobilePanel('time',this)" data-navfor="time"><span class="nt-icon">&#129521;</span>Tools</button>
-<button class="nav-tab" onclick="showMobilePanel('routines',this)" data-navfor="routines"><span class="nt-icon">&#128257;</span>Routines</button>
-<button class="nav-tab" onclick="showMobilePanel('notes',this)" data-navfor="notes"><span class="nt-icon">&#128221;</span>Notes</button>
-<button class="nav-tab" onclick="showMobilePanel('help',this)" data-navfor="decision"><span class="nt-icon">&#129517;</span>Help</button>
-<button class="nav-tab" onclick="showMobilePanel('tasklist',this)" data-navfor="tasklist"><span class="nt-icon">&#128203;</span>Tasks</button>
-<button class="nav-tab" onclick="showMobilePanel('admin',this)" id="adminNavTab" style="display:none;"><span class="nt-icon">&#128737;</span>Admin</button>
+<!-- MOBILE BACK BAR -->
+<div class="mobile-back-bar" id="mobileBackBar">
+  <button class="mobile-back-btn" onclick="showMobileHome()">Panels</button>
 </div>
+
+<!-- MOBILE HOME SCREEN (tile grid) -->
+<div class="mobile-home" id="mobileHome">
+  <div class="mobile-home-header">
+    <div class="mobile-home-title">&#9881; Dashboard</div>
+    <div class="mobile-home-time" id="mobileHomeClock"></div>
+  </div>
+  <div class="mobile-panel-grid" id="mobilePanelGrid"></div>
+</div>
+
 
 <div class="modal-overlay" id="modalOverlay" onclick="if(event.target===this)closeModal()"><div class="modal" id="modalContent"></div></div>
 <div class="customize-overlay" id="customizeOverlay" onclick="if(event.target===this)closeCustomize()">
@@ -1281,16 +1317,8 @@ function applyPanelVisibility(){
       p.classList.remove('user-hidden');
     }
   });
-  // Update mobile nav tabs
-  document.querySelectorAll('.nav-tab[data-navfor]').forEach(tab=>{
-    const id=tab.dataset.navfor;
-    if(id==='admin')return; // admin nav has its own logic
-    if(state.visiblePanels[id]===false){
-      tab.style.display='none';
-    }else{
-      tab.style.display='';
-    }
-  });
+  // Rebuild mobile home tiles to reflect visibility changes
+  if(_isMobile())buildMobileHome();
 }
 
 function openCustomize(){
@@ -1351,7 +1379,7 @@ function applyPanelOrder(){const dash=document.getElementById('dashboard');const
 function initDragDrop(){document.querySelectorAll('.panel').forEach(panel=>{panel.addEventListener('dragstart',e=>{if(state.panelsLocked){e.preventDefault();return;}dragSrcPanel=panel;panel.classList.add('dragging');e.dataTransfer.effectAllowed='move';e.dataTransfer.setData('text/plain',panel.dataset.panel);});panel.addEventListener('dragend',()=>{panel.classList.remove('dragging');document.querySelectorAll('.panel').forEach(p=>p.classList.remove('drag-over'));dragSrcPanel=null;});panel.addEventListener('dragover',e=>{if(state.panelsLocked)return;e.preventDefault();e.dataTransfer.dropEffect='move';if(panel!==dragSrcPanel)panel.classList.add('drag-over');});panel.addEventListener('dragleave',()=>{panel.classList.remove('drag-over');});panel.addEventListener('drop',e=>{e.preventDefault();panel.classList.remove('drag-over');if(!dragSrcPanel||dragSrcPanel===panel)return;const dash=document.getElementById('dashboard');const all=[...dash.querySelectorAll('.panel')];const fi=all.indexOf(dragSrcPanel);const ti=all.indexOf(panel);if(fi<ti)panel.after(dragSrcPanel);else panel.before(dragSrcPanel);state.panelOrder=[...dash.querySelectorAll('.panel')].map(p=>p.dataset.panel);save();toast('Panel moved');});});}
 
 // CLOCK
-function updateClock(){const now=new Date();document.getElementById('clock').textContent=now.toLocaleTimeString('en-US',{hour12:true});document.getElementById('clockDate').textContent=now.toLocaleDateString('en-US',{weekday:'long',year:'numeric',month:'long',day:'numeric'});}
+function updateClock(){const now=new Date();const t=now.toLocaleTimeString('en-US',{hour12:true});document.getElementById('clock').textContent=t;document.getElementById('clockDate').textContent=now.toLocaleDateString('en-US',{weekday:'long',year:'numeric',month:'long',day:'numeric'});const mhc=document.getElementById('mobileHomeClock');if(mhc)mhc.textContent=t;}
 
 // TIMER (with soft alarm)
 let timerTotal=25*60,timerLeft=25*60,timerInterval=null,timerRunning=false;
@@ -1652,7 +1680,101 @@ const prompts=['<strong>Can\'t start?</strong> 2-minute rule: commit to just 2 m
 function newDecisionPrompt(){const el=document.getElementById('decisionPrompt');el.innerHTML=prompts[Math.floor(Math.random()*prompts.length)];el.style.animation='none';el.offsetHeight;el.style.animation='chipIn 0.3s ease';}
 
 // MOBILE
-function showMobilePanel(nav,btn){document.querySelectorAll('.panel').forEach(p=>p.classList.remove('mobile-visible'));const panel=document.querySelector('.panel[data-nav="'+nav+'"]');if(panel&&!panel.classList.contains('hidden-panel'))panel.classList.add('mobile-visible');document.querySelectorAll('.nav-tab').forEach(t=>t.classList.remove('active'));btn.classList.add('active');}
+// ─── MOBILE HOME TILE NAVIGATION ─────────────────────────────────────────
+var _isMobile=function(){return window.innerWidth<=768;};
+
+const MOBILE_PANELS=[
+  {id:'projects', icon:'&#128194;', label:'Projects',   badge:'projCount'},
+  {id:'reminders',icon:'&#128276;', label:'Reminders',  badge:'remCount'},
+  {id:'tasklist', icon:'&#128203;', label:'Tasks',       badge:'taskListCount'},
+  {id:'notes',    icon:'&#128221;', label:'Notes',       badge:'noteCount'},
+  {id:'brain',    icon:'&#129504;', label:'Brain Dump',  badge:null},
+  {id:'routines', icon:'&#128257;', label:'Routines',    badge:null},
+  {id:'time',     icon:'&#129521;', label:'Tool Kit',    badge:null, wide:true},
+  {id:'decision', icon:'&#129517;', label:'Stuck? Help', badge:null},
+  {id:'admin',    icon:'&#128737;', label:'Admin',       badge:null, adminOnly:true}
+];
+
+function buildMobileHome(){
+  var grid=document.getElementById('mobilePanelGrid');
+  if(!grid)return;
+  var html='';
+  MOBILE_PANELS.forEach(function(p){
+    if(p.adminOnly&&!isAdmin)return;
+    if(state.visiblePanels&&state.visiblePanels[p.id]===false)return;
+    var wideClass=p.wide?' toolkit-tile':'';
+    var badgeVal='';
+    if(p.badge){
+      var el=document.getElementById(p.badge);
+      if(el)badgeVal=el.textContent||'';
+    }
+    var badgeHtml=badgeVal&&badgeVal!=='0'?'<span class="mpt-badge visible">'+badgeVal+'</span>':'<span class="mpt-badge"></span>';
+    html+='<div class="mobile-panel-tile'+wideClass+'" onclick="showMobilePanel(\''+p.id+'\')">'
+      +badgeHtml
+      +'<span class="mpt-icon">'+p.icon+'</span>'
+      +'<span class="mpt-label">'+p.label+'</span>'
+      +'</div>';
+  });
+  grid.innerHTML=html;
+  // Update clock on home screen
+  var clk=document.getElementById('mobileHomeClock');
+  if(clk){var now=new Date();clk.textContent=now.toLocaleTimeString('en-US',{hour:'numeric',minute:'2-digit'});}
+}
+
+function showMobileHome(){
+  if(!_isMobile())return;
+  // Hide all panels
+  document.querySelectorAll('.panel').forEach(function(p){p.classList.remove('mobile-visible');});
+  // Hide header, show home
+  var hdr=document.getElementById('appWrap')&&document.querySelector('.header');
+  if(hdr)hdr.classList.remove('mobile-visible');
+  document.getElementById('mobileHome').classList.add('active');
+  document.getElementById('mobileBackBar').classList.remove('active');
+  document.querySelector('.app-wrap')&&document.querySelector('.app-wrap').classList.remove('panel-open');
+  buildMobileHome();
+}
+
+function showMobilePanel(panelId){
+  if(!_isMobile()){return;}
+  // Hide home, show back bar
+  document.getElementById('mobileHome').classList.remove('active');
+  document.getElementById('mobileBackBar').classList.add('active');
+  document.querySelector('.app-wrap').classList.add('panel-open');
+  // Hide header on mobile (back bar replaces it)
+  var hdr=document.querySelector('.header');
+  if(hdr)hdr.classList.remove('mobile-visible');
+  // Show requested panel
+  document.querySelectorAll('.panel').forEach(function(p){p.classList.remove('mobile-visible');});
+  var target=document.querySelector('.panel[data-panel="'+panelId+'"]')
+           ||document.querySelector('.panel[data-nav="'+panelId+'"]');
+  if(target&&!target.classList.contains('hidden-panel')&&!target.classList.contains('user-hidden')){
+    target.classList.add('mobile-visible');
+    // Update back bar label
+    var tile=MOBILE_PANELS.find(function(p){return p.id===panelId;});
+    var backBar=document.getElementById('mobileBackBar');
+    if(backBar&&tile){
+      backBar.querySelector('.mobile-back-btn').textContent='';
+      backBar.querySelector('.mobile-back-btn').innerHTML='&#8249; '+tile.label;
+    }
+    // Scroll to top
+    window.scrollTo(0,0);
+  }
+}
+
+// On resize: if going to desktop, clean up mobile state
+window.addEventListener('resize',function(){
+  if(!_isMobile()){
+    document.getElementById('mobileHome').classList.remove('active');
+    document.getElementById('mobileBackBar').classList.remove('active');
+    document.querySelector('.app-wrap')&&document.querySelector('.app-wrap').classList.remove('panel-open');
+    var hdr=document.querySelector('.header');
+    if(hdr)hdr.classList.remove('mobile-visible');
+  } else {
+    // Going back to mobile — show home if no panel open
+    var anyVisible=document.querySelector('.panel.mobile-visible');
+    if(!anyVisible){showMobileHome();}
+  }
+});
 
 // UTILITY
 function esc(s){const d=document.createElement('div');d.textContent=s;return d.innerHTML;}
@@ -1688,11 +1810,11 @@ function showAdminPanel(){
   if(!ap)return;
   if(isAdmin){
     ap.classList.remove('hidden-panel');
-    document.getElementById('adminNavTab').style.display='';
+    if(_isMobile())buildMobileHome(); // rebuild tiles in case admin tile visibility changed
     renderAdminPanel();
   }else{
     ap.classList.add('hidden-panel');
-    document.getElementById('adminNavTab').style.display='none';
+    if(_isMobile())buildMobileHome();
   }
 }
 
@@ -3319,6 +3441,7 @@ async function initApp(){
 await load();
 initPanelVisibility();applyPanelOrder();applyPanelVisibility();updateLockUI();updateClock();setInterval(updateClock,1000);updateTimerDisplay();
 renderProjects();renderReminders();renderThoughts();renderNotes();renderRoutines();renderTaskList();checkDailyRoutineReset();newDecisionPrompt();initDragDrop();
+if(_isMobile()){showMobileHome();}else{document.querySelector('.header')&&document.querySelector('.header').classList.add('mobile-visible');}
 if(state.energy){const c=document.querySelectorAll('#energyPills .em-pill');const m=['high','good','low','crashed'];const i=m.indexOf(state.energy);if(i>=0)c[i].classList.add('selected');}
 if(state.mood){const c=document.querySelectorAll('#moodPills .em-pill');const m=['focused','scattered','anxious','calm'];const i=m.indexOf(state.mood);if(i>=0)c[i].classList.add('selected');}
 showStateAdvice();updateWellnessVisibility();
