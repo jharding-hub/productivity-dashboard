@@ -670,13 +670,13 @@ body.unlocked .date-editable:hover{border-bottom-color:var(--accent);background:
 <div class="panel panel-narrow" data-panel="time" data-nav="time">
 <div class="panel-header"><div class="panel-title"><span class="drag-handle">&#10495;</span><span class="icon">&#129521;</span> Tool Kit</div><div class="panel-badge">Quick Launch</div></div>
 <div class="toolkit-grid">
-  <button class="toolkit-btn toolkit-breath" onclick="openBreathworkModal()">&#129651;<span>Breathwork</span></button>
+  <button class="toolkit-btn toolkit-breath" onclick="openBreathworkModal()">&#129745;<span>Breathwork</span></button>
   <button class="toolkit-btn toolkit-timer" onclick="openTimerModal()">&#9201;<span>Timer</span></button>
   <button class="toolkit-btn toolkit-mood" onclick="openEnergyModal()">&#9889;<span>Energy &amp; Mood</span></button>
   <button class="toolkit-btn toolkit-journal" onclick="openJournal()">&#128221;<span>Journal</span></button>
   <button class="toolkit-btn toolkit-radar" onclick="openRadarModal()">&#127956;<span>Radar</span></button>
   <button class="toolkit-btn toolkit-workout" onclick="openWorkoutModal()">&#127947;<span>Workout</span></button>
-  <button class="toolkit-btn toolkit-spinner" onclick="openSpinnerModal()">&#127944;<span>Dinner Wheel</span></button>
+  <button class="toolkit-btn toolkit-spinner" onclick="openSpinnerModal()">&#127869;<span>Dinner Wheel</span></button>
 </div>
 </div>
 
@@ -876,9 +876,9 @@ body.unlocked .date-editable:hover{border-bottom-color:var(--accent);background:
 <!-- RESTAURANT SPINNER MODAL -->
 <div class="modal-blur-overlay" id="spinnerModal">
 <div class="modal-blur-backdrop" onclick="closeSpinnerModal()"></div>
-<div class="modal-blur-panel" style="width:min(520px,96vw);">
+<div class="modal-blur-panel" style="width:min(780px,96vw);">
   <div class="modal-blur-header">
-    <div class="modal-blur-title">&#127944; Dinner Wheel</div>
+    <div class="modal-blur-title">&#127869; Dinner Wheel</div>
     <button class="modal-blur-close" onclick="closeSpinnerModal()">&#10005;</button>
   </div>
   <div class="modal-blur-body" id="spinnerBody" style="padding:18px 20px;">
@@ -888,6 +888,7 @@ body.unlocked .date-editable:hover{border-bottom-color:var(--accent);background:
         <div class="spin-filter-btns">
           <button class="spin-filter-btn active" data-group="type" data-val="sitdown" onclick="spinToggle(this)">&#127860; Sit Down</button>
           <button class="spin-filter-btn" data-group="type" data-val="fastfood" onclick="spinToggle(this)">&#127828; Fast Food</button>
+          <button class="spin-filter-btn" data-group="type" data-val="coffee" onclick="spinToggle(this)">&#9749; Coffee</button>
         </div>
       </div>
       <div class="spin-filter-group">
@@ -946,7 +947,7 @@ body.unlocked .date-editable:hover{border-bottom-color:var(--accent);background:
 <div class="modal-blur-backdrop" onclick="closeBreathworkModal()"></div>
 <div class="modal-blur-panel">
   <div class="modal-blur-header">
-    <div class="modal-blur-title">&#129651; Breathwork</div>
+    <div class="modal-blur-title">&#129745; Breathwork</div>
     <button class="modal-blur-close" onclick="closeBreathworkModal()">&#10005;</button>
   </div>
   <div class="modal-blur-body">
@@ -2685,11 +2686,20 @@ function spinToggle(btn){
   document.querySelectorAll('.spin-filter-btn[data-group="'+group+'"]').forEach(function(b){b.classList.remove('active');});
   btn.classList.add('active');
   _spinFilters[group]=btn.dataset.val;
+  // Dim meal selector when coffee chosen
+  if(group==='type'){
+    var mealGroup=document.querySelector('.spin-filter-btn[data-val="breakfast"]');
+    if(mealGroup){mealGroup=mealGroup.closest('.spin-filter-group');mealGroup.style.opacity=btn.dataset.val==='coffee'?'0.35':'1';}
+  }
 }
 
 function spinFetchAndBuild(){
   var goBtn=document.getElementById('spinGoBtn');
   var status=document.getElementById('spinStatus');
+  // Hide meal group when coffee selected (irrelevant)
+  var mealGroup=document.querySelector('.spin-filter-btn[data-val="breakfast"]')&&document.querySelector('.spin-filter-btn[data-val="breakfast"]').closest('.spin-filter-group');
+  if(mealGroup)mealGroup.style.opacity=_spinFilters.type==='coffee'?'0.35':'1';
+
   goBtn.disabled=true;
   status.textContent='Getting your location\u2026';
 
@@ -2712,13 +2722,14 @@ function spinFetchAndBuild(){
 }
 
 function _spinQueryClaude(lat,lon){
-  var typeLabel=_spinFilters.type==='sitdown'?'sit-down dine-in restaurant':'fast food restaurant';
-  var mealLabel=_spinFilters.meal;
-  var prompt='I need a list of 8 real, currently open '+typeLabel+'s near latitude '+lat.toFixed(4)+', longitude '+lon.toFixed(4)+' that serve '+mealLabel+'. '
+  var isCoffee=_spinFilters.type==='coffee';
+  var typeLabel=isCoffee?'coffee shop or cafe':_spinFilters.type==='sitdown'?'sit-down dine-in restaurant':'fast food restaurant';
+  var mealCtx=isCoffee?'coffee drinks, espresso, and light food':'food for '+_spinFilters.meal;
+  var prompt='I need a list of 8 real, currently operating '+typeLabel+'s near latitude '+lat.toFixed(4)+', longitude '+lon.toFixed(4)+' that serve '+mealCtx+'. '
     +'Use web search to find them on Yelp or Google. '
     +'Return ONLY a valid JSON array of objects, no markdown, no preamble. Each object must have: '
     +'"name" (string), "rating" (number 1-5), "cuisine" (string), "address" (string), "yelpUrl" (string or empty string). '
-    +'Sort by Yelp rating descending. Example: [{"name":"Cafe X","rating":4.5,"cuisine":"American","address":"123 Main St","yelpUrl":"https://yelp.com/biz/cafe-x"}]';
+    +'Sort by Yelp rating descending. Example: [{"name":"Cafe X","rating":4.5,"cuisine":"Coffee","address":"123 Main St","yelpUrl":"https://yelp.com/biz/cafe-x"}]';
 
   fetch('https://api.anthropic.com/v1/messages',{
     method:'POST',
@@ -2772,7 +2783,17 @@ function _spinFallback(){
     {name:'Arby\'s',rating:3.7,cuisine:'Sandwiches',address:'700 N SR-135, Greenwood IN',yelpUrl:''},
     {name:'Panera Bread',rating:3.9,cuisine:'Bakery-Cafe',address:'955 N SR-135, Greenwood IN',yelpUrl:''}
   ];
-  return _spinFilters.type==='fastfood'?fastfood:sitdown;
+  var coffee=[
+    {name:'Starbucks Reserve',rating:4.2,cuisine:'Coffee',address:'1310 N SR-135, Greenwood IN',yelpUrl:''},
+    {name:'Hubbard & Cravens',rating:4.6,cuisine:'Coffee & Cafe',address:'840 N SR-135, Greenwood IN',yelpUrl:''},
+    {name:'Dunkin\'',rating:3.8,cuisine:'Coffee & Donuts',address:'455 N SR-135, Greenwood IN',yelpUrl:''},
+    {name:'Biggby Coffee',rating:4.3,cuisine:'Coffee',address:'1001 N SR-135, Greenwood IN',yelpUrl:''},
+    {name:'Dutch Bros Coffee',rating:4.5,cuisine:'Coffee',address:'700 N SR-135, Greenwood IN',yelpUrl:''},
+    {name:'Panera Bread',rating:3.9,cuisine:'Bakery-Cafe',address:'955 N SR-135, Greenwood IN',yelpUrl:''},
+    {name:'Tim Hortons',rating:3.7,cuisine:'Coffee & Baked Goods',address:'1200 N SR-135, Greenwood IN',yelpUrl:''},
+    {name:'Perk\'d Up Coffee',rating:4.7,cuisine:'Local Coffee Shop',address:'300 S Emerson Ave, Greenwood IN',yelpUrl:''}
+  ];
+  return _spinFilters.type==='coffee'?coffee:_spinFilters.type==='fastfood'?fastfood:sitdown;
 }
 
 function _spinBuildWheel(){
@@ -2883,7 +2904,7 @@ function _spinShowResult(finalAngle){
     +'<div class="spin-result-actions">'
     +'<a href="'+mapsUrl+'" target="_blank" rel="noopener">&#128205; Maps</a>'
     +(yelpBtn||'')
-    +'<button class="spin-again-btn" onclick="spinWheel()">&#127944; Spin Again</button>'
+    +'<button class="spin-again-btn" onclick="spinWheel()">&#127869; Spin Again</button>'
     +'</div>'
     +'</div>';
   document.getElementById('spinResultArea').innerHTML=html;
