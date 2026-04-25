@@ -2696,115 +2696,205 @@ function spinToggle(btn){
 function spinFetchAndBuild(){
   var goBtn=document.getElementById('spinGoBtn');
   var status=document.getElementById('spinStatus');
-  // Hide meal group when coffee selected (irrelevant)
-  var mealGroup=document.querySelector('.spin-filter-btn[data-val="breakfast"]')&&document.querySelector('.spin-filter-btn[data-val="breakfast"]').closest('.spin-filter-group');
+  // Dim meal selector when coffee is selected
+  var mealBtn=document.querySelector('.spin-filter-btn[data-val="breakfast"]');
+  var mealGroup=mealBtn&&mealBtn.closest('.spin-filter-group');
   if(mealGroup)mealGroup.style.opacity=_spinFilters.type==='coffee'?'0.35':'1';
 
   goBtn.disabled=true;
   status.textContent='Getting your location\u2026';
 
   if(!navigator.geolocation){
-    status.textContent='Location unavailable — using Greenwood, IN area.';
-    _spinQueryClaude(39.6139,-86.1069);
+    status.textContent='Location unavailable \u2014 using Greenwood, IN area.';
+    _spinOverpassQuery(39.6139,-86.1069);
     return;
   }
   navigator.geolocation.getCurrentPosition(
     function(pos){
-      status.textContent='Searching Yelp nearby\u2026';
-      _spinQueryClaude(pos.coords.latitude,pos.coords.longitude);
+      status.textContent='Finding places on OpenStreetMap\u2026';
+      _spinOverpassQuery(pos.coords.latitude,pos.coords.longitude);
     },
     function(){
-      status.textContent='Location denied — using Greenwood, IN area.';
-      _spinQueryClaude(39.6139,-86.1069);
+      status.textContent='Location denied \u2014 using Greenwood, IN area.';
+      _spinOverpassQuery(39.6139,-86.1069);
     },
-    {timeout:8000}
+    {timeout:8000,enableHighAccuracy:true}
   );
 }
 
-function _spinQueryClaude(lat,lon){
-  var isCoffee=_spinFilters.type==='coffee';
-  var typeLabel=isCoffee?'coffee shop or cafe':_spinFilters.type==='sitdown'?'sit-down dine-in restaurant':'fast food restaurant';
-  var mealCtx=isCoffee?'coffee drinks, espresso, and light food':'food for '+_spinFilters.meal;
-  var prompt='I need a list of 8 real, currently operating '+typeLabel+'s near latitude '+lat.toFixed(4)+', longitude '+lon.toFixed(4)+' that serve '+mealCtx+'. '
-    +'Use web search to find them on Yelp or Google. '
-    +'Return ONLY a valid JSON array of objects, no markdown, no preamble. Each object must have: '
-    +'"name" (string), "rating" (number 1-5), "cuisine" (string), "address" (string), "yelpUrl" (string or empty string). '
-    +'Sort by Yelp rating descending. Example: [{"name":"Cafe X","rating":4.5,"cuisine":"Coffee","address":"123 Main St","yelpUrl":"https://yelp.com/biz/cafe-x"}]';
+// ── Step 1: OpenStreetMap Overpass — precise location, finds local/independent places ──
+function _spinOverpassQuery(lat,lon){
+  var amenityTag={sitdown:'restaurant',fastfood:'fast_food',coffee:'cafe'}[_spinFilters.type]||'restaurant';
+  // Search 3km radius, return up to 30 nodes/ways, ask for center coords on ways
+  var query='[out:json][timeout:12];('
+    +'node["amenity"="'+amenityTag+'"](around:3000,'+lat+','+lon+');'
+    +'way["amenity"="'+amenityTag+'"](around:3000,'+lat+','+lon+');'
+    +');out center 30;';
+
+  var url='https://overpass-api.de/api/interpreter?data='+encodeURIComponent(query);
+
+  document.getElementById('spinStatus').textContent='Scanning local area\u2026';
+
+  fetch(url)
+    .then(function(r){if(!r.ok)throw new Error('Overpass HTTP '+r.status);return r.json();})
+    .then(function(data){
+      var elements=data.elements||[];
+      if(elements.length<3){
+        // Too sparse — fall back directly
+        document.getElementById('spinStatus').textContent='OSM sparse here \u2014 using local data.';
+        _spinRestaurants=_spinFallback();
+        _spinBuildWheel();
+        return;
+      }
+
+      // Parse OSM elements into restaurant stubs
+      var seen=new Set();
+      var places=[];
+      elements.forEach(function(el){
+        var name=(el.tags&&el.tags.name)||'';
+        if(!name||seen.has(name.toLowerCase()))return;
+        seen.add(name.toLowerCase());
+        var cuisine=(el.tags&&(el.tags.cuisine||el.tags.amenity))||'';
+        // Build address from OSM addr tags
+        var addr='';
+        if(el.tags){
+          var n=el.tags['addr:housenumber']||'';
+          var s=el.tags['addr:street']||'';
+          var c=el.tags['addr:city']||'';
+          if(n&&s)addr=(n+' '+s+(c?', '+c:'')).trim();
+        }
+        places.push({name:name,cuisine:cuisine.replace(/_/g,' '),address:addr,rating:null,yelpUrl:''});
+      });
+
+      if(places.length===0){
+        _spinRestaurants=_spinFallback();
+        _spinBuildWheel();
+        return;
+      }
+
+      // Shuffle to give different results each search, then take up to 12 for Claude to rate
+      places.sort(function(){return Math.random()-0.5;});
+      var pool=places.slice(0,12);
+
+      document.getElementById('spinStatus').textContent='Found '+places.length+' places \u2014 fetching ratings\u2026';
+      _spinEnrichRatings(pool,lat,lon);
+    })
+    .catch(function(e){
+      console.warn('Overpass error:',e);
+      document.getElementById('spinStatus').textContent='OSM unavailable \u2014 using rated local data.';
+      _spinRestaurants=_spinFallback();
+      _spinBuildWheel();
+    });
+}
+
+// ── Step 2: Claude API — rate the specific OSM-found places, no guessing needed ──
+function _spinEnrichRatings(places,lat,lon){
+  var list=places.map(function(p,i){
+    return (i+1)+'. '+p.name+(p.address?' ('+p.address+')':'');
+  }).join('\n');
+
+  var cityHint='near '+lat.toFixed(3)+','+lon.toFixed(3);
+  var prompt='The following restaurants/cafes were found on OpenStreetMap '+cityHint+'.\n'
+    +'Use web search to find the current Yelp or Google rating for each one.\n'
+    +'Return ONLY a valid JSON array, no markdown, no extra text.\n'
+    +'Each item: {"name":"exact name from list","rating":4.2,"yelpUrl":"https://... or empty"}\n'
+    +'If you cannot find a rating, use 3.5 as a default.\n\n'
+    +'Places to rate:\n'+list;
 
   fetch('https://api.anthropic.com/v1/messages',{
     method:'POST',
     headers:{'Content-Type':'application/json'},
     body:JSON.stringify({
       model:'claude-sonnet-4-20250514',
-      max_tokens:1000,
+      max_tokens:1200,
       tools:[{type:'web_search_20250305',name:'web_search'}],
       messages:[{role:'user',content:prompt}]
     })
   })
   .then(function(r){return r.json();})
   .then(function(data){
-    // Extract text from all content blocks
     var text=(data.content||[]).filter(function(b){return b.type==='text';}).map(function(b){return b.text;}).join('');
-    // Parse JSON array from response
-    var match=text.match(/\[[\s\S]*\]/);
-    if(!match)throw new Error('No JSON array in response');
-    var restaurants=JSON.parse(match[0]);
-    if(!Array.isArray(restaurants)||restaurants.length===0)throw new Error('Empty results');
-    _spinRestaurants=restaurants.slice(0,8);
+    var match=text.match(/\[[\s\S]*?\]/);
+    if(!match)throw new Error('No JSON');
+    var rated=JSON.parse(match[0]);
+
+    // Merge ratings back into OSM place objects
+    var ratingMap={};
+    rated.forEach(function(r){
+      if(r.name)ratingMap[r.name.toLowerCase().trim()]={rating:parseFloat(r.rating)||3.5,yelpUrl:r.yelpUrl||''};
+    });
+
+    places.forEach(function(p){
+      var key=p.name.toLowerCase().trim();
+      var match=ratingMap[key]||Object.keys(ratingMap).reduce(function(best,k){
+        // fuzzy: pick the closest key if exact not found
+        if(k.includes(key.substring(0,6))||key.includes(k.substring(0,6)))return ratingMap[k];
+        return best;
+      },null);
+      if(match){p.rating=match.rating;p.yelpUrl=match.yelpUrl;}
+      else{p.rating=3.5;}
+    });
+
+    // Sort by rating desc, take top 8
+    places.sort(function(a,b){return b.rating-a.rating;});
+    _spinRestaurants=places.slice(0,8);
     _spinBuildWheel();
   })
   .catch(function(e){
-    console.error('Spinner error:',e);
-    // Fallback sample data
-    _spinRestaurants=_spinFallback();
+    console.warn('Rating enrichment error:',e);
+    // Use OSM places with default ratings
+    places.forEach(function(p){if(!p.rating)p.rating=3.5;});
+    places.sort(function(){return Math.random()-0.5;});
+    _spinRestaurants=places.slice(0,8);
+    document.getElementById('spinStatus').textContent='Ratings unavailable \u2014 showing local places.';
     _spinBuildWheel();
-    document.getElementById('spinStatus').textContent='Using sample data (search unavailable).';
   });
 }
 
 function _spinFallback(){
   var sitdown=[
-    {name:'Buca di Beppo',rating:4.2,cuisine:'Italian',address:'1481 US-31 S, Greenwood IN',yelpUrl:''},
-    {name:'Stacked Pickle',rating:4.1,cuisine:'American Bar',address:'851 S Emerson Ave, Greenwood IN',yelpUrl:''},
     {name:'Hickory Pit',rating:4.3,cuisine:'BBQ',address:'611 S Emerson Ave, Greenwood IN',yelpUrl:''},
+    {name:'Stacked Pickle',rating:4.1,cuisine:'American Bar',address:'851 S Emerson Ave, Greenwood IN',yelpUrl:''},
+    {name:'Buca di Beppo',rating:4.2,cuisine:'Italian',address:'1481 US-31 S, Greenwood IN',yelpUrl:''},
     {name:'Texas Roadhouse',rating:4.0,cuisine:'Steakhouse',address:'980 N SR-135, Greenwood IN',yelpUrl:''},
-    {name:'Chili\'s Grill',rating:3.8,cuisine:'American',address:'300 N SR-135, Greenwood IN',yelpUrl:''},
     {name:'Olive Garden',rating:4.0,cuisine:'Italian',address:'1451 N SR-135, Greenwood IN',yelpUrl:''},
     {name:'Bob Evans',rating:3.9,cuisine:'American Diner',address:'1399 US-31 S, Greenwood IN',yelpUrl:''},
-    {name:'Red Robin',rating:3.9,cuisine:'Burgers',address:'900 N SR-135, Greenwood IN',yelpUrl:''}
+    {name:'Red Robin',rating:3.9,cuisine:'Burgers',address:'900 N SR-135, Greenwood IN',yelpUrl:''},
+    {name:"Chili's Grill",rating:3.8,cuisine:'American',address:'300 N SR-135, Greenwood IN',yelpUrl:''}
   ];
   var fastfood=[
-    {name:'Raising Cane\'s',rating:4.4,cuisine:'Chicken',address:'1315 N SR-135, Greenwood IN',yelpUrl:''},
-    {name:'Chick-fil-A',rating:4.5,cuisine:'Chicken',address:'1060 N SR-135, Greenwood IN',yelpUrl:''},
-    {name:'Culver\'s',rating:4.3,cuisine:'Burgers',address:'880 N SR-135, Greenwood IN',yelpUrl:''},
-    {name:'Portillo\'s',rating:4.2,cuisine:'Chicago Style',address:'200 County Line Rd, Greenwood IN',yelpUrl:''},
+    {name:"Chick-fil-A",rating:4.5,cuisine:'Chicken',address:'1060 N SR-135, Greenwood IN',yelpUrl:''},
+    {name:"Raising Cane's",rating:4.4,cuisine:'Chicken',address:'1315 N SR-135, Greenwood IN',yelpUrl:''},
+    {name:"Culver's",rating:4.3,cuisine:'Burgers',address:'880 N SR-135, Greenwood IN',yelpUrl:''},
+    {name:"Portillo's",rating:4.2,cuisine:'Chicago Style',address:'200 County Line Rd, Greenwood IN',yelpUrl:''},
+    {name:"Freddy's",rating:4.2,cuisine:'Burgers',address:'1398 US-31 S, Greenwood IN',yelpUrl:''},
     {name:'Five Guys',rating:4.1,cuisine:'Burgers',address:'501 N SR-135, Greenwood IN',yelpUrl:''},
-    {name:'Freddy\'s',rating:4.2,cuisine:'Burgers',address:'1398 US-31 S, Greenwood IN',yelpUrl:''},
-    {name:'Arby\'s',rating:3.7,cuisine:'Sandwiches',address:'700 N SR-135, Greenwood IN',yelpUrl:''},
-    {name:'Panera Bread',rating:3.9,cuisine:'Bakery-Cafe',address:'955 N SR-135, Greenwood IN',yelpUrl:''}
+    {name:'Panera Bread',rating:3.9,cuisine:'Bakery-Cafe',address:'955 N SR-135, Greenwood IN',yelpUrl:''},
+    {name:"Arby's",rating:3.7,cuisine:'Sandwiches',address:'700 N SR-135, Greenwood IN',yelpUrl:''}
   ];
   var coffee=[
-    {name:'Starbucks Reserve',rating:4.2,cuisine:'Coffee',address:'1310 N SR-135, Greenwood IN',yelpUrl:''},
-    {name:'Hubbard & Cravens',rating:4.6,cuisine:'Coffee & Cafe',address:'840 N SR-135, Greenwood IN',yelpUrl:''},
-    {name:'Dunkin\'',rating:3.8,cuisine:'Coffee & Donuts',address:'455 N SR-135, Greenwood IN',yelpUrl:''},
-    {name:'Biggby Coffee',rating:4.3,cuisine:'Coffee',address:'1001 N SR-135, Greenwood IN',yelpUrl:''},
+    {name:"Perk'd Up Coffee",rating:4.7,cuisine:'Local Coffee',address:'300 S Emerson Ave, Greenwood IN',yelpUrl:''},
     {name:'Dutch Bros Coffee',rating:4.5,cuisine:'Coffee',address:'700 N SR-135, Greenwood IN',yelpUrl:''},
+    {name:'Hubbard & Cravens',rating:4.6,cuisine:'Coffee & Cafe',address:'840 N SR-135, Greenwood IN',yelpUrl:''},
+    {name:'Biggby Coffee',rating:4.3,cuisine:'Coffee',address:'1001 N SR-135, Greenwood IN',yelpUrl:''},
+    {name:'Starbucks',rating:4.2,cuisine:'Coffee',address:'1310 N SR-135, Greenwood IN',yelpUrl:''},
     {name:'Panera Bread',rating:3.9,cuisine:'Bakery-Cafe',address:'955 N SR-135, Greenwood IN',yelpUrl:''},
-    {name:'Tim Hortons',rating:3.7,cuisine:'Coffee & Baked Goods',address:'1200 N SR-135, Greenwood IN',yelpUrl:''},
-    {name:'Perk\'d Up Coffee',rating:4.7,cuisine:'Local Coffee Shop',address:'300 S Emerson Ave, Greenwood IN',yelpUrl:''}
+    {name:"Dunkin'",rating:3.8,cuisine:'Coffee & Donuts',address:'455 N SR-135, Greenwood IN',yelpUrl:''},
+    {name:'Tim Hortons',rating:3.7,cuisine:'Coffee',address:'1200 N SR-135, Greenwood IN',yelpUrl:''}
   ];
   return _spinFilters.type==='coffee'?coffee:_spinFilters.type==='fastfood'?fastfood:sitdown;
 }
 
 function _spinBuildWheel(){
   document.getElementById('spinStatus').textContent='';
-  document.getElementById('spinGoBtn').textContent='\uD83D\uDD04 Refresh Results';
+  document.getElementById('spinGoBtn').textContent='\uD83D\uDD04 Refresh';
   document.getElementById('spinGoBtn').disabled=false;
   document.getElementById('spinWheelArea').style.display='block';
   document.getElementById('spinResultArea').innerHTML='';
   _spinAngle=0;
   _drawWheel(0);
 }
+
 
 function _drawWheel(rotation){
   var canvas=document.getElementById('spinCanvas');
