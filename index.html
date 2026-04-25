@@ -569,6 +569,32 @@ body.unlocked .date-editable:hover{border-bottom-color:var(--accent);background:
 .toolkit-journal:hover{border-color:var(--purple);color:var(--purple);background:var(--purple-dim);}
 .toolkit-radar:hover{border-color:var(--blue);color:var(--blue);background:var(--blue-dim);}
 .toolkit-workout:hover{border-color:var(--orange);color:var(--orange);background:var(--orange-dim);}
+.toolkit-spinner:hover{border-color:#e53935;color:#e53935;background:rgba(229,57,53,0.12);}
+
+/* ── RESTAURANT SPINNER ── */
+.spin-filters{display:flex;gap:10px;flex-wrap:wrap;margin-bottom:18px;}
+.spin-filter-group{flex:1;min-width:120px;}
+.spin-filter-label{font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:0.5px;color:var(--text-faint);margin-bottom:6px;}
+.spin-filter-btns{display:flex;gap:5px;flex-wrap:wrap;}
+.spin-filter-btn{flex:1;padding:7px 6px;border:1.5px solid var(--border);border-radius:var(--radius-sm);background:var(--surface-raised);color:var(--text-dim);font-size:12px;font-weight:600;font-family:inherit;cursor:pointer;text-align:center;transition:all 0.15s;white-space:nowrap;}
+.spin-filter-btn:hover{border-color:var(--accent-dim);color:var(--accent);}
+.spin-filter-btn.active{background:var(--accent-glow);border-color:var(--accent);color:var(--accent);}
+.spin-go-btn{width:100%;padding:12px;font-size:15px;font-weight:700;font-family:'Fraunces',serif;background:var(--accent);color:var(--bg);border:none;border-radius:var(--radius-sm);cursor:pointer;transition:all 0.2s;margin-bottom:18px;}
+.spin-go-btn:hover{filter:brightness(1.1);}
+.spin-go-btn:disabled{opacity:0.5;cursor:not-allowed;filter:none;}
+.spin-status{font-size:12px;color:var(--text-dim);text-align:center;min-height:20px;margin-bottom:10px;}
+.spin-wheel-wrap{display:flex;flex-direction:column;align-items:center;gap:14px;padding:10px 0;}
+.spin-canvas-container{position:relative;width:300px;height:300px;flex-shrink:0;}
+.spin-canvas-container canvas{border-radius:50%;box-shadow:0 4px 24px rgba(0,0,0,0.4);}
+.spin-pointer{position:absolute;top:-10px;left:50%;transform:translateX(-50%);font-size:26px;line-height:1;filter:drop-shadow(0 2px 4px rgba(0,0,0,0.5));}
+.spin-result{text-align:center;padding:16px;background:var(--surface-raised);border:1.5px solid var(--accent-dim);border-radius:var(--radius-sm);animation:spinResult 0.4s cubic-bezier(0.22,1,0.36,1) both;}
+@keyframes spinResult{from{opacity:0;transform:scale(0.92) translateY(8px)}to{opacity:1;transform:none}}
+.spin-result-name{font-size:20px;font-weight:700;color:var(--accent);font-family:'Fraunces',serif;margin-bottom:4px;}
+.spin-result-meta{font-size:12px;color:var(--text-dim);margin-bottom:10px;line-height:1.5;}
+.spin-result-actions{display:flex;gap:8px;justify-content:center;flex-wrap:wrap;}
+.spin-result-actions a,.spin-result-actions button{font-size:12px;padding:6px 14px;border-radius:var(--radius-sm);border:1px solid var(--border);background:var(--surface);color:var(--text-dim);text-decoration:none;cursor:pointer;font-family:inherit;transition:all 0.15s;}
+.spin-result-actions a:hover,.spin-result-actions button:hover{border-color:var(--accent-dim);color:var(--accent);}
+.spin-again-btn{background:var(--accent-glow);border-color:var(--accent)!important;color:var(--accent)!important;font-weight:600;}
 </style>
 </head>
 <body>
@@ -650,6 +676,7 @@ body.unlocked .date-editable:hover{border-bottom-color:var(--accent);background:
   <button class="toolkit-btn toolkit-journal" onclick="openJournal()">&#128221;<span>Journal</span></button>
   <button class="toolkit-btn toolkit-radar" onclick="openRadarModal()">&#127956;<span>Radar</span></button>
   <button class="toolkit-btn toolkit-workout" onclick="openWorkoutModal()">&#127947;<span>Workout</span></button>
+  <button class="toolkit-btn toolkit-spinner" onclick="openSpinnerModal()">&#127944;<span>Dinner Wheel</span></button>
 </div>
 </div>
 
@@ -843,6 +870,48 @@ body.unlocked .date-editable:hover{border-bottom-color:var(--accent);background:
     </div>
   </div>
   <div class="modal-blur-body" id="woContent" style="padding:16px 20px;"></div>
+</div>
+</div>
+
+<!-- RESTAURANT SPINNER MODAL -->
+<div class="modal-blur-overlay" id="spinnerModal">
+<div class="modal-blur-backdrop" onclick="closeSpinnerModal()"></div>
+<div class="modal-blur-panel" style="width:min(520px,96vw);">
+  <div class="modal-blur-header">
+    <div class="modal-blur-title">&#127944; Dinner Wheel</div>
+    <button class="modal-blur-close" onclick="closeSpinnerModal()">&#10005;</button>
+  </div>
+  <div class="modal-blur-body" id="spinnerBody" style="padding:18px 20px;">
+    <div class="spin-filters">
+      <div class="spin-filter-group">
+        <div class="spin-filter-label">Type</div>
+        <div class="spin-filter-btns">
+          <button class="spin-filter-btn active" data-group="type" data-val="sitdown" onclick="spinToggle(this)">&#127860; Sit Down</button>
+          <button class="spin-filter-btn" data-group="type" data-val="fastfood" onclick="spinToggle(this)">&#127828; Fast Food</button>
+        </div>
+      </div>
+      <div class="spin-filter-group">
+        <div class="spin-filter-label">Meal</div>
+        <div class="spin-filter-btns">
+          <button class="spin-filter-btn" data-group="meal" data-val="breakfast" onclick="spinToggle(this)">&#9728;&#65039; Breakfast</button>
+          <button class="spin-filter-btn active" data-group="meal" data-val="lunch" onclick="spinToggle(this)">&#9749; Lunch</button>
+          <button class="spin-filter-btn" data-group="meal" data-val="dinner" onclick="spinToggle(this)">&#127769; Dinner</button>
+        </div>
+      </div>
+    </div>
+    <button class="spin-go-btn" id="spinGoBtn" onclick="spinFetchAndBuild()">&#127759; Find Restaurants Near Me</button>
+    <div class="spin-status" id="spinStatus"></div>
+    <div id="spinWheelArea" style="display:none;">
+      <div class="spin-wheel-wrap">
+        <div class="spin-canvas-container">
+          <div class="spin-pointer">&#128971;</div>
+          <canvas id="spinCanvas" width="300" height="300"></canvas>
+        </div>
+        <button class="btn btn-accent" onclick="spinWheel()" id="spinBtn" style="font-size:15px;padding:10px 32px;font-weight:700;">&#9654; Spin!</button>
+      </div>
+      <div id="spinResultArea"></div>
+    </div>
+  </div>
 </div>
 </div>
 
@@ -2586,8 +2655,241 @@ function _startRadarAnimation(){
 
 
 // ═══════════════════════════════════════
-// ENERGY & MOOD MODAL
+// RESTAURANT SPINNER
 // ═══════════════════════════════════════
+var _spinRestaurants=[];
+var _spinAngle=0;
+var _spinAnimId=null;
+var _spinFilters={type:'sitdown',meal:'lunch'};
+var _spinColors=['#d4a853','#5fafb0','#9b7ec7','#6bab73','#c75f5f','#5f8fc7','#c79b3a','#7ec75f','#af5f9b','#3ac7c0'];
+
+function openSpinnerModal(){
+  document.getElementById('spinnerModal').classList.add('open');
+  _blurDashboard();
+  // Reset to filter screen each open
+  document.getElementById('spinWheelArea').style.display='none';
+  document.getElementById('spinResultArea').innerHTML='';
+  document.getElementById('spinStatus').textContent='';
+  document.getElementById('spinGoBtn').disabled=false;
+  document.getElementById('spinGoBtn').textContent='\uD83C\uDF0F Find Restaurants Near Me';
+  _spinRestaurants=[];
+}
+function closeSpinnerModal(){
+  document.getElementById('spinnerModal').classList.remove('open');
+  _unblurDashboard();
+  if(_spinAnimId){cancelAnimationFrame(_spinAnimId);_spinAnimId=null;}
+}
+
+function spinToggle(btn){
+  var group=btn.dataset.group;
+  document.querySelectorAll('.spin-filter-btn[data-group="'+group+'"]').forEach(function(b){b.classList.remove('active');});
+  btn.classList.add('active');
+  _spinFilters[group]=btn.dataset.val;
+}
+
+function spinFetchAndBuild(){
+  var goBtn=document.getElementById('spinGoBtn');
+  var status=document.getElementById('spinStatus');
+  goBtn.disabled=true;
+  status.textContent='Getting your location\u2026';
+
+  if(!navigator.geolocation){
+    status.textContent='Location unavailable — using Greenwood, IN area.';
+    _spinQueryClaude(39.6139,-86.1069);
+    return;
+  }
+  navigator.geolocation.getCurrentPosition(
+    function(pos){
+      status.textContent='Searching Yelp nearby\u2026';
+      _spinQueryClaude(pos.coords.latitude,pos.coords.longitude);
+    },
+    function(){
+      status.textContent='Location denied — using Greenwood, IN area.';
+      _spinQueryClaude(39.6139,-86.1069);
+    },
+    {timeout:8000}
+  );
+}
+
+function _spinQueryClaude(lat,lon){
+  var typeLabel=_spinFilters.type==='sitdown'?'sit-down dine-in restaurant':'fast food restaurant';
+  var mealLabel=_spinFilters.meal;
+  var prompt='I need a list of 8 real, currently open '+typeLabel+'s near latitude '+lat.toFixed(4)+', longitude '+lon.toFixed(4)+' that serve '+mealLabel+'. '
+    +'Use web search to find them on Yelp or Google. '
+    +'Return ONLY a valid JSON array of objects, no markdown, no preamble. Each object must have: '
+    +'"name" (string), "rating" (number 1-5), "cuisine" (string), "address" (string), "yelpUrl" (string or empty string). '
+    +'Sort by Yelp rating descending. Example: [{"name":"Cafe X","rating":4.5,"cuisine":"American","address":"123 Main St","yelpUrl":"https://yelp.com/biz/cafe-x"}]';
+
+  fetch('https://api.anthropic.com/v1/messages',{
+    method:'POST',
+    headers:{'Content-Type':'application/json'},
+    body:JSON.stringify({
+      model:'claude-sonnet-4-20250514',
+      max_tokens:1000,
+      tools:[{type:'web_search_20250305',name:'web_search'}],
+      messages:[{role:'user',content:prompt}]
+    })
+  })
+  .then(function(r){return r.json();})
+  .then(function(data){
+    // Extract text from all content blocks
+    var text=(data.content||[]).filter(function(b){return b.type==='text';}).map(function(b){return b.text;}).join('');
+    // Parse JSON array from response
+    var match=text.match(/\[[\s\S]*\]/);
+    if(!match)throw new Error('No JSON array in response');
+    var restaurants=JSON.parse(match[0]);
+    if(!Array.isArray(restaurants)||restaurants.length===0)throw new Error('Empty results');
+    _spinRestaurants=restaurants.slice(0,8);
+    _spinBuildWheel();
+  })
+  .catch(function(e){
+    console.error('Spinner error:',e);
+    // Fallback sample data
+    _spinRestaurants=_spinFallback();
+    _spinBuildWheel();
+    document.getElementById('spinStatus').textContent='Using sample data (search unavailable).';
+  });
+}
+
+function _spinFallback(){
+  var sitdown=[
+    {name:'Buca di Beppo',rating:4.2,cuisine:'Italian',address:'1481 US-31 S, Greenwood IN',yelpUrl:''},
+    {name:'Stacked Pickle',rating:4.1,cuisine:'American Bar',address:'851 S Emerson Ave, Greenwood IN',yelpUrl:''},
+    {name:'Hickory Pit',rating:4.3,cuisine:'BBQ',address:'611 S Emerson Ave, Greenwood IN',yelpUrl:''},
+    {name:'Texas Roadhouse',rating:4.0,cuisine:'Steakhouse',address:'980 N SR-135, Greenwood IN',yelpUrl:''},
+    {name:'Chili\'s Grill',rating:3.8,cuisine:'American',address:'300 N SR-135, Greenwood IN',yelpUrl:''},
+    {name:'Olive Garden',rating:4.0,cuisine:'Italian',address:'1451 N SR-135, Greenwood IN',yelpUrl:''},
+    {name:'Bob Evans',rating:3.9,cuisine:'American Diner',address:'1399 US-31 S, Greenwood IN',yelpUrl:''},
+    {name:'Red Robin',rating:3.9,cuisine:'Burgers',address:'900 N SR-135, Greenwood IN',yelpUrl:''}
+  ];
+  var fastfood=[
+    {name:'Raising Cane\'s',rating:4.4,cuisine:'Chicken',address:'1315 N SR-135, Greenwood IN',yelpUrl:''},
+    {name:'Chick-fil-A',rating:4.5,cuisine:'Chicken',address:'1060 N SR-135, Greenwood IN',yelpUrl:''},
+    {name:'Culver\'s',rating:4.3,cuisine:'Burgers',address:'880 N SR-135, Greenwood IN',yelpUrl:''},
+    {name:'Portillo\'s',rating:4.2,cuisine:'Chicago Style',address:'200 County Line Rd, Greenwood IN',yelpUrl:''},
+    {name:'Five Guys',rating:4.1,cuisine:'Burgers',address:'501 N SR-135, Greenwood IN',yelpUrl:''},
+    {name:'Freddy\'s',rating:4.2,cuisine:'Burgers',address:'1398 US-31 S, Greenwood IN',yelpUrl:''},
+    {name:'Arby\'s',rating:3.7,cuisine:'Sandwiches',address:'700 N SR-135, Greenwood IN',yelpUrl:''},
+    {name:'Panera Bread',rating:3.9,cuisine:'Bakery-Cafe',address:'955 N SR-135, Greenwood IN',yelpUrl:''}
+  ];
+  return _spinFilters.type==='fastfood'?fastfood:sitdown;
+}
+
+function _spinBuildWheel(){
+  document.getElementById('spinStatus').textContent='';
+  document.getElementById('spinGoBtn').textContent='\uD83D\uDD04 Refresh Results';
+  document.getElementById('spinGoBtn').disabled=false;
+  document.getElementById('spinWheelArea').style.display='block';
+  document.getElementById('spinResultArea').innerHTML='';
+  _spinAngle=0;
+  _drawWheel(0);
+}
+
+function _drawWheel(rotation){
+  var canvas=document.getElementById('spinCanvas');
+  if(!canvas)return;
+  var ctx=canvas.getContext('2d');
+  var n=_spinRestaurants.length;
+  if(!n)return;
+  var R=148,cx=150,cy=150;
+  var slice=(Math.PI*2)/n;
+  ctx.clearRect(0,0,300,300);
+
+  _spinRestaurants.forEach(function(r,i){
+    var start=rotation+i*slice;
+    var end=start+slice;
+    // Slice
+    ctx.beginPath();ctx.moveTo(cx,cy);ctx.arc(cx,cy,R,start,end);ctx.closePath();
+    ctx.fillStyle=_spinColors[i%_spinColors.length];
+    ctx.fill();
+    ctx.strokeStyle='rgba(0,0,0,0.15)';ctx.lineWidth=1.5;ctx.stroke();
+
+    // Label
+    ctx.save();ctx.translate(cx,cy);ctx.rotate(start+slice/2);
+    ctx.textAlign='right';ctx.fillStyle='#fff';
+    ctx.font='bold 11px DM Sans,sans-serif';
+    ctx.shadowColor='rgba(0,0,0,0.4)';ctx.shadowBlur=3;
+    // Truncate name
+    var name=r.name.length>16?r.name.substring(0,15)+'\u2026':r.name;
+    ctx.fillText(name,R-8,4);
+    // Rating stars
+    ctx.font='9px DM Sans,sans-serif';ctx.shadowBlur=0;
+    ctx.fillStyle='rgba(255,255,255,0.85)';
+    ctx.fillText('\u2605'+r.rating.toFixed(1),R-8,15);
+    ctx.restore();
+  });
+
+  // Center cap
+  ctx.beginPath();ctx.arc(cx,cy,22,0,Math.PI*2);
+  ctx.fillStyle=getComputedStyle(document.documentElement).getPropertyValue('--surface').trim()||'#1a1510';
+  ctx.fill();
+  ctx.strokeStyle=getComputedStyle(document.documentElement).getPropertyValue('--accent').trim()||'#d4a853';
+  ctx.lineWidth=2.5;ctx.stroke();
+  ctx.fillStyle='#d4a853';ctx.font='bold 11px DM Sans,sans-serif';ctx.textAlign='center';ctx.fillText('SPIN',cx,cy+4);
+}
+
+function spinWheel(){
+  if(_spinAnimId){return;}
+  document.getElementById('spinResultArea').innerHTML='';
+  document.getElementById('spinBtn').disabled=true;
+
+  var totalRot=(Math.PI*2)*6 + Math.random()*(Math.PI*2); // 6+ full rotations + random
+  var duration=4500;
+  var start=null;
+  var startAngle=_spinAngle;
+
+  function easeOut(t){return 1-Math.pow(1-t,4);}
+
+  function frame(ts){
+    if(!start)start=ts;
+    var elapsed=ts-start;
+    var progress=Math.min(elapsed/duration,1);
+    var eased=easeOut(progress);
+    var current=startAngle+totalRot*eased;
+    _spinAngle=current;
+    _drawWheel(current);
+    if(progress<1){
+      _spinAnimId=requestAnimationFrame(frame);
+    }else{
+      _spinAnimId=null;
+      document.getElementById('spinBtn').disabled=false;
+      _spinShowResult(current);
+    }
+  }
+  _spinAnimId=requestAnimationFrame(frame);
+}
+
+function _spinShowResult(finalAngle){
+  var n=_spinRestaurants.length;
+  var slice=(Math.PI*2)/n;
+  // Pointer is at the top (12 o'clock = -π/2).
+  // Normalize angle so we know which slice the pointer falls on.
+  var normalized=((-finalAngle%(Math.PI*2))+(Math.PI*2))%(Math.PI*2);
+  // Which slice index is at the top?
+  var idx=Math.floor(normalized/slice)%n;
+  var restaurant=_spinRestaurants[idx];
+  if(!restaurant)return;
+
+  var stars='';
+  for(var i=0;i<5;i++){stars+=i<Math.floor(restaurant.rating)?'\u2605':i<restaurant.rating?'\u00BD':'\u2606';}
+  var mapsUrl='https://www.google.com/maps/search/'+encodeURIComponent(restaurant.name+' '+restaurant.address);
+  var yelpBtn=restaurant.yelpUrl?'<a href="'+restaurant.yelpUrl+'" target="_blank" rel="noopener">&#127381; View on Yelp</a>':'';
+  var html='<div class="spin-result">'
+    +'<div class="spin-result-name">'+restaurant.name+'</div>'
+    +'<div class="spin-result-meta">'
+    +'<strong>'+stars+'</strong> '+restaurant.rating.toFixed(1)+' &bull; '+restaurant.cuisine+'<br>'
+    +restaurant.address
+    +'</div>'
+    +'<div class="spin-result-actions">'
+    +'<a href="'+mapsUrl+'" target="_blank" rel="noopener">&#128205; Maps</a>'
+    +(yelpBtn||'')
+    +'<button class="spin-again-btn" onclick="spinWheel()">&#127944; Spin Again</button>'
+    +'</div>'
+    +'</div>';
+  document.getElementById('spinResultArea').innerHTML=html;
+}
+
+
 function openEnergyModal(){
   document.getElementById('energyModal').classList.add('open');
   _blurDashboard();
