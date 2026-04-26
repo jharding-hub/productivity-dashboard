@@ -638,7 +638,7 @@ body.unlocked .date-editable:hover{border-bottom-color:var(--accent);background:
 <div class="dashboard" id="dashboard">
 
 <!-- 1. PROJECTS -->
-<div class="panel mobile-visible" data-panel="projects" data-nav="projects">
+<div class="panel" data-panel="projects" data-nav="projects">
 <div class="panel-header"><div class="panel-title"><span class="drag-handle">&#10495;</span><span class="icon">&#128194;</span> Projects</div>
 <div style="display:flex;gap:6px;align-items:center;"><span class="panel-badge" id="projCount">0</span><button class="expand-btn" onclick="toggleExpand(this)" title="Expand/collapse"><span class="expand-arrow">▼</span></button><button class="btn btn-sm btn-outlook" onclick="exportAllToICS()">&#128197; Export All</button></div></div>
 <div class="panel-content" id="pc_projects">
@@ -1448,7 +1448,7 @@ function applyPanelOrder(){const dash=document.getElementById('dashboard');const
 function initDragDrop(){document.querySelectorAll('.panel').forEach(panel=>{panel.addEventListener('dragstart',e=>{if(state.panelsLocked){e.preventDefault();return;}dragSrcPanel=panel;panel.classList.add('dragging');e.dataTransfer.effectAllowed='move';e.dataTransfer.setData('text/plain',panel.dataset.panel);});panel.addEventListener('dragend',()=>{panel.classList.remove('dragging');document.querySelectorAll('.panel').forEach(p=>p.classList.remove('drag-over'));dragSrcPanel=null;});panel.addEventListener('dragover',e=>{if(state.panelsLocked)return;e.preventDefault();e.dataTransfer.dropEffect='move';if(panel!==dragSrcPanel)panel.classList.add('drag-over');});panel.addEventListener('dragleave',()=>{panel.classList.remove('drag-over');});panel.addEventListener('drop',e=>{e.preventDefault();panel.classList.remove('drag-over');if(!dragSrcPanel||dragSrcPanel===panel)return;const dash=document.getElementById('dashboard');const all=[...dash.querySelectorAll('.panel')];const fi=all.indexOf(dragSrcPanel);const ti=all.indexOf(panel);if(fi<ti)panel.after(dragSrcPanel);else panel.before(dragSrcPanel);state.panelOrder=[...dash.querySelectorAll('.panel')].map(p=>p.dataset.panel);save();toast('Panel moved');});});}
 
 // CLOCK
-function updateClock(){const now=new Date();const t=now.toLocaleTimeString('en-US',{hour12:true});document.getElementById('clock').textContent=t;document.getElementById('clockDate').textContent=now.toLocaleDateString('en-US',{weekday:'long',year:'numeric',month:'long',day:'numeric'});const mhc=document.getElementById('mobileHomeClock');if(mhc)mhc.textContent=t;}
+function updateClock(){const now=new Date();const t=now.toLocaleTimeString('en-US',{hour12:true});const clk=document.getElementById('clock');if(clk)clk.textContent=t;const cd=document.getElementById('clockDate');if(cd)cd.textContent=now.toLocaleDateString('en-US',{weekday:'long',year:'numeric',month:'long',day:'numeric'});const mhc=document.getElementById('mobileHomeClock');if(mhc)mhc.textContent=t;}
 
 // TIMER (with soft alarm)
 let timerTotal=25*60,timerLeft=25*60,timerInterval=null,timerRunning=false;
