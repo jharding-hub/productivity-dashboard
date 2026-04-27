@@ -315,6 +315,14 @@ body.unlocked .date-editable:hover{border-bottom-color:var(--accent);background:
 .share-inbox-dismiss:hover{color:var(--text);}
 .empty-state{text-align:center;padding:20px;color:var(--text-faint);font-size:13px;}
 .clear-done{font-size:11px;color:var(--text-faint);cursor:pointer;text-decoration:underline;}.clear-done:hover{color:var(--text-dim);}
+/* Completed tasks folder */
+.tl-completed-header{display:flex;align-items:center;gap:6px;padding:8px 0 4px;cursor:pointer;color:var(--text-dim);font-size:12px;font-weight:600;border-top:1px solid var(--border);margin-top:8px;user-select:none;}
+.tl-completed-header:hover{color:var(--text);}
+.tl-completed-arrow{font-size:10px;transition:transform 0.2s;}
+.tl-completed-arrow.open{transform:rotate(90deg);}
+.tl-completed-list{display:none;}
+.tl-completed-list.open{display:block;}
+.tl-completed-empty{font-size:12px;color:var(--text-faint);padding:6px 0;text-align:center;}
 .mic-btn{background:var(--surface-raised);border:1px solid var(--border);color:var(--text-dim);padding:5px 9px;border-radius:var(--radius-sm);cursor:pointer;font-size:13px;font-family:inherit;transition:all 0.2s;flex-shrink:0;line-height:1;}
 .mic-btn:hover{border-color:var(--teal);color:var(--teal);}
 .mic-btn.listening{background:var(--red-dim);border-color:var(--red);color:var(--red);animation:micPulse 1s ease-in-out infinite;}
@@ -568,7 +576,25 @@ body.unlocked .date-editable:hover{border-bottom-color:var(--accent);background:
 .toolkit-mood:hover{border-color:var(--accent);color:var(--accent);background:var(--accent-glow);}
 .toolkit-journal:hover{border-color:var(--purple);color:var(--purple);background:var(--purple-dim);}
 .toolkit-radar:hover{border-color:var(--blue);color:var(--blue);background:var(--blue-dim);}
+.toolkit-weather:hover{border-color:#4a9fd4;color:#4a9fd4;background:rgba(74,159,212,0.12);}
 .toolkit-workout:hover{border-color:var(--orange);color:var(--orange);background:var(--orange-dim);}
+/* ── WEATHER MODAL ── */
+.wx-current{display:flex;align-items:center;gap:16px;padding:14px 0 16px;border-bottom:1px solid var(--border);margin-bottom:14px;}
+.wx-icon{font-size:52px;line-height:1;flex-shrink:0;}
+.wx-main{flex:1;}
+.wx-temp{font-size:42px;font-weight:700;color:var(--text);font-variant-numeric:tabular-nums;line-height:1;}
+.wx-desc{font-size:15px;color:var(--text-dim);margin-bottom:4px;}
+.wx-detail{font-size:12px;color:var(--text-faint);line-height:1.7;}
+.wx-forecast{display:grid;grid-template-columns:repeat(auto-fill,minmax(90px,1fr));gap:8px;}
+.wx-day{background:var(--surface-raised);border:1px solid var(--border);border-radius:var(--radius-sm);padding:10px 8px;text-align:center;}
+.wx-day-name{font-size:11px;font-weight:700;color:var(--text-dim);margin-bottom:4px;text-transform:uppercase;letter-spacing:0.3px;}
+.wx-day-icon{font-size:22px;margin-bottom:4px;}
+.wx-day-temp{font-size:14px;font-weight:700;color:var(--text);}
+.wx-day-low{font-size:11px;color:var(--text-faint);}
+.wx-day-desc{font-size:10px;color:var(--text-dim);margin-top:3px;line-height:1.3;}
+.wx-loading{text-align:center;padding:40px;color:var(--text-faint);font-size:14px;}
+.wx-alert{background:rgba(199,95,95,0.15);border:1px solid var(--red);border-radius:var(--radius-sm);padding:10px 12px;margin-bottom:12px;font-size:12px;color:var(--red);line-height:1.5;}
+.wx-section-title{font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:1px;color:var(--text-faint);margin:0 0 8px;}
 .toolkit-spinner:hover{border-color:#e53935;color:#e53935;background:rgba(229,57,53,0.12);}
 
 /* ── RESTAURANT SPINNER ── */
@@ -673,7 +699,7 @@ body.unlocked .date-editable:hover{border-bottom-color:var(--accent);background:
   <button class="toolkit-btn toolkit-timer" onclick="openTimerModal()">&#9201;<span>Timer</span></button>
   <button class="toolkit-btn toolkit-mood" onclick="openEnergyModal()">&#9889;<span>Energy &amp; Mood</span></button>
   <button class="toolkit-btn toolkit-journal" onclick="openJournal()">&#128221;<span>Journal</span></button>
-  <button class="toolkit-btn toolkit-radar" onclick="openRadarModal()">&#127956;<span>Radar</span></button>
+  <button class="toolkit-btn toolkit-weather" onclick="openWeatherModal()">&#127780;<span>Weather</span></button>
   <button class="toolkit-btn toolkit-workout" onclick="openWorkoutModal()">&#127947;<span>Workout</span></button>
   <button class="toolkit-btn toolkit-spinner" onclick="openSpinnerModal()">&#127869;<span>Dinner Wheel</span></button>
 </div>
@@ -726,6 +752,7 @@ body.unlocked .date-editable:hover{border-bottom-color:var(--accent);background:
 </div>
 <div class="panel-content" id="pc_tasklist">
 <div class="tl-list" id="taskListItems"></div>
+<div id="taskListCompleted"></div>
 </div>
 <div class="tl-add-form">
 <div class="section-label">Add Task</div>
@@ -843,17 +870,18 @@ body.unlocked .date-editable:hover{border-bottom-color:var(--accent);background:
 </div>
 </div>
 <!-- RADAR MODAL -->
-<div class="modal-blur-overlay" id="radarModal">
-<div class="modal-blur-backdrop" onclick="closeRadarModal()"></div>
-<div class="modal-blur-panel" style="width:min(1000px,95vw);max-height:92vh;">
+<!-- WEATHER MODAL -->
+<div class="modal-blur-overlay" id="weatherModal">
+<div class="modal-blur-backdrop" onclick="closeWeatherModal()"></div>
+<div class="modal-blur-panel" style="width:min(620px,95vw);max-height:92vh;">
   <div class="modal-blur-header">
-    <div class="modal-blur-title">&#127956; Radar &mdash; Greenwood, IN 46142</div>
+    <div class="modal-blur-title">&#127780; Weather</div>
     <div style="display:flex;gap:8px;align-items:center;">
-      <span id="radarTimestamp" style="font-size:11px;color:var(--text-faint);"></span>
-      <button class="modal-blur-close" onclick="closeRadarModal()">&#10005;</button>
+      <span id="weatherLocation" style="font-size:11px;color:var(--text-faint);"></span>
+      <button class="modal-blur-close" onclick="closeWeatherModal()">&#10005;</button>
     </div>
   </div>
-  <div id="radarMapContainer" style="flex:1;min-height:560px;position:relative;"></div>
+  <div class="modal-blur-body" id="weatherBody" style="padding:16px 20px;min-height:200px;"></div>
 </div>
 </div>
 
@@ -1239,7 +1267,7 @@ try {
 <!-- SCRIPT 3: APP LOGIC -->
 <script>
 // STATE
-let state={projects:[],reminders:[],thoughts:[],notes:[],moodLog:[],tasks:[],journal:[],journalPin:'',workoutLog:{},routines:{morning:[{id:'m1',name:'Hydrate \u2014 glass of water',done:false},{id:'m2',name:"Review today's calendar",done:false},{id:'m3',name:'Pick top 3 priorities',done:false},{id:'m4',name:'Quick workspace tidy',done:false}],evening:[{id:'e1',name:'Review what got done today',done:false},{id:'e2',name:"Brain dump tomorrow's thoughts",done:false},{id:'e3',name:"Set out tomorrow's essentials",done:false},{id:'e4',name:'Wind-down activity',done:false}],custom:[]},currentRoutineTab:'morning',energy:null,mood:null,panelOrder:['projects','reminders','time','tasklist','notes','brain','routines','wellness','decision','admin'],panelsLocked:true,lastRoutineReset:null,visiblePanels:{},knownPanels:[]};
+let state={projects:[],reminders:[],thoughts:[],notes:[],moodLog:[],tasks:[],completedTasks:[],journal:[],journalPin:'',workoutLog:{},routines:{morning:[{id:'m1',name:'Hydrate \u2014 glass of water',done:false},{id:'m2',name:"Review today's calendar",done:false},{id:'m3',name:'Pick top 3 priorities',done:false},{id:'m4',name:'Quick workspace tidy',done:false}],evening:[{id:'e1',name:'Review what got done today',done:false},{id:'e2',name:"Brain dump tomorrow's thoughts",done:false},{id:'e3',name:"Set out tomorrow's essentials",done:false},{id:'e4',name:'Wind-down activity',done:false}],custom:[]},currentRoutineTab:'morning',energy:null,mood:null,panelOrder:['projects','reminders','time','tasklist','notes','brain','routines','wellness','decision','admin'],panelsLocked:true,lastRoutineReset:null,visiblePanels:{},knownPanels:[]};
 
 // SYNC STATUS
 function setSyncStatus(status,label){const el=document.getElementById('syncStatus');if(!el)return;el.className='sync-status '+status;el.innerHTML='<span class="sync-dot"></span> '+label;}
@@ -1299,6 +1327,7 @@ async function load(){
   if(!state.notes)state.notes=[];if(!state.moodLog)state.moodLog=[];if(!state.tasks)state.tasks=[];if(!state.visiblePanels)state.visiblePanels={};if(!state.knownPanels)state.knownPanels=[];
   if(!state.journal)state.journal=[];if(!state.journalPin)state.journalPin='';
   if(!state.workoutLog)state.workoutLog={};
+  if(!state.completedTasks)state.completedTasks=[];
   if(!state.panelOrder)state.panelOrder=['projects','reminders','time','tasklist','notes','brain','routines','wellness','decision','admin'];
   // Remove legacy 'energy' panel id from any saved order
   state.panelOrder=state.panelOrder.filter(id=>id!=='energy');
@@ -2332,6 +2361,33 @@ function renderTaskList(){
     }).join('');
   }
   document.getElementById('taskListCount').textContent=all.filter(function(t){return !t.done;}).length;
+  // Completed archive folder
+  var compEl=document.getElementById('taskListCompleted');
+  if(compEl){
+    var comp=state.completedTasks||[];
+    if(comp.length===0){
+      compEl.innerHTML='';
+    }else{
+      compEl.innerHTML='<div class="tl-completed-header" onclick="toggleCompletedFolder(this)">'
+        +'<span class="tl-completed-arrow">&#9654;</span>'
+        +'<span>&#10003; Completed ('+comp.length+')</span>'
+        +'</div>'
+        +'<div class="tl-completed-list">'
+        +comp.slice(0,50).map(function(t){
+          var d=t.archivedAt?new Date(t.archivedAt).toLocaleDateString('en-US',{month:'short',day:'numeric'}):'';
+          return '<div class="tl-item tl-done" style="opacity:0.65;">'
+            +'<div class="tl-check checked" style="cursor:default;">\u2713</div>'
+            +'<div class="tl-body"><div class="tl-name">'+esc(t.name)+'</div>'
+            +'<div class="tl-meta">'+(t.projectName?'<span class="tl-proj-badge">'+esc(t.projectName)+'</span>':'')
+            +(d?'<span style="font-size:10px;color:var(--text-faint);">'+d+'</span>':'')
+            +'</div></div>'
+            +'<span class="tl-del" onclick="removeCompleted(\''+t.id+'\')" title="Remove">\u2715</span>'
+            +'</div>';
+        }).join('')
+        +(comp.length>50?'<div class="tl-completed-empty">+'+( comp.length-50)+' older items</div>':'')
+        +'</div>';
+    }
+  }
   updateTLProjectDropdowns();
 }
 
@@ -2385,9 +2441,32 @@ function deleteStandaloneTask(id){
 }
 
 function clearDoneTasks(){
-  // Only clear standalone done tasks
+  // Archive standalone done tasks
+  var done=state.tasks.filter(function(t){return t.done;});
+  if(!done.length){toast('No done tasks to archive');return;}
+  // Also collect done project subtasks
+  state.projects.forEach(function(p){
+    p.subtasks.forEach(function(st){
+      if(st.done){
+        state.completedTasks.unshift({
+          id:st.id,name:st.name,projectName:p.name,
+          archivedAt:new Date().toISOString(),source:'project'
+        });
+        st.done=false; // reset — it stays in projects
+      }
+    });
+  });
+  done.forEach(function(t){
+    var pName=t.projectId?(state.projects.find(function(p){return p.id===t.projectId;})||{}).name||'':'';
+    state.completedTasks.unshift({
+      id:t.id,name:t.name,projectName:pName,
+      archivedAt:new Date().toISOString(),source:'standalone'
+    });
+  });
   state.tasks=state.tasks.filter(function(t){return !t.done;});
-  save();renderTaskList();toast('Done tasks cleared');
+  // Keep completed archive at 100 max
+  if(state.completedTasks.length>100)state.completedTasks=state.completedTasks.slice(0,100);
+  save();renderTaskList();renderProjects();toast('\u2713 '+done.length+' task'+(done.length>1?'s':'')+' archived');
 }
 
 function updateTLProjectDropdowns(){
@@ -2543,114 +2622,181 @@ function stopMic(btnId){
 function _blurDashboard(){document.getElementById('dashboard').style.filter='blur(3px)';document.getElementById('dashboard').style.pointerEvents='none';}
 function _unblurDashboard(){document.getElementById('dashboard').style.filter='';document.getElementById('dashboard').style.pointerEvents='';}
 
-// ═══════════════════════════════════════
-// RADAR MODAL — Leaflet + RainViewer API
-// ═══════════════════════════════════════
-var _radarMap=null,_radarLayers=[],_radarFrames=[],_radarAnimIdx=0,_radarAnimTimer=null;
-var RADAR_LAT=39.6139,RADAR_LON=-86.1069,RADAR_ZOOM=8;
-
-function openRadarModal(){
-  document.getElementById('radarModal').classList.add('open');
-  _blurDashboard();
-  if(!_radarMap) _initRadarMap();
+function toggleCompletedFolder(header){
+  var arrow=header.querySelector('.tl-completed-arrow');
+  var list=header.nextElementSibling;
+  arrow.classList.toggle('open');
+  list.classList.toggle('open');
 }
 
-function closeRadarModal(){
-  document.getElementById('radarModal').classList.remove('open');
+function removeCompleted(id){
+  state.completedTasks=state.completedTasks.filter(function(t){return t.id!==id;});
+  save();renderTaskList();
+}
+
+// ═══════════════════════════════════════
+// WEATHER MODAL — NWS API (free, no key, CORS-open)
+// ═══════════════════════════════════════
+var _wxCache=null,_wxCacheTime=0;
+var WX_CACHE_MS=10*60*1000; // 10-minute cache
+
+function openWeatherModal(){
+  document.getElementById('weatherModal').classList.add('open');
+  _blurDashboard();
+  _loadWeather();
+}
+function closeWeatherModal(){
+  document.getElementById('weatherModal').classList.remove('open');
   _unblurDashboard();
 }
 
-function _initRadarMap(){
-  // Inject Leaflet CSS + JS from CDN, then build the map
-  if(!document.getElementById('leafletCSS')){
-    var lc=document.createElement('link');
-    lc.id='leafletCSS';lc.rel='stylesheet';
-    lc.href='https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.css';
-    document.head.appendChild(lc);
-  }
-  if(window.L){_buildRadarMap();return;}
-  var ls=document.createElement('script');
-  ls.src='https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.js';
-  ls.onload=function(){_buildRadarMap();};
-  document.head.appendChild(ls);
+function _wxIcon(shortForecast){
+  var f=(shortForecast||'').toLowerCase();
+  if(f.includes('tornado')||f.includes('funnel'))return'\uD83C\uDF00';
+  if(f.includes('thunder')||f.includes('storm'))return'\u26C8\uFE0F';
+  if(f.includes('snow')||f.includes('blizzard'))return'\u2744\uFE0F';
+  if(f.includes('sleet')||f.includes('wintry')||f.includes('ice'))return'\uD83C\uDF28';
+  if(f.includes('rain')||f.includes('shower')||f.includes('drizzle'))return'\uD83C\uDF27\uFE0F';
+  if(f.includes('fog')||f.includes('haze'))return'\uD83C\uDF2B\uFE0F';
+  if(f.includes('wind'))return'\uD83C\uDF2C\uFE0F';
+  if(f.includes('cloud')&&f.includes('part'))return'\u26C5';
+  if(f.includes('overcast')||f.includes('mostly cloudy'))return'\u2601\uFE0F';
+  if(f.includes('cloud'))return'\uD83C\uDF24\uFE0F';
+  if(f.includes('sunny')||f.includes('clear'))return'\u2600\uFE0F';
+  return'\uD83C\uDF24\uFE0F';
 }
 
-function _buildRadarMap(){
-  var container=document.getElementById('radarMapContainer');
-  container.style.height='560px';
+function _loadWeather(){
+  var body=document.getElementById('weatherBody');
+  var locEl=document.getElementById('weatherLocation');
+  body.innerHTML='<div class="wx-loading">&#127780; Getting your location\u2026</div>';
 
-  _radarMap=L.map(container,{
-    center:[RADAR_LAT,RADAR_LON],
-    zoom:RADAR_ZOOM,
-    zoomControl:true,
-    attributionControl:true
-  });
+  // Use cache if fresh
+  if(_wxCache&&(Date.now()-_wxCacheTime)<WX_CACHE_MS){
+    _renderWeather(_wxCache);return;
+  }
 
-  // Dark-friendly base tile — CartoDB Dark Matter
-  L.tileLayer('https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png',{
-    attribution:'&copy; <a href="https://carto.com/">CARTO</a> &copy; <a href="https://www.openstreetmap.org/copyright">OSM</a>',
-    subdomains:'abcd',maxZoom:19
-  }).addTo(_radarMap);
-
-  // Location marker for Greenwood
-  L.circleMarker([RADAR_LAT,RADAR_LON],{
-    radius:7,color:'#d4a853',fillColor:'#d4a853',fillOpacity:0.9,weight:2
-  }).addTo(_radarMap).bindPopup('<strong>Greenwood, IN 46142</strong>');
-
-  // Fetch RainViewer API and load animated radar frames
-  fetch('https://api.rainviewer.com/public/weather-maps.json')
-    .then(function(r){return r.json();})
-    .then(function(data){
-      var host=data.host;
-      var frames=data.radar.past.concat(data.radar.nowcast||[]);
-      _radarFrames=frames;
-      // Pre-create all tile layers (hidden)
-      _radarLayers=frames.map(function(f){
-        return L.tileLayer(host+f.path+'/256/{z}/{x}/{y}/2/1_1.png',{
-          tileSize:256,opacity:0,zIndex:10,
-          attribution:'RainViewer'
-        }).addTo(_radarMap);
-      });
-      // Show the most recent frame first
-      _radarAnimIdx=_radarLayers.length-1;
-      _radarLayers[_radarAnimIdx].setOpacity(0.7);
-      _updateRadarTimestamp();
-      _startRadarAnimation();
+  function fetchWeather(lat,lon){
+    locEl.textContent='';
+    body.innerHTML='<div class="wx-loading">&#127780; Loading weather\u2026</div>';
+    // Step 1: NWS points API resolves lat/lon to forecast office + grid
+    fetch('https://api.weather.gov/points/'+lat.toFixed(4)+','+lon.toFixed(4),{
+      headers:{'User-Agent':'ProductivityDashboard (personal-app)','Accept':'application/geo+json'}
+    })
+    .then(function(r){if(!r.ok)throw new Error('Points '+r.status);return r.json();})
+    .then(function(pts){
+      var props=pts.properties;
+      var city=props.relativeLocation&&props.relativeLocation.properties;
+      if(city)locEl.textContent=(city.city||'')+', '+(city.state||'');
+      // Step 2: fetch current conditions from nearest observation station
+      var stationsUrl=props.observationStations;
+      var forecastUrl=props.forecast;
+      var hourlyUrl=props.forecastHourly;
+      return Promise.all([
+        fetch(stationsUrl,{headers:{'User-Agent':'ProductivityDashboard'}}).then(function(r){return r.json();}),
+        fetch(forecastUrl,{headers:{'User-Agent':'ProductivityDashboard','Accept':'application/geo+json'}}).then(function(r){return r.json();})
+      ]);
+    })
+    .then(function(results){
+      var stations=results[0];var forecast=results[1];
+      var stationId=stations.features&&stations.features[0]&&stations.features[0].properties.stationIdentifier;
+      if(!stationId)throw new Error('No station');
+      return Promise.all([
+        fetch('https://api.weather.gov/stations/'+stationId+'/observations/latest',{
+          headers:{'User-Agent':'ProductivityDashboard','Accept':'application/geo+json'}
+        }).then(function(r){return r.json();}),
+        Promise.resolve(forecast)
+      ]);
+    })
+    .then(function(results){
+      var obs=results[0].properties;var forecast=results[1];
+      var periods=forecast.properties&&forecast.properties.periods||[];
+      var data={
+        temp:obs.temperature&&obs.temperature.value!==null
+          ?Math.round(obs.temperature.value*9/5+32):null,
+        feelsLike:obs.heatIndex&&obs.heatIndex.value!==null
+          ?Math.round(obs.heatIndex.value*9/5+32)
+          :obs.windChill&&obs.windChill.value!==null
+            ?Math.round(obs.windChill.value*9/5+32):null,
+        humidity:obs.relativeHumidity&&obs.relativeHumidity.value!==null
+          ?Math.round(obs.relativeHumidity.value):null,
+        wind:obs.windSpeed&&obs.windSpeed.value!==null
+          ?Math.round(obs.windSpeed.value*0.621371)+' mph':null,
+        windDir:obs.windDirection&&obs.windDirection.value!==null
+          ?_wxDegToDir(obs.windDirection.value):null,
+        description:obs.textDescription||'',
+        periods:periods.slice(0,14)
+      };
+      _wxCache=data;_wxCacheTime=Date.now();
+      _renderWeather(data);
     })
     .catch(function(e){
-      document.getElementById('radarTimestamp').textContent='Radar data unavailable';
+      console.warn('NWS error:',e);
+      body.innerHTML='<div class="wx-loading" style="color:var(--red);">&#10060; Weather unavailable.<br><span style="font-size:12px;color:var(--text-faint);">'+e.message+'</span></div>';
     });
-}
-
-function _updateRadarTimestamp(){
-  if(!_radarFrames.length)return;
-  var f=_radarFrames[_radarAnimIdx];
-  var d=new Date(f.time*1000);
-  var label=f.path.includes('nowcast')?'Forecast: ':'Radar: ';
-  document.getElementById('radarTimestamp').textContent=
-    label+d.toLocaleDateString('en-US',{month:'short',day:'numeric'})+
-    ' '+d.toLocaleTimeString('en-US',{hour:'numeric',minute:'2-digit'});
-}
-
-function _stepRadarFrame(){
-  if(!_radarLayers.length)return;
-  _radarLayers[_radarAnimIdx].setOpacity(0);
-  _radarAnimIdx=(_radarAnimIdx+1)%_radarLayers.length;
-  _radarLayers[_radarAnimIdx].setOpacity(0.7);
-  _updateRadarTimestamp();
-}
-
-function _startRadarAnimation(){
-  if(_radarAnimTimer)clearInterval(_radarAnimTimer);
-  // Pause 1.5s on the latest frame, 600ms on history frames
-  function scheduleNext(){
-    var isLatest=(_radarAnimIdx===_radarLayers.length-1);
-    _radarAnimTimer=setTimeout(function(){
-      _stepRadarFrame();scheduleNext();
-    },isLatest?1500:600);
   }
-  scheduleNext();
+
+  if(!navigator.geolocation){fetchWeather(39.6139,-86.1069);return;}
+  navigator.geolocation.getCurrentPosition(
+    function(p){fetchWeather(p.coords.latitude,p.coords.longitude);},
+    function(){fetchWeather(39.6139,-86.1069);locEl.textContent='Greenwood, IN (default)';},
+    {timeout:6000,maximumAge:60000}
+  );
 }
+
+function _wxDegToDir(deg){
+  var dirs=['N','NNE','NE','ENE','E','ESE','SE','SSE','S','SSW','SW','WSW','W','WNW','NW','NNW'];
+  return dirs[Math.round(deg/22.5)%16];
+}
+
+function _renderWeather(data){
+  var body=document.getElementById('weatherBody');
+  if(!data){body.innerHTML='<div class="wx-loading">No data</div>';return;}
+
+  var tempStr=data.temp!==null?data.temp+'\u00B0F':'--';
+  var feelsStr=data.feelsLike!==null&&data.feelsLike!==data.temp?' / feels '+data.feelsLike+'\u00B0F':'';
+  var icon=_wxIcon(data.description);
+  var details=[];
+  if(data.humidity!==null)details.push('Humidity: '+data.humidity+'%');
+  if(data.wind)details.push('Wind: '+(data.windDir||'')+' '+data.wind);
+
+  var html='<div class="wx-current">'
+    +'<div class="wx-icon">'+icon+'</div>'
+    +'<div class="wx-main">'
+    +'<div class="wx-temp">'+tempStr+feelsStr+'</div>'
+    +'<div class="wx-desc">'+esc(data.description||'Current Conditions')+'</div>'
+    +(details.length?'<div class="wx-detail">'+details.join(' &bull; ')+'</div>':'')
+    +'</div></div>';
+
+  if(data.periods&&data.periods.length>0){
+    html+='<div class="wx-section-title">7-Day Forecast</div>';
+    html+='<div class="wx-forecast">';
+    // Pair day/night periods, show one tile per day
+    var shown={};
+    data.periods.forEach(function(p){
+      var dayKey=p.name.replace('This ','').replace(' Night','').replace(' Afternoon','').replace(' Evening','').replace(' Morning','');
+      if(shown[dayKey])return;
+      if(!p.isDaytime)return; // prefer daytime temps
+      shown[dayKey]=true;
+      // Find matching night for low
+      var low=null;
+      var ni=data.periods.indexOf(p)+1;
+      if(ni<data.periods.length&&!data.periods[ni].isDaytime)low=data.periods[ni].temperature;
+      html+='<div class="wx-day">'
+        +'<div class="wx-day-name">'+p.name.substring(0,3)+'</div>'
+        +'<div class="wx-day-icon">'+_wxIcon(p.shortForecast)+'</div>'
+        +'<div class="wx-day-temp">'+p.temperature+'\u00B0</div>'
+        +(low!==null?'<div class="wx-day-low">'+low+'\u00B0</div>':'')
+        +'<div class="wx-day-desc">'+p.shortForecast+'</div>'
+        +'</div>';
+    });
+    html+='</div>';
+  }
+
+  body.innerHTML=html;
+}
+
+
 
 
 
