@@ -17,10 +17,29 @@
 :root{--bg:#1a1917;--surface:#242320;--surface-raised:#2e2d29;--surface-hover:#38362f;--border:#3d3b33;--border-focus:#6b6554;--text:#e8e2d6;--text-dim:#a09882;--text-faint:#6b6554;--accent:#d4a853;--accent-dim:#b08a3a;--accent-glow:rgba(212,168,83,0.15);--red:#c75f5f;--red-dim:rgba(199,95,95,0.15);--green:#6bab73;--green-dim:rgba(107,171,115,0.15);--blue:#5f8fc7;--blue-dim:rgba(95,143,199,0.15);--purple:#9b7ec7;--purple-dim:rgba(155,126,199,0.15);--orange:#c7925f;--orange-dim:rgba(199,146,95,0.15);--teal:#5fafb0;--teal-dim:rgba(95,175,176,0.15);--radius:10px;--radius-sm:6px;}
 *{margin:0;padding:0;box-sizing:border-box;}
 body{font-family:'DM Sans',sans-serif;background:var(--bg);color:var(--text);min-height:100vh;min-height:100dvh;line-height:1.5;padding-top:env(safe-area-inset-top);padding-bottom:env(safe-area-inset-bottom);}
-.header{padding:20px 24px 14px;display:flex;align-items:center;justify-content:space-between;border-bottom:1px solid var(--border);position:sticky;top:0;background:var(--bg);z-index:50;}
-.header h1{font-family:'Fraunces',serif;font-size:33px;font-weight:600;color:var(--accent);letter-spacing:-0.5px;flex:1;text-align:center;}
+.header{padding:14px 24px 12px;display:grid;grid-template-columns:1fr auto 1fr;align-items:center;gap:12px;border-bottom:1px solid var(--border);position:sticky;top:0;background:var(--bg);z-index:50;}
+.header h1{font-family:'Fraunces',serif;font-size:33px;font-weight:600;color:var(--accent);letter-spacing:-0.5px;text-align:center;margin:0;}
 .header h1 span{display:none;}
-.header-right{display:flex;align-items:center;gap:14px;}
+.header-right{display:flex;align-items:center;justify-content:flex-end;gap:8px;}
+/* BOTTOM STATUS BAR */
+.status-bar{position:fixed;bottom:0;left:0;right:0;z-index:200;background:var(--surface);border-top:1px solid var(--border);padding:6px 20px;display:flex;align-items:center;gap:14px;height:40px;}
+.status-bar .user-email-display{font-size:11px;color:var(--text-faint);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:180px;}
+.status-bar .sync-status{font-size:11px;padding:2px 8px;}
+.status-bar .logout-btn{font-size:11px;padding:3px 10px;}
+.status-bar .customize-btn{font-size:11px;padding:3px 10px;}
+.status-bar .lock-btn{font-size:11px;padding:3px 10px;}
+.status-bar-spacer{flex:1;}
+/* Push content above bottom bar */
+.app-wrap{padding-bottom:40px;}
+@media(max-width:768px){
+  .header{grid-template-columns:1fr;padding:10px 14px 8px;gap:4px;}
+  .header h1{font-size:18px;}
+  .header h1 span{display:none;}
+  .time-left-wrap{display:none;}
+  .task-timer-wrap{display:none;}
+  .status-bar{padding:6px 14px;gap:8px;}
+  .status-bar .user-email-display{max-width:90px;}
+}
 .clock{font-variant-numeric:tabular-nums;font-size:20px;font-weight:600;color:var(--text);letter-spacing:1px;}
 .clock-date{font-size:12px;color:var(--text-dim);text-align:right;}
 .lock-btn{background:none;border:1px solid var(--border);color:var(--text-dim);padding:4px 10px;border-radius:var(--radius-sm);cursor:pointer;font-size:12px;font-family:inherit;transition:all 0.15s;}
@@ -695,23 +714,16 @@ body.unlocked .date-editable:hover{border-bottom-color:var(--accent);background:
     <div class="time-left-value" id="timeLeftVal">--:--</div>
     <div class="time-left-bar"><div class="time-left-bar-fill" id="timeLeftBar" style="width:100%"></div></div>
   </div>
-  <!-- Center: Title + Task Timer -->
-  <div style="display:flex;flex-direction:column;align-items:center;gap:4px;flex:1;">
-    <h1 style="margin:0;">Productivity Dashboard</h1>
+  <!-- Center: Title only -->
+  <h1>Productivity Dashboard</h1>
+  <!-- Right: Task Timer -->
+  <div class="header-right">
     <div class="task-timer-wrap" id="taskTimerWrap">
       <button class="task-timer-btn" id="ttStartBtn" onclick="ttStart()" title="Start task timer">&#9654;</button>
       <div class="task-timer-display" id="ttDisplay">0:00:00</div>
       <button class="task-timer-btn" onclick="ttPause()" title="Pause">&#9208;</button>
       <button class="task-timer-btn" onclick="ttReset()" title="Reset">&#8634;</button>
     </div>
-  </div>
-  <!-- Right: controls -->
-  <div class="header-right">
-    <span class="user-email-display" id="userEmail"></span>
-    <button class="logout-btn" onclick="doLogout()" title="Sign out">Sign out</button>
-    <span class="sync-status offline" id="syncStatus"><span class="sync-dot"></span> Local</span>
-    <button class="customize-btn" onclick="openCustomize()" title="Show/hide panels">&#9881; Panels</button>
-    <button class="lock-btn" id="lockBtn" onclick="toggleLock()" title="Lock/unlock layout and editing">&#128274; Locked</button>
   </div>
 </div>
 
@@ -4211,5 +4223,14 @@ setTimeout(checkShareTarget, 400); // slight delay so panels render first
 }
 // Auth is handled by Firebase onAuthStateChanged listener in Script 1
 </script>
+<!-- BOTTOM STATUS BAR -->
+<div class="status-bar" id="statusBar">
+  <span class="user-email-display" id="userEmail"></span>
+  <span class="sync-status offline" id="syncStatus"><span class="sync-dot"></span> Local</span>
+  <div class="status-bar-spacer"></div>
+  <button class="customize-btn" onclick="openCustomize()" title="Show/hide panels">&#9881; Panels</button>
+  <button class="lock-btn" id="lockBtn" onclick="toggleLock()" title="Lock/unlock layout and editing">&#128274; Locked</button>
+  <button class="logout-btn" onclick="doLogout()" title="Sign out">Sign out</button>
+</div>
 </body>
 </html>
