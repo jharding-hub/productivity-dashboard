@@ -141,8 +141,45 @@ body.unlocked .date-editable:hover{border-bottom-color:var(--accent);background:
 .chip-x{cursor:pointer;color:var(--text-faint);font-size:14px;}.chip-x:hover{color:var(--red);}
 .chip-promote{cursor:pointer;color:var(--text-faint);font-size:13px;}.chip-promote:hover{color:var(--green);}
 
-/* TIME */
-.time-block{background:var(--surface-raised);border:1px solid var(--border);border-radius:var(--radius-sm);padding:9px 10px;margin-bottom:8px;}
+/* TIME-LEFT CLOCK */
+.time-left-wrap{display:flex;flex-direction:column;align-items:flex-start;min-width:72px;}
+.time-left-label{font-size:9px;font-weight:700;text-transform:uppercase;letter-spacing:0.8px;color:var(--text-faint);}
+.time-left-value{font-size:18px;font-weight:700;font-variant-numeric:tabular-nums;line-height:1.1;color:var(--accent);}
+.time-left-value.warn{color:var(--orange);}
+.time-left-value.low{color:var(--red);}
+.time-left-bar{width:60px;height:3px;background:var(--surface-hover);border-radius:2px;margin-top:2px;overflow:hidden;}
+.time-left-bar-fill{height:100%;border-radius:2px;background:var(--accent);transition:width 60s linear;}
+
+/* TASK TIMER IN HEADER */
+.task-timer-wrap{display:flex;align-items:center;gap:6px;padding:5px 10px;background:var(--surface-raised);border:1px solid var(--border);border-radius:var(--radius-sm);}
+.task-timer-display{font-size:18px;font-weight:700;font-variant-numeric:tabular-nums;color:var(--text);min-width:52px;text-align:center;}
+.task-timer-display.running{color:var(--green);}
+.task-timer-btn{background:none;border:none;cursor:pointer;font-size:14px;padding:2px 5px;color:var(--text-dim);transition:color 0.15s;}
+.task-timer-btn:hover{color:var(--text);}
+
+/* HALT BUTTON */
+.toolkit-halt:hover{border-color:#e53935;color:#e53935;background:rgba(229,57,53,0.12);}
+
+/* HALT MODAL */
+.halt-intro{font-size:13px;color:var(--text-dim);line-height:1.6;margin-bottom:16px;padding:10px 14px;background:var(--surface-raised);border-left:3px solid var(--red);border-radius:0 var(--radius-sm) var(--radius-sm) 0;}
+.halt-item{background:var(--surface-raised);border:1px solid var(--border);border-radius:var(--radius-sm);margin-bottom:10px;overflow:hidden;}
+.halt-item-header{display:flex;align-items:center;gap:10px;padding:12px 14px;cursor:pointer;transition:background 0.15s;}
+.halt-item-header:hover{background:var(--surface-hover);}
+.halt-item-icon{font-size:22px;flex-shrink:0;}
+.halt-item-label{font-size:14px;font-weight:700;color:var(--text);flex:1;}
+.halt-item-letter{font-size:11px;font-weight:700;color:var(--text-faint);background:var(--surface-hover);padding:2px 7px;border-radius:20px;letter-spacing:0.5px;}
+.halt-item-check{width:22px;height:22px;border-radius:50%;border:2px solid var(--border);display:flex;align-items:center;justify-content:center;font-size:12px;flex-shrink:0;transition:all 0.15s;}
+.halt-item-check.checked{background:var(--green-dim);border-color:var(--green);color:var(--green);}
+.halt-item-body{display:none;padding:10px 14px 14px;border-top:1px solid var(--border);}
+.halt-item-body.open{display:block;}
+.halt-item-question{font-size:13px;color:var(--text);margin-bottom:8px;font-weight:600;}
+.halt-item-action{font-size:12px;color:var(--text-dim);line-height:1.65;padding:8px 10px;background:var(--surface);border-radius:var(--radius-sm);border-left:2px solid var(--accent-dim);}
+.halt-summary{margin-top:14px;padding:12px 14px;background:var(--surface-raised);border:1px solid var(--border);border-radius:var(--radius-sm);font-size:13px;color:var(--text-dim);line-height:1.7;display:none;}
+.halt-summary.visible{display:block;}
+.halt-reset-btn{width:100%;margin-top:10px;padding:9px;background:var(--surface-raised);border:1px solid var(--border);color:var(--text-dim);border-radius:var(--radius-sm);font-family:inherit;font-size:12px;cursor:pointer;transition:all 0.15s;}
+.halt-reset-btn:hover{border-color:var(--red);color:var(--red);}
+
+@media(max-width:768px){.time-left-wrap{display:none;}.task-timer-wrap{display:none;}}
 .time-label{font-size:10px;color:var(--text-dim);text-transform:uppercase;letter-spacing:1px;margin-bottom:4px;}
 .time-block .em-row{margin-bottom:4px;}
 .time-block .em-pill{padding:3px 7px;font-size:10px;}
@@ -652,14 +689,31 @@ body.unlocked .date-editable:hover{border-bottom-color:var(--accent);background:
 <!-- APP (hidden until auth) -->
 <div class="app-wrap" id="appWrap">
 <div class="header">
-<h1>Productivity Dashboard</h1>
-<div class="header-right">
-<span class="user-email-display" id="userEmail"></span>
-<button class="logout-btn" onclick="doLogout()" title="Sign out">Sign out</button>
-<span class="sync-status offline" id="syncStatus"><span class="sync-dot"></span> Local</span>
-<button class="customize-btn" onclick="openCustomize()" title="Show/hide panels">&#9881; Panels</button>
-<button class="lock-btn" id="lockBtn" onclick="toggleLock()" title="Lock/unlock layout and editing">&#128274; Locked</button>
-</div></div>
+  <!-- Left: Time Left productive window -->
+  <div class="time-left-wrap" id="timeLeftWrap">
+    <div class="time-left-label">Time Left</div>
+    <div class="time-left-value" id="timeLeftVal">--:--</div>
+    <div class="time-left-bar"><div class="time-left-bar-fill" id="timeLeftBar" style="width:100%"></div></div>
+  </div>
+  <!-- Center: Title + Task Timer -->
+  <div style="display:flex;flex-direction:column;align-items:center;gap:4px;flex:1;">
+    <h1 style="margin:0;">Productivity Dashboard</h1>
+    <div class="task-timer-wrap" id="taskTimerWrap">
+      <button class="task-timer-btn" id="ttStartBtn" onclick="ttStart()" title="Start task timer">&#9654;</button>
+      <div class="task-timer-display" id="ttDisplay">0:00:00</div>
+      <button class="task-timer-btn" onclick="ttPause()" title="Pause">&#9208;</button>
+      <button class="task-timer-btn" onclick="ttReset()" title="Reset">&#8634;</button>
+    </div>
+  </div>
+  <!-- Right: controls -->
+  <div class="header-right">
+    <span class="user-email-display" id="userEmail"></span>
+    <button class="logout-btn" onclick="doLogout()" title="Sign out">Sign out</button>
+    <span class="sync-status offline" id="syncStatus"><span class="sync-dot"></span> Local</span>
+    <button class="customize-btn" onclick="openCustomize()" title="Show/hide panels">&#9881; Panels</button>
+    <button class="lock-btn" id="lockBtn" onclick="toggleLock()" title="Lock/unlock layout and editing">&#128274; Locked</button>
+  </div>
+</div>
 
 <div class="dashboard" id="dashboard">
 
@@ -702,6 +756,7 @@ body.unlocked .date-editable:hover{border-bottom-color:var(--accent);background:
   <button class="toolkit-btn toolkit-weather" onclick="openWeatherModal()">&#127780;<span>Weather</span></button>
   <button class="toolkit-btn toolkit-workout" onclick="openWorkoutModal()">&#127947;<span>Workout</span></button>
   <button class="toolkit-btn toolkit-spinner" onclick="openSpinnerModal()">&#127869;<span>Dinner Wheel</span></button>
+  <button class="toolkit-btn toolkit-halt" onclick="openHaltModal()">&#128721;<span>HALT+</span></button>
 </div>
 </div>
 
@@ -939,6 +994,19 @@ body.unlocked .date-editable:hover{border-bottom-color:var(--accent);background:
       </div>
       <div id="spinResultArea"></div>
     </div>
+  </div>
+</div>
+</div>
+
+<!-- HALT+ MODAL -->
+<div class="modal-blur-overlay" id="haltModal">
+<div class="modal-blur-backdrop" onclick="closeHaltModal()"></div>
+<div class="modal-blur-panel" style="width:min(560px,95vw);">
+  <div class="modal-blur-header">
+    <div class="modal-blur-title">&#128721; HALT+ Sensory Check</div>
+    <button class="modal-blur-close" onclick="closeHaltModal()">&#10005;</button>
+  </div>
+  <div class="modal-blur-body" style="padding:16px 20px;" id="haltBody">
   </div>
 </div>
 </div>
@@ -3146,6 +3214,138 @@ function _spinShowResult(finalAngle){
 }
 
 
+// ═══════════════════════════════════════
+// HALT+ SENSORY CHECK
+// ═══════════════════════════════════════
+var _haltChecked={};
+
+const HALT_ITEMS=[
+  {key:'H',letter:'H',icon:'&#127860;',label:'Hungry',
+   question:'When did you last eat a real meal or drink water?',
+   action:'Even a small snack with protein stabilizes blood glucose and directly improves prefrontal cortex function. Dehydration of just 1% impairs attention and working memory. Water first, then food. Set a 5-minute timer, eat something, then return.'},
+  {key:'A',letter:'A',icon:'&#128560;',label:'Anxious / Activated',
+   question:'Is there background anxiety, worry, or anticipatory stress running right now?',
+   action:'Name what\'s circling: write one sentence in Brain Dump. Then try a Physiological Sigh (double inhale through nose, long exhale through mouth) — the fastest documented way to lower heart rate and cortisol. The anxiety may still be there, but it won\'t be running at full volume.'},
+  {key:'L',letter:'L',icon:'&#128338;',label:'Late / Behind',
+   question:'Are you behind on something? Is time pressure creating a cognitive loop?',
+   action:'Lateness anxiety hijacks working memory. Write down the ONE thing you\'re behind on and just the next physical action. That offloads the loop from your brain to the page. If you\'re actually late — decide now: text ahead, or just go. Limbo is the most expensive mental state.'},
+  {key:'T',letter:'T',icon:'&#128564;',label:'Tired',
+   question:'How many hours of sleep last night? Is there accumulated fatigue this week?',
+   action:'If genuinely sleep-deprived, shift to maintenance tasks. A 10–20 minute nap (not longer — that causes grogginess) restores alertness more than caffeine without the crash. If napping isn\'t possible, cold water on your face or a 5-minute walk outside both produce measurable alertness improvements.'},
+  {key:'N',letter:'N+',icon:'&#128266;',label:'Noise / Sensory Load',
+   question:'Is the environment louder, brighter, or more chaotic than your nervous system can filter?',
+   action:'ADHD brains have reduced sensory gating — you can\'t filter background inputs as efficiently. This isn\'t willpower. Options: headphones with brown noise, move to a quieter space, reduce screen brightness, or face away from visual chaos. The 15 seconds to put in headphones routinely doubles focus duration for sensory-sensitive people.'},
+  {key:'L2',letter:'+',icon:'&#128267;',label:'Low Energy State',
+   question:'Is your energy crashed or flat — no motivation, foggy, depleted (not just tired)?',
+   action:'If it\'s 2–4pm, this is likely your natural cortisol trough. A 10-minute walk outside resets the cortisol curve best. If persistent across the day, check Energy & Mood and consider the Wellness Toolkit next.'},
+  {key:'T2',letter:'+',icon:'&#127777;',label:'Temperature',
+   question:'Are you too hot or cold? Is the room temperature uncomfortable?',
+   action:'Thermal discomfort is a continuous background stressor that depletes attentional resources without you realizing it. Optimal cognitive performance is 70–77°F. Add or remove a layer, adjust a thermostat, or move. This sounds trivial but is one of the most impactful and fastest environment fixes.'}
+];
+
+function openHaltModal(){
+  _haltChecked={};
+  document.getElementById('haltModal').classList.add('open');
+  _blurDashboard();
+  _renderHalt();
+}
+function closeHaltModal(){
+  document.getElementById('haltModal').classList.remove('open');
+  _unblurDashboard();
+}
+function _renderHalt(){
+  var body=document.getElementById('haltBody');
+  var html='<div class="halt-intro">A one-tap diagnostic for <strong>physical and environmental inputs</strong> that tank executive function before you know why. Tap each to expand, address it, and check it off.</div>';
+  HALT_ITEMS.forEach(function(item){
+    var isChecked=!!_haltChecked[item.key];
+    html+='<div class="halt-item"><div class="halt-item-header" onclick="haltToggle(\''+item.key+'\')">'
+      +'<div class="halt-item-icon">'+item.icon+'</div>'
+      +'<div class="halt-item-label">'+item.label+'</div>'
+      +'<span class="halt-item-letter">'+item.letter+'</span>'
+      +'<div class="halt-item-check'+(isChecked?' checked':'')+'">'+( isChecked?'&#10003;':'')+'</div>'
+      +'</div>'
+      +'<div class="halt-item-body" id="halt-body-'+item.key+'">'
+      +'<div class="halt-item-question">'+item.question+'</div>'
+      +'<div class="halt-item-action">'+item.action+'</div>'
+      +'<div style="margin-top:10px;">'
+      +'<button class="btn btn-sm'+(isChecked?' btn-accent':'')+'" onclick="haltCheck(event,\''+item.key+'\')">'
+      +(isChecked?'&#10003; Addressed':'Mark as Addressed')+'</button>'
+      +'</div></div></div>';
+  });
+  html+='<div class="halt-summary" id="haltSummary"></div>';
+  html+='<button class="halt-reset-btn" onclick="haltReset()">&#8634; Reset All</button>';
+  body.innerHTML=html;
+  _updateHaltSummary();
+}
+function haltToggle(key){var bd=document.getElementById('halt-body-'+key);if(bd)bd.classList.toggle('open');}
+function haltCheck(e,key){e.stopPropagation();_haltChecked[key]=!_haltChecked[key];_renderHalt();var bd=document.getElementById('halt-body-'+key);if(bd)bd.classList.add('open');_updateHaltSummary();}
+function _updateHaltSummary(){
+  var checked=Object.keys(_haltChecked).filter(function(k){return _haltChecked[k];}).length;
+  var total=HALT_ITEMS.length;
+  var el=document.getElementById('haltSummary');if(!el)return;
+  if(checked===0){el.classList.remove('visible');el.textContent='';return;}
+  el.classList.add('visible');
+  var remaining=total-checked;
+  if(remaining===0){el.innerHTML='<strong style="color:var(--green);">&#10003; All items addressed.</strong> Physical/environmental state is clear. If still stuck, the issue is likely task initiation — try the Stuck? panel or Brain Dump.';}
+  else{el.innerHTML='<strong>'+checked+' of '+total+' addressed.</strong> '+remaining+' item'+(remaining!==1?'s':'')+' still to check.';}
+}
+function haltReset(){_haltChecked={};_renderHalt();}
+
+// ═══════════════════════════════════════
+// TIME LEFT PRODUCTIVE WINDOW (5am–10pm)
+// ═══════════════════════════════════════
+var TL_START_H=5,TL_END_H=22;
+function updateTimeLeft(){
+  var now=new Date();
+  var nowMin=now.getHours()*60+now.getMinutes()+now.getSeconds()/60;
+  var startMin=TL_START_H*60,endMin=TL_END_H*60,totalMin=endMin-startMin;
+  var valEl=document.getElementById('timeLeftVal');
+  var barEl=document.getElementById('timeLeftBar');
+  if(!valEl)return;
+  if(nowMin<startMin){
+    var till=startMin-nowMin;
+    valEl.textContent=Math.floor(till/60)+'h '+Math.round(till%60)+'m';
+    valEl.className='time-left-value';
+    if(barEl)barEl.style.width='100%';
+  }else if(nowMin>=endMin){
+    valEl.textContent='Day done';valEl.className='time-left-value low';
+    if(barEl)barEl.style.width='0%';
+  }else{
+    var rem=endMin-nowMin;
+    var hh=Math.floor(rem/60),mm=Math.floor(rem%60);
+    valEl.textContent=hh+'h '+(mm<10?'0':'')+mm+'m';
+    if(barEl)barEl.style.width=((rem/totalMin)*100)+'%';
+    valEl.className='time-left-value'+(rem<=60?' low':rem<=180?' warn':'');
+  }
+}
+
+// ═══════════════════════════════════════
+// TASK TIMER (elapsed stopwatch)
+// ═══════════════════════════════════════
+var _ttRunning=false,_ttElapsed=0,_ttStart=null,_ttTick=null;
+function _ttFmt(ms){var s=Math.floor(ms/1000),h=Math.floor(s/3600);s=s%3600;var m=Math.floor(s/60);s=s%60;return h+':'+(m<10?'0':'')+m+':'+(s<10?'0':'')+s;}
+function ttStart(){
+  if(_ttRunning)return;
+  _ttRunning=true;_ttStart=Date.now()-_ttElapsed;
+  _ttTick=setInterval(function(){
+    _ttElapsed=Date.now()-_ttStart;
+    var el=document.getElementById('ttDisplay');if(el){el.textContent=_ttFmt(_ttElapsed);el.className='task-timer-display running';}
+  },500);
+  var btn=document.getElementById('ttStartBtn');if(btn)btn.textContent='\u23F8';
+}
+function ttPause(){
+  if(!_ttRunning)return;
+  _ttRunning=false;clearInterval(_ttTick);_ttTick=null;
+  _ttElapsed=Date.now()-_ttStart;
+  var el=document.getElementById('ttDisplay');if(el)el.className='task-timer-display';
+  var btn=document.getElementById('ttStartBtn');if(btn)btn.textContent='\u25B6';
+}
+function ttReset(){
+  ttPause();_ttElapsed=0;_ttStart=null;
+  var el=document.getElementById('ttDisplay');if(el){el.textContent='0:00:00';el.className='task-timer-display';}
+  var btn=document.getElementById('ttStartBtn');if(btn)btn.textContent='\u25B6';
+}
+
 function openEnergyModal(){
   document.getElementById('energyModal').classList.add('open');
   _blurDashboard();
@@ -3997,7 +4197,7 @@ function showExerciseInfo(exId){
 
 async function initApp(){
 await load();
-initPanelVisibility();applyPanelOrder();applyPanelVisibility();updateLockUI();updateClock();setInterval(updateClock,1000);updateTimerDisplay();
+initPanelVisibility();applyPanelOrder();applyPanelVisibility();updateLockUI();updateClock();updateTimeLeft();setInterval(updateClock,1000);setInterval(updateTimeLeft,30000);updateTimerDisplay();
 renderProjects();renderReminders();renderThoughts();renderNotes();renderRoutines();renderTaskList();checkDailyRoutineReset();newDecisionPrompt();initDragDrop();
 if(_isMobile()){showMobileHome();}else{document.querySelector('.header')&&document.querySelector('.header').classList.add('mobile-visible');}
 if(state.energy){const c=document.querySelectorAll('#energyPills .em-pill');const m=['high','good','low','crashed'];const i=m.indexOf(state.energy);if(i>=0)c[i].classList.add('selected');}
