@@ -370,6 +370,42 @@ body.unlocked .date-editable:hover{border-bottom-color:var(--accent);background:
 .share-inbox-dismiss{position:absolute;top:10px;right:12px;background:none;border:none;color:var(--text-faint);font-size:18px;cursor:pointer;line-height:1;padding:2px;}
 .share-inbox-dismiss:hover{color:var(--text);}
 .proj-name-row{display:flex;align-items:center;gap:4px;}
+/* Collapsible add-project */
+.proj-add-details{border-top:1px solid var(--border);margin-top:4px;}
+.proj-add-summary{font-size:12px;font-weight:600;color:var(--text-faint);cursor:pointer;padding:8px 14px;list-style:none;display:flex;align-items:center;gap:6px;transition:color 0.15s;}
+.proj-add-summary::-webkit-details-marker{display:none;}
+.proj-add-summary:hover{color:var(--accent);}
+.proj-add-details[open] .proj-add-summary{color:var(--accent);}
+.proj-add-details .add-row{padding:0 14px 12px;}
+/* Maximize button on project card */
+.proj-maximize-btn{background:none;border:none;color:var(--text-faint);cursor:pointer;font-size:13px;padding:2px 5px;line-height:1;transition:color 0.15s;}
+.proj-maximize-btn:hover{color:var(--accent);}
+/* Project detail modal */
+.proj-modal-overlay{position:fixed;inset:0;z-index:810;display:flex;align-items:center;justify-content:center;visibility:hidden;opacity:0;transition:opacity 0.3s ease,visibility 0.3s ease;}
+.proj-modal-overlay.open{visibility:visible;opacity:1;}
+.proj-modal-backdrop{position:absolute;inset:0;background:rgba(10,9,8,0.55);backdrop-filter:blur(6px);-webkit-backdrop-filter:blur(6px);}
+.proj-modal-panel{position:relative;z-index:1;background:var(--surface);border:1px solid var(--border);border-radius:var(--radius);width:min(900px,96vw);max-height:92vh;display:flex;flex-direction:column;overflow:hidden;box-shadow:0 24px 60px rgba(0,0,0,0.6);animation:journalSlideIn 0.3s cubic-bezier(0.22,1,0.36,1) both;}
+.proj-modal-header{display:flex;align-items:flex-start;justify-content:space-between;padding:18px 22px 14px;border-bottom:1px solid var(--border);flex-shrink:0;}
+.proj-modal-title{font-family:'Fraunces',serif;font-size:22px;font-weight:600;color:var(--accent);}
+.proj-modal-meta{font-size:12px;color:var(--text-dim);margin-top:3px;display:flex;gap:10px;flex-wrap:wrap;}
+.proj-modal-body{flex:1;overflow-y:auto;padding:18px 22px;}
+.proj-modal-section{margin-bottom:20px;}
+.proj-modal-section-title{font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:1px;color:var(--text-faint);margin-bottom:10px;display:flex;align-items:center;gap:6px;}
+.proj-modal-section-title::after{content:'';flex:1;height:1px;background:var(--border);}
+.proj-modal-close{background:none;border:none;color:var(--text-faint);cursor:pointer;font-size:18px;padding:4px 6px;line-height:1;transition:color 0.15s;}
+.proj-modal-close:hover{color:var(--text);}
+/* subtask rows in modal */
+.pmd-subtask{display:flex;align-items:center;gap:8px;padding:7px 0;border-bottom:1px solid var(--border);}
+.pmd-subtask:last-child{border-bottom:none;}
+.pmd-st-check{width:18px;height:18px;border-radius:4px;border:1.5px solid var(--border);display:flex;align-items:center;justify-content:center;font-size:11px;flex-shrink:0;cursor:pointer;}
+.pmd-st-check.checked{background:var(--green-dim);border-color:var(--green);color:var(--green);}
+.pmd-st-name{flex:1;font-size:13px;color:var(--text);}
+.pmd-st-name.done{text-decoration:line-through;color:var(--text-faint);}
+/* task/note/reminder rows in modal */
+.pmd-item{padding:8px 10px;background:var(--surface-raised);border:1px solid var(--border);border-radius:var(--radius-sm);margin-bottom:7px;}
+.pmd-item-label{font-size:13px;font-weight:600;color:var(--text);margin-bottom:2px;}
+.pmd-item-meta{font-size:11px;color:var(--text-faint);}
+.pmd-item-body{font-size:12px;color:var(--text-dim);margin-top:4px;line-height:1.55;white-space:pre-wrap;word-break:break-word;}
 .proj-edit-btn{background:none;border:none;color:var(--text-faint);cursor:pointer;font-size:12px;padding:1px 4px;line-height:1;opacity:0.6;transition:opacity 0.15s;}
 .proj-edit-btn:hover{opacity:1;color:var(--accent);}
 .proj-linked{margin-top:8px;border-top:1px solid var(--border);padding-top:8px;}
@@ -717,7 +753,7 @@ body.unlocked .date-editable:hover{border-bottom-color:var(--accent);background:
 <div class="header">
   <!-- Left: Time Left productive window -->
   <div class="time-left-wrap" id="timeLeftWrap">
-    <div class="time-left-label">Time Left</div>
+    <div class="time-left-label" id="timeLeftLabel">Time Left</div>
     <div class="time-left-value" id="timeLeftVal">--:--</div>
     <div class="time-left-bar"><div class="time-left-bar-fill" id="timeLeftBar" style="width:100%"></div></div>
   </div>
@@ -743,8 +779,10 @@ body.unlocked .date-editable:hover{border-bottom-color:var(--accent);background:
 <div class="panel-content" id="pc_projects">
 <div class="project-list" id="projectList"></div>
 </div>
-<div class="section-label" style="margin-top:12px;">Add Project</div>
-<div class="add-row"><input type="text" id="newProjName" placeholder="Project name..."><button class="mic-btn" id="projMicBtn" onclick="toggleMic('newProjName','projMicBtn')" title="Voice input">&#127908;</button><input type="date" id="newProjDue"><button class="btn btn-accent" onclick="addProject()">+</button></div></div>
+<details class="proj-add-details">
+  <summary class="proj-add-summary">&#43; Add Project</summary>
+  <div class="add-row" style="margin-top:8px;"><input type="text" id="newProjName" placeholder="Project name..."><button class="mic-btn" id="projMicBtn" onclick="toggleMic('newProjName','projMicBtn')" title="Voice input">&#127908;</button><input type="date" id="newProjDue"><button class="btn btn-accent" onclick="addProject()">+</button></div>
+</details></div>
 
 <!-- 2. REMINDERS -->
 <div class="panel" data-panel="reminders" data-nav="reminders">
@@ -1014,6 +1052,21 @@ body.unlocked .date-editable:hover{border-bottom-color:var(--accent);background:
       <div id="spinResultArea"></div>
     </div>
   </div>
+</div>
+</div>
+
+<!-- PROJECT DETAIL MODAL -->
+<div class="proj-modal-overlay" id="projDetailModal">
+<div class="proj-modal-backdrop" onclick="closeProjectModal()"></div>
+<div class="proj-modal-panel">
+  <div class="proj-modal-header">
+    <div>
+      <div class="proj-modal-title" id="pmdTitle"></div>
+      <div class="proj-modal-meta" id="pmdMeta"></div>
+    </div>
+    <button class="proj-modal-close" onclick="closeProjectModal()">&#10005;</button>
+  </div>
+  <div class="proj-modal-body" id="pmdBody"></div>
 </div>
 </div>
 
@@ -1720,7 +1773,7 @@ if(linkedTasks.length||linkedNotes.length||linkedReminders.length){
   linkedHtml+='</div>';
 }
 
-return '<div class="project-card"><div class="proj-header" onclick="toggleProjectExpand(\''+p.id+'\')"><span class="proj-expand '+(p.expanded?'open':'')+'">\u25B6</span><div class="proj-info"><div class="proj-name-row"><span class="proj-name editable" id="pn_'+p.id+'">'+esc(p.name)+'</span><button class="proj-edit-btn" onclick="event.stopPropagation();promptEditProject(\''+p.id+'\')" title="Rename project">&#9998;</button></div><div class="proj-meta"><span>'+done+'/'+total+' tasks</span>'+(linkedNotes.length?'<span>'+linkedNotes.length+' note'+(linkedNotes.length!==1?'s':'')+' </span>':'')+(linkedReminders.length?'<span>'+linkedReminders.length+' reminder'+(linkedReminders.length!==1?'s':'')+' </span>':'')+(p.due?'<span class="date-editable '+(ov?'overdue':'')+'" id="pd_'+p.id+'">Ends: '+fmtDate(p.due)+(ov?' \u26A0':'')+'</span>':'<span class="date-editable" id="pd_'+p.id+'" style="color:var(--text-faint);">+ set date</span>')+(ovc>0?'<span class="overdue">'+ovc+' overdue</span>':'')+'</div></div><div style="display:flex;gap:4px;" onclick="event.stopPropagation()"><span class="st-btn st-cal" onclick="exportProjectICS(\''+p.id+'\')">\u{1F4C5}</span><span class="proj-delete" onclick="deleteProject(\''+p.id+'\')">\u2715</span></div></div><div class="subtask-area '+(p.expanded?'open':'')+'"><div class="subtask-list">'+(sorted.length===0?'<div class="empty-state" style="padding:10px;">No subtasks yet.</div>':sorted.map(st=>{const so=st.due&&st.due<today&&!st.done;return '<div class="subtask-item '+(st.done?'st-done':'')+'"><div class="st-check '+(st.done?'checked':'')+'" onclick="toggleSubtask(\''+p.id+"','"+st.id+'\')">'+(st.done?'\u2713':'')+'</div><span class="st-name editable" id="sn_'+st.id+'"><span class="priority-dot priority-'+st.priority+'"></span>'+esc(st.name)+'</span>'+(st.due?'<span class="st-due date-editable '+(so?'overdue':'')+'" id="sd_'+st.id+'">'+(so?'\u26A0 ':'')+fmtDate(st.due)+'</span>':'<span class="st-due date-editable" id="sd_'+st.id+'" style="color:var(--text-faint);">+ date</span>')+'<div class="st-actions">'+(st.timeEst?'<span class="tl-time-badge">'+fmtTimeEst(st.timeEst)+'</span>':'')+'<span class="st-btn st-cal" onclick="exportSubtaskICS(\''+p.id+"','"+st.id+'\')">\u{1F4C5}</span><span class="st-btn st-del" onclick="deleteSubtask(\''+p.id+"','"+st.id+'\')">\u2715</span></div></div>';}).join(''))+linkedHtml+'</div><div class="subtask-add"><input type="text" id="stN_'+p.id+'" placeholder="New subtask..." onkeydown="if(event.key===\'Enter\')addSubtask(\''+p.id+'\')"><button class="mic-btn" id="stMic_'+p.id+'" onclick="toggleMic(\'stN_'+p.id+'\',\'stMic_'+p.id+'\')" title="Voice input">&#127908;</button><select id="stP_'+p.id+'"><option value="low">Low</option><option value="med" selected>Med</option><option value="high">High</option></select><select id="stT_'+p.id+'" class="time-est-select"><option value="">Time?</option><option value="30">30m</option><option value="60">1hr</option><option value="90">1.5hr</option><option value="120">2hr</option><option value="180">3hr</option><option value="240">4hr</option><option value="999">4hr+</option></select><input type="date" id="stD_'+p.id+'"><button class="btn btn-accent btn-sm" onclick="addSubtask(\''+p.id+'\')">+</button></div></div></div>';}).join('');
+return '<div class="project-card"><div class="proj-header" onclick="toggleProjectExpand(\''+p.id+'\')"><span class="proj-expand '+(p.expanded?'open':'')+'">\u25B6</span><div class="proj-info"><div class="proj-name-row"><span class="proj-name editable" id="pn_'+p.id+'">'+esc(p.name)+'</span><button class="proj-edit-btn" onclick="event.stopPropagation();promptEditProject(\''+p.id+'\')" title="Rename project">&#9998;</button></div><div class="proj-meta"><span>'+done+'/'+total+' tasks</span>'+(linkedNotes.length?'<span>'+linkedNotes.length+' note'+(linkedNotes.length!==1?'s':'')+' </span>':'')+(linkedReminders.length?'<span>'+linkedReminders.length+' reminder'+(linkedReminders.length!==1?'s':'')+' </span>':'')+(p.due?'<span class="date-editable '+(ov?'overdue':'')+'" id="pd_'+p.id+'">Ends: '+fmtDate(p.due)+(ov?' \u26A0':'')+'</span>':'<span class="date-editable" id="pd_'+p.id+'" style="color:var(--text-faint);">+ set date</span>')+(ovc>0?'<span class="overdue">'+ovc+' overdue</span>':'')+'</div></div><div style="display:flex;gap:4px;" onclick="event.stopPropagation()"><span class="st-btn st-cal" onclick="exportProjectICS(\''+p.id+'\')">\u{1F4C5}</span><span class="<button class=\"proj-maximize-btn\" onclick=\"event.stopPropagation();openProjectModal(\\\''+p.id+'\\\')\" title=\"Open full view\">&#9974;</button>proj-delete" onclick="deleteProject(\''+p.id+'\')">\u2715</span></div></div><div class="subtask-area '+(p.expanded?'open':'')+'"><div class="subtask-list">'+(sorted.length===0?'<div class="empty-state" style="padding:10px;">No subtasks yet.</div>':sorted.map(st=>{const so=st.due&&st.due<today&&!st.done;return '<div class="subtask-item '+(st.done?'st-done':'')+'"><div class="st-check '+(st.done?'checked':'')+'" onclick="toggleSubtask(\''+p.id+"','"+st.id+'\')">'+(st.done?'\u2713':'')+'</div><span class="st-name editable" id="sn_'+st.id+'"><span class="priority-dot priority-'+st.priority+'"></span>'+esc(st.name)+'</span>'+(st.due?'<span class="st-due date-editable '+(so?'overdue':'')+'" id="sd_'+st.id+'">'+(so?'\u26A0 ':'')+fmtDate(st.due)+'</span>':'<span class="st-due date-editable" id="sd_'+st.id+'" style="color:var(--text-faint);">+ date</span>')+'<div class="st-actions">'+(st.timeEst?'<span class="tl-time-badge">'+fmtTimeEst(st.timeEst)+'</span>':'')+'<span class="st-btn st-cal" onclick="exportSubtaskICS(\''+p.id+"','"+st.id+'\')">\u{1F4C5}</span><span class="st-btn st-del" onclick="deleteSubtask(\''+p.id+"','"+st.id+'\')">\u2715</span></div></div>';}).join(''))+linkedHtml+'</div><div class="subtask-add"><input type="text" id="stN_'+p.id+'" placeholder="New subtask..." onkeydown="if(event.key===\'Enter\')addSubtask(\''+p.id+'\')"><button class="mic-btn" id="stMic_'+p.id+'" onclick="toggleMic(\'stN_'+p.id+'\',\'stMic_'+p.id+'\')" title="Voice input">&#127908;</button><select id="stP_'+p.id+'"><option value="low">Low</option><option value="med" selected>Med</option><option value="high">High</option></select><select id="stT_'+p.id+'" class="time-est-select"><option value="">Time?</option><option value="30">30m</option><option value="60">1hr</option><option value="90">1.5hr</option><option value="120">2hr</option><option value="180">3hr</option><option value="240">4hr</option><option value="999">4hr+</option></select><input type="date" id="stD_'+p.id+'"><button class="btn btn-accent btn-sm" onclick="addSubtask(\''+p.id+'\')">+</button></div></div></div>';}).join('');
 document.getElementById('projCount').textContent=state.projects.length;
 // Subtask name editing (still works when unlocked)
 state.projects.forEach(p=>{p.subtasks.forEach(st=>{const se=document.getElementById('sn_'+st.id);if(se)makeEditable(se,v=>{editSubtaskName(p.id,st.id,v.trim());});});});
@@ -3270,6 +3323,126 @@ function _spinShowResult(finalAngle){
 
 
 // ═══════════════════════════════════════
+// PROJECT DETAIL MODAL
+// ═══════════════════════════════════════
+function openProjectModal(pid){
+  var p=state.projects.find(function(pr){return pr.id===pid;});
+  if(!p)return;
+  document.getElementById('projDetailModal').classList.add('open');
+  _blurDashboard();
+  var today=todayStr();
+  var done=p.subtasks.filter(function(s){return s.done;}).length;
+  var total=p.subtasks.length;
+  var ov=p.due&&p.due<today;
+  // Header
+  document.getElementById('pmdTitle').textContent=p.name;
+  var metaParts=[(done+'/'+total+' subtasks')];
+  if(p.due)metaParts.push((ov?'⚠ OVERDUE: ':'Ends: ')+fmtDate(p.due));
+  var linkedNotes=(state.notes||[]).filter(function(n){return n.projectId===pid;});
+  var linkedTasks=(state.tasks||[]).filter(function(t){return t.projectId===pid;});
+  var linkedReminders=(state.reminders||[]).filter(function(r){return r.projectId===pid;});
+  if(linkedTasks.length)metaParts.push(linkedTasks.length+' task'+(linkedTasks.length!==1?'s':''));
+  if(linkedNotes.length)metaParts.push(linkedNotes.length+' note'+(linkedNotes.length!==1?'s':''));
+  if(linkedReminders.length)metaParts.push(linkedReminders.length+' reminder'+(linkedReminders.length!==1?'s':''));
+  document.getElementById('pmdMeta').textContent=metaParts.join(' · ');
+
+  var html='';
+
+  // Subtasks
+  html+='<div class="proj-modal-section"><div class="proj-modal-section-title">&#128203; Subtasks</div>';
+  if(p.subtasks.length===0){html+='<div style="font-size:13px;color:var(--text-faint);padding:6px 0;">No subtasks yet.</div>';}
+  else{
+    var sorted=[...p.subtasks].sort(function(a,b){
+      if(a.done!==b.done)return a.done?1:-1;
+      if(a.due&&b.due)return a.due.localeCompare(b.due);
+      if(a.due)return -1;if(b.due)return 1;return 0;
+    });
+    html+=sorted.map(function(st){
+      var so=st.due&&st.due<today&&!st.done;
+      return '<div class="pmd-subtask">'
+        +'<div class="pmd-st-check'+(st.done?' checked':'')+'" onclick="pmdToggleSubtask(\''+pid+'\',\''+st.id+'\')">'+(st.done?'✓':'')+'</div>'
+        +'<span class="pmd-st-name'+(st.done?' done':'')+'">'
+        +'<span class="priority-dot priority-'+( st.priority||'med')+'"></span>'+esc(st.name)+'</span>'
+        +(st.due?'<span class="st-due'+(so?' overdue':'')+'">'+( so?'⚠ ':'')+fmtDate(st.due)+'</span>':'')
+        +(st.timeEst?'<span class="tl-time-badge">'+fmtTimeEst(st.timeEst)+'</span>':'')
+        +'</div>';
+    }).join('');
+  }
+  html+='</div>';
+
+  // Linked tasks
+  if(linkedTasks.length){
+    html+='<div class="proj-modal-section"><div class="proj-modal-section-title">&#128203; Linked Tasks</div>';
+    html+=linkedTasks.map(function(t){
+      return '<div class="pmd-item"><div class="pmd-item-label">'
+        +'<span class="priority-dot priority-'+(t.priority||'med')+'"></span>'
+        +esc(t.name)+(t.done?' <span style="color:var(--text-faint);font-size:11px;">(done)</span>':'')
+        +'</div>'+(t.due?'<div class="pmd-item-meta">Due: '+fmtDate(t.due)+'</div>':'')+'</div>';
+    }).join('');
+    html+='</div>';
+  }
+
+  // Linked reminders
+  if(linkedReminders.length){
+    html+='<div class="proj-modal-section"><div class="proj-modal-section-title">&#128276; Reminders</div>';
+    html+=linkedReminders.map(function(r){
+      var rov=r.date&&r.date<today;
+      return '<div class="pmd-item"><div class="pmd-item-label">'+esc(r.text)+'</div>'
+        +(r.date?'<div class="pmd-item-meta'+(rov?' overdue':'')+'">'+( rov?'⚠ Overdue: ':'')+fmtDate(r.date)+(r.time?' at '+fmtTime(r.time):'')+'</div>':'')+'</div>';
+    }).join('');
+    html+='</div>';
+  }
+
+  // Linked notes
+  if(linkedNotes.length){
+    html+='<div class="proj-modal-section"><div class="proj-modal-section-title">&#128221; Notes</div>';
+    html+=linkedNotes.map(function(n){
+      return '<div class="pmd-item"><div class="pmd-item-label">'+esc(n.label||'Note')+'</div>'
+        +(n.date?'<div class="pmd-item-meta">'+n.date+(n.time?' · '+n.time:'')+'</div>':'')
+        +(n.body?'<div class="pmd-item-body">'+esc(n.body)+'</div>':'')+'</div>';
+    }).join('');
+    html+='</div>';
+  }
+
+  // Quick add subtask
+  html+='<div class="proj-modal-section"><div class="proj-modal-section-title">&#43; Add Subtask</div>'
+    +'<div style="display:flex;gap:6px;flex-wrap:wrap;">'
+    +'<input type="text" id="pmdNewSt" placeholder="Subtask name..." style="flex:1;min-width:140px;">'
+    +'<select id="pmdNewPri" style="font-size:12px;padding:4px 6px;background:var(--surface-raised);border:1px solid var(--border);border-radius:var(--radius-sm);font-family:inherit;color:var(--text-dim);">'
+    +'<option value="low">Low</option><option value="med" selected>Med</option><option value="high">High</option></select>'
+    +'<input type="date" id="pmdNewDate" style="font-size:12px;">'
+    +'<button class="btn btn-accent btn-sm" onclick="pmdAddSubtask(\''+pid+'\')">+ Add</button>'
+    +'</div></div>';
+
+  document.getElementById('pmdBody').innerHTML=html;
+}
+
+function closeProjectModal(){
+  document.getElementById('projDetailModal').classList.remove('open');
+  _unblurDashboard();
+}
+
+function pmdToggleSubtask(pid,sid){
+  var p=state.projects.find(function(pr){return pr.id===pid;});
+  var s=p&&p.subtasks.find(function(st){return st.id===sid;});
+  if(s)s.done=!s.done;
+  save();renderProjects();renderTaskList();
+  openProjectModal(pid); // refresh modal
+}
+
+function pmdAddSubtask(pid){
+  var nm=document.getElementById('pmdNewSt').value.trim();
+  if(!nm)return;
+  var p=state.projects.find(function(pr){return pr.id===pid;});
+  if(!p)return;
+  p.subtasks.push({id:'st'+Date.now(),name:nm,due:document.getElementById('pmdNewDate').value,
+    priority:document.getElementById('pmdNewPri').value,timeEst:'',done:false});
+  save();renderProjects();renderTaskList();
+  openProjectModal(pid); // refresh modal
+  toast('Subtask added');
+}
+
+// ═══════════════════════════════════════
 // HALT+ SENSORY CHECK
 // ═══════════════════════════════════════
 var _haltChecked={};
@@ -3349,28 +3522,33 @@ function haltReset(){_haltChecked={};_renderHalt();}
 // ═══════════════════════════════════════
 // TIME LEFT PRODUCTIVE WINDOW (5am–10pm)
 // ═══════════════════════════════════════
-var TL_START_H=5,TL_END_H=22;
+var TL_START_H=5,TL_END_H=20;
 function updateTimeLeft(){
   var now=new Date();
   var nowMin=now.getHours()*60+now.getMinutes()+now.getSeconds()/60;
   var startMin=TL_START_H*60,endMin=TL_END_H*60,totalMin=endMin-startMin;
   var valEl=document.getElementById('timeLeftVal');
   var barEl=document.getElementById('timeLeftBar');
+  var lblEl=document.getElementById('timeLeftLabel');
   if(!valEl)return;
   if(nowMin<startMin){
     var till=startMin-nowMin;
     valEl.textContent=Math.floor(till/60)+'h '+Math.round(till%60)+'m';
     valEl.className='time-left-value';
     if(barEl)barEl.style.width='100%';
+    if(lblEl)lblEl.textContent='Time Left';
   }else if(nowMin>=endMin){
-    valEl.textContent='Day done';valEl.className='time-left-value low';
+    valEl.textContent='Rest';
+    valEl.className='time-left-value low';
     if(barEl)barEl.style.width='0%';
+    if(lblEl)lblEl.textContent='Time to Rest';
   }else{
     var rem=endMin-nowMin;
     var hh=Math.floor(rem/60),mm=Math.floor(rem%60);
     valEl.textContent=hh+'h '+(mm<10?'0':'')+mm+'m';
     if(barEl)barEl.style.width=((rem/totalMin)*100)+'%';
     valEl.className='time-left-value'+(rem<=60?' low':rem<=180?' warn':'');
+    if(lblEl)lblEl.textContent='Time Left';
   }
 }
 
