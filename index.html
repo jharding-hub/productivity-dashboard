@@ -773,10 +773,10 @@ body.unlocked .date-editable:hover{border-bottom-color:var(--accent);background:
 <div class="dashboard" id="dashboard">
 
 <!-- 1. PROJECTS -->
-<div class="panel" data-panel="projects" data-nav="projects" style="display:flex;flex-direction:column;">
+<div class="panel" data-panel="projects" data-nav="projects">
 <div class="panel-header"><div class="panel-title"><span class="drag-handle">&#10495;</span><span class="icon">&#128194;</span> Projects</div>
 <div style="display:flex;gap:6px;align-items:center;"><span class="panel-badge" id="projCount">0</span><button class="expand-btn" onclick="toggleExpand(this)" title="Expand/collapse"><span class="expand-arrow">▼</span></button><button class="btn btn-sm btn-outlook" onclick="exportAllToICS()">&#128197; Export All</button></div></div>
-<div class="panel-content" id="pc_projects" style="flex:1;max-height:none;overflow-y:auto;">
+<div class="panel-content" id="pc_projects">
 <div class="project-list" id="projectList"></div>
 </div>
 <details class="proj-add-details">
