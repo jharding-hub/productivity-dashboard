@@ -644,6 +644,10 @@ body.unlocked .date-editable:hover{border-bottom-color:var(--accent);background:
 .wo-activity-options-title{font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:0.5px;color:#5a7a5a;margin-bottom:6px;}
 .wo-activity-option{font-size:12px;color:#2a6a3a;padding:3px 0;display:flex;align-items:flex-start;gap:6px;}
 .wo-activity-option::before{content:'•';color:#3a9a5a;font-weight:700;flex-shrink:0;}
+.wo-complete-section{margin-top:16px;padding-top:12px;border-top:2px solid #c8bfa8;text-align:center;}
+.wo-complete-label{display:inline-flex;align-items:center;gap:8px;font-size:14px;font-weight:600;color:#4a3e28;cursor:pointer;padding:8px 16px;background:#f5f3ed;border:1.5px solid #c8bfa8;border-radius:var(--radius-sm);transition:all 0.2s;}
+.wo-complete-label:hover{background:#eeebe3;border-color:#a89878;}
+.wo-complete-label input[type="checkbox"]{width:18px;height:18px;cursor:pointer;}
 .wo-cooldown{background:#f4f2ee;border:1px solid #c8bfa8;border-radius:var(--radius-sm);padding:10px 12px;}
 .wo-cooldown-item{font-size:12px;color:#2a2218;padding:3px 0;display:flex;align-items:center;gap:6px;}
 .wo-cooldown-item::before{content:'•';color:#1a7a3a;font-weight:700;}
@@ -1007,7 +1011,7 @@ body.unlocked .date-editable:hover{border-bottom-color:var(--accent);background:
 <div class="modal-blur-backdrop" onclick="closeWorkoutModal()"></div>
 <div class="modal-blur-panel" style="width:min(860px,96vw);max-height:92vh;">
   <div class="modal-blur-header">
-    <div class="modal-blur-title">&#127947; Workout</div>
+    <div class="modal-blur-title">&#127947; Workout<span class="panel-badge" id="completedWorkoutsCounter" style="margin-left:8px;background:var(--green-dim);color:var(--green);">0</span></div>
     <div style="display:flex;gap:10px;align-items:center;">
       <select id="woDaySelect" onchange="woSetDay(parseInt(this.value))" style="font-size:13px;padding:5px 10px;background:var(--surface-raised);border:1px solid var(--border);border-radius:var(--radius-sm);color:var(--text);font-family:inherit;cursor:pointer;outline:none;"></select>
       <button class="modal-blur-close" onclick="closeWorkoutModal()">&#10005;</button>
@@ -1412,7 +1416,7 @@ try {
 <!-- SCRIPT 3: APP LOGIC -->
 <script>
 // STATE
-let state={projects:[],reminders:[],thoughts:[],notes:[],moodLog:[],tasks:[],completedTasks:[],journal:[],journalPin:'',workoutLog:{},routines:{morning:[{id:'m1',name:'Hydrate \u2014 glass of water',done:false},{id:'m2',name:"Review today's calendar",done:false},{id:'m3',name:'Pick top 3 priorities',done:false},{id:'m4',name:'Quick workspace tidy',done:false}],evening:[{id:'e1',name:'Review what got done today',done:false},{id:'e2',name:"Brain dump tomorrow's thoughts",done:false},{id:'e3',name:"Set out tomorrow's essentials",done:false},{id:'e4',name:'Wind-down activity',done:false}],custom:[]},currentRoutineTab:'morning',energy:null,mood:null,panelOrder:['projects','reminders','time','tasklist','notes','brain','routines','wellness','decision','admin'],panelsLocked:true,lastRoutineReset:null,visiblePanels:{},knownPanels:[]};
+let state={projects:[],reminders:[],thoughts:[],notes:[],moodLog:[],tasks:[],completedTasks:[],journal:[],journalPin:'',workoutLog:{},completedWorkouts:[],routines:{morning:[{id:'m1',name:'Hydrate \u2014 glass of water',done:false},{id:'m2',name:"Review today's calendar",done:false},{id:'m3',name:'Pick top 3 priorities',done:false},{id:'m4',name:'Quick workspace tidy',done:false}],evening:[{id:'e1',name:'Review what got done today',done:false},{id:'e2',name:"Brain dump tomorrow's thoughts",done:false},{id:'e3',name:"Set out tomorrow's essentials",done:false},{id:'e4',name:'Wind-down activity',done:false}],custom:[]},currentRoutineTab:'morning',energy:null,mood:null,panelOrder:['projects','reminders','time','tasklist','notes','brain','routines','wellness','decision','admin'],panelsLocked:true,lastRoutineReset:null,visiblePanels:{},knownPanels:[]};
 
 // SYNC STATUS
 function setSyncStatus(status,label){const el=document.getElementById('syncStatus');if(!el)return;el.className='sync-status '+status;el.innerHTML='<span class="sync-dot"></span> '+label;}
@@ -1473,6 +1477,7 @@ async function load(){
   if(!state.journal)state.journal=[];if(!state.journalPin)state.journalPin='';
   if(!state.workoutLog)state.workoutLog={};
   if(!state.completedTasks)state.completedTasks=[];
+  if(!state.completedWorkouts)state.completedWorkouts=[];
   if(!state.panelOrder)state.panelOrder=['projects','reminders','time','tasklist','notes','brain','routines','wellness','decision','admin'];
   // Remove legacy 'energy' panel id from any saved order
   state.panelOrder=state.panelOrder.filter(id=>id!=='energy');
@@ -3874,6 +3879,7 @@ function openWorkoutModal(){
   document.getElementById('workoutModal').classList.add('open');
   _blurDashboard();
   renderWorkout();
+  updateCompletedWorkoutsCounter();
 }
 function closeWorkoutModal(){
   document.getElementById('workoutModal').classList.remove('open');
@@ -4184,52 +4190,42 @@ const WO_EXERCISES={
 
 // ── 3-Day Evidence-Based Whole-Body Program ───────────────────────────────
 // Basis: Schoenfeld et al. (2016) — twice-weekly frequency per muscle group optimal.
-// Each day trains upper AND lower body. Days alternate push/pull emphasis to allow
-// recovery while maintaining frequency. Non-competing supersets (Weakley 2017).
+// Each day trains upper AND lower body. Days alternate push/pull emphasis to allow recovery.
 const WO_PROGRAM=[
   {
     day:'A',name:'Push + Knee-Dominant',
     rationale:'Horizontal push + quad-dominant lower. Vertical push + unilateral. Tricep isolation.',
-    supersets:[
-      {id:'ss1',label:'Superset 1',col:'#1a6eb5',meta:'3 sets · 10–12 reps each · 3 min rest',
-       exA:{id:'db_bench',sets:'10–12',note:'Horizontal push'},
-       exB:{id:'goblet_squat',sets:'12–15',note:'Knee-dominant lower'}},
-      {id:'ss2',label:'Superset 2',col:'#157a5e',meta:'3 sets · 10–12 reps each · 3 min rest',
-       exA:{id:'db_shoulder_press',sets:'10–12',note:'Vertical push'},
-       exB:{id:'step_ups',sets:'10 each leg',note:'Unilateral quad/glute'}},
-      {id:'ss3',label:'Superset 3',col:'#7a3a9e',meta:'3 sets · 12–15 reps each · 3 min rest',
-       exA:{id:'db_tricep_ext',sets:'12–15',note:'Tricep long-head'},
-       exB:{id:'leg_press',sets:'12–15',note:'Bilateral quad load'}}
+    exercises:[
+      {id:'db_bench',sets:'3×10–12',rest:'90 sec',note:'Horizontal push'},
+      {id:'goblet_squat',sets:'3×12–15',rest:'90 sec',note:'Knee-dominant lower'},
+      {id:'db_shoulder_press',sets:'3×10–12',rest:'90 sec',note:'Vertical push'},
+      {id:'step_ups',sets:'3×10 each',rest:'90 sec',note:'Unilateral quad/glute'},
+      {id:'db_tricep_ext',sets:'3×12–15',rest:'60 sec',note:'Tricep long-head'},
+      {id:'leg_press',sets:'3×12–15',rest:'90 sec',note:'Bilateral quad load'}
     ]
   },
   {
     day:'B',name:'Pull + Hip-Dominant',
     rationale:'Vertical pull + hip-hinge posterior. Horizontal pull + unilateral lower. Rear delt + bicep.',
-    supersets:[
-      {id:'ss1',label:'Superset 1',col:'#1a6eb5',meta:'3 sets · 8–10 reps each · 3 min rest',
-       exA:{id:'pullups',sets:'max (5–10)',note:'Vertical pull'},
-       exB:{id:'rdl',sets:'10–12',note:'Hip-dominant posterior'}},
-      {id:'ss2',label:'Superset 2',col:'#157a5e',meta:'3 sets · 10 reps each side · 3 min rest',
-       exA:{id:'db_row',sets:'10 each side',note:'Horizontal pull'},
-       exB:{id:'bulgarian_split',sets:'10 each leg',note:'Unilateral posterior'}},
-      {id:'ss3',label:'Superset 3',col:'#7a3a9e',meta:'3 sets · 12–20 reps each · 3 min rest',
-       exA:{id:'face_pull',sets:'15–20',note:'Rear delt / rotator cuff'},
-       exB:{id:'db_bicep_curl',sets:'12–15',note:'Bicep isolation'}}
+    exercises:[
+      {id:'pullups',sets:'3×max',rest:'2 min',note:'Vertical pull'},
+      {id:'rdl',sets:'3×10–12',rest:'90 sec',note:'Hip-dominant posterior'},
+      {id:'db_row',sets:'3×10 each',rest:'90 sec',note:'Horizontal pull'},
+      {id:'bulgarian_split',sets:'3×10 each',rest:'90 sec',note:'Unilateral posterior'},
+      {id:'face_pull',sets:'3×15–20',rest:'60 sec',note:'Rear delt / rotator cuff'},
+      {id:'db_bicep_curl',sets:'3×12–15',rest:'60 sec',note:'Bicep isolation'}
     ]
   },
   {
     day:'C',name:'Full-Body Compound',
     rationale:'Hip hinge compound + upper chest. Horizontal pull + quad variation. Lateral delt + frontal plane lower.',
-    supersets:[
-      {id:'ss1',label:'Superset 1',col:'#1a6eb5',meta:'3 sets · 8–10 reps each · 3 min rest',
-       exA:{id:'db_deadlift',sets:'8–10',note:'Full compound hip hinge'},
-       exB:{id:'db_incline',sets:'10–12',note:'Upper chest push'}},
-      {id:'ss2',label:'Superset 2',col:'#157a5e',meta:'3 sets · 10–12 reps each · 3 min rest',
-       exA:{id:'cable_row',sets:'10–12',note:'Horizontal pull'},
-       exB:{id:'hack_squat',sets:'12–15',note:'Quad-dominant variation'}},
-      {id:'ss3',label:'Superset 3',col:'#7a3a9e',meta:'3 sets · 12 reps each · 3 min rest',
-       exA:{id:'lateral_raise',sets:'12–15',note:'Lateral delt isolation'},
-       exB:{id:'db_lateral_lunge',sets:'12 each side',note:'Frontal plane lower'}}
+    exercises:[
+      {id:'db_deadlift',sets:'3×8–10',rest:'2 min',note:'Full compound hip hinge'},
+      {id:'db_incline',sets:'3×10–12',rest:'90 sec',note:'Upper chest push'},
+      {id:'cable_row',sets:'3×10–12',rest:'90 sec',note:'Horizontal pull'},
+      {id:'hack_squat',sets:'3×12–15',rest:'90 sec',note:'Quad-dominant variation'},
+      {id:'lateral_raise',sets:'3×12–15',rest:'60 sec',note:'Lateral delt isolation'},
+      {id:'db_lateral_lunge',sets:'3×12 each',rest:'60 sec',note:'Frontal plane lower'}
     ]
   }
 ];
@@ -4320,6 +4316,11 @@ function _renderActivityDetail(a){
     +'<div class="wo-activity-name">'+a.name+'</div>'
     +'<div class="wo-activity-desc">'+a.desc+'</div>'
     +'<div class="wo-activity-options"><div class="wo-activity-options-title">How to do it well</div>'+optHtml+'</div>'
+    +'</div>'
+    +'<div class="wo-complete-section">'
+    +'<label class="wo-complete-label">'
+    +'<input type="checkbox" onclick="completeWorkout(\'recovery\','+WO_ACTIVE_DAY+')"> ✓ Recovery Completed'
+    +'</label>'
     +'</div>';
 }
 
@@ -4359,17 +4360,28 @@ function _renderLiftDay(){
   var html='<div class="wo-section"><div class="wo-section-title">Warmup (10 min)</div>'
     +'<div class="wo-cooldown"><div class="wo-cooldown-item">Treadmill walk at warmup pace — 10 minutes</div></div></div>';
   html+='<div class="wo-day-rationale"><strong>Day '+prog.day+': '+prog.name+'</strong><br>'+prog.rationale+'</div>';
-  prog.supersets.forEach(function(ss){
-    html+='<div class="wo-section"><div class="wo-superset">'
-      +'<div class="wo-superset-header"><span class="wo-superset-label" style="color:'+ss.col+';">'+ss.label+'</span><span class="wo-superset-meta">'+ss.meta+'</span></div>';
-    html+=_renderExercise(ss.exA,ss.id+'_a');
-    html+='<div style="text-align:center;padding:4px 0;"><span class="wo-rest-badge">&#9202; 3 min rest between sets</span></div>';
-    html+=_renderExercise(ss.exB,ss.id+'_b');
-    html+='</div></div>';
+  
+  // Render all 6 exercises as simple list
+  html+='<div class="wo-section"><div class="wo-section-title">Today\'s Exercises</div>';
+  prog.exercises.forEach(function(ex,idx){
+    html+=_renderExercise(ex,'ex_'+idx);
+    if(idx<prog.exercises.length-1){
+      html+='<div style="text-align:center;padding:8px 0;"><span class="wo-rest-badge">&#9202; '+ex.rest+' rest</span></div>';
+    }
   });
+  html+='</div>';
+  
   html+='<div class="wo-section"><div class="wo-section-title">Cooldown (5–10 min)</div><div class="wo-cooldown">';
   WO_COOLDOWN.forEach(function(s){html+='<div class="wo-cooldown-item">'+s+'</div>';});
   html+='</div></div>';
+  
+  // Add completion checkbox
+  html+='<div class="wo-complete-section">'
+    +'<label class="wo-complete-label">'
+    +'<input type="checkbox" onclick="completeWorkout(\'lift\','+progIdx+')"> ✓ Workout Completed'
+    +'</label>'
+    +'</div>';
+  
   return html;
 }
 
@@ -4383,7 +4395,7 @@ function _renderExercise(ex,slotId){
     +'<select class="wo-ex-select" data-primary="'+ex.id+'" onchange="woExChanged(this)">'+opts+'</select>'
     +'<button class="btn btn-sm" onclick="showExerciseInfo(this.closest(\'.wo-exercise\').querySelector(\'.wo-ex-select\').value)" style="font-size:11px;padding:3px 9px;flex-shrink:0;">&#9432; How-to</button>'
     +'</div>'
-    +'<div class="wo-ex-note">'+ex.sets+' reps &bull; '+ex.note+'</div>'
+    +'<div class="wo-ex-note">'+ex.sets+' &bull; '+ex.note+'</div>'
     +'<div class="wo-log-row">'
     +'<span class="wo-log-label">Log:</span>'
     +'<input class="wo-log-input" type="number" inputmode="numeric" placeholder="sets" value="'+esc(log.sets||'')+'" oninput="woLog(this.closest(\'.wo-exercise\').querySelector(\'.wo-ex-select\').value,\'sets\',this.value)" title="Sets done">'
@@ -4430,6 +4442,40 @@ function showExerciseInfo(exId){
   document.getElementById('modalOverlay').classList.add('show');
 }
 
+function completeWorkout(type,dayIndex){
+  var timestamp=new Date().toISOString();
+  var dayLabel=WO_DAYS[WO_ACTIVE_DAY]?WO_DAYS[WO_ACTIVE_DAY].label:'Unknown';
+  var workoutName='';
+  if(type==='lift'){
+    var prog=WO_PROGRAM[dayIndex];
+    workoutName='Day '+prog.day+': '+prog.name;
+  }else if(type==='recovery'){
+    workoutName=dayLabel+' — Active Recovery';
+  }
+  
+  var record={
+    type:type,
+    dayIndex:dayIndex,
+    dayLabel:dayLabel,
+    workoutName:workoutName,
+    timestamp:timestamp,
+    date:timestamp.split('T')[0]
+  };
+  
+  state.completedWorkouts.push(record);
+  save();
+  
+  // Show confirmation and update counter
+  alert('✓ Workout completed!\n\n'+workoutName+'\n'+new Date(timestamp).toLocaleString());
+  updateCompletedWorkoutsCounter();
+}
+
+function updateCompletedWorkoutsCounter(){
+  var counter=document.getElementById('completedWorkoutsCounter');
+  if(counter){
+    counter.textContent=state.completedWorkouts.length;
+  }
+}
 
 
 
