@@ -709,10 +709,10 @@ body.unlocked .date-editable:hover{border-bottom-color:var(--accent);background:
 .toolkit-spinner:hover{border-color:#e53935;color:#e53935;background:rgba(229,57,53,0.12);}
 .toolkit-music:hover{border-color:#c77dba;color:#c77dba;background:rgba(199,125,186,0.12);}
 .toolkit-music.playing{border-color:#c77dba;background:rgba(199,125,186,0.08);color:#c77dba;}
-.music-controls{display:flex;gap:6px;align-items:center;justify-content:center;margin-top:4px;}
-.music-ctrl-btn{background:rgba(199,125,186,0.18);border:1px solid #c77dba;color:#c77dba;width:26px;height:26px;border-radius:50%;font-size:11px;cursor:pointer;display:inline-flex;align-items:center;justify-content:center;transition:all 0.15s;padding:0;line-height:1;}
-.music-ctrl-btn:hover{background:#c77dba;color:#fff;transform:scale(1.1);}
-.music-emoji-spin{animation:music-pulse 1.6s ease-in-out infinite;}
+.music-controls{display:inline-flex;gap:6px;align-items:center;justify-content:center;margin-top:4px;}
+.music-ctrl-btn{background:rgba(199,125,186,0.18);border:1px solid #c77dba;color:#c77dba;width:26px;height:26px;border-radius:50%;font-size:11px;cursor:pointer;display:inline-flex;align-items:center;justify-content:center;transition:all 0.15s;padding:0;line-height:1;user-select:none;font-family:inherit;}
+.music-ctrl-btn.music-skip:hover{background:#c77dba;color:#fff;transform:scale(1.1);}
+.music-emoji-spin{animation:music-pulse 1.6s ease-in-out infinite;display:inline-block;}
 @keyframes music-pulse{0%,100%{opacity:1;transform:scale(1);}50%{opacity:0.6;transform:scale(0.9);}}
 
 /* ── RESTAURANT SPINNER ── */
@@ -858,7 +858,7 @@ body.unlocked .date-editable:hover{border-bottom-color:var(--accent);background:
   <button class="toolkit-btn toolkit-weather" onclick="openWeatherModal()">&#127780;<span>Weather</span></button>
   <button class="toolkit-btn toolkit-workout" onclick="openWorkoutModal()">&#127947;<span>Workout</span></button>
   <button class="toolkit-btn toolkit-spinner" onclick="openSpinnerModal()">&#127869;<span>Dinner Wheel</span></button>
-  <button class="toolkit-btn toolkit-music" id="focusMusicBtn" onclick="focusMusicToggle()" oncontextmenu="event.preventDefault();focusMusicResetPlaylist();return false;" title="Click to play/pause • Right-click to change playlist"><span class="music-emoji" id="musicEmoji">&#127925;</span><span id="musicLabel">Focus Music</span><div class="music-controls" id="musicControls" style="display:none;"><span class="music-ctrl-btn" id="musicStateIcon">&#9654;</span><button class="music-ctrl-btn" onclick="event.stopPropagation();focusMusicSkip()" title="Next track">&#9197;</button></div></button>
+  <button class="toolkit-btn toolkit-music" id="focusMusicBtn" onclick="focusMusicToggle()" title="Focus Music — click to play/pause"><span class="music-emoji" id="musicEmoji">&#127925;</span><span id="musicLabel">Focus Music</span><span class="music-controls" id="musicControls" style="display:none;"><span class="music-ctrl-btn" id="musicStateIcon">&#9654;</span><span class="music-ctrl-btn music-skip" onclick="event.stopPropagation();focusMusicSkip()" title="Next track" role="button" tabindex="0">&#9197;</span></span></button>
   <button class="toolkit-btn toolkit-halt" onclick="openHaltModal()">&#128721;<span>HALT+</span></button>
 </div>
 <!-- Hidden YouTube player container for focus music -->
@@ -3635,17 +3635,8 @@ function updateDayProgress(){
 // ═══════════════════════════════════════
 // FOCUS MUSIC (YouTube IFrame API)
 // ═══════════════════════════════════════
+const FOCUS_PLAYLIST_ID='PLeSVVJPLz73FGftTDMuiefwuadwf4IAiF';
 var ytPlayer=null,ytPlayerReady=false,ytAPILoading=false;
-
-function _extractPlaylistId(input){
-  input=(input||'').trim();
-  // URL with list= parameter
-  var m=input.match(/[?&]list=([^&]+)/);
-  if(m)return m[1];
-  // Already just the playlist ID (typically 13+ chars, starts with PL/RD/OL/FL/UU)
-  if(/^[A-Za-z0-9_-]{10,}$/.test(input))return input;
-  return null;
-}
 
 function _loadYTAPI(callback){
   if(typeof YT!=='undefined'&&YT.Player){callback();return;}
@@ -3657,13 +3648,13 @@ function _loadYTAPI(callback){
   document.head.appendChild(tag);
 }
 
-function _createYTPlayer(playlistId){
+function _createYTPlayer(){
   var host=document.getElementById('ytPlayerHost');
   if(!host)return;
   host.innerHTML='<div id="ytPlayerInner"></div>';
   ytPlayer=new YT.Player('ytPlayerInner',{
     height:'1',width:'1',
-    playerVars:{listType:'playlist',list:playlistId,autoplay:1,controls:0,modestbranding:1,playsinline:1},
+    playerVars:{listType:'playlist',list:FOCUS_PLAYLIST_ID,autoplay:1,controls:0,modestbranding:1,playsinline:1},
     events:{
       'onReady':function(e){
         ytPlayerReady=true;
@@ -3673,33 +3664,19 @@ function _createYTPlayer(playlistId){
       'onStateChange':_updateMusicUI,
       'onError':function(e){
         console.error('YT Player error:',e.data);
-        var msgs={2:'Invalid playlist ID',5:'HTML5 player error',100:'Playlist not found or private',101:'Playlist owner disallows embedded playback',150:'Playlist owner disallows embedded playback'};
-        alert('Focus Music error: '+(msgs[e.data]||'Unknown error code '+e.data)+'\n\nRight-click the music button to set a different playlist.');
+        var msgs={2:'Invalid playlist',5:'HTML5 player error',100:'Playlist not found',101:'Playlist owner disallows embedded playback',150:'Playlist owner disallows embedded playback'};
+        alert('Focus Music error: '+(msgs[e.data]||'Error code '+e.data));
       }
     }
   });
 }
 
 function focusMusicToggle(){
-  // First-time setup
-  if(!state.focusPlaylistId){
-    var url=prompt('Paste your YouTube playlist URL or playlist ID:\n\n• Full URL: https://www.youtube.com/playlist?list=PLxxxx\n• Or just the ID: PLxxxx\n\n(Right-click the button later to change playlists)');
-    if(!url||!url.trim())return;
-    var pid=_extractPlaylistId(url);
-    if(!pid){
-      alert('Could not extract a valid playlist ID from that URL. Make sure your link includes "list=PLxxxx" or paste just the playlist ID.');
-      return;
-    }
-    state.focusPlaylistId=pid;
-    save();
-  }
-  
   // Lazy-load YT API and create player on first use
   if(!ytPlayer){
-    _loadYTAPI(function(){_createYTPlayer(state.focusPlaylistId);});
+    _loadYTAPI(function(){_createYTPlayer();});
     return;
   }
-  
   // Toggle play/pause
   if(!ytPlayerReady)return;
   try{
@@ -3713,23 +3690,6 @@ function focusMusicSkip(){
   if(ytPlayer&&ytPlayerReady){
     try{ytPlayer.nextVideo();}catch(err){console.error('Skip error:',err);}
   }
-}
-
-function focusMusicResetPlaylist(){
-  if(!confirm('Change the focus music playlist?\n\nThis will stop the current music and let you set a new playlist URL.'))return;
-  // Stop and destroy current player
-  if(ytPlayer){
-    try{ytPlayer.stopVideo();ytPlayer.destroy();}catch(err){}
-    ytPlayer=null;
-    ytPlayerReady=false;
-  }
-  var host=document.getElementById('ytPlayerHost');
-  if(host)host.innerHTML='';
-  state.focusPlaylistId=null;
-  save();
-  _updateMusicUI();
-  // Open prompt for new playlist
-  setTimeout(focusMusicToggle,100);
 }
 
 function _updateMusicUI(){
@@ -3748,7 +3708,7 @@ function _updateMusicUI(){
     return;
   }
   
-  ctrls.style.display='flex';
+  ctrls.style.display='inline-flex';
   var st;
   try{st=ytPlayer.getPlayerState();}catch(err){st=-1;}
   // States: -1=unstarted, 0=ended, 1=playing, 2=paused, 3=buffering, 5=cued
