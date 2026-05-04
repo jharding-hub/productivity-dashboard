@@ -127,6 +127,20 @@ textarea{resize:vertical;min-height:60px;}
 input[type="date"]::-webkit-calendar-picker-indicator,input[type="time"]::-webkit-calendar-picker-indicator{filter:invert(0.7);}
 .add-row{display:flex;gap:6px;margin-top:10px;}.add-row input,.add-row select{flex:1;}
 
+/* Multi-project chip picker */
+.proj-multi-picker{display:flex;flex-wrap:wrap;gap:4px;align-items:center;padding:4px 6px;background:var(--surface-raised);border:1px solid var(--border);border-radius:var(--radius-sm);min-height:30px;cursor:pointer;flex:1;font-size:12px;color:var(--text-dim);position:relative;}
+.proj-multi-picker:hover{border-color:var(--border-focus);}
+.proj-multi-chip{display:inline-flex;align-items:center;gap:4px;background:var(--accent-glow);color:var(--accent);border:1px solid var(--accent-dim);padding:2px 6px;border-radius:10px;font-size:11px;font-weight:600;}
+.proj-multi-chip-x{cursor:pointer;font-weight:700;opacity:0.7;}
+.proj-multi-chip-x:hover{opacity:1;color:var(--red);}
+.proj-multi-placeholder{color:var(--text-faint);}
+.proj-multi-dropdown{position:absolute;top:calc(100% + 4px);left:0;right:0;background:var(--surface);border:1px solid var(--border);border-radius:var(--radius-sm);box-shadow:0 4px 16px rgba(0,0,0,0.3);z-index:120;max-height:200px;overflow-y:auto;font-size:12px;}
+.proj-multi-option{padding:6px 10px;cursor:pointer;display:flex;align-items:center;gap:6px;color:var(--text);}
+.proj-multi-option:hover{background:var(--surface-hover);}
+.proj-multi-option.selected{background:var(--accent-glow);color:var(--accent);}
+.proj-multi-option .check-mark{width:14px;text-align:center;font-weight:700;}
+.proj-multi-option.action-new{color:var(--accent);font-style:italic;border-top:1px solid var(--border);}
+
 /* EDITABLE - only active when body.unlocked */
 .editable{padding:1px 2px;border-radius:2px;border-bottom:1px dashed transparent;transition:all 0.15s;}
 body.unlocked .editable{cursor:text;border-bottom-color:var(--border);}
@@ -925,7 +939,7 @@ body.unlocked .date-editable:hover{border-bottom-color:var(--accent);background:
 </div>
 <div class="section-label" style="margin-top:10px;">Add Reminder</div>
 <div style="display:flex;gap:6px;margin-bottom:6px;"><input type="text" id="newRemText" placeholder="Reminder text..." style="flex:1;"><button class="mic-btn" id="remMicBtn" onclick="toggleMic('newRemText','remMicBtn')" title="Voice input">&#127908;</button></div>
-<div class="add-row" style="margin-top:0;flex-wrap:wrap;gap:6px;"><input type="date" id="newRemDate"><input type="time" id="newRemTime"><select id="newRemProject" style="font-size:12px;padding:4px 6px;background:var(--surface-raised);border:1px solid var(--border);border-radius:var(--radius-sm);color:var(--text-dim);font-family:inherit;"><option value="">No project</option></select><button class="btn btn-accent" onclick="addReminder()">+</button></div></div>
+<div class="add-row" style="margin-top:0;flex-wrap:wrap;gap:6px;"><input type="date" id="newRemDate"><input type="time" id="newRemTime"><div class="proj-multi-picker" id="newRemProjectPicker" data-target="newRemProject" onclick="openProjMultiPicker(event,this)" style="font-size:11px;padding:3px 6px;min-height:26px;flex:1;"><span class="proj-multi-placeholder">+ Projects</span></div><input type="hidden" id="newRemProject" value=""><button class="btn btn-accent" onclick="addReminder()">+</button></div></div>
 
 <!-- 3. BRAIN DUMP -->
 <div class="panel panel-narrow" data-panel="brain" data-nav="brain">
@@ -975,7 +989,8 @@ body.unlocked .date-editable:hover{border-bottom-color:var(--accent);background:
 <input type="text" id="newNoteLabel" placeholder="Note label...">
 <textarea class="note-textarea" id="newNoteBody" placeholder="Note content..."></textarea>
 <div class="note-form-row">
-<select id="newNoteProject"><option value="">No project tag</option></select>
+<div class="proj-multi-picker" id="newNoteProjectPicker" data-target="newNoteProject" onclick="openProjMultiPicker(event,this)"><span class="proj-multi-placeholder">+ Tag projects (optional)</span></div>
+<input type="hidden" id="newNoteProject" value="">
 <button class="btn btn-accent" onclick="addNote()">Add Note</button>
 </div></div></div>
 
@@ -1004,7 +1019,8 @@ body.unlocked .date-editable:hover{border-bottom-color:var(--accent);background:
 <div class="section-label">Add Task</div>
 <div style="display:flex;gap:6px;"><input type="text" id="tlNewName" placeholder="Task name..." onkeydown="if(event.key==='Enter')addStandaloneTask()" style="flex:1;"><button class="mic-btn" id="taskMicBtn" onclick="toggleMic('tlNewName','taskMicBtn')" title="Voice input">&#127908;</button></div>
 <div class="tl-add-row">
-<select id="tlNewProject"><option value="">No project</option><option value="__new__">+ New project...</option></select>
+<div class="proj-multi-picker" id="tlNewProjectPicker" data-target="tlNewProject" data-allow-new="1" onclick="openProjMultiPicker(event,this)"><span class="proj-multi-placeholder">+ Projects</span></div>
+<input type="hidden" id="tlNewProject" value="">
 <select id="tlNewPriority"><option value="low">Low</option><option value="med" selected>Med</option><option value="high">High</option></select>
 <select id="tlNewTime" class="time-est-select"><option value="">Time?</option><option value="30">30m</option><option value="60">1hr</option><option value="90">1.5hr</option><option value="120">2hr</option><option value="180">3hr</option><option value="240">4hr</option><option value="999">4hr+</option></select>
 <input type="date" id="tlNewDue" style="max-width:130px;">
@@ -1856,15 +1872,21 @@ function toggleSubtask(pid,sid){
   if(!s)return;
   // Capture source element for popup positioning
   var srcEl=document.querySelector('.st-check[onclick*="'+sid+'"]');
-  // Archive completed subtask
+  // Archive completed subtask (single record per group)
   if(!state.completedTasks)state.completedTasks=[];
   state.completedTasks.unshift({
     id:s.id,name:s.name,projectName:p.name,
     archivedAt:new Date().toISOString(),source:'project'
   });
   if(state.completedTasks.length>100)state.completedTasks=state.completedTasks.slice(0,100);
-  // Remove from active subtasks
-  p.subtasks=p.subtasks.filter(x=>x.id!==sid);
+  // Remove from this project AND any other project containing a linked sibling
+  if(s.linkGroupId){
+    state.projects.forEach(function(pr){
+      pr.subtasks=pr.subtasks.filter(function(x){return x.linkGroupId!==s.linkGroupId;});
+    });
+  }else{
+    p.subtasks=p.subtasks.filter(x=>x.id!==sid);
+  }
   addPoints('subtask',srcEl);
   save();renderProjects();renderTaskList();
 }
@@ -1906,9 +1928,9 @@ function renderProjects(){const el=document.getElementById('projectList');const 
 el.innerHTML=state.projects.map(p=>{const total=p.subtasks.length;const sorted=[...p.subtasks].sort((a,b)=>{if(a.due&&b.due)return a.due.localeCompare(b.due);if(a.due)return -1;if(b.due)return 1;return 0;});
 
 // Linked items for this project
-const linkedTasks=(state.tasks||[]).filter(t=>t.projectId===p.id&&!t.done);
-const linkedNotes=(state.notes||[]).filter(n=>n.projectId===p.id);
-const linkedReminders=(state.reminders||[]).filter(r=>r.projectId===p.id);
+const linkedTasks=(state.tasks||[]).filter(t=>(t.projectIds&&t.projectIds.indexOf(p.id)>=0)||t.projectId===p.id&&!t.done);
+const linkedNotes=(state.notes||[]).filter(n=>(n.projectIds&&n.projectIds.indexOf(p.id)>=0)||n.projectId===p.id);
+const linkedReminders=(state.reminders||[]).filter(r=>(r.projectIds&&r.projectIds.indexOf(p.id)>=0)||r.projectId===p.id);
 let linkedHtml='';
 if(linkedTasks.length||linkedNotes.length||linkedReminders.length){
   linkedHtml='<div class="proj-linked">';
@@ -1955,7 +1977,7 @@ function promptEditProject(pid){
 }
 
 // REMINDERS
-function addReminder(){const t=document.getElementById('newRemText').value.trim();if(!t)return;const projEl=document.getElementById('newRemProject');state.reminders.push({id:'rem'+Date.now(),text:t,date:document.getElementById('newRemDate').value,time:document.getElementById('newRemTime').value,projectId:projEl?projEl.value:''});document.getElementById('newRemText').value='';document.getElementById('newRemDate').value='';document.getElementById('newRemTime').value='';if(projEl)projEl.value='';save();renderReminders();toast('Reminder added');}
+function addReminder(){const t=document.getElementById('newRemText').value.trim();if(!t)return;const projVal=document.getElementById('newRemProject').value;const projIds=projVal?projVal.split(',').filter(Boolean):[];state.reminders.push({id:'rem'+Date.now(),text:t,date:document.getElementById('newRemDate').value,time:document.getElementById('newRemTime').value,projectId:projIds[0]||'',projectIds:projIds});document.getElementById('newRemText').value='';document.getElementById('newRemDate').value='';document.getElementById('newRemTime').value='';document.getElementById('newRemProject').value='';renderProjMultiPickerChips(document.getElementById('newRemProjectPicker'));save();renderReminders();renderProjects();toast('Reminder added'+(projIds.length>1?' to '+projIds.length+' projects':''));}
 function deleteReminder(id){state.reminders=state.reminders.filter(r=>r.id!==id);save();renderReminders();}
 function clearPastReminders(){state.reminders=state.reminders.filter(r=>!r.date||r.date>=todayStr());save();renderReminders();toast('Past cleared');}
 function editReminderText(id,v){if(!v)return;const r=state.reminders.find(r=>r.id===id);if(r)r.text=v;save();}
@@ -2041,27 +2063,172 @@ function startGuided(id){const t=wellnessTechniques.find(t=>t.id===id);if(!t||!t
 function stopGuided(){clearInterval(guidedInterval);guidedInterval=null;document.getElementById('guidedDisplay').classList.remove('active');}
 
 // NOTES
-function addNote(){const label=document.getElementById('newNoteLabel').value.trim();const body=document.getElementById('newNoteBody').value.trim();if(!label&&!body)return;const projId=document.getElementById('newNoteProject').value;const now=new Date();state.notes.push({id:'n'+Date.now(),label:label||'Untitled',body:body,projectId:projId,created:now.toISOString(),date:now.toLocaleDateString('en-US',{month:'short',day:'numeric',year:'numeric'}),time:now.toLocaleTimeString('en-US',{hour:'numeric',minute:'2-digit'})});document.getElementById('newNoteLabel').value='';document.getElementById('newNoteBody').value='';save();renderNotes();toast('Note added');}
+function addNote(){const label=document.getElementById('newNoteLabel').value.trim();const body=document.getElementById('newNoteBody').value.trim();if(!label&&!body)return;const projVal=document.getElementById('newNoteProject').value;const projIds=projVal?projVal.split(',').filter(Boolean):[];const now=new Date();state.notes.push({id:'n'+Date.now(),label:label||'Untitled',body:body,projectId:projIds[0]||'',projectIds:projIds,created:now.toISOString(),date:now.toLocaleDateString('en-US',{month:'short',day:'numeric',year:'numeric'}),time:now.toLocaleTimeString('en-US',{hour:'numeric',minute:'2-digit'})});document.getElementById('newNoteLabel').value='';document.getElementById('newNoteBody').value='';document.getElementById('newNoteProject').value='';renderProjMultiPickerChips(document.getElementById('newNoteProjectPicker'));save();renderNotes();renderProjects();toast('Note added'+(projIds.length>1?' to '+projIds.length+' projects':''));}
 function deleteNote(id){state.notes=state.notes.filter(n=>n.id!==id);save();renderNotes();}
 function editNoteLabel(id,v){if(!v)return;const n=state.notes.find(n=>n.id===id);if(n){n.label=v;save();}}
 function editNoteBody(id,v){const n=state.notes.find(n=>n.id===id);if(n){n.body=v;save();}}
-function editNoteProject(id,projId){const n=state.notes.find(n=>n.id===id);if(n){n.projectId=projId;save();renderNotes();}}
+function editNoteProject(id,projId){const n=state.notes.find(n=>n.id===id);if(n){n.projectId=projId;n.projectIds=projId?[projId]:[];save();renderNotes();renderProjects();}}
+function editNoteProjects(id,projIdsStr){const n=state.notes.find(n=>n.id===id);if(n){var ids=projIdsStr?projIdsStr.split(',').filter(Boolean):[];n.projectIds=ids;n.projectId=ids[0]||'';save();renderProjects();}}
 function autoResizeTextarea(ta){ta.style.height='auto';ta.style.height=ta.scrollHeight+'px';}
-function updateNoteSelectors(){const opts='<option value="">No project tag</option>'+state.projects.map(p=>'<option value="'+p.id+'">'+esc(p.name)+'</option>').join('');document.getElementById('newNoteProject').innerHTML=opts;const fOpts='<option value="all">All projects</option><option value="none">Untagged</option>'+state.projects.map(p=>'<option value="'+p.id+'">'+esc(p.name)+'</option>').join('');document.getElementById('noteFilterProj').innerHTML=fOpts;const remProjEl=document.getElementById('newRemProject');if(remProjEl)remProjEl.innerHTML='<option value="">No project</option>'+state.projects.map(p=>'<option value="'+p.id+'">'+esc(p.name)+'</option>').join('');}
+function updateNoteSelectors(){
+  // Filter dropdown for notes (still single-select)
+  const fOpts='<option value="all">All projects</option><option value="none">Untagged</option>'+state.projects.map(p=>'<option value="'+p.id+'">'+esc(p.name)+'</option>').join('');
+  document.getElementById('noteFilterProj').innerHTML=fOpts;
+  // Filter dropdown for tasks (still single-select)
+  var taskFilterEl=document.getElementById('tlFilterProj');
+  if(taskFilterEl){
+    var prevVal=taskFilterEl.value;
+    taskFilterEl.innerHTML='<option value="all">All Projects</option>'+state.projects.map(function(p){return '<option value="'+p.id+'">'+esc(p.name)+'</option>';}).join('');
+    if(prevVal&&[].slice.call(taskFilterEl.options).some(function(o){return o.value===prevVal;}))taskFilterEl.value=prevVal;
+  }
+  // Render any open multi-pickers
+  ['newNoteProjectPicker','tlNewProjectPicker','newRemProjectPicker'].forEach(function(pid){
+    var picker=document.getElementById(pid);
+    if(picker)renderProjMultiPickerChips(picker);
+  });
+}
+
+// ═══════════════════════════════════════
+// MULTI-PROJECT PICKER
+// ═══════════════════════════════════════
+function _getProjMultiSelected(picker){
+  var hidden=document.getElementById(picker.dataset.target);
+  if(!hidden||!hidden.value)return [];
+  return hidden.value.split(',').filter(Boolean);
+}
+function _setProjMultiSelected(picker,ids){
+  var hidden=document.getElementById(picker.dataset.target);
+  if(hidden)hidden.value=ids.join(',');
+  renderProjMultiPickerChips(picker);
+}
+
+function renderProjMultiPickerChips(picker){
+  var selected=_getProjMultiSelected(picker);
+  // Preserve any open dropdown
+  var dropdown=picker.querySelector('.proj-multi-dropdown');
+  picker.innerHTML='';
+  if(selected.length===0){
+    var ph=document.createElement('span');
+    ph.className='proj-multi-placeholder';
+    ph.textContent=picker.dataset.placeholder||(picker.dataset.allowNew?'+ Projects':'+ Tag projects (optional)');
+    picker.appendChild(ph);
+  }else{
+    selected.forEach(function(pid){
+      var p=state.projects.find(function(pr){return pr.id===pid;});
+      if(!p)return;
+      var chip=document.createElement('span');
+      chip.className='proj-multi-chip';
+      chip.innerHTML=esc(p.name)+' <span class="proj-multi-chip-x" onclick="event.stopPropagation();removeProjMultiChip(this,\''+pid+'\')">\u2715</span>';
+      picker.appendChild(chip);
+    });
+  }
+  if(dropdown)picker.appendChild(dropdown);
+}
+
+function removeProjMultiChip(xEl,pid){
+  var picker=xEl.closest('.proj-multi-picker');
+  if(!picker)return;
+  var ids=_getProjMultiSelected(picker).filter(function(x){return x!==pid;});
+  _setProjMultiSelected(picker,ids);
+}
+
+function openProjMultiPicker(ev,picker){
+  if(ev.target.classList.contains('proj-multi-chip-x'))return;
+  if(ev.target.closest('.proj-multi-dropdown'))return;
+  
+  // Close any other open dropdowns
+  document.querySelectorAll('.proj-multi-dropdown').forEach(function(d){
+    if(d.parentNode!==picker)d.remove();
+  });
+  
+  var existing=picker.querySelector('.proj-multi-dropdown');
+  if(existing){existing.remove();return;}
+  
+  var selected=_getProjMultiSelected(picker);
+  var dropdown=document.createElement('div');
+  dropdown.className='proj-multi-dropdown';
+  
+  if(state.projects.length===0){
+    var empty=document.createElement('div');
+    empty.className='proj-multi-option';
+    empty.style.color='var(--text-faint)';
+    empty.style.fontStyle='italic';
+    empty.textContent='No projects yet';
+    dropdown.appendChild(empty);
+  }else{
+    state.projects.forEach(function(p){
+      var opt=document.createElement('div');
+      opt.className='proj-multi-option'+(selected.indexOf(p.id)>=0?' selected':'');
+      opt.innerHTML='<span class="check-mark">'+(selected.indexOf(p.id)>=0?'✓':'')+'</span>'+esc(p.name);
+      opt.onclick=function(e){
+        e.stopPropagation();
+        var sel=_getProjMultiSelected(picker);
+        var idx=sel.indexOf(p.id);
+        if(idx>=0)sel.splice(idx,1);
+        else sel.push(p.id);
+        _setProjMultiSelected(picker,sel);
+        // Re-render dropdown checkmarks
+        opt.classList.toggle('selected');
+        opt.querySelector('.check-mark').textContent=opt.classList.contains('selected')?'✓':'';
+      };
+      dropdown.appendChild(opt);
+    });
+  }
+  
+  // "New project..." action if allowed
+  if(picker.dataset.allowNew){
+    var newOpt=document.createElement('div');
+    newOpt.className='proj-multi-option action-new';
+    newOpt.innerHTML='<span class="check-mark">+</span>New project...';
+    newOpt.onclick=function(e){
+      e.stopPropagation();
+      var pname=prompt('New project name:');
+      if(!pname||!pname.trim())return;
+      var newProj={id:'p'+Date.now(),name:pname.trim(),due:'',expanded:true,subtasks:[]};
+      state.projects.push(newProj);
+      save();renderProjects();
+      var sel=_getProjMultiSelected(picker);
+      sel.push(newProj.id);
+      _setProjMultiSelected(picker,sel);
+      dropdown.remove();
+      toast('Project "'+pname.trim()+'" created');
+    };
+    dropdown.appendChild(newOpt);
+  }
+  
+  picker.appendChild(dropdown);
+  
+  // Click-outside to close
+  setTimeout(function(){
+    var handler=function(e){
+      if(!picker.contains(e.target)){
+        dropdown.remove();
+        document.removeEventListener('click',handler);
+      }
+    };
+    document.addEventListener('click',handler);
+  },10);
+}
+
 function renderNotes(){
   updateNoteSelectors();
   const el=document.getElementById('notesList');
   const filter=document.getElementById('noteFilterProj').value;
   const search=document.getElementById('noteSearch').value.toLowerCase().trim();
   let notes=[...state.notes];
-  if(filter==='none')notes=notes.filter(n=>!n.projectId);
-  else if(filter!=='all')notes=notes.filter(n=>n.projectId===filter);
+  function noteProjIds(n){return (n.projectIds&&n.projectIds.length)?n.projectIds:(n.projectId?[n.projectId]:[]);}
+  if(filter==='none')notes=notes.filter(n=>noteProjIds(n).length===0);
+  else if(filter!=='all')notes=notes.filter(n=>noteProjIds(n).indexOf(filter)>=0);
   if(search)notes=notes.filter(n=>(n.label+' '+n.body).toLowerCase().includes(search));
   notes.sort((a,b)=>b.created.localeCompare(a.created));
   if(notes.length===0){el.innerHTML='<div class="empty-state">'+(state.notes.length===0?'No notes yet. Add your first one below.':'No matching notes.')+'</div>';document.getElementById('noteCount').textContent=state.notes.length;return;}
-  const projOpts='<option value="">No tag</option>'+state.projects.map(p=>'<option value="'+p.id+'">\u{1F4C2} '+esc(p.name)+'</option>').join('');
   el.innerHTML=notes.map(n=>{
-    const hasProjClass=n.projectId?'has-proj':'';
+    var pids=noteProjIds(n);
+    var hasProjClass=pids.length?'has-proj':'';
+    var projChips=pids.map(function(pid){
+      var pr=state.projects.find(function(p){return p.id===pid;});
+      return pr?'<span class="proj-multi-chip" style="font-size:10px;padding:1px 5px;">📂 '+esc(pr.name)+'</span>':'';
+    }).join('');
     return '<div class="note-card">'+
       '<div class="note-header">'+
         '<input class="note-label-input" id="nl_'+n.id+'" value="'+esc(n.label)+'" placeholder="Note label..." />'+
@@ -2069,10 +2236,11 @@ function renderNotes(){
       '</div>'+
       '<textarea class="note-body-input" id="nb_'+n.id+'" placeholder="Note content...">'+esc(n.body)+'</textarea>'+
       '<div class="note-footer">'+
-        '<select class="note-cat-select '+hasProjClass+'" id="np_'+n.id+'" onchange="editNoteProject(\''+n.id+'\',this.value)">'+
-          projOpts+
-        '</select>'+
-        '<span class="note-delete" onclick="deleteNote(\''+n.id+'\')">\u2715 delete</span>'+
+        '<div class="proj-multi-picker '+hasProjClass+'" id="npp_'+n.id+'" data-target="np_'+n.id+'" data-note-id="'+n.id+'" onclick="openProjMultiPicker(event,this)" style="font-size:11px;padding:3px 6px;min-height:24px;flex:1;">'+
+          (pids.length===0?'<span class="proj-multi-placeholder">+ Tag projects</span>':projChips)+
+        '</div>'+
+        '<input type="hidden" id="np_'+n.id+'" value="'+pids.join(',')+'" onchange="editNoteProjects(\''+n.id+'\',this.value)">'+
+        '<span class="note-delete" onclick="deleteNote(\''+n.id+'\')">\u2715</span>'+
       '</div>'+
     '</div>';
   }).join('');
@@ -2086,10 +2254,14 @@ function renderNotes(){
       bi.addEventListener('input',()=>autoResizeTextarea(bi));
       bi.addEventListener('blur',()=>editNoteBody(n.id,bi.value));
     }
-    const ps=document.getElementById('np_'+n.id);
-    if(ps){
-      ps.value=n.projectId||'';
-      ps.addEventListener('change',()=>{ps.className='note-cat-select'+(ps.value?' has-proj':'');});
+    const ph=document.getElementById('np_'+n.id);
+    if(ph){
+      // Watch for changes via MutationObserver since hidden inputs don't fire change events natively
+      var lastVal=ph.value;
+      var poll=setInterval(function(){
+        if(!document.body.contains(ph)){clearInterval(poll);return;}
+        if(ph.value!==lastVal){lastVal=ph.value;editNoteProjects(n.id,ph.value);}
+      },300);
     }
   });
 }
@@ -2669,7 +2841,7 @@ function renderTaskList(){
   var filterProj=document.getElementById('tlFilterProj');var filt=filterProj?filterProj.value:'all';
 
   // Filter
-  if(filt!=='all')all=all.filter(function(t){return t.projectId===filt;});
+  if(filt!=='all')all=all.filter(function(t){return t.projectId===filt||(t.projectIds&&t.projectIds.indexOf(filt)>=0);});
 
   // Sort
   if(sort==='priority'){
@@ -2748,7 +2920,13 @@ function toggleTaskDone(id,source,projId){
           id:s.id,name:s.name,projectName:p.name,
           archivedAt:new Date().toISOString(),source:'project'
         });
-        p.subtasks=p.subtasks.filter(function(x){return x.id!==id;});
+        if(s.linkGroupId){
+          state.projects.forEach(function(pr){
+            pr.subtasks=pr.subtasks.filter(function(x){return x.linkGroupId!==s.linkGroupId;});
+          });
+        }else{
+          p.subtasks=p.subtasks.filter(function(x){return x.id!==id;});
+        }
         addPoints('subtask',srcEl);
       }
     }
@@ -2772,34 +2950,40 @@ function toggleTaskDone(id,source,projId){
 function addStandaloneTask(){
   var nameEl=document.getElementById('tlNewName');
   var name=nameEl.value.trim();if(!name)return;
-  var projSel=document.getElementById('tlNewProject');
-  var projVal=projSel.value;
+  var projHidden=document.getElementById('tlNewProject');
+  var projVal=projHidden.value;
+  var projIds=projVal?projVal.split(',').filter(Boolean):[];
   var priority=document.getElementById('tlNewPriority').value;
   var timeEst=document.getElementById('tlNewTime').value;
   var due=document.getElementById('tlNewDue').value;
 
-  // Create new project if requested
-  if(projVal==='__new__'){
-    var pname=prompt('New project name:');
-    if(!pname||!pname.trim()){return;}
-    var newProj={id:'p'+Date.now(),name:pname.trim(),due:'',expanded:true,subtasks:[]};
-    state.projects.push(newProj);
-    projVal=newProj.id;
+  if(projIds.length>=1){
+    // Add as subtask to EACH selected project, sharing a linkGroupId
+    var groupId=projIds.length>1?'lg'+Date.now():null;
+    var addedCount=0;
+    projIds.forEach(function(pid){
+      var pr=state.projects.find(function(p){return p.id===pid;});
+      if(pr){
+        pr.subtasks.push({
+          id:'st'+Date.now()+'_'+Math.random().toString(36).slice(2,7),
+          name:name,due:due,priority:priority,timeEst:timeEst,done:false,
+          linkGroupId:groupId
+        });
+        addedCount++;
+      }
+    });
     renderProjects();
-    toast('Project "'+pname.trim()+'" created');
-  }
-
-  if(projVal){
-    // Add as subtask to the project
-    var pr=state.projects.find(function(p){return p.id===projVal;});
-    if(pr){pr.subtasks.push({id:'st'+Date.now(),name:name,due:due,priority:priority,timeEst:timeEst,done:false});}
-    renderProjects();
+    if(addedCount>1)toast('Task added to '+addedCount+' projects');
+    else toast('Task added');
   }else{
     // Add as standalone task
-    state.tasks.push({id:'tk'+Date.now(),name:name,due:due,priority:priority,timeEst:timeEst,projectId:'',done:false});
+    state.tasks.push({id:'tk'+Date.now(),name:name,due:due,priority:priority,timeEst:timeEst,projectId:'',projectIds:[],done:false});
+    toast('Task added');
   }
   nameEl.value='';document.getElementById('tlNewDue').value='';
-  save();renderTaskList();toast('Task added');
+  projHidden.value='';
+  renderProjMultiPickerChips(document.getElementById('tlNewProjectPicker'));
+  save();renderTaskList();
 }
 
 function deleteStandaloneTask(id){
@@ -3505,9 +3689,9 @@ function openProjectModal(pid){
   document.getElementById('pmdTitle').textContent=p.name;
   var metaParts=[(done+'/'+total+' subtasks')];
   if(p.due)metaParts.push('Ends: '+fmtDate(p.due));
-  var linkedNotes=(state.notes||[]).filter(function(n){return n.projectId===pid;});
-  var linkedTasks=(state.tasks||[]).filter(function(t){return t.projectId===pid;});
-  var linkedReminders=(state.reminders||[]).filter(function(r){return r.projectId===pid;});
+  var linkedNotes=(state.notes||[]).filter(function(n){return (n.projectIds&&n.projectIds.indexOf(pid)>=0)||n.projectId===pid;});
+  var linkedTasks=(state.tasks||[]).filter(function(t){return (t.projectIds&&t.projectIds.indexOf(pid)>=0)||t.projectId===pid;});
+  var linkedReminders=(state.reminders||[]).filter(function(r){return (r.projectIds&&r.projectIds.indexOf(pid)>=0)||r.projectId===pid;});
   if(linkedTasks.length)metaParts.push(linkedTasks.length+' task'+(linkedTasks.length!==1?'s':''));
   if(linkedNotes.length)metaParts.push(linkedNotes.length+' note'+(linkedNotes.length!==1?'s':''));
   if(linkedReminders.length)metaParts.push(linkedReminders.length+' reminder'+(linkedReminders.length!==1?'s':''));
@@ -3599,7 +3783,13 @@ function pmdToggleSubtask(pid,sid){
     archivedAt:new Date().toISOString(),source:'project'
   });
   if(state.completedTasks.length>100)state.completedTasks=state.completedTasks.slice(0,100);
-  p.subtasks=p.subtasks.filter(function(x){return x.id!==sid;});
+  if(s.linkGroupId){
+    state.projects.forEach(function(pr){
+      pr.subtasks=pr.subtasks.filter(function(x){return x.linkGroupId!==s.linkGroupId;});
+    });
+  }else{
+    p.subtasks=p.subtasks.filter(function(x){return x.id!==sid;});
+  }
   addPoints('subtask',srcEl);
   save();renderProjects();renderTaskList();
   openProjectModal(pid); // refresh modal
