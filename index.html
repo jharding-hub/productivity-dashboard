@@ -181,6 +181,59 @@ body.unlocked .date-editable:hover{border-bottom-color:var(--accent);background:
 
 /* TASK TIMER IN HEADER */
 .task-timer-wrap{display:flex;align-items:center;gap:6px;padding:5px 10px;background:var(--surface-raised);border:1px solid var(--border);border-radius:var(--radius-sm);}
+
+/* ═══ POINTS / REWARDS SYSTEM ═══ */
+.points-badge{display:inline-flex;align-items:center;gap:6px;padding:5px 12px;background:var(--surface-raised);border:1.5px solid var(--border);border-radius:var(--radius-sm);cursor:pointer;transition:all 0.2s;font-weight:600;user-select:none;}
+.points-badge:hover{transform:translateY(-1px);box-shadow:0 3px 8px rgba(0,0,0,0.25);}
+.points-tier-icon{font-size:18px;line-height:1;filter:drop-shadow(0 0 4px currentColor);}
+.points-value{font-size:14px;font-variant-numeric:tabular-nums;}
+.points-badge.tier-bronze{border-color:#cd7f32;color:#cd7f32;}
+.points-badge.tier-silver{border-color:#b8b8b8;color:#dadada;}
+.points-badge.tier-gold{border-color:#ffd700;color:#ffd700;background:linear-gradient(135deg,var(--surface-raised),rgba(255,215,0,0.1));}
+.points-badge.tier-diamond{border-color:#7fdfff;color:#b9f2ff;background:linear-gradient(135deg,var(--surface-raised),rgba(127,223,255,0.12));box-shadow:0 0 12px rgba(127,223,255,0.2);}
+.points-badge.tier-mythic{border-color:#ff6b9d;color:#ff9ec0;background:linear-gradient(135deg,var(--surface-raised),rgba(255,107,157,0.12));box-shadow:0 0 16px rgba(255,107,157,0.3);animation:mythic-pulse 2.5s ease-in-out infinite;}
+@keyframes mythic-pulse{0%,100%{box-shadow:0 0 16px rgba(255,107,157,0.3);}50%{box-shadow:0 0 24px rgba(255,107,157,0.5);}}
+
+.points-popup{position:absolute;top:calc(100% + 8px);right:90px;background:var(--surface);border:1px solid var(--border);border-radius:var(--radius);padding:14px 16px;min-width:240px;box-shadow:0 8px 24px rgba(0,0,0,0.4);z-index:100;font-size:13px;}
+.points-popup-section{padding:6px 0;border-bottom:1px solid var(--border);}
+.points-popup-section:last-child{border-bottom:none;}
+.points-popup-row{display:flex;justify-content:space-between;align-items:center;margin:3px 0;}
+.points-popup-label{color:var(--text-dim);font-size:12px;}
+.points-popup-value{color:var(--text);font-weight:600;font-variant-numeric:tabular-nums;}
+.points-popup-tier-row{display:flex;align-items:center;gap:8px;font-size:14px;font-weight:600;margin-bottom:6px;}
+.points-popup-progress{height:6px;background:var(--surface-raised);border-radius:3px;overflow:hidden;margin-top:4px;}
+.points-popup-progress-fill{height:100%;background:var(--accent);transition:width 0.4s ease;}
+.points-popup-next{font-size:11px;color:var(--text-faint);margin-top:4px;text-align:right;}
+
+/* Floating +N popup */
+.point-popup-container{position:fixed;pointer-events:none;z-index:9999;top:0;left:0;right:0;bottom:0;}
+.point-popup-floater{position:absolute;font-weight:700;font-size:18px;color:var(--green);text-shadow:0 2px 4px rgba(0,0,0,0.5),0 0 8px rgba(107,171,115,0.6);animation:point-float 1.4s ease-out forwards;pointer-events:none;}
+@keyframes point-float{0%{opacity:0;transform:translateY(0) scale(0.7);}15%{opacity:1;transform:translateY(-8px) scale(1.2);}100%{opacity:0;transform:translateY(-60px) scale(1);}}
+
+/* Fireworks overlay */
+.fireworks-overlay{position:fixed;top:0;left:0;right:0;bottom:0;pointer-events:none;z-index:9998;display:none;}
+.fireworks-overlay.show{display:block;}
+.firework{position:absolute;width:6px;height:6px;border-radius:50%;}
+.firework-particle{position:absolute;width:5px;height:5px;border-radius:50%;animation:firework-burst 1.5s ease-out forwards;}
+@keyframes firework-burst{
+  0%{opacity:1;transform:translate(0,0) scale(1);}
+  60%{opacity:1;}
+  100%{opacity:0;transform:translate(var(--tx),var(--ty)) scale(0.4);}
+}
+.tier-up-banner{position:fixed;top:50%;left:50%;transform:translate(-50%,-50%);background:linear-gradient(135deg,#ffd700,#ff9ec0);color:#1a1a1a;padding:24px 48px;border-radius:16px;font-size:32px;font-weight:800;font-family:'Fraunces',serif;text-align:center;box-shadow:0 12px 40px rgba(0,0,0,0.5),0 0 60px currentColor;z-index:9999;letter-spacing:1px;animation:tier-banner 2.5s ease-out forwards;pointer-events:none;}
+@keyframes tier-banner{
+  0%{opacity:0;transform:translate(-50%,-50%) scale(0.5) rotate(-5deg);}
+  15%{opacity:1;transform:translate(-50%,-50%) scale(1.15) rotate(2deg);}
+  25%{transform:translate(-50%,-50%) scale(1) rotate(0deg);}
+  85%{opacity:1;transform:translate(-50%,-50%) scale(1) rotate(0deg);}
+  100%{opacity:0;transform:translate(-50%,-50%) scale(1.1);}
+}
+
+@media(max-width:768px){
+  .points-badge{padding:4px 8px;font-size:12px;}
+  .points-tier-icon{font-size:14px;}
+  .points-popup{right:8px;}
+}
 .task-timer-display{font-size:18px;font-weight:700;font-variant-numeric:tabular-nums;color:var(--text);min-width:52px;text-align:center;}
 .task-timer-display.running{color:var(--green);}
 .task-timer-btn{background:none;border:none;cursor:pointer;font-size:14px;padding:2px 5px;color:var(--text-dim);transition:color 0.15s;}
@@ -801,8 +854,13 @@ body.unlocked .date-editable:hover{border-bottom-color:var(--accent);background:
   </div>
   <!-- Center: Title only -->
   <h1>Productivity Dashboard</h1>
-  <!-- Right: Task Timer -->
+  <!-- Right: Points Badge + Task Timer -->
   <div class="header-right">
+    <div class="points-badge" id="pointsBadge" onclick="togglePointsPopup()" title="Click for breakdown">
+      <span class="points-tier-icon" id="ptTierIcon">🥉</span>
+      <span class="points-value" id="ptValue">0</span>
+    </div>
+    <div class="points-popup" id="pointsPopup" style="display:none;"></div>
     <div class="task-timer-wrap" id="taskTimerWrap">
       <button class="task-timer-btn" id="ttStartBtn" onclick="ttStart()" title="Start task timer">&#9654;</button>
       <div class="task-timer-display" id="ttDisplay">0:00:00</div>
@@ -811,6 +869,11 @@ body.unlocked .date-editable:hover{border-bottom-color:var(--accent);background:
     </div>
   </div>
 </div>
+
+<!-- Fireworks overlay (for tier-up celebration) -->
+<div class="fireworks-overlay" id="fireworksOverlay"></div>
+<!-- Point popup container -->
+<div class="point-popup-container" id="pointPopupContainer"></div>
 
 <div class="dashboard" id="dashboard">
 
@@ -1456,7 +1519,7 @@ try {
 <!-- SCRIPT 3: APP LOGIC -->
 <script>
 // STATE
-let state={projects:[],reminders:[],thoughts:[],notes:[],moodLog:[],tasks:[],completedTasks:[],journal:[],journalPin:'',workoutLog:{},completedWorkouts:[],focusPlaylistId:null,routines:{morning:[{id:'m1',name:'Hydrate \u2014 glass of water',done:false},{id:'m2',name:"Review today's calendar",done:false},{id:'m3',name:'Pick top 3 priorities',done:false},{id:'m4',name:'Quick workspace tidy',done:false}],evening:[{id:'e1',name:'Review what got done today',done:false},{id:'e2',name:"Brain dump tomorrow's thoughts",done:false},{id:'e3',name:"Set out tomorrow's essentials",done:false},{id:'e4',name:'Wind-down activity',done:false}],custom:[]},currentRoutineTab:'morning',energy:null,mood:null,panelOrder:['projects','reminders','time','tasklist','notes','brain','routines','wellness','decision','admin'],panelsLocked:true,lastRoutineReset:null,visiblePanels:{},knownPanels:[]};
+let state={projects:[],reminders:[],thoughts:[],notes:[],moodLog:[],tasks:[],completedTasks:[],journal:[],journalPin:'',workoutLog:{},completedWorkouts:[],focusPlaylistId:null,points:{current:0,monthKey:'',lastTier:'bronze',totalsByDay:{},lastLoginDate:'',lifetimeTotal:0},routines:{morning:[{id:'m1',name:'Hydrate \u2014 glass of water',done:false},{id:'m2',name:"Review today's calendar",done:false},{id:'m3',name:'Pick top 3 priorities',done:false},{id:'m4',name:'Quick workspace tidy',done:false}],evening:[{id:'e1',name:'Review what got done today',done:false},{id:'e2',name:"Brain dump tomorrow's thoughts",done:false},{id:'e3',name:"Set out tomorrow's essentials",done:false},{id:'e4',name:'Wind-down activity',done:false}],custom:[]},currentRoutineTab:'morning',energy:null,mood:null,panelOrder:['projects','reminders','time','tasklist','notes','brain','routines','wellness','decision','admin'],panelsLocked:true,lastRoutineReset:null,visiblePanels:{},knownPanels:[]};
 
 // SYNC STATUS
 function setSyncStatus(status,label){const el=document.getElementById('syncStatus');if(!el)return;el.className='sync-status '+status;el.innerHTML='<span class="sync-dot"></span> '+label;}
@@ -1519,6 +1582,9 @@ async function load(){
   if(!state.completedTasks)state.completedTasks=[];
   if(!state.completedWorkouts)state.completedWorkouts=[];
   if(state.focusPlaylistId===undefined)state.focusPlaylistId=null;
+  if(!state.points)state.points={current:0,monthKey:'',lastTier:'bronze',totalsByDay:{},lastLoginDate:'',lifetimeTotal:0};
+  if(!state.points.totalsByDay)state.points.totalsByDay={};
+  if(state.points.lifetimeTotal===undefined)state.points.lifetimeTotal=0;
   if(!state.panelOrder)state.panelOrder=['projects','reminders','time','tasklist','notes','brain','routines','wellness','decision','admin'];
   // Remove legacy 'energy' panel id from any saved order
   state.panelOrder=state.panelOrder.filter(id=>id!=='energy');
@@ -1766,6 +1832,8 @@ function toggleSubtask(pid,sid){
   if(!p)return;
   const s=p.subtasks.find(s=>s.id===sid);
   if(!s)return;
+  // Capture source element for popup positioning
+  var srcEl=document.querySelector('.st-check[onclick*="'+sid+'"]');
   // Archive completed subtask
   if(!state.completedTasks)state.completedTasks=[];
   state.completedTasks.unshift({
@@ -1775,6 +1843,7 @@ function toggleSubtask(pid,sid){
   if(state.completedTasks.length>100)state.completedTasks=state.completedTasks.slice(0,100);
   // Remove from active subtasks
   p.subtasks=p.subtasks.filter(x=>x.id!==sid);
+  addPoints('subtask',srcEl);
   save();renderProjects();renderTaskList();
 }
 function deleteSubtask(pid,sid){const p=state.projects.find(p=>p.id===pid);if(p)p.subtasks=p.subtasks.filter(s=>s.id!==sid);save();renderProjects();renderTaskList();}
@@ -2488,6 +2557,7 @@ function startBreathwork(){
     document.querySelector('.breath-content').classList.add('breath-complete');
     setTimeout(()=>{document.querySelector('.breath-content').classList.remove('breath-complete');},600);
     speak('Well done. Take a moment.');
+    addPoints('breathwork');
     setTimeout(()=>{if(breathActive)stopBreathwork();},6000);
   }
 
@@ -2646,6 +2716,7 @@ function renderTaskList(){
 
 function toggleTaskDone(id,source,projId){
   if(!state.completedTasks)state.completedTasks=[];
+  var srcEl=document.querySelector('.tl-check[onclick*="'+id+'"]')||document.querySelector('.st-check[onclick*="'+id+'"]');
   if(source==='project'){
     var p=state.projects.find(function(p){return p.id===projId;});
     if(p){
@@ -2656,6 +2727,7 @@ function toggleTaskDone(id,source,projId){
           archivedAt:new Date().toISOString(),source:'project'
         });
         p.subtasks=p.subtasks.filter(function(x){return x.id!==id;});
+        addPoints('subtask',srcEl);
       }
     }
     renderProjects();
@@ -2668,6 +2740,7 @@ function toggleTaskDone(id,source,projId){
         archivedAt:new Date().toISOString(),source:'standalone'
       });
       state.tasks=state.tasks.filter(function(x){return x.id!==id;});
+      addPoints('task',srcEl);
     }
   }
   if(state.completedTasks.length>100)state.completedTasks=state.completedTasks.slice(0,100);
@@ -3497,6 +3570,7 @@ function pmdToggleSubtask(pid,sid){
   if(!p)return;
   var s=p.subtasks.find(function(st){return st.id===sid;});
   if(!s)return;
+  var srcEl=document.querySelector('.pmd-st-check[onclick*="'+sid+'"]');
   if(!state.completedTasks)state.completedTasks=[];
   state.completedTasks.unshift({
     id:s.id,name:s.name,projectName:p.name,
@@ -3504,6 +3578,7 @@ function pmdToggleSubtask(pid,sid){
   });
   if(state.completedTasks.length>100)state.completedTasks=state.completedTasks.slice(0,100);
   p.subtasks=p.subtasks.filter(function(x){return x.id!==sid;});
+  addPoints('subtask',srcEl);
   save();renderProjects();renderTaskList();
   openProjectModal(pid); // refresh modal
 }
@@ -3754,9 +3829,262 @@ function _updateMusicUI(){
 }
 
 // ═══════════════════════════════════════
+// POINTS / REWARDS SYSTEM
+// ═══════════════════════════════════════
+const TIER_THRESHOLDS=[
+  {name:'bronze',label:'Bronze',icon:'🥉',min:0,max:100,color:'#cd7f32'},
+  {name:'silver',label:'Silver',icon:'🥈',min:100,max:300,color:'#dadada'},
+  {name:'gold',label:'Gold',icon:'🥇',min:300,max:700,color:'#ffd700'},
+  {name:'diamond',label:'Diamond',icon:'💎',min:700,max:1500,color:'#b9f2ff'},
+  {name:'mythic',label:'Mythic',icon:'⭐',min:1500,max:Infinity,color:'#ff9ec0'}
+];
+
+const POINT_VALUES={
+  daily_login:1,
+  breathwork:2,
+  timer:3,
+  subtask:3,
+  journal:5,
+  task:5,
+  recovery:8,
+  workout:15
+};
+
+function _monthKey(d){d=d||new Date();return d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0');}
+function _dayKey(d){d=d||new Date();return d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')+'-'+String(d.getDate()).padStart(2,'0');}
+
+function getCurrentTier(pts){
+  pts=pts||0;
+  for(var i=TIER_THRESHOLDS.length-1;i>=0;i--){
+    if(pts>=TIER_THRESHOLDS[i].min)return TIER_THRESHOLDS[i];
+  }
+  return TIER_THRESHOLDS[0];
+}
+
+function getNextTier(pts){
+  var cur=getCurrentTier(pts);
+  var idx=TIER_THRESHOLDS.findIndex(function(t){return t.name===cur.name;});
+  return TIER_THRESHOLDS[idx+1]||null;
+}
+
+function checkMonthReset(){
+  var nowKey=_monthKey();
+  if(state.points.monthKey!==nowKey){
+    // Carry over lifetime, reset current
+    state.points.lifetimeTotal=(state.points.lifetimeTotal||0)+(state.points.current||0);
+    state.points.current=0;
+    state.points.monthKey=nowKey;
+    state.points.lastTier='bronze';
+    // Trim totalsByDay to last 90 days
+    var cutoff=new Date();cutoff.setDate(cutoff.getDate()-90);
+    var cutKey=_dayKey(cutoff);
+    Object.keys(state.points.totalsByDay).forEach(function(k){
+      if(k<cutKey)delete state.points.totalsByDay[k];
+    });
+    save();
+  }
+}
+
+function awardDailyLogin(){
+  var today=_dayKey();
+  if(state.points.lastLoginDate!==today){
+    state.points.lastLoginDate=today;
+    addPoints('daily_login');
+  }
+}
+
+function addPoints(source,sourceEl){
+  if(!state.points)state.points={current:0,monthKey:_monthKey(),lastTier:'bronze',totalsByDay:{},lastLoginDate:'',lifetimeTotal:0};
+  checkMonthReset();
+  var amount=POINT_VALUES[source]||0;
+  if(amount<=0)return;
+  
+  var prevTier=getCurrentTier(state.points.current);
+  state.points.current+=amount;
+  var newTier=getCurrentTier(state.points.current);
+  
+  // Track daily
+  var today=_dayKey();
+  state.points.totalsByDay[today]=(state.points.totalsByDay[today]||0)+amount;
+  
+  save();
+  renderPointsBadge();
+  
+  // Floating popup
+  showPointFloater(amount,sourceEl);
+  
+  // Tier-up celebration
+  if(newTier.name!==prevTier.name){
+    state.points.lastTier=newTier.name;
+    save();
+    setTimeout(function(){triggerTierUp(newTier);},300);
+  }
+}
+
+function showPointFloater(amount,sourceEl){
+  var container=document.getElementById('pointPopupContainer');
+  if(!container)return;
+  var floater=document.createElement('div');
+  floater.className='point-popup-floater';
+  floater.textContent='+'+amount;
+  
+  // Position - near source element if provided, otherwise near badge
+  var x,y;
+  if(sourceEl&&sourceEl.getBoundingClientRect){
+    var rect=sourceEl.getBoundingClientRect();
+    x=rect.left+rect.width/2;
+    y=rect.top;
+  }else{
+    var badge=document.getElementById('pointsBadge');
+    if(badge){
+      var br=badge.getBoundingClientRect();
+      x=br.left+br.width/2;
+      y=br.bottom;
+    }else{x=window.innerWidth/2;y=80;}
+  }
+  floater.style.left=(x-15)+'px';
+  floater.style.top=y+'px';
+  container.appendChild(floater);
+  setTimeout(function(){if(floater.parentNode)floater.parentNode.removeChild(floater);},1500);
+}
+
+function renderPointsBadge(){
+  if(!state.points)return;
+  checkMonthReset();
+  var badge=document.getElementById('pointsBadge');
+  var iconEl=document.getElementById('ptTierIcon');
+  var valEl=document.getElementById('ptValue');
+  if(!badge||!valEl)return;
+  
+  var tier=getCurrentTier(state.points.current);
+  var classes=['tier-bronze','tier-silver','tier-gold','tier-diamond','tier-mythic'];
+  classes.forEach(function(c){badge.classList.remove(c);});
+  badge.classList.add('tier-'+tier.name);
+  if(iconEl)iconEl.textContent=tier.icon;
+  valEl.textContent=state.points.current;
+}
+
+function togglePointsPopup(){
+  var pop=document.getElementById('pointsPopup');
+  if(!pop)return;
+  if(pop.style.display==='block'){pop.style.display='none';return;}
+  renderPointsPopup();
+  pop.style.display='block';
+  // Click-outside to close
+  setTimeout(function(){
+    var handler=function(e){
+      if(!pop.contains(e.target)&&!document.getElementById('pointsBadge').contains(e.target)){
+        pop.style.display='none';
+        document.removeEventListener('click',handler);
+      }
+    };
+    document.addEventListener('click',handler);
+  },10);
+}
+
+function renderPointsPopup(){
+  var pop=document.getElementById('pointsPopup');
+  if(!pop)return;
+  var pts=state.points.current||0;
+  var tier=getCurrentTier(pts);
+  var next=getNextTier(pts);
+  var today=_dayKey();
+  var todayPts=state.points.totalsByDay[today]||0;
+  
+  // Week total = last 7 days including today
+  var weekPts=0;
+  for(var i=0;i<7;i++){
+    var d=new Date();d.setDate(d.getDate()-i);
+    weekPts+=(state.points.totalsByDay[_dayKey(d)]||0);
+  }
+  
+  var progressPct=0;
+  var progressLabel='';
+  if(next){
+    var range=next.min-tier.min;
+    var into=pts-tier.min;
+    progressPct=Math.min(100,Math.round((into/range)*100));
+    progressLabel=(next.min-pts)+' to '+next.label+' '+next.icon;
+  }else{
+    progressPct=100;
+    progressLabel='Mythic — top tier!';
+  }
+  
+  var html='<div class="points-popup-section">'
+    +'<div class="points-popup-tier-row" style="color:'+tier.color+';">'
+    +'<span style="font-size:20px;">'+tier.icon+'</span> '+tier.label
+    +'</div>'
+    +'<div class="points-popup-progress"><div class="points-popup-progress-fill" style="width:'+progressPct+'%;background:'+tier.color+';"></div></div>'
+    +'<div class="points-popup-next">'+progressLabel+'</div>'
+    +'</div>'
+    +'<div class="points-popup-section">'
+    +'<div class="points-popup-row"><span class="points-popup-label">Today</span><span class="points-popup-value">'+todayPts+' pts</span></div>'
+    +'<div class="points-popup-row"><span class="points-popup-label">Last 7 days</span><span class="points-popup-value">'+weekPts+' pts</span></div>'
+    +'<div class="points-popup-row"><span class="points-popup-label">This month</span><span class="points-popup-value">'+pts+' pts</span></div>'
+    +'</div>'
+    +'<div class="points-popup-section">'
+    +'<div class="points-popup-row"><span class="points-popup-label">Lifetime</span><span class="points-popup-value">'+(state.points.lifetimeTotal+pts)+' pts</span></div>'
+    +'</div>';
+  pop.innerHTML=html;
+}
+
+function triggerTierUp(tier){
+  var overlay=document.getElementById('fireworksOverlay');
+  if(!overlay)return;
+  overlay.classList.add('show');
+  overlay.innerHTML='';
+  
+  // Banner
+  var banner=document.createElement('div');
+  banner.className='tier-up-banner';
+  banner.style.color=tier.color;
+  banner.innerHTML=tier.icon+' '+tier.label.toUpperCase()+' TIER!';
+  overlay.appendChild(banner);
+  
+  // Fireworks bursts at random positions
+  var colors=['#ffd700','#ff6b9d','#7fdfff','#a0f0a0','#ffaa44','#c77dba'];
+  var bursts=6;
+  for(var b=0;b<bursts;b++){
+    setTimeout(function(){
+      var cx=Math.random()*window.innerWidth;
+      var cy=Math.random()*window.innerHeight*0.7+window.innerHeight*0.1;
+      var color=colors[Math.floor(Math.random()*colors.length)];
+      _spawnBurst(overlay,cx,cy,color);
+    },b*250);
+  }
+  
+  // Auto-cleanup
+  setTimeout(function(){
+    overlay.classList.remove('show');
+    overlay.innerHTML='';
+  },2800);
+}
+
+function _spawnBurst(parent,cx,cy,color){
+  var particles=24;
+  for(var i=0;i<particles;i++){
+    var p=document.createElement('div');
+    p.className='firework-particle';
+    var angle=(i/particles)*Math.PI*2;
+    var distance=80+Math.random()*60;
+    var tx=Math.cos(angle)*distance;
+    var ty=Math.sin(angle)*distance;
+    p.style.left=cx+'px';
+    p.style.top=cy+'px';
+    p.style.background=color;
+    p.style.boxShadow='0 0 6px '+color;
+    p.style.setProperty('--tx',tx+'px');
+    p.style.setProperty('--ty',ty+'px');
+    parent.appendChild(p);
+    // Cleanup
+    setTimeout(function(el){return function(){if(el.parentNode)el.parentNode.removeChild(el);};}(p),1600);
+  }
+}
+
+// ═══════════════════════════════════════
 // TASK TIMER (elapsed stopwatch)
 // ═══════════════════════════════════════
-var _ttRunning=false,_ttElapsed=0,_ttStart=null,_ttTick=null;
+var _ttRunning=false,_ttElapsed=0,_ttStart=null,_ttTick=null,_ttAwarded=false;
 function _ttFmt(ms){var s=Math.floor(ms/1000),h=Math.floor(s/3600);s=s%3600;var m=Math.floor(s/60);s=s%60;return h+':'+(m<10?'0':'')+m+':'+(s<10?'0':'')+s;}
 function ttStart(){
   if(_ttRunning)return;
@@ -3773,9 +4101,14 @@ function ttPause(){
   _ttElapsed=Date.now()-_ttStart;
   var el=document.getElementById('ttDisplay');if(el)el.className='task-timer-display';
   var btn=document.getElementById('ttStartBtn');if(btn)btn.textContent='\u25B6';
+  // Award once per session if ran 5+ minutes
+  if(!_ttAwarded&&_ttElapsed>=300000){
+    _ttAwarded=true;
+    addPoints('timer');
+  }
 }
 function ttReset(){
-  ttPause();_ttElapsed=0;_ttStart=null;
+  ttPause();_ttElapsed=0;_ttStart=null;_ttAwarded=false;
   var el=document.getElementById('ttDisplay');if(el){el.textContent='0:00:00';el.className='task-timer-display';}
   var btn=document.getElementById('ttStartBtn');if(btn)btn.textContent='\u25B6';
 }
@@ -3902,6 +4235,7 @@ function saveJournalEntry(){
   document.getElementById('journalMoodTag').value='';
   document.getElementById('journalEntryCount').textContent=state.journal.length+' '+(state.journal.length===1?'entry':'entries');
   save();
+  addPoints('journal');
   toast('Entry saved \u2713');
 }
 
@@ -4656,6 +4990,9 @@ function completeWorkout(type,dayIndex){
   state.completedWorkouts.push(record);
   save();
   
+  // Award points
+  addPoints(type==='lift'?'workout':'recovery');
+  
   // Show confirmation and update counter
   alert('✓ Workout completed!\n\n'+workoutName+'\n'+new Date(timestamp).toLocaleString());
   updateCompletedWorkoutsCounter();
@@ -4672,7 +5009,7 @@ function updateCompletedWorkoutsCounter(){
 
 async function initApp(){
 await load();
-initPanelVisibility();applyPanelOrder();applyPanelVisibility();updateLockUI();updateClock();updateTimeLeft();setInterval(updateClock,1000);setInterval(updateTimeLeft,30000);updateTimerDisplay();
+initPanelVisibility();applyPanelOrder();applyPanelVisibility();updateLockUI();updateClock();updateTimeLeft();setInterval(updateClock,1000);setInterval(updateTimeLeft,30000);updateTimerDisplay();renderPointsBadge();awardDailyLogin();
 renderProjects();renderReminders();renderThoughts();renderNotes();renderRoutines();renderTaskList();checkDailyRoutineReset();newDecisionPrompt();initDragDrop();
 if(_isMobile()){showMobileHome();}else{document.querySelector('.header')&&document.querySelector('.header').classList.add('mobile-visible');}
 if(state.energy){const c=document.querySelectorAll('#energyPills .em-pill');const m=['high','good','low','crashed'];const i=m.indexOf(state.energy);if(i>=0)c[i].classList.add('selected');}
