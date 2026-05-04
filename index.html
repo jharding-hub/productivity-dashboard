@@ -1963,8 +1963,8 @@ function editThought(id,v){if(!v)return;const t=state.thoughts.find(t=>t.id===id
 function renderThoughts(){document.getElementById('thoughtChips').innerHTML=state.thoughts.map(t=>'<div class="thought-chip"><span class="editable" id="tt_'+t.id+'">'+esc(t.text)+'</span><span class="chip-promote" onclick="promoteThought(\''+t.id+'\')">\u2197</span><span class="chip-x" onclick="deleteThought(\''+t.id+'\')">\u00D7</span></div>').join('');state.thoughts.forEach(t=>{const e=document.getElementById('tt_'+t.id);if(e)makeEditable(e,v=>editThought(t.id,v));});refreshEditables();}
 
 // ENERGY & MOOD
-function setEnergy(el,v){state.energy=v;document.querySelectorAll('#energyPills .em-pill').forEach(c=>c.classList.remove('selected'));el.classList.add('selected');logMoodEntry();save();showStateAdvice();updateWellnessVisibility();}
-function setMood(el,v){state.mood=v;document.querySelectorAll('#moodPills .em-pill').forEach(c=>c.classList.remove('selected'));el.classList.add('selected');logMoodEntry();save();showStateAdvice();updateWellnessVisibility();}
+function setEnergy(el,v){state.energy=v;document.querySelectorAll('#energyPills .em-pill').forEach(c=>c.classList.remove('selected'));el.classList.add('selected');logMoodEntry();save();showStateAdvice();updateWellnessVisibility();var today=_dayKey();if(state.points&&state.points.lastEnergyDate!==today){state.points.lastEnergyDate=today;save();addPoints('mood_energy',el);}}
+function setMood(el,v){state.mood=v;document.querySelectorAll('#moodPills .em-pill').forEach(c=>c.classList.remove('selected'));el.classList.add('selected');logMoodEntry();save();showStateAdvice();updateWellnessVisibility();var today=_dayKey();if(state.points&&state.points.lastMoodDate!==today){state.points.lastMoodDate=today;save();addPoints('mood_energy',el);}}
 const adviceMap={'high-focused':{t:'\u{1F525} Peak state \u2014 tackle your hardest task now.',c:'var(--green)'},'high-scattered':{t:'\u26A1 Energy but no focus. Start a Pomodoro.',c:'var(--orange)'},'high-anxious':{t:'\u{1F4A8} Burn off anxious energy with something physical.',c:'var(--orange)'},'high-calm':{t:'\u2728 Great for creative work or complex problems.',c:'var(--green)'},'good-focused':{t:'\u{1F44D} Solid state. Pick a medium-priority task.',c:'var(--green)'},'good-scattered':{t:'\u{1F4CB} List 3 things, do just the first one.',c:'var(--blue)'},'good-anxious':{t:'\u{1F4DD} Channel worry into a task with a clear endpoint.',c:'var(--blue)'},'good-calm':{t:'\u{1F33F} Good baseline. Handle routine tasks or admin.',c:'var(--green)'},'low-focused':{t:'\u{1F3AF} Low but present? Detail work \u2014 editing, reviewing.',c:'var(--blue)'},'low-scattered':{t:'\u{1FAE7} Not deep work time. 5-min break, then one tiny task.',c:'var(--purple)'},'low-anxious':{t:'\u{1F9CA} Pause. Check the Grounding Toolkit \u2192',c:'var(--purple)'},'low-calm':{t:'\u2601\uFE0F Rest state. Gentle tasks or a proper break.',c:'var(--blue)'},'crashed-focused':{t:'\u26A0\uFE0F Running on fumes. Only truly urgent items.',c:'var(--red)'},'crashed-scattered':{t:'\u{1F6D1} Brain needs a reset. Check the Grounding Toolkit \u2192',c:'var(--red)'},'crashed-anxious':{t:'\u{1FAC2} Hardest state. Grounding Toolkit first, then reassess.',c:'var(--red)'},'crashed-calm':{t:'\u{1F319} Depleted but peaceful. Gentle admin or rest.',c:'var(--purple)'}};
 function showStateAdvice(){const el=document.getElementById('stateAdvice');if(!state.energy||!state.mood){el.innerHTML='';return;}const k=state.energy+'-'+state.mood;const a=adviceMap[k];if(a)el.innerHTML='<div class="decision-prompt" style="border-left:3px solid '+a.c+';margin-bottom:0;">'+a.t+'</div>';}
 
@@ -2084,7 +2084,7 @@ function checkDailyRoutineReset(){
   renderRoutines();
 }
 function switchRoutineTab(tab,btn){state.currentRoutineTab=tab;document.querySelectorAll('.tab-btn').forEach(b=>b.classList.remove('active'));btn.classList.add('active');renderRoutines();}
-function toggleRoutine(tab,id){const r=state.routines[tab].find(r=>r.id===id);if(r)r.done=!r.done;save();renderRoutines();}
+function toggleRoutine(tab,id){const r=state.routines[tab].find(r=>r.id===id);if(r){var wasUndone=!r.done;r.done=!r.done;if(wasUndone&&r.done){var srcEl=document.querySelector('.r-check[onclick*="'+id+'"]');addPoints('routine',srcEl);}}save();renderRoutines();}
 function addRoutine(){const n=document.getElementById('newRoutineName').value.trim();if(!n)return;state.routines[state.currentRoutineTab].push({id:'r'+Date.now(),name:n,done:false});document.getElementById('newRoutineName').value='';save();renderRoutines();}
 function deleteRoutine(tab,id){state.routines[tab]=state.routines[tab].filter(r=>r.id!==id);save();renderRoutines();}
 function resetRoutines(){state.routines[state.currentRoutineTab].forEach(r=>r.done=false);save();renderRoutines();toast('Routines reset');}
@@ -3841,9 +3841,11 @@ const TIER_THRESHOLDS=[
 
 const POINT_VALUES={
   daily_login:1,
+  routine:1,
   breathwork:2,
   timer:3,
   subtask:3,
+  mood_energy:3,
   journal:5,
   task:5,
   recovery:8,
