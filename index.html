@@ -18,7 +18,7 @@
 *{margin:0;padding:0;box-sizing:border-box;}
 body{font-family:'DM Sans',sans-serif;background:var(--bg);color:var(--text);min-height:100vh;min-height:100dvh;line-height:1.5;padding-top:env(safe-area-inset-top);padding-bottom:env(safe-area-inset-bottom);}
 .header{padding:14px 24px 12px;display:grid;grid-template-columns:auto 1fr auto;align-items:center;gap:12px;border-bottom:1px solid var(--border);position:sticky;top:0;background:var(--bg);z-index:50;min-height:64px;}
-.day-progress-bar{position:absolute;left:280px;right:240px;top:50%;transform:translateY(-50%);height:36px;background:#d4a853;z-index:1;pointer-events:none;border-radius:6px;}
+.day-progress-bar{position:absolute;left:215px;right:240px;top:50%;transform:translateY(-50%);height:36px;background:#d4a853;z-index:1;pointer-events:none;border-radius:6px;}
 .day-progress-elapsed{position:absolute;left:0;top:0;bottom:0;background:#f5f0e0;transition:width 1s ease;border-radius:6px 0 0 6px;}
 .day-progress-marker{position:absolute;top:0;bottom:0;width:1px;background:rgba(0,0,0,0.3);}
 .day-progress-now{position:absolute;top:0;bottom:0;width:2px;background:#000;z-index:3;animation:pulse-line 2s ease-in-out infinite;display:flex;align-items:center;justify-content:center;}
@@ -26,7 +26,7 @@ body{font-family:'DM Sans',sans-serif;background:var(--bg);color:var(--text);min
 @keyframes pulse-line{0%,100%{opacity:1;transform:scaleY(1);}50%{opacity:0.6;transform:scaleY(0.95);}}
 
 /* Time-left text overlay sits inside the bar */
-.time-left-overlay{position:absolute;left:50%;top:50%;transform:translate(-50%,-50%);display:flex;align-items:center;gap:8px;z-index:2;pointer-events:none;font-family:'Fraunces',serif;}
+.time-left-overlay{position:absolute;left:14px;top:50%;transform:translateY(-50%);display:flex;align-items:center;gap:8px;z-index:2;pointer-events:none;font-family:'Fraunces',serif;}
 .time-left-overlay-label{font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:1.2px;color:#1a1a1a;text-shadow:0 1px 2px rgba(255,255,255,0.6);}
 .time-left-overlay-value{font-size:18px;font-weight:700;font-variant-numeric:tabular-nums;color:#1a1a1a;text-shadow:0 1px 2px rgba(255,255,255,0.6);}
 .time-left-overlay-value.warn{color:#7a2a00;}
@@ -200,9 +200,9 @@ body.unlocked .date-editable:hover{border-bottom-color:var(--accent);background:
 /* ═══ POINTS / REWARDS SYSTEM ═══ */
 .points-badge{display:inline-flex;align-items:center;gap:6px;padding:5px 12px;background:var(--surface-raised);border:1.5px solid var(--border);border-radius:var(--radius-sm);cursor:pointer;transition:all 0.2s;font-weight:600;user-select:none;}
 .points-badge:hover{transform:translateY(-1px);box-shadow:0 3px 8px rgba(0,0,0,0.25);}
-.points-badge-lg{padding:10px 22px;gap:12px;border-width:2.5px;border-radius:var(--radius);}
-.points-badge-lg .points-tier-icon{font-size:36px;}
-.points-badge-lg .points-value{font-size:28px;font-weight:700;}
+.points-badge-lg{padding:7px 15px;gap:8px;border-width:2px;border-radius:var(--radius);}
+.points-badge-lg .points-tier-icon{font-size:25px;}
+.points-badge-lg .points-value{font-size:20px;font-weight:700;}
 .points-tier-icon{font-size:18px;line-height:1;filter:drop-shadow(0 0 4px currentColor);}
 .points-value{font-size:14px;font-variant-numeric:tabular-nums;}
 .points-badge.tier-bronze{border-color:#cd7f32;color:#cd7f32;}
