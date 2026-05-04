@@ -83,6 +83,7 @@ body{font-family:'DM Sans',sans-serif;background:var(--bg);color:var(--text);min
 .panel-title{font-family:'Fraunces',serif;font-size:16px;font-weight:600;color:var(--text);display:flex;align-items:center;gap:7px;}
 .panel-title .icon{font-size:17px;}
 .panel-badge{font-size:10px;font-weight:600;padding:2px 8px;border-radius:20px;background:var(--accent-glow);color:var(--accent);}
+.panel-badge.completed-badge{background:var(--green-dim);color:var(--green);}
 .panel-content{flex:1;overflow-y:auto;overflow-x:hidden;scroll-behavior:smooth;position:relative;min-height:0;max-height:317px;}
 .panel.expanded .panel-content{max-height:none;}
 
@@ -816,7 +817,7 @@ body.unlocked .date-editable:hover{border-bottom-color:var(--accent);background:
 <!-- 1. PROJECTS -->
 <div class="panel" data-panel="projects" data-nav="projects">
 <div class="panel-header"><div class="panel-title"><span class="drag-handle">&#10495;</span><span class="icon">&#128194;</span> Projects</div>
-<div style="display:flex;gap:6px;align-items:center;"><span class="panel-badge" id="projCount">0</span><button class="expand-btn" onclick="toggleExpand(this)" title="Expand/collapse"><span class="expand-arrow">&#9660;</span></button><button class="btn btn-sm btn-outlook" onclick="exportAllToICS()">&#128197; Export All</button></div></div>
+<div style="display:flex;gap:6px;align-items:center;"><span class="panel-badge" id="projCount">0</span><span class="panel-badge completed-badge" id="projCompletedBadge" style="display:none;">✓ 0</span><button class="expand-btn" onclick="toggleExpand(this)" title="Expand/collapse"><span class="expand-arrow">&#9660;</span></button><button class="btn btn-sm btn-outlook" onclick="exportAllToICS()">&#128197; Export All</button></div></div>
 <div class="panel-content" id="pc_projects">
 <div class="project-list" id="projectList"></div>
 </div>
@@ -898,7 +899,7 @@ body.unlocked .date-editable:hover{border-bottom-color:var(--accent);background:
 <!-- 12. TASK LIST -->
 <div class="panel" data-panel="tasklist" data-nav="tasklist">
 <div class="panel-header"><div class="panel-title"><span class="drag-handle">&#10495;</span><span class="icon">&#128203;</span> Task List</div>
-<div style="display:flex;gap:6px;align-items:center;"><span class="panel-badge" id="taskListCount">0</span><button class="expand-btn" onclick="toggleExpand(this)" title="Expand/collapse"><span class="expand-arrow">&#9660;</span></button><span class="clear-done" onclick="clearDoneTasks()">clear done</span></div></div>
+<div style="display:flex;gap:6px;align-items:center;"><span class="panel-badge" id="taskListCount">0</span><span class="panel-badge completed-badge" id="taskListCompletedBadge" style="display:none;">✓ 0</span><button class="expand-btn" onclick="toggleExpand(this)" title="Expand/collapse"><span class="expand-arrow">&#9660;</span></button></div></div>
 <div class="tasklist-controls">
 <select id="tlSortBy" onchange="renderTaskList()" style="width:auto;padding:4px 8px;font-size:11px;">
 <option value="priority">Sort: Priority</option>
@@ -909,7 +910,6 @@ body.unlocked .date-editable:hover{border-bottom-color:var(--accent);background:
 <select id="tlFilterProj" onchange="renderTaskList()" style="width:auto;padding:4px 8px;font-size:11px;">
 <option value="all">All Projects</option>
 </select>
-<label style="font-size:11px;color:var(--text-dim);display:flex;align-items:center;gap:3px;cursor:pointer;"><input type="checkbox" id="tlHideDone" onchange="renderTaskList()" style="width:auto;margin:0;"> Hide done</label>
 </div>
 <div class="panel-content" id="pc_tasklist">
 <div class="tl-list" id="taskListItems"></div>
@@ -1761,7 +1761,22 @@ function addProject(){const n=document.getElementById('newProjName').value.trim(
 function deleteProject(id){if(!confirm('Delete project and all subtasks?'))return;state.projects=state.projects.filter(p=>p.id!==id);save();renderProjects();renderTaskList();}
 function toggleProjectExpand(id){const p=state.projects.find(p=>p.id===id);if(p)p.expanded=!p.expanded;save();renderProjects();}
 function addSubtask(pid){const ne=document.getElementById('stN_'+pid),de=document.getElementById('stD_'+pid),pe=document.getElementById('stP_'+pid),te=document.getElementById('stT_'+pid);const nm=ne.value.trim();if(!nm)return;const pr=state.projects.find(p=>p.id===pid);if(!pr)return;pr.subtasks.push({id:'st'+Date.now(),name:nm,due:de.value,priority:pe.value,timeEst:te?te.value:'',done:false});ne.value='';de.value='';save();renderProjects();renderTaskList();toast('Subtask added');}
-function toggleSubtask(pid,sid){const p=state.projects.find(p=>p.id===pid);const s=p&&p.subtasks.find(s=>s.id===sid);if(s)s.done=!s.done;save();renderProjects();renderTaskList();}
+function toggleSubtask(pid,sid){
+  const p=state.projects.find(p=>p.id===pid);
+  if(!p)return;
+  const s=p.subtasks.find(s=>s.id===sid);
+  if(!s)return;
+  // Archive completed subtask
+  if(!state.completedTasks)state.completedTasks=[];
+  state.completedTasks.unshift({
+    id:s.id,name:s.name,projectName:p.name,
+    archivedAt:new Date().toISOString(),source:'project'
+  });
+  if(state.completedTasks.length>100)state.completedTasks=state.completedTasks.slice(0,100);
+  // Remove from active subtasks
+  p.subtasks=p.subtasks.filter(x=>x.id!==sid);
+  save();renderProjects();renderTaskList();
+}
 function deleteSubtask(pid,sid){const p=state.projects.find(p=>p.id===pid);if(p)p.subtasks=p.subtasks.filter(s=>s.id!==sid);save();renderProjects();renderTaskList();}
 function editProjectName(pid,v){if(!v)return;const p=state.projects.find(p=>p.id===pid);if(p)p.name=v;save();}
 function editSubtaskName(pid,sid,v){if(!v)return;const p=state.projects.find(p=>p.id===pid);const s=p&&p.subtasks.find(s=>s.id===sid);if(s)s.name=v;save();}
@@ -1796,8 +1811,8 @@ function makeTimeClickable(el,currentVal,onSave){
   });
 }
 
-function renderProjects(){const el=document.getElementById('projectList');const today=todayStr();if(state.projects.length===0){el.innerHTML='<div class="empty-state">No projects yet.</div>';document.getElementById('projCount').textContent='0';updateNoteSelectors();return;}
-el.innerHTML=state.projects.map(p=>{const total=p.subtasks.length,done=p.subtasks.filter(s=>s.done).length;const ov=p.due&&p.due<today;const ovc=p.subtasks.filter(s=>s.due&&s.due<today&&!s.done).length;const sorted=[...p.subtasks].sort((a,b)=>{if(a.done!==b.done)return a.done?1:-1;if(a.due&&b.due)return a.due.localeCompare(b.due);if(a.due)return -1;if(b.due)return 1;return 0;});
+function renderProjects(){const el=document.getElementById('projectList');const today=todayStr();if(state.projects.length===0){el.innerHTML='<div class="empty-state">No projects yet.</div>';document.getElementById('projCount').textContent='0';var emptyProjCompCount=(state.completedTasks||[]).filter(function(t){return t.source==='project';}).length;var emptyProjCompBadge=document.getElementById('projCompletedBadge');if(emptyProjCompBadge){emptyProjCompBadge.textContent='✓ '+emptyProjCompCount;emptyProjCompBadge.style.display=emptyProjCompCount>0?'inline-flex':'none';}updateNoteSelectors();return;}
+el.innerHTML=state.projects.map(p=>{const total=p.subtasks.length;const sorted=[...p.subtasks].sort((a,b)=>{if(a.due&&b.due)return a.due.localeCompare(b.due);if(a.due)return -1;if(b.due)return 1;return 0;});
 
 // Linked items for this project
 const linkedTasks=(state.tasks||[]).filter(t=>t.projectId===p.id&&!t.done);
@@ -1824,8 +1839,15 @@ if(linkedTasks.length||linkedNotes.length||linkedReminders.length){
   linkedHtml+='</div>';
 }
 
-return '<div class="project-card"><div class="proj-header" onclick="toggleProjectExpand(\''+p.id+'\')"><span class="proj-expand '+(p.expanded?'open':'')+'">\u25B6</span><div class="proj-info"><div class="proj-name-row"><span class="proj-name editable" id="pn_'+p.id+'">'+esc(p.name)+'</span><button class="proj-edit-btn" onclick="event.stopPropagation();promptEditProject(\''+p.id+'\')" title="Rename project">&#9998;</button></div><div class="proj-meta"><span>'+done+'/'+total+' tasks</span>'+(linkedNotes.length?'<span>'+linkedNotes.length+' note'+(linkedNotes.length!==1?'s':'')+'</span>':'')+''+(linkedReminders.length?'<span>'+linkedReminders.length+' reminder'+(linkedReminders.length!==1?'s':'')+'</span>':'')+'</div></div><div style="display:flex;gap:4px;align-items:center;"><span class="st-btn st-cal" onclick="exportProjectICS(\''+p.id+'\')">\u{1F4C5}</span><button class="proj-maximize-btn" onclick="event.stopPropagation();openProjectModal(\''+p.id+'\')" title="Open full view">&#9974;</button><span class="proj-delete" onclick="deleteProject(\''+p.id+'\')">\u2715</span></div></div><div class="subtask-area '+(p.expanded?'open':'')+'"><div class="proj-due-display">'+(p.due?'<span class="date-editable" id="pd_'+p.id+'">Ends: '+fmtDate(p.due)+'</span>':'<span class="date-editable" id="pd_'+p.id+'" style="color:var(--text-faint);">+ set end date</span>')+'</div><div class="subtask-list">'+(sorted.length===0?'<div class="empty-state" style="padding:10px;">No subtasks yet.</div>':sorted.map(st=>{return '<div class="subtask-item '+(st.done?'st-done':'')+'"><div class="st-check '+(st.done?'checked':'')+'" onclick="toggleSubtask(\''+p.id+"','"+st.id+'\')">'+(st.done?'\u2713':'')+'</div><span class="st-name editable" id="sn_'+st.id+'"><span class="priority-dot priority-'+st.priority+'"></span>'+esc(st.name)+'</span>'+(st.due?'<span class="st-due date-editable" id="sd_'+st.id+'">'+fmtDate(st.due)+'</span>':'<span class="st-due date-editable" id="sd_'+st.id+'" style="color:var(--text-faint);">+ date</span>')+'<div class="st-actions">'+(st.timeEst?'<span class="tl-time-badge">'+fmtTimeEst(st.timeEst)+'</span>':'')+'<span class="st-btn st-cal" onclick="exportSubtaskICS(\''+p.id+"','"+st.id+'\')">\u{1F4C5}</span><span class="st-btn st-del" onclick="deleteSubtask(\''+p.id+"','"+st.id+'\')">\u2715</span></div></div>';}).join(''))+'</div><div class="subtask-add"><input type="text" id="stN_'+p.id+'" placeholder="New subtask..." onkeydown="if(event.key===\'Enter\')addSubtask(\''+p.id+'\')"><button class="mic-btn" id="stMic_'+p.id+'" onclick="toggleMic(\'stN_'+p.id+'\',\'stMic_'+p.id+'\')" title="Voice input">&#127908;</button><select id="stP_'+p.id+'"><option value="low">Low</option><option value="med" selected>Med</option><option value="high">High</option></select><select id="stT_'+p.id+'" class="time-est-select"><option value="">Time?</option><option value="30">30m</option><option value="60">1hr</option><option value="90">1.5hr</option><option value="120">2hr</option><option value="180">3hr</option><option value="240">4hr</option><option value="999">4hr+</option></select><input type="date" id="stD_'+p.id+'"><button class="btn btn-accent btn-sm" onclick="addSubtask(\''+p.id+'\')">+</button></div></div></div>';}).join('');
+return '<div class="project-card"><div class="proj-header" onclick="toggleProjectExpand(\''+p.id+'\')"><span class="proj-expand '+(p.expanded?'open':'')+'">\u25B6</span><div class="proj-info"><div class="proj-name-row"><span class="proj-name editable" id="pn_'+p.id+'">'+esc(p.name)+'</span><button class="proj-edit-btn" onclick="event.stopPropagation();promptEditProject(\''+p.id+'\')" title="Rename project">&#9998;</button></div><div class="proj-meta"><span>'+total+' subtask'+(total!==1?'s':'')+'</span>'+(linkedNotes.length?'<span>'+linkedNotes.length+' note'+(linkedNotes.length!==1?'s':'')+'</span>':'')+''+(linkedReminders.length?'<span>'+linkedReminders.length+' reminder'+(linkedReminders.length!==1?'s':'')+'</span>':'')+'</div></div><div style="display:flex;gap:4px;align-items:center;"><span class="st-btn st-cal" onclick="exportProjectICS(\''+p.id+'\')">\u{1F4C5}</span><button class="proj-maximize-btn" onclick="event.stopPropagation();openProjectModal(\''+p.id+'\')" title="Open full view">&#9974;</button><span class="proj-delete" onclick="deleteProject(\''+p.id+'\')">\u2715</span></div></div><div class="subtask-area '+(p.expanded?'open':'')+'"><div class="proj-due-display">'+(p.due?'<span class="date-editable" id="pd_'+p.id+'">Ends: '+fmtDate(p.due)+'</span>':'<span class="date-editable" id="pd_'+p.id+'" style="color:var(--text-faint);">+ set end date</span>')+'</div><div class="subtask-list">'+(sorted.length===0?'<div class="empty-state" style="padding:10px;">No subtasks yet.</div>':sorted.map(st=>{return '<div class="subtask-item"><div class="st-check" onclick="toggleSubtask(\''+p.id+"','"+st.id+'\')"></div><span class="st-name editable" id="sn_'+st.id+'"><span class="priority-dot priority-'+st.priority+'"></span>'+esc(st.name)+'</span>'+(st.due?'<span class="st-due date-editable" id="sd_'+st.id+'">'+fmtDate(st.due)+'</span>':'<span class="st-due date-editable" id="sd_'+st.id+'" style="color:var(--text-faint);">+ date</span>')+'<div class="st-actions">'+(st.timeEst?'<span class="tl-time-badge">'+fmtTimeEst(st.timeEst)+'</span>':'')+'<span class="st-btn st-cal" onclick="exportSubtaskICS(\''+p.id+"','"+st.id+'\')">\u{1F4C5}</span><span class="st-btn st-del" onclick="deleteSubtask(\''+p.id+"','"+st.id+'\')">\u2715</span></div></div>';}).join(''))+'</div><div class="subtask-add"><input type="text" id="stN_'+p.id+'" placeholder="New subtask..." onkeydown="if(event.key===\'Enter\')addSubtask(\''+p.id+'\')"><button class="mic-btn" id="stMic_'+p.id+'" onclick="toggleMic(\'stN_'+p.id+'\',\'stMic_'+p.id+'\')" title="Voice input">&#127908;</button><select id="stP_'+p.id+'"><option value="low">Low</option><option value="med" selected>Med</option><option value="high">High</option></select><select id="stT_'+p.id+'" class="time-est-select"><option value="">Time?</option><option value="30">30m</option><option value="60">1hr</option><option value="90">1.5hr</option><option value="120">2hr</option><option value="180">3hr</option><option value="240">4hr</option><option value="999">4hr+</option></select><input type="date" id="stD_'+p.id+'"><button class="btn btn-accent btn-sm" onclick="addSubtask(\''+p.id+'\')">+</button></div></div></div>';}).join('');
 document.getElementById('projCount').textContent=state.projects.length;
+// Update completed subtasks badge (green)
+var projCompCount=(state.completedTasks||[]).filter(function(t){return t.source==='project';}).length;
+var projCompBadge=document.getElementById('projCompletedBadge');
+if(projCompBadge){
+  projCompBadge.textContent='✓ '+projCompCount;
+  projCompBadge.style.display=projCompCount>0?'inline-flex':'none';
+}
 // Subtask name editing (still works when unlocked)
 state.projects.forEach(p=>{p.subtasks.forEach(st=>{const se=document.getElementById('sn_'+st.id);if(se)makeEditable(se,v=>{editSubtaskName(p.id,st.id,v.trim());});});});
 // Attach date editors
@@ -2553,17 +2575,15 @@ function renderTaskList(){
   var all=getAllTasks();
   var sortBy=document.getElementById('tlSortBy');var sort=sortBy?sortBy.value:'priority';
   var filterProj=document.getElementById('tlFilterProj');var filt=filterProj?filterProj.value:'all';
-  var hideDone=document.getElementById('tlHideDone');var hd=hideDone?hideDone.checked:false;
 
   // Filter
   if(filt!=='all')all=all.filter(function(t){return t.projectId===filt;});
-  if(hd)all=all.filter(function(t){return !t.done;});
 
   // Sort
   if(sort==='priority'){
-    all.sort(function(a,b){var pa=PRIORITY_ORDER[a.priority]||1,pb=PRIORITY_ORDER[b.priority]||1;if(pa!==pb)return pa-pb;return (a.done?1:0)-(b.done?1:0);});
+    all.sort(function(a,b){var pa=PRIORITY_ORDER[a.priority]||1,pb=PRIORITY_ORDER[b.priority]||1;return pa-pb;});
   }else if(sort==='time'){
-    all.sort(function(a,b){var ta=TIME_ORDER[a.timeEst]||9999,tb=TIME_ORDER[b.timeEst]||9999;if(ta!==tb)return ta-tb;return (a.done?1:0)-(b.done?1:0);});
+    all.sort(function(a,b){var ta=TIME_ORDER[a.timeEst]||9999,tb=TIME_ORDER[b.timeEst]||9999;return ta-tb;});
   }else if(sort==='project'){
     all.sort(function(a,b){var na=a.projectName||'zzz',nb=b.projectName||'zzz';return na.localeCompare(nb);});
   }else if(sort==='due'){
@@ -2575,8 +2595,8 @@ function renderTaskList(){
     el.innerHTML='<div class="empty-state">No tasks yet. Add one below or create subtasks in Projects.</div>';
   }else{
     el.innerHTML=all.map(function(t){
-      return '<div class="tl-item '+(t.done?'tl-done':'')+'">'+
-        '<div class="tl-check '+(t.done?'checked':'')+'" onclick="toggleTaskDone(\''+t.id+'\',\''+t.source+'\',\''+t.projectId+'\')">'+(t.done?'\u2713':'')+'</div>'+
+      return '<div class="tl-item">'+
+        '<div class="tl-check" onclick="toggleTaskDone(\''+t.id+'\',\''+t.source+'\',\''+t.projectId+'\')"></div>'+
         '<div class="tl-body"><div class="tl-name"><span class="priority-dot priority-'+t.priority+'"></span>'+esc(t.name)+'</div>'+
         '<div class="tl-meta">'+(t.projectName?'<span class="tl-proj-badge">'+esc(t.projectName)+'</span>':'')+
         (t.timeEst?'<span class="tl-time-badge">'+fmtTimeEst(t.timeEst)+'</span>':'')+
@@ -2586,7 +2606,14 @@ function renderTaskList(){
         '</div>';
     }).join('');
   }
-  document.getElementById('taskListCount').textContent=all.filter(function(t){return !t.done;}).length;
+  document.getElementById('taskListCount').textContent=all.length;
+  // Update completed counter badge (green)
+  var compCount=(state.completedTasks||[]).length;
+  var compBadge=document.getElementById('taskListCompletedBadge');
+  if(compBadge){
+    compBadge.textContent='✓ '+compCount;
+    compBadge.style.display=compCount>0?'inline-flex':'none';
+  }
   // Completed archive folder
   var compEl=document.getElementById('taskListCompleted');
   if(compEl){
@@ -2618,13 +2645,32 @@ function renderTaskList(){
 }
 
 function toggleTaskDone(id,source,projId){
+  if(!state.completedTasks)state.completedTasks=[];
   if(source==='project'){
     var p=state.projects.find(function(p){return p.id===projId;});
-    if(p){var s=p.subtasks.find(function(s){return s.id===id;});if(s)s.done=!s.done;}
+    if(p){
+      var s=p.subtasks.find(function(s){return s.id===id;});
+      if(s){
+        state.completedTasks.unshift({
+          id:s.id,name:s.name,projectName:p.name,
+          archivedAt:new Date().toISOString(),source:'project'
+        });
+        p.subtasks=p.subtasks.filter(function(x){return x.id!==id;});
+      }
+    }
     renderProjects();
   }else{
-    var t=state.tasks.find(function(t){return t.id===id;});if(t)t.done=!t.done;
+    var t=state.tasks.find(function(t){return t.id===id;});
+    if(t){
+      var pName=t.projectId?((state.projects.find(function(p){return p.id===t.projectId;})||{}).name||''):'';
+      state.completedTasks.unshift({
+        id:t.id,name:t.name,projectName:pName,
+        archivedAt:new Date().toISOString(),source:'standalone'
+      });
+      state.tasks=state.tasks.filter(function(x){return x.id!==id;});
+    }
   }
+  if(state.completedTasks.length>100)state.completedTasks=state.completedTasks.slice(0,100);
   save();renderTaskList();
 }
 
@@ -2667,32 +2713,8 @@ function deleteStandaloneTask(id){
 }
 
 function clearDoneTasks(){
-  // Archive standalone done tasks
-  var done=state.tasks.filter(function(t){return t.done;});
-  if(!done.length){toast('No done tasks to archive');return;}
-  // Also collect done project subtasks
-  state.projects.forEach(function(p){
-    p.subtasks.forEach(function(st){
-      if(st.done){
-        state.completedTasks.unshift({
-          id:st.id,name:st.name,projectName:p.name,
-          archivedAt:new Date().toISOString(),source:'project'
-        });
-        st.done=false; // reset — it stays in projects
-      }
-    });
-  });
-  done.forEach(function(t){
-    var pName=t.projectId?(state.projects.find(function(p){return p.id===t.projectId;})||{}).name||'':'';
-    state.completedTasks.unshift({
-      id:t.id,name:t.name,projectName:pName,
-      archivedAt:new Date().toISOString(),source:'standalone'
-    });
-  });
-  state.tasks=state.tasks.filter(function(t){return !t.done;});
-  // Keep completed archive at 100 max
-  if(state.completedTasks.length>100)state.completedTasks=state.completedTasks.slice(0,100);
-  save();renderTaskList();renderProjects();toast('\u2713 '+done.length+' task'+(done.length>1?'s':'')+' archived');
+  // Tasks now auto-archive when checked. This is a no-op kept for backwards compat.
+  toast('Tasks auto-archive when checked');
 }
 
 function updateTLProjectDropdowns(){
@@ -3409,8 +3431,8 @@ function openProjectModal(pid){
     });
     html+=sorted.map(function(st){
       return '<div class="pmd-subtask">'
-        +'<div class="pmd-st-check'+(st.done?' checked':'')+'" onclick="pmdToggleSubtask(\''+pid+'\',\''+st.id+'\')">'+(st.done?'✓':'')+'</div>'
-        +'<span class="pmd-st-name'+(st.done?' done':'')+'">'
+        +'<div class="pmd-st-check" onclick="pmdToggleSubtask(\''+pid+'\',\''+st.id+'\')"></div>'
+        +'<span class="pmd-st-name">'
         +'<span class="priority-dot priority-'+( st.priority||'med')+'"></span>'+esc(st.name)+'</span>'
         +(st.due?'<span class="st-due">'+fmtDate(st.due)+'</span>':'')
         +(st.timeEst?'<span class="tl-time-badge">'+fmtTimeEst(st.timeEst)+'</span>':'')
@@ -3472,8 +3494,16 @@ function closeProjectModal(){
 
 function pmdToggleSubtask(pid,sid){
   var p=state.projects.find(function(pr){return pr.id===pid;});
-  var s=p&&p.subtasks.find(function(st){return st.id===sid;});
-  if(s)s.done=!s.done;
+  if(!p)return;
+  var s=p.subtasks.find(function(st){return st.id===sid;});
+  if(!s)return;
+  if(!state.completedTasks)state.completedTasks=[];
+  state.completedTasks.unshift({
+    id:s.id,name:s.name,projectName:p.name,
+    archivedAt:new Date().toISOString(),source:'project'
+  });
+  if(state.completedTasks.length>100)state.completedTasks=state.completedTasks.slice(0,100);
+  p.subtasks=p.subtasks.filter(function(x){return x.id!==sid;});
   save();renderProjects();renderTaskList();
   openProjectModal(pid); // refresh modal
 }
