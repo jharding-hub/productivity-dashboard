@@ -276,44 +276,6 @@ body.unlocked .date-editable:hover{border-bottom-color:var(--accent);background:
 
 /* HALT BUTTON */
 .toolkit-halt:hover{border-color:#e53935;color:#e53935;background:rgba(229,57,53,0.12);}
-.toolkit-breakdown:hover{border-color:#7fc8a9;color:#7fc8a9;background:rgba(127,200,169,0.12);}
-
-/* Break It Down modal styles */
-.bd-section-title{font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:1.2px;color:var(--text-dim);margin:14px 0 8px;}
-.bd-section-title:first-child{margin-top:0;}
-.bd-task-list{display:flex;flex-direction:column;gap:4px;max-height:340px;overflow-y:auto;border:1px solid var(--border);border-radius:var(--radius-sm);padding:6px;}
-.bd-task-item{display:flex;align-items:center;gap:8px;padding:8px 10px;border-radius:var(--radius-sm);cursor:pointer;transition:background 0.15s;font-size:13px;border:1px solid transparent;}
-.bd-task-item:hover{background:var(--surface-raised);border-color:var(--border-focus);}
-.bd-task-item .bd-priority-dot{width:8px;height:8px;border-radius:50%;flex-shrink:0;}
-.bd-task-item .bd-task-name{flex:1;color:var(--text);}
-.bd-task-item .bd-task-proj{font-size:11px;color:var(--text-dim);background:var(--surface-raised);padding:2px 6px;border-radius:8px;}
-.bd-task-item .bd-task-time{font-size:11px;color:var(--accent);}
-.bd-empty{padding:20px;text-align:center;color:var(--text-faint);font-style:italic;}
-
-.bd-loading{display:flex;flex-direction:column;align-items:center;justify-content:center;padding:40px 20px;gap:12px;}
-.bd-spinner{width:32px;height:32px;border:3px solid var(--border);border-top-color:#7fc8a9;border-radius:50%;animation:bd-spin 0.8s linear infinite;}
-@keyframes bd-spin{to{transform:rotate(360deg);}}
-.bd-loading-msg{color:var(--text-dim);font-size:13px;}
-
-.bd-result{padding:0;}
-.bd-result-header{padding:10px 14px;background:rgba(127,200,169,0.08);border:1px solid rgba(127,200,169,0.3);border-radius:var(--radius-sm);margin-bottom:14px;}
-.bd-result-task{font-weight:600;color:var(--text);margin-bottom:4px;}
-.bd-result-summary{font-size:12px;color:var(--text-dim);font-style:italic;}
-.bd-step-list{list-style:none;padding:0;margin:0;display:flex;flex-direction:column;gap:8px;counter-reset:bd-step;}
-.bd-step{display:flex;gap:10px;padding:10px 12px;background:var(--surface-raised);border:1px solid var(--border);border-radius:var(--radius-sm);counter-increment:bd-step;}
-.bd-step::before{content:counter(bd-step);background:#7fc8a9;color:#0a1a14;width:22px;height:22px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:11px;font-weight:700;flex-shrink:0;}
-.bd-step-content{flex:1;font-size:13px;color:var(--text);line-height:1.5;}
-.bd-step-time{font-size:11px;color:var(--text-faint);margin-top:4px;}
-.bd-actions{display:flex;gap:8px;justify-content:flex-end;margin-top:14px;padding-top:14px;border-top:1px solid var(--border);}
-
-/* Inline breakdown display under project subtasks */
-.subtask-breakdown{margin:6px 0 10px 28px;padding:10px 12px;background:rgba(127,200,169,0.06);border-left:3px solid #7fc8a9;border-radius:0 var(--radius-sm) var(--radius-sm) 0;}
-.subtask-breakdown-header{display:flex;justify-content:space-between;align-items:center;font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:1px;color:#7fc8a9;margin-bottom:6px;}
-.subtask-breakdown-clear{cursor:pointer;color:var(--text-faint);font-weight:400;text-transform:none;letter-spacing:0;font-size:11px;}
-.subtask-breakdown-clear:hover{color:var(--red);}
-.subtask-breakdown-list{list-style:none;padding:0;margin:0;counter-reset:bd-inline;}
-.subtask-breakdown-list li{display:flex;gap:8px;font-size:12px;color:var(--text);padding:3px 0;counter-increment:bd-inline;align-items:flex-start;}
-.subtask-breakdown-list li::before{content:counter(bd-inline)'.';color:#7fc8a9;font-weight:700;flex-shrink:0;min-width:18px;}
 
 /* HALT MODAL */
 .halt-intro{font-size:13px;color:var(--text-dim);line-height:1.6;margin-bottom:16px;padding:10px 14px;background:var(--surface-raised);border-left:3px solid var(--red);border-radius:0 var(--radius-sm) var(--radius-sm) 0;}
@@ -1002,7 +964,6 @@ body.unlocked .date-editable:hover{border-bottom-color:var(--accent);background:
   <button class="toolkit-btn toolkit-spinner" onclick="openSpinnerModal()">&#127869;<span>Dinner Wheel</span></button>
   <button class="toolkit-btn toolkit-music" id="focusMusicBtn" onclick="focusMusicToggle()" title="Focus Music — click to play/pause"><span class="music-emoji" id="musicEmoji">&#127925;</span><span id="musicLabel">Focus Music</span><span class="music-controls" id="musicControls" style="display:none;"><span class="music-ctrl-btn" id="musicStateIcon">&#9654;</span><span class="music-ctrl-btn music-skip" onclick="event.stopPropagation();focusMusicSkip()" title="Next track" role="button" tabindex="0">&#9197;</span></span></button>
   <button class="toolkit-btn toolkit-halt" onclick="openHaltModal()">&#128721;<span>HALT+</span></button>
-  <button class="toolkit-btn toolkit-breakdown" onclick="openBreakdownModal()">&#129513;<span>Break It Down</span></button>
 </div>
 <!-- Hidden YouTube player container for focus music -->
 <div id="ytPlayerHost" style="position:fixed;bottom:0;right:0;width:1px;height:1px;opacity:0.01;pointer-events:none;z-index:-1;overflow:hidden;"></div>
@@ -1271,19 +1232,6 @@ body.unlocked .date-editable:hover{border-bottom-color:var(--accent);background:
     <button class="modal-blur-close" onclick="closeHaltModal()">&#10005;</button>
   </div>
   <div class="modal-blur-body" style="padding:16px 20px;" id="haltBody">
-  </div>
-</div>
-</div>
-
-<!-- BREAK IT DOWN MODAL -->
-<div class="modal-blur-overlay" id="breakdownModal">
-<div class="modal-blur-backdrop" onclick="closeBreakdownModal()"></div>
-<div class="modal-blur-panel" style="width:min(640px,95vw);">
-  <div class="modal-blur-header">
-    <div class="modal-blur-title">&#129513; Break It Down</div>
-    <button class="modal-blur-close" onclick="closeBreakdownModal()">&#10005;</button>
-  </div>
-  <div class="modal-blur-body" style="padding:16px 20px;" id="breakdownBody">
   </div>
 </div>
 </div>
@@ -1678,7 +1626,6 @@ async function load(){
   if(!state.points)state.points={current:0,monthKey:'',lastTier:'bronze',totalsByDay:{},lastLoginDate:'',lifetimeTotal:0};
   if(!state.points.totalsByDay)state.points.totalsByDay={};
   if(state.points.lifetimeTotal===undefined)state.points.lifetimeTotal=0;
-  if(!state.taskBreakdowns)state.taskBreakdowns={};
   if(!state.panelOrder)state.panelOrder=['projects','reminders','time','tasklist','notes','brain','routines','wellness','decision','admin'];
   // Remove legacy 'energy' panel id from any saved order
   state.panelOrder=state.panelOrder.filter(id=>id!=='energy');
@@ -1938,17 +1885,15 @@ function toggleSubtask(pid,sid){
   // Remove from this project AND any other project containing a linked sibling
   if(s.linkGroupId){
     state.projects.forEach(function(pr){
-      pr.subtasks.forEach(function(x){if(x.linkGroupId===s.linkGroupId&&state.taskBreakdowns)delete state.taskBreakdowns[x.id];});
       pr.subtasks=pr.subtasks.filter(function(x){return x.linkGroupId!==s.linkGroupId;});
     });
   }else{
-    if(state.taskBreakdowns)delete state.taskBreakdowns[sid];
     p.subtasks=p.subtasks.filter(x=>x.id!==sid);
   }
   addPoints('subtask',srcEl);
   save();renderProjects();renderTaskList();
 }
-function deleteSubtask(pid,sid){const p=state.projects.find(p=>p.id===pid);if(p)p.subtasks=p.subtasks.filter(s=>s.id!==sid);if(state.taskBreakdowns)delete state.taskBreakdowns[sid];save();renderProjects();renderTaskList();}
+function deleteSubtask(pid,sid){const p=state.projects.find(p=>p.id===pid);if(p)p.subtasks=p.subtasks.filter(s=>s.id!==sid);save();renderProjects();renderTaskList();}
 function editProjectName(pid,v){if(!v)return;const p=state.projects.find(p=>p.id===pid);if(p)p.name=v;save();}
 function editSubtaskName(pid,sid,v){if(!v)return;const p=state.projects.find(p=>p.id===pid);const s=p&&p.subtasks.find(s=>s.id===sid);if(s)s.name=v;save();}
 function editProjectDue(pid,v){const p=state.projects.find(p=>p.id===pid);if(p){p.due=v;save();renderProjects();}}
@@ -2010,7 +1955,7 @@ if(linkedTasks.length||linkedNotes.length||linkedReminders.length){
   linkedHtml+='</div>';
 }
 
-return '<div class="project-card"><div class="proj-header" onclick="toggleProjectExpand(\''+p.id+'\')"><span class="proj-expand '+(p.expanded?'open':'')+'">\u25B6</span><div class="proj-info"><div class="proj-name-row"><span class="proj-name editable" id="pn_'+p.id+'">'+esc(p.name)+'</span><button class="proj-edit-btn" onclick="event.stopPropagation();promptEditProject(\''+p.id+'\')" title="Rename project">&#9998;</button></div><div class="proj-meta"><span>'+total+' subtask'+(total!==1?'s':'')+'</span>'+(linkedNotes.length?'<span>'+linkedNotes.length+' note'+(linkedNotes.length!==1?'s':'')+'</span>':'')+''+(linkedReminders.length?'<span>'+linkedReminders.length+' reminder'+(linkedReminders.length!==1?'s':'')+'</span>':'')+'</div></div><div style="display:flex;gap:4px;align-items:center;"><span class="st-btn st-cal" onclick="exportProjectICS(\''+p.id+'\')">\u{1F4C5}</span><button class="proj-maximize-btn" onclick="event.stopPropagation();openProjectModal(\''+p.id+'\')" title="Open full view">&#9974;</button><span class="proj-delete" onclick="deleteProject(\''+p.id+'\')">\u2715</span></div></div><div class="subtask-area '+(p.expanded?'open':'')+'"><div class="proj-due-display">'+(p.due?'<span class="date-editable" id="pd_'+p.id+'">Ends: '+fmtDate(p.due)+'</span>':'<span class="date-editable" id="pd_'+p.id+'" style="color:var(--text-faint);">+ set end date</span>')+'</div><div class="subtask-list">'+(sorted.length===0?'<div class="empty-state" style="padding:10px;">No subtasks yet.</div>':sorted.map(st=>{return '<div class="subtask-item"><div class="st-check" onclick="toggleSubtask(\''+p.id+"','"+st.id+'\')"></div><span class="st-name editable" id="sn_'+st.id+'"><span class="priority-dot priority-'+st.priority+'"></span>'+esc(st.name)+'</span>'+(st.due?'<span class="st-due date-editable" id="sd_'+st.id+'">'+fmtDate(st.due)+'</span>':'<span class="st-due date-editable" id="sd_'+st.id+'" style="color:var(--text-faint);">+ date</span>')+'<div class="st-actions">'+(st.timeEst?'<span class="tl-time-badge">'+fmtTimeEst(st.timeEst)+'</span>':'')+'<span class="st-btn st-cal" onclick="exportSubtaskICS(\''+p.id+"','"+st.id+'\')">\u{1F4C5}</span><span class="st-btn st-del" onclick="deleteSubtask(\''+p.id+"','"+st.id+'\')">\u2715</span></div></div>'+_renderBreakdownInline(st.id);}).join(''))+'</div><div class="subtask-add"><input type="text" id="stN_'+p.id+'" placeholder="New subtask..." onkeydown="if(event.key===\'Enter\')addSubtask(\''+p.id+'\')"><button class="mic-btn" id="stMic_'+p.id+'" onclick="toggleMic(\'stN_'+p.id+'\',\'stMic_'+p.id+'\')" title="Voice input">&#127908;</button><select id="stP_'+p.id+'"><option value="low">Low</option><option value="med" selected>Med</option><option value="high">High</option></select><select id="stT_'+p.id+'" class="time-est-select"><option value="">Time?</option><option value="30">30m</option><option value="60">1hr</option><option value="90">1.5hr</option><option value="120">2hr</option><option value="180">3hr</option><option value="240">4hr</option><option value="999">4hr+</option></select><input type="date" id="stD_'+p.id+'"><button class="btn btn-accent btn-sm" onclick="addSubtask(\''+p.id+'\')">+</button></div></div></div>';}).join('');
+return '<div class="project-card"><div class="proj-header" onclick="toggleProjectExpand(\''+p.id+'\')"><span class="proj-expand '+(p.expanded?'open':'')+'">\u25B6</span><div class="proj-info"><div class="proj-name-row"><span class="proj-name editable" id="pn_'+p.id+'">'+esc(p.name)+'</span><button class="proj-edit-btn" onclick="event.stopPropagation();promptEditProject(\''+p.id+'\')" title="Rename project">&#9998;</button></div><div class="proj-meta"><span>'+total+' subtask'+(total!==1?'s':'')+'</span>'+(linkedNotes.length?'<span>'+linkedNotes.length+' note'+(linkedNotes.length!==1?'s':'')+'</span>':'')+''+(linkedReminders.length?'<span>'+linkedReminders.length+' reminder'+(linkedReminders.length!==1?'s':'')+'</span>':'')+'</div></div><div style="display:flex;gap:4px;align-items:center;"><span class="st-btn st-cal" onclick="exportProjectICS(\''+p.id+'\')">\u{1F4C5}</span><button class="proj-maximize-btn" onclick="event.stopPropagation();openProjectModal(\''+p.id+'\')" title="Open full view">&#9974;</button><span class="proj-delete" onclick="deleteProject(\''+p.id+'\')">\u2715</span></div></div><div class="subtask-area '+(p.expanded?'open':'')+'"><div class="proj-due-display">'+(p.due?'<span class="date-editable" id="pd_'+p.id+'">Ends: '+fmtDate(p.due)+'</span>':'<span class="date-editable" id="pd_'+p.id+'" style="color:var(--text-faint);">+ set end date</span>')+'</div><div class="subtask-list">'+(sorted.length===0?'<div class="empty-state" style="padding:10px;">No subtasks yet.</div>':sorted.map(st=>{return '<div class="subtask-item"><div class="st-check" onclick="toggleSubtask(\''+p.id+"','"+st.id+'\')"></div><span class="st-name editable" id="sn_'+st.id+'"><span class="priority-dot priority-'+st.priority+'"></span>'+esc(st.name)+'</span>'+(st.due?'<span class="st-due date-editable" id="sd_'+st.id+'">'+fmtDate(st.due)+'</span>':'<span class="st-due date-editable" id="sd_'+st.id+'" style="color:var(--text-faint);">+ date</span>')+'<div class="st-actions">'+(st.timeEst?'<span class="tl-time-badge">'+fmtTimeEst(st.timeEst)+'</span>':'')+'<span class="st-btn st-cal" onclick="exportSubtaskICS(\''+p.id+"','"+st.id+'\')">\u{1F4C5}</span><span class="st-btn st-del" onclick="deleteSubtask(\''+p.id+"','"+st.id+'\')">\u2715</span></div></div>';}).join(''))+'</div><div class="subtask-add"><input type="text" id="stN_'+p.id+'" placeholder="New subtask..." onkeydown="if(event.key===\'Enter\')addSubtask(\''+p.id+'\')"><button class="mic-btn" id="stMic_'+p.id+'" onclick="toggleMic(\'stN_'+p.id+'\',\'stMic_'+p.id+'\')" title="Voice input">&#127908;</button><select id="stP_'+p.id+'"><option value="low">Low</option><option value="med" selected>Med</option><option value="high">High</option></select><select id="stT_'+p.id+'" class="time-est-select"><option value="">Time?</option><option value="30">30m</option><option value="60">1hr</option><option value="90">1.5hr</option><option value="120">2hr</option><option value="180">3hr</option><option value="240">4hr</option><option value="999">4hr+</option></select><input type="date" id="stD_'+p.id+'"><button class="btn btn-accent btn-sm" onclick="addSubtask(\''+p.id+'\')">+</button></div></div></div>';}).join('');
 document.getElementById('projCount').textContent=state.projects.length;
 // Update completed subtasks badge (green)
 var projCompCount=(state.completedTasks||[]).filter(function(t){return t.source==='project';}).length;
@@ -3506,8 +3451,11 @@ function _spinOverpassQuery(lat,lon){
       places.sort(function(){return Math.random()-0.5;});
       var pool=places.slice(0,12);
 
-      document.getElementById('spinStatus').textContent='Found '+places.length+' places \u2014 fetching ratings\u2026';
-      _spinEnrichRatings(pool,lat,lon);
+      document.getElementById('spinStatus').textContent='Found '+places.length+' places.';
+      // Use OSM places directly without AI rating enrichment
+      pool.forEach(function(p){if(!p.rating)p.rating=null;});
+      _spinRestaurants=pool.slice(0,8);
+      _spinBuildWheel();
     })
     .catch(function(e){
       console.warn('Overpass error:',e);
@@ -3517,75 +3465,6 @@ function _spinOverpassQuery(lat,lon){
     });
 }
 
-// ── Step 2: Claude API — rate the specific OSM-found places, no guessing needed ──
-function _spinEnrichRatings(places,lat,lon){
-  var list=places.map(function(p,i){
-    return (i+1)+'. '+p.name+(p.address?' ('+p.address+')':'');
-  }).join('\n');
-
-  var cityHint='near '+lat.toFixed(3)+','+lon.toFixed(3);
-  var prompt='The following restaurants/cafes were found on OpenStreetMap '+cityHint+'.\n'
-    +'Use web search to find the current Yelp or Google rating for each one.\n'
-    +'Return ONLY a valid JSON array, no markdown, no extra text.\n'
-    +'Each item: {"name":"exact name from list","rating":4.2,"yelpUrl":"https://... or empty"}\n'
-    +'If you cannot find a rating, use 3.5 as a default.\n\n'
-    +'Places to rate:\n'+list;
-
-  if(!CLAUDE_WORKER_URL){
-    // Worker not configured - skip enrichment, fall back to base places without ratings
-    _spinRenderResults(places.map(function(p){return Object.assign({},p,{rating:null,yelpUrl:''});}));
-    return;
-  }
-  
-  fetch(CLAUDE_WORKER_URL,{
-    method:'POST',
-    headers:{'Content-Type':'application/json'},
-    body:JSON.stringify({
-      model:'claude-haiku-4-5',
-      max_tokens:1200,
-      tools:[{type:'web_search_20250305',name:'web_search'}],
-      messages:[{role:'user',content:prompt}]
-    })
-  })
-  .then(function(r){return r.json();})
-  .then(function(data){
-    var text=(data.content||[]).filter(function(b){return b.type==='text';}).map(function(b){return b.text;}).join('');
-    var match=text.match(/\[[\s\S]*?\]/);
-    if(!match)throw new Error('No JSON');
-    var rated=JSON.parse(match[0]);
-
-    // Merge ratings back into OSM place objects
-    var ratingMap={};
-    rated.forEach(function(r){
-      if(r.name)ratingMap[r.name.toLowerCase().trim()]={rating:parseFloat(r.rating)||3.5,yelpUrl:r.yelpUrl||''};
-    });
-
-    places.forEach(function(p){
-      var key=p.name.toLowerCase().trim();
-      var match=ratingMap[key]||Object.keys(ratingMap).reduce(function(best,k){
-        // fuzzy: pick the closest key if exact not found
-        if(k.includes(key.substring(0,6))||key.includes(k.substring(0,6)))return ratingMap[k];
-        return best;
-      },null);
-      if(match){p.rating=match.rating;p.yelpUrl=match.yelpUrl;}
-      else{p.rating=3.5;}
-    });
-
-    // Sort by rating desc, take top 8
-    places.sort(function(a,b){return b.rating-a.rating;});
-    _spinRestaurants=places.slice(0,8);
-    _spinBuildWheel();
-  })
-  .catch(function(e){
-    console.warn('Rating enrichment error:',e);
-    // Use OSM places with default ratings
-    places.forEach(function(p){if(!p.rating)p.rating=3.5;});
-    places.sort(function(){return Math.random()-0.5;});
-    _spinRestaurants=places.slice(0,8);
-    document.getElementById('spinStatus').textContent='Ratings unavailable \u2014 showing local places.';
-    _spinBuildWheel();
-  });
-}
 
 function _spinFallback(){
   var sitdown=[
@@ -3872,234 +3751,10 @@ function pmdAddSubtask(pid){
 }
 
 // ═══════════════════════════════════════
-// BREAK IT DOWN (AI Task Breakdown)
+// HALT+ SENSORY CHECK
 // ═══════════════════════════════════════
-var _bdSelectedTask=null;
+var _haltChecked={};
 
-function openBreakdownModal(){
-  document.getElementById('breakdownModal').classList.add('open');
-  _blurDashboard();
-  _renderBreakdownPicker();
-}
-
-function closeBreakdownModal(){
-  document.getElementById('breakdownModal').classList.remove('open');
-  _unblurDashboard();
-  _bdSelectedTask=null;
-}
-
-function _renderBreakdownPicker(){
-  var body=document.getElementById('breakdownBody');
-  var html='<div class="bd-section-title">Pick a task to break down</div>';
-  
-  // Collect all active tasks
-  var allTasks=[];
-  // Project subtasks
-  state.projects.forEach(function(p){
-    p.subtasks.forEach(function(st){
-      allTasks.push({
-        id:st.id,name:st.name,priority:st.priority||'med',timeEst:st.timeEst,
-        projectId:p.id,projectName:p.name,source:'project'
-      });
-    });
-  });
-  // Standalone tasks
-  (state.tasks||[]).forEach(function(t){
-    if(!t.done){
-      allTasks.push({
-        id:t.id,name:t.name,priority:t.priority||'med',timeEst:t.timeEst,
-        projectId:'',projectName:'',source:'standalone'
-      });
-    }
-  });
-  
-  if(allTasks.length===0){
-    html+='<div class="bd-empty">No active tasks to break down.<br><br>Add tasks first, then come back here when you need help breaking down something complex.</div>';
-    body.innerHTML=html;
-    return;
-  }
-  
-  // Sort by priority then project
-  var prioRank={high:0,med:1,low:2};
-  allTasks.sort(function(a,b){
-    var pa=prioRank[a.priority]||1,pb=prioRank[b.priority]||1;
-    if(pa!==pb)return pa-pb;
-    return (a.projectName||'zzz').localeCompare(b.projectName||'zzz');
-  });
-  
-  html+='<div class="bd-task-list">';
-  var prioColors={high:'#c75f5f',med:'#d4a853',low:'#7fb3d9'};
-  allTasks.forEach(function(t){
-    var color=prioColors[t.priority]||prioColors.med;
-    html+='<div class="bd-task-item" onclick="_bdSelectTask(\''+t.id+'\',\''+t.source+'\',\''+t.projectId+'\')">'
-      +'<span class="bd-priority-dot" style="background:'+color+';"></span>'
-      +'<span class="bd-task-name">'+esc(t.name)+'</span>'
-      +(t.projectName?'<span class="bd-task-proj">'+esc(t.projectName)+'</span>':'')
-      +(t.timeEst?'<span class="bd-task-time">'+fmtTimeEst(t.timeEst)+'</span>':'')
-      +'</div>';
-  });
-  html+='</div>';
-  
-  body.innerHTML=html;
-}
-
-function _bdSelectTask(id,source,projectId){
-  // Find the task object
-  var task=null;
-  if(source==='project'){
-    var p=state.projects.find(function(pr){return pr.id===projectId;});
-    if(p)task=p.subtasks.find(function(st){return st.id===id;});
-    if(task)task.__source='project';
-    if(task)task.__projectId=projectId;
-    if(task&&p)task.__projectName=p.name;
-  }else{
-    task=(state.tasks||[]).find(function(t){return t.id===id;});
-    if(task)task.__source='standalone';
-  }
-  if(!task)return;
-  _bdSelectedTask=task;
-  _bdRunBreakdown(task);
-}
-
-function _bdRunBreakdown(task){
-  var body=document.getElementById('breakdownBody');
-  body.innerHTML='<div class="bd-loading">'
-    +'<div class="bd-spinner"></div>'
-    +'<div class="bd-loading-msg">Breaking down "'+esc(task.name)+'"...</div>'
-    +'<div class="bd-loading-msg" style="font-size:11px;">Asking Claude for ADHD-friendly steps</div>'
-    +'</div>';
-  
-  var contextLines=['Task: '+task.name];
-  if(task.__projectName)contextLines.push('Project: '+task.__projectName);
-  if(task.priority)contextLines.push('Priority: '+task.priority);
-  if(task.timeEst)contextLines.push('Time estimate: '+fmtTimeEst(task.timeEst));
-  if(task.due)contextLines.push('Due: '+task.due);
-  
-  var prompt='You are helping someone with ADHD break down a task into actionable steps. Their working memory is limited and they get overwhelmed by abstract instructions.\n\n'
-    +contextLines.join('\n')+'\n\n'
-    +'Break this task into the right number of concrete steps based on its complexity (typically 3-8 steps). Each step must:\n'
-    +'- Start with an action verb (Open, Write, Call, Find, Print, etc.)\n'
-    +'- Be a single physical or digital action with a clear start and stop point\n'
-    +'- Take 5-30 minutes to complete\n'
-    +'- Be specific enough that no further breakdown is needed\n'
-    +'- Avoid abstract phrases like "research" "review" "consider" — use concrete verbs instead\n\n'
-    +'Respond ONLY with valid JSON in this exact format (no markdown, no preamble, no code fences):\n'
-    +'{"summary":"one-sentence overview of the approach","steps":[{"action":"step text","time":"~10 min"},{"action":"...","time":"..."}]}';
-  
-  if(!CLAUDE_WORKER_URL){
-    body.innerHTML='<div class="bd-result">'
-      +'<div style="padding:14px;background:rgba(199,95,95,0.1);border:1px solid rgba(199,95,95,0.3);border-radius:var(--radius-sm);color:var(--red);">'
-      +'<strong>AI proxy not configured.</strong><br>'
-      +'<span style="font-size:12px;color:var(--text-dim);">Set <code>CLAUDE_WORKER_URL</code> in your dashboard config to your Cloudflare Worker URL. See cloudflare-worker.js for setup instructions.</span>'
-      +'</div>'
-      +'<div class="bd-actions"><button class="btn btn-outline" onclick="closeBreakdownModal()">Close</button></div>'
-      +'</div>';
-    return;
-  }
-  
-  fetch(CLAUDE_WORKER_URL,{
-    method:'POST',
-    headers:{'Content-Type':'application/json'},
-    body:JSON.stringify({
-      model:'claude-haiku-4-5',
-      max_tokens:1000,
-      messages:[{role:'user',content:prompt}]
-    })
-  }).then(function(r){
-    return r.json().then(function(data){return {ok:r.ok,status:r.status,data:data};});
-  }).then(function(resp){
-    if(!resp.ok){
-      var msg=(resp.data&&resp.data.error&&(resp.data.error.message||resp.data.error))||resp.data||('HTTP '+resp.status);
-      throw new Error(typeof msg==='string'?msg:JSON.stringify(msg));
-    }
-    var data=resp.data;
-    if(data.error){throw new Error(data.error.message||JSON.stringify(data.error));}
-    var text='';
-    if(data.content&&data.content.length){
-      text=data.content.filter(function(b){return b.type==='text';}).map(function(b){return b.text;}).join('');
-    }
-    text=text.replace(/```json|```/g,'').trim();
-    var parsed=JSON.parse(text);
-    _bdRenderResult(task,parsed);
-  }).catch(function(err){
-    body.innerHTML='<div class="bd-result">'
-      +'<div style="padding:14px;background:rgba(199,95,95,0.1);border:1px solid rgba(199,95,95,0.3);border-radius:var(--radius-sm);color:var(--red);">'
-      +'<strong>Couldn\'t break down the task.</strong><br>'
-      +'<span style="font-size:12px;color:var(--text-dim);">'+esc(err.message||'Unknown error')+'</span>'
-      +'</div>'
-      +'<div class="bd-actions"><button class="btn btn-outline" onclick="_renderBreakdownPicker()">\u2190 Pick a different task</button></div>'
-      +'</div>';
-  });
-}
-
-function _bdRenderResult(task,result){
-  var body=document.getElementById('breakdownBody');
-  var html='<div class="bd-result">';
-  html+='<div class="bd-result-header">'
-    +'<div class="bd-result-task">'+esc(task.name)+'</div>'
-    +(result.summary?'<div class="bd-result-summary">'+esc(result.summary)+'</div>':'')
-    +'</div>';
-  html+='<ol class="bd-step-list">';
-  (result.steps||[]).forEach(function(s){
-    html+='<li class="bd-step"><div class="bd-step-content">'+esc(s.action||s)
-      +(s.time?'<div class="bd-step-time">'+esc(s.time)+'</div>':'')
-      +'</div></li>';
-  });
-  html+='</ol>';
-  
-  html+='<div class="bd-actions">';
-  html+='<button class="btn btn-outline" onclick="_renderBreakdownPicker()">\u2190 Another task</button>';
-  if(task.__source==='project'){
-    html+='<button class="btn btn-accent" onclick="_bdSaveToProject(\''+task.id+'\',\''+task.__projectId+'\')">Save under task</button>';
-  }
-  html+='</div>';
-  html+='</div>';
-  body.innerHTML=html;
-  
-  // Cache result on the selected task object so save can use it
-  if(_bdSelectedTask)_bdSelectedTask.__breakdown=result;
-}
-
-function _bdSaveToProject(taskId,projectId){
-  if(!_bdSelectedTask||!_bdSelectedTask.__breakdown)return;
-  // Store breakdown keyed by subtask id
-  state.taskBreakdowns[taskId]={
-    steps:_bdSelectedTask.__breakdown.steps||[],
-    summary:_bdSelectedTask.__breakdown.summary||'',
-    createdAt:new Date().toISOString()
-  };
-  save();
-  renderProjects();
-  toast('\u2713 Breakdown saved under task');
-  closeBreakdownModal();
-}
-
-function clearTaskBreakdown(taskId){
-  if(state.taskBreakdowns&&state.taskBreakdowns[taskId]){
-    delete state.taskBreakdowns[taskId];
-    save();
-    renderProjects();
-  }
-}
-
-function _renderBreakdownInline(taskId){
-  if(!state.taskBreakdowns||!state.taskBreakdowns[taskId])return '';
-  var bd=state.taskBreakdowns[taskId];
-  if(!bd.steps||!bd.steps.length)return '';
-  var html='<div class="subtask-breakdown">'
-    +'<div class="subtask-breakdown-header">'
-    +'<span>\u2728 AI Breakdown</span>'
-    +'<span class="subtask-breakdown-clear" onclick="clearTaskBreakdown(\''+taskId+'\')">clear \u2715</span>'
-    +'</div>'
-    +'<ol class="subtask-breakdown-list">';
-  bd.steps.forEach(function(s){
-    var action=typeof s==='string'?s:(s.action||'');
-    var time=typeof s==='object'?s.time:'';
-    html+='<li><span>'+esc(action)+(time?' <span style="color:var(--text-faint);font-size:11px;">('+esc(time)+')</span>':'')+'</span></li>';
-  });
-  html+='</ol></div>';
-  return html;
-}
 
 
 
@@ -4256,14 +3911,6 @@ function updateDayProgress(){
 // FOCUS MUSIC (YouTube IFrame API)
 // ═══════════════════════════════════════
 const FOCUS_PLAYLIST_ID='PLeSVVJPLz73FGftTDMuiefwuadwf4IAiF';
-
-// ═══════════════════════════════════════
-// CLAUDE API PROXY (Cloudflare Worker)
-// ═══════════════════════════════════════
-// After deploying the Cloudflare worker, paste your worker URL here.
-// Format: https://YOUR-WORKER-NAME.YOUR-USERNAME.workers.dev
-// Leave blank to disable AI features.
-const CLAUDE_WORKER_URL='little-breeze-6e36.medicjth.workers.dev';
 var ytPlayer=null,ytPlayerReady=false,ytAPILoading=false;
 
 function _loadYTAPI(callback){
