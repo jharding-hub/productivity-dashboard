@@ -24,7 +24,7 @@ body{font-family:'DM Sans',sans-serif;background:var(--bg);color:var(--text);min
 .day-progress-now{position:absolute;top:0;bottom:0;width:2px;background:#000;z-index:3;animation:pulse-line 2s ease-in-out infinite;display:flex;align-items:center;justify-content:center;}
 .day-progress-now::after{content:'🚶';position:absolute;font-size:45px;top:50%;transform:translateY(-50%) scaleX(-1);left:-23px;}
 .day-progress-now.resting{background:transparent;animation:none;}
-.day-progress-now.resting::after{content:'🛌';font-size:32px;transform:translateY(-50%) scaleX(1);left:-22px;animation:sleep-bob 3s ease-in-out infinite;}
+.day-progress-now.resting::after{content:'🛌';font-size:32px;transform:translateY(-50%) scaleX(1);left:10px;animation:sleep-bob 3s ease-in-out infinite;}
 @keyframes sleep-bob{0%,100%{transform:translateY(-50%) scaleX(1) rotate(-2deg);}50%{transform:translateY(-50%) scaleX(1) rotate(2deg);}}
 @keyframes pulse-line{0%,100%{opacity:1;transform:scaleY(1);}50%{opacity:0.6;transform:scaleY(0.95);}}
 
