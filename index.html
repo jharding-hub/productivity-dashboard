@@ -23,6 +23,9 @@ body{font-family:'DM Sans',sans-serif;background:var(--bg);color:var(--text);min
 .day-progress-marker{position:absolute;top:0;bottom:0;width:1px;background:rgba(0,0,0,0.3);}
 .day-progress-now{position:absolute;top:0;bottom:0;width:2px;background:#000;z-index:3;animation:pulse-line 2s ease-in-out infinite;display:flex;align-items:center;justify-content:center;}
 .day-progress-now::after{content:'🚶';position:absolute;font-size:45px;top:50%;transform:translateY(-50%) scaleX(-1);left:-23px;}
+.day-progress-now.resting{background:transparent;animation:none;}
+.day-progress-now.resting::after{content:'🛌';font-size:32px;transform:translateY(-50%) scaleX(1);left:-22px;animation:sleep-bob 3s ease-in-out infinite;}
+@keyframes sleep-bob{0%,100%{transform:translateY(-50%) scaleX(1) rotate(-2deg);}50%{transform:translateY(-50%) scaleX(1) rotate(2deg);}}
 @keyframes pulse-line{0%,100%{opacity:1;transform:scaleY(1);}50%{opacity:0.6;transform:scaleY(0.95);}}
 
 /* Time-left text overlay sits inside the bar */
@@ -3931,17 +3934,31 @@ function updateDayProgress(){
     // Before productive day starts - show 0% elapsed (all yellow)
     elapsed=0;
     nowEl.style.display='none';
+    nowEl.classList.remove('resting');
   }else if(nowMin>=endMin){
-    // After productive day ends - show 100% elapsed (all pale yellow)
+    // After productive day ends - show 100% elapsed (all pale yellow), sleep emoji next to "Rest" on left
     elapsed=100;
-    nowEl.style.left='100%';
+    // Time-left overlay sits at left:14px with "Time to Rest" + value (~120px wide)
+    // Position sleep emoji just to the right of that text
+    var timeLeftEl=document.getElementById('timeLeftOverlay');
+    var barEl=document.getElementById('dayProgressBar');
+    if(timeLeftEl&&barEl){
+      var tlRect=timeLeftEl.getBoundingClientRect();
+      var barRect=barEl.getBoundingClientRect();
+      var pxOffset=(tlRect.right-barRect.left)+10; // 10px gap after text
+      nowEl.style.left=pxOffset+'px';
+    }else{
+      nowEl.style.left='160px';
+    }
     nowEl.style.display='block';
+    nowEl.classList.add('resting');
   }else{
     // During productive day - calculate percentage elapsed
     var elapsedMin=nowMin-startMin;
     elapsed=(elapsedMin/totalMin)*100;
     nowEl.style.left=elapsed+'%';
     nowEl.style.display='block';
+    nowEl.classList.remove('resting');
   }
   
   elapsedEl.style.width=elapsed+'%';
