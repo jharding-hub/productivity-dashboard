@@ -3531,7 +3531,13 @@ function _spinEnrichRatings(places,lat,lon){
     +'If you cannot find a rating, use 3.5 as a default.\n\n'
     +'Places to rate:\n'+list;
 
-  fetch('https://api.anthropic.com/v1/messages',{
+  if(!CLAUDE_WORKER_URL){
+    // Worker not configured - skip enrichment, fall back to base places without ratings
+    _spinRenderResults(places.map(function(p){return Object.assign({},p,{rating:null,yelpUrl:''});}));
+    return;
+  }
+  
+  fetch(CLAUDE_WORKER_URL,{
     method:'POST',
     headers:{'Content-Type':'application/json'},
     body:JSON.stringify({
@@ -3980,7 +3986,18 @@ function _bdRunBreakdown(task){
     +'Respond ONLY with valid JSON in this exact format (no markdown, no preamble, no code fences):\n'
     +'{"summary":"one-sentence overview of the approach","steps":[{"action":"step text","time":"~10 min"},{"action":"...","time":"..."}]}';
   
-  fetch('https://api.anthropic.com/v1/messages',{
+  if(!CLAUDE_WORKER_URL){
+    body.innerHTML='<div class="bd-result">'
+      +'<div style="padding:14px;background:rgba(199,95,95,0.1);border:1px solid rgba(199,95,95,0.3);border-radius:var(--radius-sm);color:var(--red);">'
+      +'<strong>AI proxy not configured.</strong><br>'
+      +'<span style="font-size:12px;color:var(--text-dim);">Set <code>CLAUDE_WORKER_URL</code> in your dashboard config to your Cloudflare Worker URL. See cloudflare-worker.js for setup instructions.</span>'
+      +'</div>'
+      +'<div class="bd-actions"><button class="btn btn-outline" onclick="closeBreakdownModal()">Close</button></div>'
+      +'</div>';
+    return;
+  }
+  
+  fetch(CLAUDE_WORKER_URL,{
     method:'POST',
     headers:{'Content-Type':'application/json'},
     body:JSON.stringify({
@@ -4232,6 +4249,14 @@ function updateDayProgress(){
 // FOCUS MUSIC (YouTube IFrame API)
 // ═══════════════════════════════════════
 const FOCUS_PLAYLIST_ID='PLeSVVJPLz73FGftTDMuiefwuadwf4IAiF';
+
+// ═══════════════════════════════════════
+// CLAUDE API PROXY (Cloudflare Worker)
+// ═══════════════════════════════════════
+// After deploying the Cloudflare worker, paste your worker URL here.
+// Format: https://YOUR-WORKER-NAME.YOUR-USERNAME.workers.dev
+// Leave blank to disable AI features.
+const CLAUDE_WORKER_URL='https://little-breeze-6e36.medicjth.workers.dev/';
 var ytPlayer=null,ytPlayerReady=false,ytAPILoading=false;
 
 function _loadYTAPI(callback){
