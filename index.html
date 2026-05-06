@@ -437,10 +437,10 @@ body.unlocked .date-editable:hover{border-bottom-color:var(--accent);background:
 .note-cat-select.has-proj{background:var(--accent-glow);border-color:var(--accent-dim);color:var(--accent);font-weight:600;}
 .note-delete{color:var(--text-faint);cursor:pointer;font-size:12px;margin-left:auto;opacity:0;transition:opacity 0.15s;}
 .note-card:hover .note-delete{opacity:1;}.note-delete:hover{color:var(--red);}
-.note-form{display:flex;flex-direction:column;gap:6px;margin-top:10px;padding-top:10px;border-top:1px solid var(--border);}
+.note-form{display:flex;flex-direction:column;gap:6px;margin-bottom:10px;padding-bottom:10px;border-bottom:1px solid var(--border);}
 .note-form-row{display:flex;gap:6px;}.note-form-row>*{flex:1;}
 .note-textarea{min-height:60px;resize:vertical;}
-.note-filter-row{display:flex;gap:6px;margin-bottom:8px;align-items:center;}
+.note-filter-row{display:flex;gap:6px;margin-top:10px;padding-top:10px;border-top:1px solid var(--border);align-items:center;}
 .note-filter-row select{width:auto;flex:1;font-size:12px;padding:4px 8px;}
 .note-filter-row .note-search{flex:2;}
 .decision-prompt{background:var(--surface-raised);border:1px solid var(--border);border-radius:var(--radius-sm);padding:12px;font-size:13px;color:var(--text-dim);line-height:1.6;margin-bottom:8px;}
@@ -984,10 +984,6 @@ body.unlocked .date-editable:hover{border-bottom-color:var(--accent);background:
 <div class="panel" data-panel="notes" data-nav="notes">
 <div class="panel-header"><div class="panel-title"><span class="drag-handle">&#10495;</span><span class="icon">&#128221;</span> Notes</div>
 <div style="display:flex;gap:6px;align-items:center;"><span class="panel-badge" id="noteCount">0</span><button class="expand-btn" onclick="toggleExpand(this)" title="Expand/collapse"><span class="expand-arrow">▼</span></button></div></div>
-<div class="note-filter-row"><input type="text" class="note-search" id="noteSearch" placeholder="Search notes..." oninput="renderNotes()"><select id="noteFilterProj" onchange="renderNotes()" style="width:auto;padding:4px 8px;font-size:12px;"><option value="all">All projects</option></select></div>
-<div class="panel-content" id="pc_notes">
-<div class="notes-list" id="notesList"></div>
-</div>
 <div class="note-form">
 <input type="text" id="newNoteLabel" placeholder="Note label...">
 <textarea class="note-textarea" id="newNoteBody" placeholder="Note content..."></textarea>
@@ -995,7 +991,12 @@ body.unlocked .date-editable:hover{border-bottom-color:var(--accent);background:
 <div class="proj-multi-picker" id="newNoteProjectPicker" data-target="newNoteProject" onclick="openProjMultiPicker(event,this)"><span class="proj-multi-placeholder">+ Tag projects (optional)</span></div>
 <input type="hidden" id="newNoteProject" value="">
 <button class="btn btn-accent" onclick="addNote()">Add Note</button>
-</div></div></div>
+</div></div>
+<div class="panel-content" id="pc_notes">
+<div class="notes-list" id="notesList"></div>
+</div>
+<div class="note-filter-row"><input type="text" class="note-search" id="noteSearch" placeholder="Search notes..." oninput="renderNotes()"><select id="noteFilterProj" onchange="renderNotes()" style="width:auto;padding:4px 8px;font-size:12px;"><option value="all">All projects</option></select></div>
+</div>
 
 
 
