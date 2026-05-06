@@ -805,6 +805,18 @@ body.unlocked .date-editable:hover{border-bottom-color:var(--accent);background:
 .music-emoji-spin{animation:music-pulse 1.6s ease-in-out infinite;display:inline-block;}
 @keyframes music-pulse{0%,100%{opacity:1;transform:scale(1);}50%{opacity:0.6;transform:scale(0.9);}}
 
+/* Music dropdown */
+.toolkit-music-wrap{position:relative;display:flex;}
+.toolkit-music-wrap .toolkit-btn{flex:1;}
+.music-dropdown{position:absolute;top:calc(100% + 6px);left:0;right:0;background:var(--surface-raised);border:1.5px solid #c77dba;border-radius:var(--radius-sm);box-shadow:0 8px 20px rgba(0,0,0,0.4);z-index:200;overflow:hidden;}
+.music-dropdown-item{display:flex;align-items:center;gap:8px;padding:9px 12px;cursor:pointer;font-size:13px;color:var(--text);border-bottom:1px solid var(--border);transition:background 0.15s;}
+.music-dropdown-item:last-child{border-bottom:none;}
+.music-dropdown-item:hover{background:rgba(199,125,186,0.15);color:#c77dba;}
+.music-dropdown-item.current{background:rgba(199,125,186,0.1);color:#c77dba;font-weight:600;}
+.music-dropdown-item .music-dropdown-icon{font-size:16px;flex-shrink:0;width:20px;text-align:center;}
+.music-dropdown-item .music-dropdown-name{flex:1;}
+.music-dropdown-item .music-dropdown-check{font-size:12px;color:#c77dba;}
+
 /* ── RESTAURANT SPINNER ── */
 .spin-filters{display:flex;gap:10px;flex-wrap:wrap;margin-bottom:18px;}
 .spin-filter-group{flex:1;min-width:120px;}
@@ -962,7 +974,10 @@ body.unlocked .date-editable:hover{border-bottom-color:var(--accent);background:
   <button class="toolkit-btn toolkit-weather" onclick="openWeatherModal()">&#127780;<span>Weather</span></button>
   <button class="toolkit-btn toolkit-workout" onclick="openWorkoutModal()">&#127947;<span>Workout</span></button>
   <button class="toolkit-btn toolkit-spinner" onclick="openSpinnerModal()">&#127869;<span>Dinner Wheel</span></button>
-  <button class="toolkit-btn toolkit-music" id="focusMusicBtn" onclick="focusMusicToggle()" title="Focus Music — click to play/pause"><span class="music-emoji" id="musicEmoji">&#127925;</span><span id="musicLabel">Focus Music</span><span class="music-controls" id="musicControls" style="display:none;"><span class="music-ctrl-btn" id="musicStateIcon">&#9654;</span><span class="music-ctrl-btn music-skip" onclick="event.stopPropagation();focusMusicSkip()" title="Next track" role="button" tabindex="0">&#9197;</span></span></button>
+  <div class="toolkit-music-wrap">
+    <button class="toolkit-btn toolkit-music" id="focusMusicBtn" onclick="musicHandleClick(event)" title="Click to play/pause • Right-click for playlists"><span class="music-emoji" id="musicEmoji">&#127925;</span><span id="musicLabel">Music</span><span class="music-controls" id="musicControls" style="display:none;"><span class="music-ctrl-btn" id="musicStateIcon">&#9654;</span><span class="music-ctrl-btn music-skip" onclick="event.stopPropagation();focusMusicSkip()" title="Next track" role="button" tabindex="0">&#9197;</span><span class="music-ctrl-btn music-menu" onclick="event.stopPropagation();musicToggleDropdown(event)" title="Switch playlist" role="button" tabindex="0">&#9776;</span></span></button>
+    <div class="music-dropdown" id="musicDropdown" style="display:none;"></div>
+  </div>
   <button class="toolkit-btn toolkit-halt" onclick="openHaltModal()">&#128721;<span>HALT+</span></button>
 </div>
 <!-- Hidden YouTube player container for focus music -->
@@ -3911,7 +3926,16 @@ function updateDayProgress(){
 // ═══════════════════════════════════════
 // FOCUS MUSIC (YouTube IFrame API)
 // ═══════════════════════════════════════
-const FOCUS_PLAYLIST_ID='PLeSVVJPLz73FGftTDMuiefwuadwf4IAiF';
+// ═══════════════════════════════════════
+// MUSIC PLAYER (YouTube IFrame API + Playlist Switcher)
+// ═══════════════════════════════════════
+const MUSIC_PLAYLISTS=[
+  {id:'PLeSVVJPLz73FGftTDMuiefwuadwf4IAiF',name:'Focus',icon:'🎯'},
+  {id:'PLeSVVJPLz73HUhdxoKKMJFfBgB5U_4JWC',name:'Playlist 2',icon:'🎵'},
+  {id:'PLeSVVJPLz73HAqvoVE-8litfOeQk6oQ8m',name:'Playlist 3',icon:'🎶'},
+  {id:'PLeSVVJPLz73E_INwG2Oj5W_CG25Ac2t6l',name:'Playlist 4',icon:'🎼'}
+];
+var currentPlaylistIdx=0;
 var ytPlayer=null,ytPlayerReady=false,ytAPILoading=false;
 
 function _loadYTAPI(callback){
@@ -3924,13 +3948,13 @@ function _loadYTAPI(callback){
   document.head.appendChild(tag);
 }
 
-function _createYTPlayer(){
+function _createYTPlayer(playlistId){
   var host=document.getElementById('ytPlayerHost');
   if(!host)return;
   host.innerHTML='<div id="ytPlayerInner"></div>';
   ytPlayer=new YT.Player('ytPlayerInner',{
     height:'1',width:'1',
-    playerVars:{listType:'playlist',list:FOCUS_PLAYLIST_ID,autoplay:1,controls:0,modestbranding:1,playsinline:1},
+    playerVars:{listType:'playlist',list:playlistId,autoplay:1,controls:0,modestbranding:1,playsinline:1},
     events:{
       'onReady':function(e){
         ytPlayerReady=true;
@@ -3941,16 +3965,23 @@ function _createYTPlayer(){
       'onError':function(e){
         console.error('YT Player error:',e.data);
         var msgs={2:'Invalid playlist',5:'HTML5 player error',100:'Playlist not found',101:'Playlist owner disallows embedded playback',150:'Playlist owner disallows embedded playback'};
-        alert('Focus Music error: '+(msgs[e.data]||'Error code '+e.data));
+        alert('Music error: '+(msgs[e.data]||'Error code '+e.data));
       }
     }
   });
 }
 
+function musicHandleClick(ev){
+  // Always close dropdown on regular click
+  var dd=document.getElementById('musicDropdown');
+  if(dd&&dd.style.display==='block'){dd.style.display='none';}
+  focusMusicToggle();
+}
+
 function focusMusicToggle(){
   // Lazy-load YT API and create player on first use
   if(!ytPlayer){
-    _loadYTAPI(function(){_createYTPlayer();});
+    _loadYTAPI(function(){_createYTPlayer(MUSIC_PLAYLISTS[currentPlaylistIdx].id);});
     return;
   }
   // Toggle play/pause
@@ -3968,6 +3999,57 @@ function focusMusicSkip(){
   }
 }
 
+function musicToggleDropdown(ev){
+  var dd=document.getElementById('musicDropdown');
+  if(!dd)return;
+  if(dd.style.display==='block'){dd.style.display='none';return;}
+  
+  // Build dropdown contents
+  var html=MUSIC_PLAYLISTS.map(function(p,i){
+    var current=i===currentPlaylistIdx;
+    return '<div class="music-dropdown-item'+(current?' current':'')+'" onclick="musicSelectPlaylist('+i+')">'
+      +'<span class="music-dropdown-icon">'+p.icon+'</span>'
+      +'<span class="music-dropdown-name">'+esc(p.name)+'</span>'
+      +(current?'<span class="music-dropdown-check">&#9654; playing</span>':'')
+      +'</div>';
+  }).join('');
+  dd.innerHTML=html;
+  dd.style.display='block';
+  
+  // Click-outside to close
+  setTimeout(function(){
+    var handler=function(e){
+      var wrap=document.querySelector('.toolkit-music-wrap');
+      if(!wrap||!wrap.contains(e.target)){
+        dd.style.display='none';
+        document.removeEventListener('click',handler);
+      }
+    };
+    document.addEventListener('click',handler);
+  },10);
+}
+
+function musicSelectPlaylist(idx){
+  if(idx<0||idx>=MUSIC_PLAYLISTS.length)return;
+  currentPlaylistIdx=idx;
+  var dd=document.getElementById('musicDropdown');
+  if(dd)dd.style.display='none';
+  
+  var playlistId=MUSIC_PLAYLISTS[idx].id;
+  
+  // If player exists, switch playlist; otherwise create with this one
+  if(ytPlayer&&ytPlayerReady){
+    try{
+      ytPlayer.loadPlaylist({list:playlistId,listType:'playlist',index:0,startSeconds:0});
+    }catch(err){
+      console.error('Playlist switch error:',err);
+    }
+  }else if(!ytPlayer){
+    _loadYTAPI(function(){_createYTPlayer(playlistId);});
+  }
+  _updateMusicUI();
+}
+
 function _updateMusicUI(){
   var btn=document.getElementById('focusMusicBtn');
   var ctrls=document.getElementById('musicControls');
@@ -3976,11 +4058,13 @@ function _updateMusicUI(){
   var label=document.getElementById('musicLabel');
   if(!btn||!ctrls)return;
   
+  var currentName=MUSIC_PLAYLISTS[currentPlaylistIdx].name;
+  
   if(!ytPlayer||!ytPlayerReady){
     ctrls.style.display='none';
     btn.classList.remove('playing');
     if(emoji)emoji.classList.remove('music-emoji-spin');
-    if(label)label.textContent='Focus Music';
+    if(label)label.textContent='Music';
     return;
   }
   
@@ -3992,12 +4076,12 @@ function _updateMusicUI(){
     btn.classList.add('playing');
     if(stateIcon)stateIcon.innerHTML='&#9208;'; // pause icon (next action)
     if(emoji)emoji.classList.add('music-emoji-spin');
-    if(label)label.textContent='Playing';
+    if(label)label.textContent=currentName;
   }else{
     btn.classList.remove('playing');
     if(stateIcon)stateIcon.innerHTML='&#9654;'; // play icon (next action)
     if(emoji)emoji.classList.remove('music-emoji-spin');
-    if(label)label.textContent='Paused';
+    if(label)label.textContent=currentName+' (paused)';
   }
 }
 
