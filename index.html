@@ -967,6 +967,10 @@ body.unlocked .date-editable:hover{border-bottom-color:var(--accent);background:
 <div class="panel panel-narrow" data-panel="time" data-nav="time">
 <div class="panel-header"><div class="panel-title"><span class="drag-handle">&#10495;</span><span class="icon">&#129521;</span> Tool Kit</div><div class="panel-badge">Quick Launch</div></div>
 <div class="toolkit-grid">
+  <div class="toolkit-music-wrap">
+    <button class="toolkit-btn toolkit-music" id="focusMusicBtn" onclick="musicHandleClick(event)" title="Click to play/pause • Use ☰ to switch playlists"><span class="music-emoji" id="musicEmoji">&#127925;</span><span id="musicLabel">Music</span><span class="music-controls" id="musicControls" style="display:none;"><span class="music-ctrl-btn" id="musicStateIcon">&#9654;</span><span class="music-ctrl-btn music-skip" onclick="event.stopPropagation();focusMusicSkip()" title="Next track" role="button" tabindex="0">&#9197;</span><span class="music-ctrl-btn music-menu" onclick="event.stopPropagation();musicToggleDropdown(event)" title="Switch playlist" role="button" tabindex="0">&#9776;</span></span></button>
+    <div class="music-dropdown" id="musicDropdown" style="display:none;"></div>
+  </div>
   <button class="toolkit-btn toolkit-breath" onclick="openBreathworkModal()">&#128311;<span>Breathwork</span></button>
   <button class="toolkit-btn toolkit-timer" onclick="openTimerModal()">&#9201;<span>Timer</span></button>
   <button class="toolkit-btn toolkit-mood" onclick="openEnergyModal()">&#9889;<span>Energy &amp; Mood</span></button>
@@ -974,10 +978,6 @@ body.unlocked .date-editable:hover{border-bottom-color:var(--accent);background:
   <button class="toolkit-btn toolkit-weather" onclick="openWeatherModal()">&#127780;<span>Weather</span></button>
   <button class="toolkit-btn toolkit-workout" onclick="openWorkoutModal()">&#127947;<span>Workout</span></button>
   <button class="toolkit-btn toolkit-spinner" onclick="openSpinnerModal()">&#127869;<span>Dinner Wheel</span></button>
-  <div class="toolkit-music-wrap">
-    <button class="toolkit-btn toolkit-music" id="focusMusicBtn" onclick="musicHandleClick(event)" title="Click to play/pause • Right-click for playlists"><span class="music-emoji" id="musicEmoji">&#127925;</span><span id="musicLabel">Music</span><span class="music-controls" id="musicControls" style="display:none;"><span class="music-ctrl-btn" id="musicStateIcon">&#9654;</span><span class="music-ctrl-btn music-skip" onclick="event.stopPropagation();focusMusicSkip()" title="Next track" role="button" tabindex="0">&#9197;</span><span class="music-ctrl-btn music-menu" onclick="event.stopPropagation();musicToggleDropdown(event)" title="Switch playlist" role="button" tabindex="0">&#9776;</span></span></button>
-    <div class="music-dropdown" id="musicDropdown" style="display:none;"></div>
-  </div>
   <button class="toolkit-btn toolkit-halt" onclick="openHaltModal()">&#128721;<span>HALT+</span></button>
 </div>
 <!-- Hidden YouTube player container for focus music -->
@@ -3930,10 +3930,10 @@ function updateDayProgress(){
 // MUSIC PLAYER (YouTube IFrame API + Playlist Switcher)
 // ═══════════════════════════════════════
 const MUSIC_PLAYLISTS=[
-  {id:'PLeSVVJPLz73FGftTDMuiefwuadwf4IAiF',name:'Focus',icon:'🎯'},
-  {id:'PLeSVVJPLz73HUhdxoKKMJFfBgB5U_4JWC',name:'Playlist 2',icon:'🎵'},
-  {id:'PLeSVVJPLz73HAqvoVE-8litfOeQk6oQ8m',name:'Playlist 3',icon:'🎶'},
-  {id:'PLeSVVJPLz73E_INwG2Oj5W_CG25Ac2t6l',name:'Playlist 4',icon:'🎼'}
+  {id:'PLeSVVJPLz73FGftTDMuiefwuadwf4IAiF',name:'Khruangbin',icon:'🎸'},
+  {id:'PLeSVVJPLz73HUhdxoKKMJFfBgB5U_4JWC',name:'ADHD Focus',icon:'🎯'},
+  {id:'PLeSVVJPLz73HAqvoVE-8litfOeQk6oQ8m',name:'Jazz',icon:'🎷'},
+  {id:'PLeSVVJPLz73E_INwG2Oj5W_CG25Ac2t6l',name:'Rock Vibes',icon:'🤘'}
 ];
 var currentPlaylistIdx=0;
 var ytPlayer=null,ytPlayerReady=false,ytAPILoading=false;
