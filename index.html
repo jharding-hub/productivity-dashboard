@@ -4007,7 +4007,7 @@ function musicToggleDropdown(ev){
   // Build dropdown contents
   var html=MUSIC_PLAYLISTS.map(function(p,i){
     var current=i===currentPlaylistIdx;
-    return '<div class="music-dropdown-item'+(current?' current':'')+'" onclick="musicSelectPlaylist('+i+')">'
+    return '<div class="music-dropdown-item'+(current?' current':'')+'" onclick="event.stopPropagation();musicSelectPlaylist('+i+')">'
       +'<span class="music-dropdown-icon">'+p.icon+'</span>'
       +'<span class="music-dropdown-name">'+esc(p.name)+'</span>'
       +(current?'<span class="music-dropdown-check">&#9654; playing</span>':'')
@@ -4031,16 +4031,28 @@ function musicToggleDropdown(ev){
 
 function musicSelectPlaylist(idx){
   if(idx<0||idx>=MUSIC_PLAYLISTS.length)return;
-  currentPlaylistIdx=idx;
+  
   var dd=document.getElementById('musicDropdown');
   if(dd)dd.style.display='none';
   
+  // No-op if same playlist already selected
+  if(idx===currentPlaylistIdx&&ytPlayer&&ytPlayerReady)return;
+  
+  currentPlaylistIdx=idx;
   var playlistId=MUSIC_PLAYLISTS[idx].id;
   
   // If player exists, switch playlist; otherwise create with this one
   if(ytPlayer&&ytPlayerReady){
     try{
-      ytPlayer.loadPlaylist({list:playlistId,listType:'playlist',index:0,startSeconds:0});
+      // Stop current playback first to avoid the API restarting the current track
+      ytPlayer.stopVideo();
+      // Use cuePlaylist to load without auto-playing, then call playVideo
+      // The string form (just playlist ID) is more reliable than the object form
+      ytPlayer.cuePlaylist({list:playlistId,listType:'playlist',index:0,startSeconds:0,suggestedQuality:'small'});
+      // Give the API a tick to process the new playlist before starting
+      setTimeout(function(){
+        try{ytPlayer.playVideo();}catch(err){console.error('Auto-play after switch error:',err);}
+      },200);
     }catch(err){
       console.error('Playlist switch error:',err);
     }
