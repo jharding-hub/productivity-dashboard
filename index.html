@@ -276,6 +276,32 @@ body.unlocked .date-editable:hover{border-bottom-color:var(--accent);background:
 
 /* HALT BUTTON */
 .toolkit-halt:hover{border-color:#e53935;color:#e53935;background:rgba(229,57,53,0.12);}
+.toolkit-wellness:hover{border-color:#7fb3a0;color:#7fb3a0;background:rgba(127,179,160,0.12);}
+
+/* Wellness Wheel modal */
+.well-intro{font-size:13px;color:var(--text-dim);margin-bottom:16px;line-height:1.5;}
+.well-intro strong{color:var(--text);}
+.well-list{display:flex;flex-direction:column;gap:8px;}
+.well-item{background:var(--surface-raised);border:1px solid var(--border);border-radius:var(--radius-sm);overflow:hidden;transition:border-color 0.15s;}
+.well-item.has-note{border-left:3px solid #7fb3a0;}
+.well-item-header{display:flex;align-items:center;gap:10px;padding:10px 14px;cursor:pointer;user-select:none;}
+.well-item-header:hover{background:var(--surface-hover);}
+.well-icon{font-size:22px;flex-shrink:0;}
+.well-name{flex:1;font-weight:600;font-size:14px;color:var(--text);}
+.well-note-indicator{font-size:11px;color:#7fb3a0;font-weight:600;}
+.well-arrow{font-size:11px;color:var(--text-dim);transition:transform 0.2s;}
+.well-arrow.open{transform:rotate(90deg);}
+.well-item-body{display:none;padding:0 14px 14px;border-top:1px solid var(--border);}
+.well-item.expanded .well-item-body{display:block;padding-top:12px;}
+.well-def{font-size:13px;color:var(--text-dim);line-height:1.55;margin-bottom:12px;font-style:italic;}
+.well-note-label{font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:1px;color:#7fb3a0;margin-bottom:6px;}
+.well-note-input{width:100%;min-height:70px;padding:10px;background:var(--surface);border:1px solid var(--border);border-radius:var(--radius-sm);color:var(--text);font-family:inherit;font-size:13px;line-height:1.5;resize:vertical;outline:none;box-sizing:border-box;}
+.well-note-input:focus{border-color:#7fb3a0;}
+.well-note-actions{display:flex;justify-content:space-between;align-items:center;margin-top:8px;}
+.well-note-saved{font-size:11px;color:var(--text-faint);}
+.well-save-btn{background:#7fb3a0;border:none;color:#0a1a14;font-weight:600;font-size:12px;padding:6px 14px;border-radius:var(--radius-sm);cursor:pointer;transition:opacity 0.15s;}
+.well-save-btn:hover{opacity:0.85;}
+.well-save-btn:disabled{opacity:0.5;cursor:not-allowed;}
 
 /* HALT MODAL */
 .halt-intro{font-size:13px;color:var(--text-dim);line-height:1.6;margin-bottom:16px;padding:10px 14px;background:var(--surface-raised);border-left:3px solid var(--red);border-radius:0 var(--radius-sm) var(--radius-sm) 0;}
@@ -979,6 +1005,7 @@ body.unlocked .date-editable:hover{border-bottom-color:var(--accent);background:
   <button class="toolkit-btn toolkit-workout" onclick="openWorkoutModal()">&#127947;<span>Workout</span></button>
   <button class="toolkit-btn toolkit-spinner" onclick="openSpinnerModal()">&#127869;<span>Dinner Wheel</span></button>
   <button class="toolkit-btn toolkit-halt" onclick="openHaltModal()">&#128721;<span>HALT+</span></button>
+  <button class="toolkit-btn toolkit-wellness" onclick="openWellnessModal()">&#9784;&#65039;<span>Wellness</span></button>
 </div>
 <!-- Hidden YouTube player container for focus music -->
 <div id="ytPlayerHost" style="position:fixed;bottom:0;right:0;width:1px;height:1px;opacity:0.01;pointer-events:none;z-index:-1;overflow:hidden;"></div>
@@ -1248,6 +1275,19 @@ body.unlocked .date-editable:hover{border-bottom-color:var(--accent);background:
     <button class="modal-blur-close" onclick="closeHaltModal()">&#10005;</button>
   </div>
   <div class="modal-blur-body" style="padding:16px 20px;" id="haltBody">
+  </div>
+</div>
+</div>
+
+<!-- WELLNESS WHEEL MODAL -->
+<div class="modal-blur-overlay" id="wellnessModal">
+<div class="modal-blur-backdrop" onclick="closeWellnessModal()"></div>
+<div class="modal-blur-panel" style="width:min(620px,95vw);">
+  <div class="modal-blur-header">
+    <div class="modal-blur-title">&#9784;&#65039; Wellness Wheel</div>
+    <button class="modal-blur-close" onclick="closeWellnessModal()">&#10005;</button>
+  </div>
+  <div class="modal-blur-body" style="padding:16px 20px;" id="wellnessBody">
   </div>
 </div>
 </div>
@@ -1642,6 +1682,7 @@ async function load(){
   if(!state.points)state.points={current:0,monthKey:'',lastTier:'bronze',totalsByDay:{},lastLoginDate:'',lifetimeTotal:0};
   if(!state.points.totalsByDay)state.points.totalsByDay={};
   if(state.points.lifetimeTotal===undefined)state.points.lifetimeTotal=0;
+  if(!state.wellnessNotes)state.wellnessNotes={};
   if(!state.panelOrder)state.panelOrder=['projects','reminders','time','tasklist','notes','brain','routines','wellness','decision','admin'];
   // Remove legacy 'energy' panel id from any saved order
   state.panelOrder=state.panelOrder.filter(id=>id!=='energy');
@@ -3847,6 +3888,141 @@ function _updateHaltSummary(){
 function haltReset(){_haltChecked={};_renderHalt();}
 
 // ═══════════════════════════════════════
+// WELLNESS WHEEL (SAMHSA 8 Dimensions)
+// ═══════════════════════════════════════
+const WELLNESS_DIMENSIONS=[
+  {key:'emotional',name:'Emotional',icon:'\u{1F60C}',
+   def:'Coping effectively with life and creating satisfying relationships. Includes engaging in self-care, managing stress, and acknowledging your feelings.'},
+  {key:'environmental',name:'Environmental',icon:'\u{1F33F}',
+   def:'Good health by occupying pleasant, stimulating environments that support well-being. Includes having a comfortable indoor space and getting outside in nature.'},
+  {key:'financial',name:'Financial',icon:'\u{1F4B0}',
+   def:'Satisfaction with current and future financial situations. Includes managing debt, building savings, and feeling secure about money matters.'},
+  {key:'intellectual',name:'Intellectual',icon:'\u{1F4DA}',
+   def:'Recognizing creative abilities and finding ways to expand knowledge and skills. Includes pursuing personal interests, education, and intellectually stimulating activities.'},
+  {key:'occupational',name:'Occupational',icon:'\u{1F4BC}',
+   def:'Personal satisfaction and enrichment from one\u2019s work. Includes work-life balance, having a sense of accomplishment, and meaningful contribution.'},
+  {key:'physical',name:'Physical',icon:'\u{1F3C3}',
+   def:'Recognizing the need for physical activity, healthy foods, and sleep. Includes nutrition, exercise, sleep hygiene, and mindful substance use.'},
+  {key:'social',name:'Social',icon:'\u{1F465}',
+   def:'Developing a sense of connection, belonging, and a well-developed support system. Includes nurturing relationships and contributing to your community.'},
+  {key:'spiritual',name:'Spiritual',icon:'\u{1F54A}\uFE0F',
+   def:'Expanding a sense of purpose and meaning in life. Includes connecting to your values, practices, or beliefs that bring perspective and inner peace.'}
+];
+
+function openWellnessModal(){
+  document.getElementById('wellnessModal').classList.add('open');
+  _blurDashboard();
+  _renderWellness();
+}
+
+function closeWellnessModal(){
+  document.getElementById('wellnessModal').classList.remove('open');
+  _unblurDashboard();
+}
+
+function _renderWellness(){
+  if(!state.wellnessNotes)state.wellnessNotes={};
+  var body=document.getElementById('wellnessBody');
+  var html='<div class="well-intro">'
+    +'The <strong>SAMHSA Wellness Wheel</strong> recognizes 8 dimensions of well-being. Click any dimension to expand it, read the definition, and add a personal note about how you can grow in that area.'
+    +' <span style="color:#7fb3a0;">+4 pts</span> for each note saved.'
+    +'</div>';
+  html+='<div class="well-list">';
+  WELLNESS_DIMENSIONS.forEach(function(d){
+    var existing=(state.wellnessNotes[d.key]||{}).note||'';
+    var hasNote=existing.trim().length>0;
+    html+='<div class="well-item'+(hasNote?' has-note':'')+'" id="well-'+d.key+'">'
+      +'<div class="well-item-header" onclick="_wellToggle(\''+d.key+'\')">'
+      +'<span class="well-icon">'+d.icon+'</span>'
+      +'<span class="well-name">'+d.name+'</span>'
+      +(hasNote?'<span class="well-note-indicator">\u2713 noted</span>':'')
+      +'<span class="well-arrow">\u25B6</span>'
+      +'</div>'
+      +'<div class="well-item-body">'
+      +'<div class="well-def">'+d.def+'</div>'
+      +'<div class="well-note-label">My note for this area</div>'
+      +'<textarea class="well-note-input" id="well-note-'+d.key+'" placeholder="What would help you grow here? Example: try and make 2 new connections over the next couple of months">'+esc(existing)+'</textarea>'
+      +'<div class="well-note-actions">'
+      +'<span class="well-note-saved" id="well-saved-'+d.key+'">'+(hasNote?'Last updated '+_wellFormatDate((state.wellnessNotes[d.key]||{}).updatedAt):'')+'</span>'
+      +'<button class="well-save-btn" onclick="_wellSave(\''+d.key+'\')">Save</button>'
+      +'</div>'
+      +'</div>'
+      +'</div>';
+  });
+  html+='</div>';
+  body.innerHTML=html;
+}
+
+function _wellToggle(key){
+  var item=document.getElementById('well-'+key);
+  if(!item)return;
+  var arrow=item.querySelector('.well-arrow');
+  var open=item.classList.toggle('expanded');
+  if(arrow)arrow.classList.toggle('open',open);
+  if(open){
+    setTimeout(function(){
+      var ta=document.getElementById('well-note-'+key);
+      if(ta)ta.focus();
+    },50);
+  }
+}
+
+function _wellSave(key){
+  var ta=document.getElementById('well-note-'+key);
+  if(!ta)return;
+  var newText=ta.value.trim();
+  if(!state.wellnessNotes)state.wellnessNotes={};
+  var existing=(state.wellnessNotes[key]||{}).note||'';
+  
+  if(!newText){
+    // Empty save = clear the note (no points)
+    delete state.wellnessNotes[key];
+    save();
+    _renderWellness();
+    setTimeout(function(){
+      var item=document.getElementById('well-'+key);
+      if(item){item.classList.add('expanded');var arrow=item.querySelector('.well-arrow');if(arrow)arrow.classList.add('open');}
+    },10);
+    return;
+  }
+  
+  // Award points only if new content was added (not just resaving same text)
+  var isNewOrUpdated=newText!==existing.trim();
+  state.wellnessNotes[key]={note:newText,updatedAt:new Date().toISOString()};
+  save();
+  
+  if(isNewOrUpdated){
+    var btnEl=document.querySelector('#well-'+key+' .well-save-btn');
+    addPoints('wellness_note',btnEl);
+    toast('\u2713 Wellness note saved');
+  }else{
+    toast('No changes to save');
+  }
+  
+  _renderWellness();
+  // Re-expand the same item
+  setTimeout(function(){
+    var item=document.getElementById('well-'+key);
+    if(item){item.classList.add('expanded');var arrow=item.querySelector('.well-arrow');if(arrow)arrow.classList.add('open');}
+  },10);
+}
+
+function _wellFormatDate(iso){
+  if(!iso)return '';
+  var d=new Date(iso);
+  var now=new Date();
+  var diffMs=now-d;
+  var diffMin=Math.floor(diffMs/60000);
+  if(diffMin<1)return 'just now';
+  if(diffMin<60)return diffMin+' min ago';
+  var diffHr=Math.floor(diffMin/60);
+  if(diffHr<24)return diffHr+'h ago';
+  var diffDay=Math.floor(diffHr/24);
+  if(diffDay<7)return diffDay+'d ago';
+  return d.toLocaleDateString('en-US',{month:'short',day:'numeric'});
+}
+
+// ═══════════════════════════════════════
 // TIME LEFT PRODUCTIVE WINDOW (5am–10pm)
 // ═══════════════════════════════════════
 var TL_START_H=5,TL_END_H=20;
@@ -4115,6 +4291,7 @@ const POINT_VALUES={
   timer:3,
   subtask:3,
   mood_energy:3,
+  wellness_note:4,
   journal:5,
   task:5,
   recovery:8,
