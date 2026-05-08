@@ -551,6 +551,25 @@ body.unlocked .date-editable:hover{border-bottom-color:var(--accent);background:
 .pmd-item-body{font-size:12px;color:var(--text-dim);margin-top:4px;line-height:1.55;white-space:pre-wrap;word-break:break-word;}
 .proj-edit-btn{background:none;border:none;color:var(--text-faint);cursor:pointer;font-size:12px;padding:1px 4px;line-height:1;opacity:0.6;transition:opacity 0.15s;}
 .proj-edit-btn:hover{opacity:1;color:var(--accent);}
+
+/* Project complete circle button */
+.proj-complete-btn{background:none;border:1.5px solid var(--text-faint);width:18px;height:18px;border-radius:50%;cursor:pointer;padding:0;display:flex;align-items:center;justify-content:center;transition:all 0.15s;flex-shrink:0;font-size:11px;color:transparent;}
+.proj-complete-btn:hover{border-color:var(--green);color:var(--green);background:rgba(107,171,115,0.1);}
+
+/* Completed Projects section */
+.completed-projects-section{margin-top:14px;padding-top:10px;border-top:1px solid var(--border);}
+.completed-projects-toggle{display:flex;align-items:center;gap:6px;cursor:pointer;padding:6px 8px;border-radius:var(--radius-sm);font-size:12px;color:var(--green);font-weight:600;user-select:none;}
+.completed-projects-toggle:hover{background:rgba(107,171,115,0.08);}
+.completed-projects-toggle .cp-arrow{font-size:10px;transition:transform 0.2s;}
+.completed-projects-toggle.open .cp-arrow{transform:rotate(90deg);}
+.completed-projects-list{display:none;flex-direction:column;gap:6px;margin-top:6px;}
+.completed-projects-list.open{display:flex;}
+.completed-project-card{display:flex;align-items:center;gap:8px;padding:8px 10px;background:rgba(107,171,115,0.05);border:1px solid rgba(107,171,115,0.2);border-radius:var(--radius-sm);font-size:12px;}
+.cp-name{flex:1;color:var(--text-dim);text-decoration:line-through;font-weight:500;}
+.cp-stats{font-size:10px;color:var(--text-faint);font-variant-numeric:tabular-nums;white-space:nowrap;}
+.cp-action{cursor:pointer;color:var(--text-faint);padding:2px 6px;border-radius:4px;font-size:13px;transition:all 0.15s;}
+.cp-action.cp-restore:hover{background:rgba(107,171,115,0.15);color:var(--green);}
+.cp-action.cp-purge:hover{background:rgba(229,57,53,0.15);color:var(--red);}
 .proj-linked{margin-top:8px;border-top:1px solid var(--border);padding-top:8px;}
 .proj-linked-group{margin-bottom:7px;}
 .proj-linked-label{font-size:9px;font-weight:700;text-transform:uppercase;letter-spacing:0.7px;color:var(--text-faint);display:block;margin-bottom:3px;}
@@ -1702,6 +1721,7 @@ async function load(){
   if(!state.points.totalsByDay)state.points.totalsByDay={};
   if(state.points.lifetimeTotal===undefined)state.points.lifetimeTotal=0;
   if(!state.wellnessNotes)state.wellnessNotes={};
+  if(!state.completedProjects)state.completedProjects=[];
   if(!state.panelOrder)state.panelOrder=['projects','reminders','time','tasklist','notes','brain','routines','wellness','decision','admin'];
   // Remove legacy 'energy' panel id from any saved order
   state.panelOrder=state.panelOrder.filter(id=>id!=='energy');
@@ -1946,6 +1966,114 @@ function toggleProjectExpand(id){const p=state.projects.find(p=>p.id===id);if(p)
 
 // Per-project "completed folder" expand state (memory only, doesn't persist)
 var _projCompletedOpen={};
+// Global "Completed Projects" section toggle (memory only)
+var _completedProjectsOpen=false;
+
+function markProjectComplete(pid,btnEl){
+  var p=state.projects.find(function(pr){return pr.id===pid;});
+  if(!p)return;
+  
+  // Always confirm before archiving
+  var activeCount=p.subtasks.length;
+  var msg;
+  if(activeCount>0){
+    msg='"'+p.name+'" still has '+activeCount+' active '+(activeCount===1?'task':'tasks')+'.\n\nMark project complete?';
+  }else{
+    msg='Mark "'+p.name+'" complete?';
+  }
+  if(!confirm(msg))return;
+  
+  // Count completed tasks for this project (for the archive stats)
+  var completedCount=(state.completedTasks||[]).filter(function(ct){
+    return ct.projectId===p.id||(ct.projectIds&&ct.projectIds.indexOf(p.id)>=0)||(!ct.projectId&&ct.projectName===p.name);
+  }).length;
+  var noteCount=(state.notes||[]).filter(function(n){return (n.projectIds&&n.projectIds.indexOf(p.id)>=0)||n.projectId===p.id;}).length;
+  
+  // Archive
+  if(!state.completedProjects)state.completedProjects=[];
+  state.completedProjects.unshift({
+    id:p.id,name:p.name,due:p.due||'',
+    completedTaskCount:completedCount,
+    activeTaskCountAtArchive:activeCount,
+    noteCount:noteCount,
+    archivedAt:new Date().toISOString(),
+    subtasks:p.subtasks.slice() // preserve any unfinished subtasks for restore
+  });
+  
+  // Clear any subtasks that were still pending (they go away with the project)
+  // Notes/reminders stay; their projectId reference will become orphaned but still searchable
+  
+  // Remove from active projects
+  state.projects=state.projects.filter(function(pr){return pr.id!==pid;});
+  
+  // Award points
+  addPoints('project',btnEl);
+  
+  save();
+  renderProjects();
+  renderTaskList();
+  renderNotes();
+  renderReminders();
+  toast('\u2713 Project archived');
+}
+
+function restoreProject(pid){
+  var arch=(state.completedProjects||[]).find(function(cp){return cp.id===pid;});
+  if(!arch)return;
+  if(!confirm('Restore "'+arch.name+'" to active projects?'))return;
+  
+  // Restore as active project
+  state.projects.push({
+    id:arch.id,name:arch.name,due:arch.due||'',
+    expanded:false,
+    subtasks:arch.subtasks||[]
+  });
+  state.completedProjects=state.completedProjects.filter(function(cp){return cp.id!==pid;});
+  save();
+  renderProjects();
+  renderTaskList();
+  toast('Project restored');
+}
+
+function purgeCompletedProject(pid){
+  var arch=(state.completedProjects||[]).find(function(cp){return cp.id===pid;});
+  if(!arch)return;
+  if(!confirm('Permanently delete "'+arch.name+'" from the archive? This cannot be undone.'))return;
+  state.completedProjects=state.completedProjects.filter(function(cp){return cp.id!==pid;});
+  save();
+  renderProjects();
+}
+
+function _toggleCompletedProjectsSection(){
+  _completedProjectsOpen=!_completedProjectsOpen;
+  renderProjects();
+}
+
+function _renderCompletedProjectsSection(){
+  var arch=state.completedProjects||[];
+  if(arch.length===0)return '';
+  var html='<div class="completed-projects-section">';
+  html+='<div class="completed-projects-toggle'+(_completedProjectsOpen?' open':'')+'" onclick="_toggleCompletedProjectsSection()">'
+    +'<span class="cp-arrow">\u25B6</span>'
+    +'<span>\u2713 Completed Projects ('+arch.length+')</span>'
+    +'</div>';
+  html+='<div class="completed-projects-list'+(_completedProjectsOpen?' open':'')+'">';
+  arch.forEach(function(cp){
+    var when=cp.archivedAt?_wellFormatDate(cp.archivedAt):'';
+    var stats=[];
+    if(cp.completedTaskCount)stats.push(cp.completedTaskCount+' done');
+    if(cp.noteCount)stats.push(cp.noteCount+' note'+(cp.noteCount!==1?'s':''));
+    if(when)stats.push('archived '+when);
+    html+='<div class="completed-project-card">'
+      +'<span class="cp-name">'+esc(cp.name)+'</span>'
+      +(stats.length?'<span class="cp-stats">'+stats.join(' \u00b7 ')+'</span>':'')
+      +'<span class="cp-action cp-restore" onclick="restoreProject(\''+cp.id+'\')" title="Restore project">\u21BA</span>'
+      +'<span class="cp-action cp-purge" onclick="purgeCompletedProject(\''+cp.id+'\')" title="Permanently delete">\u2715</span>'
+      +'</div>';
+  });
+  html+='</div></div>';
+  return html;
+}
 
 function _renderProjSummary(p,activeTotal,noteCount,remCount,completedItems){
   var compCount=completedItems.length;
@@ -2043,7 +2171,7 @@ function makeTimeClickable(el,currentVal,onSave){
   });
 }
 
-function renderProjects(){const el=document.getElementById('projectList');const today=todayStr();if(state.projects.length===0){el.innerHTML='<div class="empty-state">No projects yet.</div>';document.getElementById('projCount').textContent='0';var emptyProjCompCount=(state.completedTasks||[]).filter(function(t){return t.source==='project';}).length;var emptyProjCompBadge=document.getElementById('projCompletedBadge');if(emptyProjCompBadge){emptyProjCompBadge.textContent='✓ '+emptyProjCompCount;emptyProjCompBadge.style.display=emptyProjCompCount>0?'inline-flex':'none';}updateNoteSelectors();return;}
+function renderProjects(){const el=document.getElementById('projectList');const today=todayStr();if(state.projects.length===0){el.innerHTML='<div class="empty-state">No projects yet.</div>'+_renderCompletedProjectsSection();document.getElementById('projCount').textContent='0';var emptyProjCompCount=(state.completedTasks||[]).filter(function(t){return t.source==='project';}).length;var emptyProjCompBadge=document.getElementById('projCompletedBadge');if(emptyProjCompBadge){emptyProjCompBadge.textContent='✓ '+emptyProjCompCount;emptyProjCompBadge.style.display=emptyProjCompCount>0?'inline-flex':'none';}updateNoteSelectors();return;}
 el.innerHTML=state.projects.map(p=>{const total=p.subtasks.length;const sorted=[...p.subtasks].sort((a,b)=>{if(a.due&&b.due)return a.due.localeCompare(b.due);if(a.due)return -1;if(b.due)return 1;return 0;});
 
 // Completed items for this project (by id or fallback to name match for older records)
@@ -2080,8 +2208,10 @@ if(linkedTasks.length||linkedNotes.length||linkedReminders.length){
   linkedHtml+='</div>';
 }
 
-return '<div class="project-card"><div class="proj-header" onclick="toggleProjectExpand(\''+p.id+'\')"><span class="proj-expand '+(p.expanded?'open':'')+'">\u25B6</span><div class="proj-info"><div class="proj-name-row"><span class="proj-name editable" id="pn_'+p.id+'">'+esc(p.name)+'</span><button class="proj-edit-btn" onclick="event.stopPropagation();promptEditProject(\''+p.id+'\')" title="Rename project">&#9998;</button></div><div class="proj-meta"><span>'+total+' subtask'+(total!==1?'s':'')+'</span>'+(linkedNotes.length?'<span>'+linkedNotes.length+' note'+(linkedNotes.length!==1?'s':'')+'</span>':'')+''+(linkedReminders.length?'<span>'+linkedReminders.length+' reminder'+(linkedReminders.length!==1?'s':'')+'</span>':'')+'</div></div><div style="display:flex;gap:4px;align-items:center;"><span class="st-btn st-cal" onclick="exportProjectICS(\''+p.id+'\')">\u{1F4C5}</span><button class="proj-maximize-btn" onclick="event.stopPropagation();openProjectModal(\''+p.id+'\')" title="Open full view">&#9974;</button><span class="proj-delete" onclick="deleteProject(\''+p.id+'\')">\u2715</span></div></div><div class="subtask-area '+(p.expanded?'open':'')+'"><div class="proj-due-display">'+(p.due?'<span class="date-editable" id="pd_'+p.id+'">Ends: '+fmtDate(p.due)+'</span>':'<span class="date-editable" id="pd_'+p.id+'" style="color:var(--text-faint);">+ set end date</span>')+'</div>'+_renderProjSummary(p,total,linkedNotes.length,linkedReminders.length,projCompletedItems)+'<div class="subtask-list">'+(sorted.length===0?'<div class="empty-state" style="padding:10px;">No subtasks yet.</div>':sorted.map(st=>{return '<div class="subtask-item"><div class="st-check" onclick="toggleSubtask(\''+p.id+"','"+st.id+'\')"></div><span class="st-name editable" id="sn_'+st.id+'"><span class="priority-dot priority-'+st.priority+'"></span>'+esc(st.name)+'</span>'+(st.due?'<span class="st-due date-editable" id="sd_'+st.id+'">'+fmtDate(st.due)+'</span>':'<span class="st-due date-editable" id="sd_'+st.id+'" style="color:var(--text-faint);">+ date</span>')+'<div class="st-actions">'+(st.timeEst?'<span class="tl-time-badge">'+fmtTimeEst(st.timeEst)+'</span>':'')+'<span class="st-btn st-cal" onclick="exportSubtaskICS(\''+p.id+"','"+st.id+'\')">\u{1F4C5}</span><span class="st-btn st-del" onclick="deleteSubtask(\''+p.id+"','"+st.id+'\')">\u2715</span></div></div>';}).join(''))+'</div><div class="subtask-add"><input type="text" id="stN_'+p.id+'" placeholder="New subtask..." onkeydown="if(event.key===\'Enter\')addSubtask(\''+p.id+'\')"><button class="mic-btn" id="stMic_'+p.id+'" onclick="toggleMic(\'stN_'+p.id+'\',\'stMic_'+p.id+'\')" title="Voice input">&#127908;</button><select id="stP_'+p.id+'"><option value="low">Low</option><option value="med" selected>Med</option><option value="high">High</option></select><select id="stT_'+p.id+'" class="time-est-select"><option value="">Time?</option><option value="30">30m</option><option value="60">1hr</option><option value="90">1.5hr</option><option value="120">2hr</option><option value="180">3hr</option><option value="240">4hr</option><option value="999">4hr+</option></select><input type="date" id="stD_'+p.id+'"><button class="btn btn-accent btn-sm" onclick="addSubtask(\''+p.id+'\')">+</button></div></div></div>';}).join('');
+return '<div class="project-card"><div class="proj-header" onclick="toggleProjectExpand(\''+p.id+'\')"><span class="proj-expand '+(p.expanded?'open':'')+'">\u25B6</span><div class="proj-info"><div class="proj-name-row"><span class="proj-name editable" id="pn_'+p.id+'">'+esc(p.name)+'</span><button class="proj-edit-btn" onclick="event.stopPropagation();promptEditProject(\''+p.id+'\')" title="Rename project">&#9998;</button></div><div class="proj-meta"><span>'+total+' subtask'+(total!==1?'s':'')+'</span>'+(linkedNotes.length?'<span>'+linkedNotes.length+' note'+(linkedNotes.length!==1?'s':'')+'</span>':'')+''+(linkedReminders.length?'<span>'+linkedReminders.length+' reminder'+(linkedReminders.length!==1?'s':'')+'</span>':'')+'</div></div><div style="display:flex;gap:4px;align-items:center;"><span class="st-btn st-cal" onclick="exportProjectICS(\''+p.id+'\')">\u{1F4C5}</span><button class="proj-complete-btn" onclick="event.stopPropagation();markProjectComplete(\''+p.id+'\',this)" title="Mark complete">\u2713</button><button class="proj-maximize-btn" onclick="event.stopPropagation();openProjectModal(\''+p.id+'\')" title="Open full view">&#9974;</button><span class="proj-delete" onclick="deleteProject(\''+p.id+'\')">\u2715</span></div></div><div class="subtask-area '+(p.expanded?'open':'')+'"><div class="proj-due-display">'+(p.due?'<span class="date-editable" id="pd_'+p.id+'">Ends: '+fmtDate(p.due)+'</span>':'<span class="date-editable" id="pd_'+p.id+'" style="color:var(--text-faint);">+ set end date</span>')+'</div>'+_renderProjSummary(p,total,linkedNotes.length,linkedReminders.length,projCompletedItems)+'<div class="subtask-list">'+(sorted.length===0?'<div class="empty-state" style="padding:10px;">No subtasks yet.</div>':sorted.map(st=>{return '<div class="subtask-item"><div class="st-check" onclick="toggleSubtask(\''+p.id+"','"+st.id+'\')"></div><span class="st-name editable" id="sn_'+st.id+'"><span class="priority-dot priority-'+st.priority+'"></span>'+esc(st.name)+'</span>'+(st.due?'<span class="st-due date-editable" id="sd_'+st.id+'">'+fmtDate(st.due)+'</span>':'<span class="st-due date-editable" id="sd_'+st.id+'" style="color:var(--text-faint);">+ date</span>')+'<div class="st-actions">'+(st.timeEst?'<span class="tl-time-badge">'+fmtTimeEst(st.timeEst)+'</span>':'')+'<span class="st-btn st-cal" onclick="exportSubtaskICS(\''+p.id+"','"+st.id+'\')">\u{1F4C5}</span><span class="st-btn st-del" onclick="deleteSubtask(\''+p.id+"','"+st.id+'\')">\u2715</span></div></div>';}).join(''))+'</div><div class="subtask-add"><input type="text" id="stN_'+p.id+'" placeholder="New subtask..." onkeydown="if(event.key===\'Enter\')addSubtask(\''+p.id+'\')"><button class="mic-btn" id="stMic_'+p.id+'" onclick="toggleMic(\'stN_'+p.id+'\',\'stMic_'+p.id+'\')" title="Voice input">&#127908;</button><select id="stP_'+p.id+'"><option value="low">Low</option><option value="med" selected>Med</option><option value="high">High</option></select><select id="stT_'+p.id+'" class="time-est-select"><option value="">Time?</option><option value="30">30m</option><option value="60">1hr</option><option value="90">1.5hr</option><option value="120">2hr</option><option value="180">3hr</option><option value="240">4hr</option><option value="999">4hr+</option></select><input type="date" id="stD_'+p.id+'"><button class="btn btn-accent btn-sm" onclick="addSubtask(\''+p.id+'\')">+</button></div></div></div>';}).join('');
 document.getElementById('projCount').textContent=state.projects.length;
+// Append "Completed Projects" section at the bottom of the projects list
+el.innerHTML+=_renderCompletedProjectsSection();
 // Update completed subtasks badge (green)
 var projCompCount=(state.completedTasks||[]).filter(function(t){return t.source==='project';}).length;
 var projCompBadge=document.getElementById('projCompletedBadge');
@@ -4363,7 +4493,8 @@ const POINT_VALUES={
   journal:5,
   task:5,
   recovery:8,
-  workout:15
+  workout:15,
+  project:25
 };
 
 function _monthKey(d){d=d||new Date();return d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0');}
