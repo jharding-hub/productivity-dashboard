@@ -26,7 +26,8 @@ body{font-family:'DM Sans',sans-serif;background:var(--bg);color:var(--text);min
 .day-progress-elapsed{position:absolute;left:0;top:0;bottom:0;background:#f5f0e0;transition:width 1s ease;border-radius:6px 0 0 6px;}
 .day-progress-marker{position:absolute;top:0;bottom:0;width:1px;background:rgba(0,0,0,0.3);}
 .day-progress-now{position:absolute;top:0;bottom:0;width:2px;background:#000;z-index:3;animation:pulse-line 2s ease-in-out infinite;display:flex;align-items:center;justify-content:center;}
-.day-progress-now::after{content:'🚶';position:absolute;font-size:45px;top:50%;transform:translateY(-50%) scaleX(-1);left:-23px;}
+.day-progress-now::after{content:'';position:absolute;width:42px;height:42px;top:50%;transform:translate(-50%,-50%);left:0;background-image:url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><circle cx='50' cy='50' r='44' fill='none' stroke='%231a1a1a' stroke-width='6'/><g transform='translate(50 50)' stroke='%231a1a1a' stroke-width='5' stroke-linecap='round'><line x1='0' y1='-40' x2='0' y2='-18'/><line x1='0' y1='-40' x2='0' y2='-18' transform='rotate(45)'/><line x1='0' y1='-40' x2='0' y2='-18' transform='rotate(90)'/><line x1='0' y1='-40' x2='0' y2='-18' transform='rotate(135)'/><line x1='0' y1='-40' x2='0' y2='-18' transform='rotate(180)'/><line x1='0' y1='-40' x2='0' y2='-18' transform='rotate(225)'/><line x1='0' y1='-40' x2='0' y2='-18' transform='rotate(270)'/><line x1='0' y1='-40' x2='0' y2='-18' transform='rotate(315)'/></g><circle cx='50' cy='50' r='14' fill='none' stroke='%231a1a1a' stroke-width='4'/><circle cx='50' cy='50' r='6' fill='%231a1a1a'/></svg>");background-size:contain;background-repeat:no-repeat;animation:wheel-roll 4s linear infinite;}
+@keyframes wheel-roll{from{transform:translate(-50%,-50%) rotate(0deg);}to{transform:translate(-50%,-50%) rotate(360deg);}}
 .day-progress-now.resting{background:transparent;animation:none;}
 .day-progress-now.resting::after{content:'🛌';font-size:32px;transform:translateY(-50%) scaleX(1);left:10px;animation:sleep-bob 3s ease-in-out infinite;}
 @keyframes sleep-bob{0%,100%{transform:translateY(-50%) scaleX(1) rotate(-2deg);}50%{transform:translateY(-50%) scaleX(1) rotate(2deg);}}
@@ -96,6 +97,50 @@ body{font-family:'DM Sans',sans-serif;background:var(--bg);color:var(--text);min
 .dashboard{display:grid;grid-template-columns:2fr 2fr 1fr;gap:16px;padding:16px 24px 24px;max-width:1600px;margin:0 auto;align-items:stretch;}
 .panel-narrow{min-width:0;}
 .panel{background:var(--surface);border:1px solid var(--border);border-radius:var(--radius);padding:18px;animation:fadeUp 0.4s ease both;transition:box-shadow 0.2s,opacity 0.2s,transform 0.2s;display:flex;flex-direction:column;}
+
+/* ═══ TILE MODE — collapsed panel showing only title + add bar ═══ */
+.panel.panel-tile{cursor:default;min-height:auto;}
+.panel.panel-tile .panel-content,
+.panel.panel-tile .tasklist-controls,
+.panel.panel-tile .note-filter-row,
+.panel.panel-tile .completed-projects-section,
+.panel.panel-tile .panel-content-extra{display:none !important;}
+.panel.panel-tile .panel-header{cursor:pointer;user-select:none;transition:opacity 0.15s;}
+.panel.panel-tile .panel-header:hover{opacity:0.85;}
+.panel.panel-tile .panel-header .expand-btn .expand-arrow{transform:rotate(-90deg);}
+.panel.panel-tile .panel-tile-summary{display:flex;align-items:center;gap:8px;padding:6px 0;font-size:12px;color:var(--text-dim);border-top:1px dashed var(--border);margin-top:6px;}
+.panel.panel-tile .panel-tile-summary-pill{display:inline-flex;align-items:center;gap:4px;padding:2px 7px;background:var(--surface-raised);border-radius:10px;font-size:11px;}
+.panel.panel-tile .panel-tile-summary-pill.warn{color:var(--accent);}
+.panel.panel-tile .panel-tile-summary-pill.urgent{color:var(--red);font-weight:600;}
+
+/* The add bar/form remains visible in tile mode at the bottom */
+.panel.panel-tile .tile-add-region{margin-top:6px;}
+
+/* ═══ EXPANSION OVERLAY (full-screen modal for expanded panels) ═══ */
+.panel-overlay{position:fixed;inset:0;z-index:1000;display:none;}
+.panel-overlay.open{display:block;animation:panelOverlayFade 0.2s ease both;}
+.panel-overlay-backdrop{position:absolute;inset:0;background:rgba(0,0,0,0.65);backdrop-filter:blur(6px);-webkit-backdrop-filter:blur(6px);}
+.panel-overlay-frame{position:absolute;top:5vh;left:50%;transform:translateX(-50%);width:min(900px,94vw);max-height:90vh;background:var(--surface);border:1px solid var(--border);border-radius:var(--radius);display:flex;flex-direction:column;box-shadow:0 20px 60px rgba(0,0,0,0.5);overflow:hidden;animation:panelOverlayPop 0.25s ease both;}
+.panel-overlay-header{display:flex;align-items:center;justify-content:space-between;padding:14px 20px;border-bottom:1px solid var(--border);background:var(--surface-raised);}
+.panel-overlay-title{font-family:'Fraunces',serif;font-size:20px;font-weight:600;color:var(--text);display:flex;align-items:center;gap:10px;}
+.panel-overlay-close{background:none;border:none;color:var(--text-dim);font-size:22px;cursor:pointer;padding:4px 12px;border-radius:var(--radius-sm);line-height:1;transition:all 0.15s;}
+.panel-overlay-close:hover{background:var(--surface);color:var(--text);}
+.panel-overlay-body{flex:1;overflow-y:auto;padding:18px 20px;}
+.panel-overlay-body .panel{padding:0;border:none;background:transparent;animation:none;}
+.panel-overlay-body .panel-header .drag-handle{display:none;}
+.panel-overlay-body .panel-header .expand-btn{display:none;}
+
+@keyframes panelOverlayFade{from{opacity:0;}to{opacity:1;}}
+@keyframes panelOverlayPop{from{opacity:0;transform:translateX(-50%) translateY(20px) scale(0.96);}to{opacity:1;transform:translateX(-50%) translateY(0) scale(1);}}
+
+/* When a panel is currently expanded in the overlay, hide a placeholder in the original location */
+.panel.panel-expanded-elsewhere{opacity:0.3;pointer-events:none;}
+.panel.panel-expanded-elsewhere::after{content:'(open)';display:block;text-align:center;color:var(--text-faint);font-size:11px;font-style:italic;}
+
+@media(max-width:768px){
+  .panel-overlay-frame{top:0;left:0;right:0;bottom:0;width:100%;max-height:100vh;border-radius:0;transform:none;}
+  @keyframes panelOverlayPop{from{opacity:0;transform:translateY(20px) scale(0.96);}to{opacity:1;transform:translateY(0) scale(1);}}
+}
 @keyframes fadeUp{from{opacity:0;transform:translateY(10px)}to{opacity:1;transform:translateY(0)}}
 .panel.dragging{opacity:0.4;transform:scale(0.97);}
 .panel.drag-over{box-shadow:0 0 0 2px var(--accent),0 4px 20px rgba(212,168,83,0.25);transform:scale(1.01);}
@@ -997,13 +1042,14 @@ body.unlocked .date-editable:hover{border-bottom-color:var(--accent);background:
 <div class="dashboard" id="dashboard">
 
 <!-- 1. PROJECTS -->
-<div class="panel" data-panel="projects" data-nav="projects">
-<div class="panel-header"><div class="panel-title"><span class="drag-handle">&#10495;</span><span class="icon">&#128194;</span> Projects</div>
-<div style="display:flex;gap:6px;align-items:center;"><span class="panel-badge" id="projCount">0</span><span class="panel-badge completed-badge" id="projCompletedBadge" style="display:none;">✓ 0</span><button class="expand-btn" onclick="toggleExpand(this)" title="Expand/collapse"><span class="expand-arrow">&#9660;</span></button><button class="btn btn-sm btn-outlook" onclick="exportAllToICS()">&#128197; Export All</button></div></div>
+<div class="panel panel-tile" data-panel="projects" data-nav="projects" data-tile="1">
+<div class="panel-header" onclick="openPanelOverlay('projects')"><div class="panel-title"><span class="drag-handle">&#10495;</span><span class="icon">&#128194;</span> Projects</div>
+<div style="display:flex;gap:6px;align-items:center;"><span class="panel-badge" id="projCount">0</span><span class="panel-badge completed-badge" id="projCompletedBadge" style="display:none;">✓ 0</span><button class="expand-btn" onclick="event.stopPropagation();openPanelOverlay('projects')" title="Expand"><span class="expand-arrow">&#9660;</span></button></div></div>
+<div class="panel-tile-summary" id="tile-summary-projects" onclick="openPanelOverlay('projects')"></div>
 <div class="panel-content" id="pc_projects">
 <div class="project-list" id="projectList"></div>
 </div>
-<div class="tl-add-form">
+<div class="tl-add-form tile-add-region">
 <div class="section-label">Add Project</div>
 <div style="display:flex;gap:6px;"><input type="text" id="newProjName" placeholder="Project name..." onkeydown="if(event.key==='Enter')addProject()" style="flex:1;"><button class="mic-btn" id="projMicBtn" onclick="toggleMic('newProjName','projMicBtn')" title="Voice input">&#127908;</button></div>
 <div class="tl-add-row">
@@ -1014,15 +1060,19 @@ body.unlocked .date-editable:hover{border-bottom-color:var(--accent);background:
 </div>
 
 <!-- 2. REMINDERS -->
-<div class="panel" data-panel="reminders" data-nav="reminders">
-<div class="panel-header"><div class="panel-title"><span class="drag-handle">&#10495;</span><span class="icon">&#128276;</span> Reminders</div>
-<div style="display:flex;gap:6px;align-items:center;"><span class="panel-badge" id="remCount">0</span><button class="expand-btn" onclick="toggleExpand(this)" title="Expand/collapse"><span class="expand-arrow">▼</span></button><span class="clear-done" onclick="clearPastReminders()">clear past</span></div></div>
+<div class="panel panel-tile" data-panel="reminders" data-nav="reminders" data-tile="1">
+<div class="panel-header" onclick="openPanelOverlay('reminders')"><div class="panel-title"><span class="drag-handle">&#10495;</span><span class="icon">&#128276;</span> Reminders</div>
+<div style="display:flex;gap:6px;align-items:center;"><span class="panel-badge" id="remCount">0</span><button class="expand-btn" onclick="event.stopPropagation();openPanelOverlay('reminders')" title="Expand"><span class="expand-arrow">▼</span></button></div></div>
+<div class="panel-tile-summary" id="tile-summary-reminders" onclick="openPanelOverlay('reminders')"></div>
 <div class="panel-content" id="pc_reminders">
 <div class="reminder-list" id="reminderList"></div>
 </div>
+<div class="tile-add-region">
 <div class="section-label" style="margin-top:10px;">Add Reminder</div>
 <div style="display:flex;gap:6px;margin-bottom:6px;"><input type="text" id="newRemText" placeholder="Reminder text..." style="flex:1;"><button class="mic-btn" id="remMicBtn" onclick="toggleMic('newRemText','remMicBtn')" title="Voice input">&#127908;</button></div>
-<div class="add-row" style="margin-top:0;flex-wrap:wrap;gap:6px;"><input type="date" id="newRemDate"><input type="time" id="newRemTime"><div class="proj-multi-picker" id="newRemProjectPicker" data-target="newRemProject" onclick="openProjMultiPicker(event,this)" style="font-size:11px;padding:3px 6px;min-height:26px;flex:1;"><span class="proj-multi-placeholder">+ Projects</span></div><input type="hidden" id="newRemProject" value=""><button class="btn btn-accent" onclick="addReminder()">+</button></div></div>
+<div class="add-row" style="margin-top:0;flex-wrap:wrap;gap:6px;"><input type="date" id="newRemDate"><input type="time" id="newRemTime"><div class="proj-multi-picker" id="newRemProjectPicker" data-target="newRemProject" onclick="openProjMultiPicker(event,this)" style="font-size:11px;padding:3px 6px;min-height:26px;flex:1;"><span class="proj-multi-placeholder">+ Projects</span></div><input type="hidden" id="newRemProject" value=""><button class="btn btn-accent" onclick="addReminder()">+</button></div>
+</div>
+</div>
 
 <!-- 3. BRAIN DUMP -->
 <div class="panel panel-narrow" data-panel="brain" data-nav="brain">
@@ -1065,10 +1115,11 @@ body.unlocked .date-editable:hover{border-bottom-color:var(--accent);background:
 <div class="add-row" style="margin-top:6px;"><input type="text" id="newRoutineName" placeholder="Add routine item..."><button class="btn btn-accent btn-sm" onclick="addRoutine()">+</button></div></div>
 
 <!-- 8. NOTES -->
-<div class="panel" data-panel="notes" data-nav="notes">
-<div class="panel-header"><div class="panel-title"><span class="drag-handle">&#10495;</span><span class="icon">&#128221;</span> Notes</div>
-<div style="display:flex;gap:6px;align-items:center;"><span class="panel-badge" id="noteCount">0</span><button class="expand-btn" onclick="toggleExpand(this)" title="Expand/collapse"><span class="expand-arrow">▼</span></button></div></div>
-<div class="note-form">
+<div class="panel panel-tile" data-panel="notes" data-nav="notes" data-tile="1">
+<div class="panel-header" onclick="openPanelOverlay('notes')"><div class="panel-title"><span class="drag-handle">&#10495;</span><span class="icon">&#128221;</span> Notes</div>
+<div style="display:flex;gap:6px;align-items:center;"><span class="panel-badge" id="noteCount">0</span><button class="expand-btn" onclick="event.stopPropagation();openPanelOverlay('notes')" title="Expand"><span class="expand-arrow">▼</span></button></div></div>
+<div class="panel-tile-summary" id="tile-summary-notes" onclick="openPanelOverlay('notes')"></div>
+<div class="note-form tile-add-region">
 <input type="text" id="newNoteLabel" placeholder="Note label...">
 <textarea class="note-textarea" id="newNoteBody" placeholder="Note content..."></textarea>
 <div class="note-form-row">
@@ -1085,9 +1136,10 @@ body.unlocked .date-editable:hover{border-bottom-color:var(--accent);background:
 
 
 <!-- 12. TASK LIST -->
-<div class="panel" data-panel="tasklist" data-nav="tasklist">
-<div class="panel-header"><div class="panel-title"><span class="drag-handle">&#10495;</span><span class="icon">&#128203;</span> Task List</div>
-<div style="display:flex;gap:6px;align-items:center;"><span class="panel-badge" id="taskListCount">0</span><span class="panel-badge completed-badge" id="taskListCompletedBadge" style="display:none;">✓ 0</span><button class="expand-btn" onclick="toggleExpand(this)" title="Expand/collapse"><span class="expand-arrow">&#9660;</span></button></div></div>
+<div class="panel panel-tile" data-panel="tasklist" data-nav="tasklist" data-tile="1">
+<div class="panel-header" onclick="openPanelOverlay('tasklist')"><div class="panel-title"><span class="drag-handle">&#10495;</span><span class="icon">&#128203;</span> Task List</div>
+<div style="display:flex;gap:6px;align-items:center;"><span class="panel-badge" id="taskListCount">0</span><span class="panel-badge completed-badge" id="taskListCompletedBadge" style="display:none;">✓ 0</span><button class="expand-btn" onclick="event.stopPropagation();openPanelOverlay('tasklist')" title="Expand"><span class="expand-arrow">&#9660;</span></button></div></div>
+<div class="panel-tile-summary" id="tile-summary-tasklist" onclick="openPanelOverlay('tasklist')"></div>
 <div class="tasklist-controls">
 <select id="tlSortBy" onchange="renderTaskList()" style="width:auto;padding:4px 8px;font-size:11px;">
 <option value="priority">Sort: Priority</option>
@@ -1103,7 +1155,7 @@ body.unlocked .date-editable:hover{border-bottom-color:var(--accent);background:
 <div class="tl-list" id="taskListItems"></div>
 <div id="taskListCompleted"></div>
 </div>
-<div class="tl-add-form">
+<div class="tl-add-form tile-add-region">
 <div class="section-label">Add Task</div>
 <div style="display:flex;gap:6px;"><input type="text" id="tlNewName" placeholder="Task name..." onkeydown="if(event.key==='Enter')addStandaloneTask()" style="flex:1;"><button class="mic-btn" id="taskMicBtn" onclick="toggleMic('tlNewName','taskMicBtn')" title="Voice input">&#127908;</button></div>
 <div class="tl-add-row">
@@ -1305,6 +1357,20 @@ body.unlocked .date-editable:hover{border-bottom-color:var(--accent);background:
     <button class="proj-modal-close" onclick="closeProjectModal()">&#10005;</button>
   </div>
   <div class="proj-modal-body" id="pmdBody"></div>
+</div>
+</div>
+
+<!-- PANEL EXPANSION OVERLAY (shared by Projects/Reminders/Notes/Tasks) -->
+<div class="panel-overlay" id="panelOverlay">
+<div class="panel-overlay-backdrop" onclick="closePanelOverlay()"></div>
+<div class="panel-overlay-frame">
+  <div class="panel-overlay-header">
+    <div class="panel-overlay-title" id="panelOverlayTitle">Panel</div>
+    <button class="panel-overlay-close" onclick="closePanelOverlay()">&#10005;</button>
+  </div>
+  <div class="panel-overlay-body" id="panelOverlayBody">
+    <!-- Expanded panel content gets moved here, then back -->
+  </div>
 </div>
 </div>
 
@@ -2175,7 +2241,7 @@ function makeTimeClickable(el,currentVal,onSave){
   });
 }
 
-function renderProjects(){const el=document.getElementById('projectList');const today=todayStr();if(state.projects.length===0){el.innerHTML='<div class="empty-state">No projects yet.</div>'+_renderCompletedProjectsSection();document.getElementById('projCount').textContent='0';var emptyProjCompCount=(state.completedTasks||[]).filter(function(t){return t.source==='project';}).length;var emptyProjCompBadge=document.getElementById('projCompletedBadge');if(emptyProjCompBadge){emptyProjCompBadge.textContent='✓ '+emptyProjCompCount;emptyProjCompBadge.style.display=emptyProjCompCount>0?'inline-flex':'none';}updateNoteSelectors();return;}
+function renderProjects(){const el=document.getElementById('projectList');const today=todayStr();if(state.projects.length===0){el.innerHTML='<div class="empty-state">No projects yet.</div>'+_renderCompletedProjectsSection();document.getElementById('projCount').textContent='0';var emptyProjCompCount=(state.completedTasks||[]).filter(function(t){return t.source==='project';}).length;var emptyProjCompBadge=document.getElementById('projCompletedBadge');if(emptyProjCompBadge){emptyProjCompBadge.textContent='✓ '+emptyProjCompCount;emptyProjCompBadge.style.display=emptyProjCompCount>0?'inline-flex':'none';}updateNoteSelectors();if(typeof _updateTileSummaryProjects==='function')_updateTileSummaryProjects();return;}
 el.innerHTML=state.projects.map(p=>{const total=p.subtasks.length;const sorted=[...p.subtasks].sort((a,b)=>{if(a.due&&b.due)return a.due.localeCompare(b.due);if(a.due)return -1;if(b.due)return 1;return 0;});
 
 // Completed items for this project (by id or fallback to name match for older records)
@@ -2227,7 +2293,7 @@ if(projCompBadge){
 state.projects.forEach(p=>{p.subtasks.forEach(st=>{const se=document.getElementById('sn_'+st.id);if(se)makeEditable(se,v=>{editSubtaskName(p.id,st.id,v.trim());});});});
 // Attach date editors
 state.projects.forEach(p=>{const pde=document.getElementById('pd_'+p.id);if(pde)makeDateClickable(pde,p.due,v=>editProjectDue(p.id,v));p.subtasks.forEach(st=>{const sde=document.getElementById('sd_'+st.id);if(sde)makeDateClickable(sde,st.due,v=>editSubtaskDue(p.id,st.id,v));});});
-refreshEditables();updateNoteSelectors();}
+refreshEditables();updateNoteSelectors();if(typeof _updateTileSummaryProjects==='function')_updateTileSummaryProjects();}
 
 // Always-available project rename — uses a prompt so it works regardless of lock state
 function promptEditProject(pid){
@@ -2244,10 +2310,10 @@ function deleteReminder(id){state.reminders=state.reminders.filter(r=>r.id!==id)
 function clearPastReminders(){state.reminders=state.reminders.filter(r=>!r.date||r.date>=todayStr());save();renderReminders();toast('Past cleared');}
 function editReminderText(id,v){if(!v)return;const r=state.reminders.find(r=>r.id===id);if(r)r.text=v;save();}
 function renderReminders(){const el=document.getElementById('reminderList');const today=todayStr();const sorted=[...state.reminders].sort((a,b)=>{if(a.date&&b.date){const d=a.date.localeCompare(b.date);if(d!==0)return d;}if(a.date&&!b.date)return -1;if(!a.date&&b.date)return 1;if(a.time&&b.time)return a.time.localeCompare(b.time);return 0;});
-if(sorted.length===0){el.innerHTML='<div class="empty-state">No reminders.</div>';document.getElementById('remCount').textContent='0';return;}
+if(sorted.length===0){el.innerHTML='<div class="empty-state">No reminders.</div>';document.getElementById('remCount').textContent='0';if(typeof _updateTileSummaryReminders==='function')_updateTileSummaryReminders();return;}
 el.innerHTML=sorted.map(r=>{return '<div class="reminder-item"><span class="rem-icon">\u{1F535}</span><div class="rem-body"><div class="rem-text editable" id="rt_'+r.id+'">'+esc(r.text)+'</div><div class="rem-when">'+'<span class="date-editable" id="rd_'+r.id+'">'+(r.date?fmtDate(r.date):'+ set date')+'</span>'+(r.time?' at <span class="date-editable" id="rt2_'+r.id+'">'+fmtTime(r.time)+'</span>':' <span class="date-editable" id="rt2_'+r.id+'" style="color:var(--text-faint);">+ time</span>')+'</div></div><div style="display:flex;gap:2px;"><span class="st-btn st-cal" onclick="exportReminderICS(\''+r.id+'\')">\u{1F4C5}</span><span class="st-btn st-del" onclick="deleteReminder(\''+r.id+'\')">\u2715</span></div></div>';}).join('');
 document.getElementById('remCount').textContent=sorted.filter(r=>!r.date||r.date>=today).length;
-state.reminders.forEach(r=>{const e=document.getElementById('rt_'+r.id);if(e)makeEditable(e,v=>editReminderText(r.id,v));const rde=document.getElementById('rd_'+r.id);if(rde)makeDateClickable(rde,r.date,v=>editReminderDate(r.id,v));const rte=document.getElementById('rt2_'+r.id);if(rte)makeTimeClickable(rte,r.time,v=>editReminderTime(r.id,v));});refreshEditables();}
+state.reminders.forEach(r=>{const e=document.getElementById('rt_'+r.id);if(e)makeEditable(e,v=>editReminderText(r.id,v));const rde=document.getElementById('rd_'+r.id);if(rde)makeDateClickable(rde,r.date,v=>editReminderDate(r.id,v));const rte=document.getElementById('rt2_'+r.id);if(rte)makeTimeClickable(rte,r.time,v=>editReminderTime(r.id,v));});refreshEditables();if(typeof _updateTileSummaryReminders==='function')_updateTileSummaryReminders();}
 
 // ICS
 function generateICS(events){let ics='BEGIN:VCALENDAR\r\nVERSION:2.0\r\nPRODID:-//Centerpost//EN\r\nCALSCALE:GREGORIAN\r\nMETHOD:PUBLISH\r\n';events.forEach(ev=>{const uid='cd-'+Date.now()+'-'+Math.random().toString(36).substr(2,8);const d=ev.date?ev.date.replace(/-/g,''):new Date().toISOString().split('T')[0].replace(/-/g,'');ics+='BEGIN:VEVENT\r\nUID:'+uid+'\r\nDTSTAMP:'+new Date().toISOString().replace(/[-:]/g,'').split('.')[0]+'Z\r\n';if(ev.time){const t=ev.time.replace(':','')+'00';ics+='DTSTART:'+d+'T'+t+'\r\n';const sm=parseInt(ev.time.split(':')[0])*60+parseInt(ev.time.split(':')[1])+60;ics+='DTEND:'+d+'T'+String(Math.floor(sm/60)).padStart(2,'0')+String(sm%60).padStart(2,'0')+'00\r\n';}else{ics+='DTSTART;VALUE=DATE:'+d+'\r\nDTEND;VALUE=DATE:'+d+'\r\n';}ics+='SUMMARY:'+icsEsc(ev.title)+'\r\n';if(ev.description)ics+='DESCRIPTION:'+icsEsc(ev.description)+'\r\n';ics+='BEGIN:VALARM\r\nTRIGGER:-PT15M\r\nACTION:DISPLAY\r\nDESCRIPTION:Reminder\r\nEND:VALARM\r\nEND:VEVENT\r\n';});ics+='END:VCALENDAR\r\n';return ics;}
@@ -2483,7 +2549,7 @@ function renderNotes(){
   else if(filter!=='all')notes=notes.filter(n=>noteProjIds(n).indexOf(filter)>=0);
   if(search)notes=notes.filter(n=>(n.label+' '+n.body).toLowerCase().includes(search));
   notes.sort((a,b)=>b.created.localeCompare(a.created));
-  if(notes.length===0){el.innerHTML='<div class="empty-state">'+(state.notes.length===0?'No notes yet. Add your first one below.':'No matching notes.')+'</div>';document.getElementById('noteCount').textContent=state.notes.length;return;}
+  if(notes.length===0){el.innerHTML='<div class="empty-state">'+(state.notes.length===0?'No notes yet. Add your first one below.':'No matching notes.')+'</div>';document.getElementById('noteCount').textContent=state.notes.length;if(typeof _updateTileSummaryNotes==='function')_updateTileSummaryNotes();return;}
   el.innerHTML=notes.map(n=>{
     var pids=noteProjIds(n);
     var hasProjClass=pids.length?'has-proj':'';
@@ -2526,6 +2592,7 @@ function renderNotes(){
       },300);
     }
   });
+  if(typeof _updateTileSummaryNotes==='function')_updateTileSummaryNotes();
 }
 // ROUTINES
 function checkDailyRoutineReset(){
@@ -3168,6 +3235,7 @@ function renderTaskList(){
     }
   }
   updateTLProjectDropdowns();
+  if(typeof _updateTileSummaryTasklist==='function')_updateTileSummaryTasklist();
 }
 
 function toggleTaskDone(id,source,projId){
@@ -3277,6 +3345,157 @@ function updateTLProjectDropdowns(){
 
 // PANEL EXPAND/COLLAPSE
 function toggleExpand(btn){const panel=btn.closest('.panel');panel.classList.toggle('expanded');checkOverflows();}
+
+// ═══════════════════════════════════════
+// PANEL TILE / OVERLAY EXPANSION SYSTEM
+// ═══════════════════════════════════════
+var _panelOverlayCurrent=null;
+
+function openPanelOverlay(panelKey){
+  var panel=document.querySelector('.panel[data-panel="'+panelKey+'"]');
+  if(!panel)return;
+  var overlay=document.getElementById('panelOverlay');
+  var body=document.getElementById('panelOverlayBody');
+  var titleEl=document.getElementById('panelOverlayTitle');
+  if(!overlay||!body||!titleEl)return;
+  
+  // Close any other open overlay first
+  if(_panelOverlayCurrent)closePanelOverlay();
+  
+  // Get the title text + icon from the panel header
+  var titleNode=panel.querySelector('.panel-title');
+  var titleHTML=titleNode?titleNode.innerHTML.replace(/<span class="drag-handle"[^<]*<\/span>/,''):panelKey;
+  titleEl.innerHTML=titleHTML;
+  
+  // Move the panel into the overlay (preserve original position with placeholder)
+  var placeholder=document.createElement('div');
+  placeholder.className='panel-placeholder';
+  placeholder.dataset.placeholderFor=panelKey;
+  placeholder.style.display='none';
+  panel.parentNode.insertBefore(placeholder,panel);
+  
+  // Remove tile mode while in overlay (so all content is visible)
+  panel.classList.remove('panel-tile');
+  body.appendChild(panel);
+  
+  overlay.classList.add('open');
+  _panelOverlayCurrent=panelKey;
+  
+  // Re-render to refresh content (some renderers depend on element visibility)
+  if(panelKey==='projects'&&typeof renderProjects==='function')renderProjects();
+  else if(panelKey==='reminders'&&typeof renderReminders==='function')renderReminders();
+  else if(panelKey==='notes'&&typeof renderNotes==='function')renderNotes();
+  else if(panelKey==='tasklist'&&typeof renderTaskList==='function')renderTaskList();
+}
+
+function closePanelOverlay(){
+  if(!_panelOverlayCurrent)return;
+  var panelKey=_panelOverlayCurrent;
+  var overlay=document.getElementById('panelOverlay');
+  var body=document.getElementById('panelOverlayBody');
+  var panel=body?body.querySelector('.panel[data-panel="'+panelKey+'"]'):null;
+  var placeholder=document.querySelector('.panel-placeholder[data-placeholder-for="'+panelKey+'"]');
+  
+  if(panel&&placeholder){
+    // Restore tile mode and move panel back to dashboard
+    panel.classList.add('panel-tile');
+    placeholder.parentNode.insertBefore(panel,placeholder);
+    placeholder.parentNode.removeChild(placeholder);
+  }
+  
+  if(overlay)overlay.classList.remove('open');
+  _panelOverlayCurrent=null;
+  
+  // Refresh tile summaries
+  updateAllTileSummaries();
+}
+
+// ESC key closes overlay
+document.addEventListener('keydown',function(e){
+  if(e.key==='Escape'&&_panelOverlayCurrent)closePanelOverlay();
+});
+
+function updateAllTileSummaries(){
+  _updateTileSummaryProjects();
+  _updateTileSummaryReminders();
+  _updateTileSummaryNotes();
+  _updateTileSummaryTasklist();
+}
+
+function _summaryPill(text,cls){
+  return '<span class="panel-tile-summary-pill'+(cls?' '+cls:'')+'">'+text+'</span>';
+}
+
+function _updateTileSummaryProjects(){
+  var el=document.getElementById('tile-summary-projects');
+  if(!el)return;
+  var active=(state.projects||[]).length;
+  var done=(state.completedProjects||[]).length;
+  var html='';
+  if(active>0)html+=_summaryPill(active+' active');
+  if(done>0)html+=_summaryPill('\u2713 '+done+' done');
+  if(!html)html='<span style="color:var(--text-faint);font-style:italic;">No projects yet</span>';
+  el.innerHTML=html;
+}
+
+function _updateTileSummaryReminders(){
+  var el=document.getElementById('tile-summary-reminders');
+  if(!el)return;
+  var rems=state.reminders||[];
+  var todayKey=todayStr();
+  var todayCount=0,overdueCount=0,upcomingCount=0;
+  rems.forEach(function(r){
+    if(!r.date){upcomingCount++;return;}
+    if(r.date===todayKey)todayCount++;
+    else if(r.date<todayKey)overdueCount++;
+    else upcomingCount++;
+  });
+  var html='';
+  if(overdueCount>0)html+=_summaryPill(overdueCount+' overdue','urgent');
+  if(todayCount>0)html+=_summaryPill(todayCount+' today','warn');
+  if(upcomingCount>0)html+=_summaryPill(upcomingCount+' upcoming');
+  if(!html)html='<span style="color:var(--text-faint);font-style:italic;">No reminders</span>';
+  el.innerHTML=html;
+}
+
+function _updateTileSummaryNotes(){
+  var el=document.getElementById('tile-summary-notes');
+  if(!el)return;
+  var n=(state.notes||[]).length;
+  var html='';
+  if(n>0)html+=_summaryPill(n+' note'+(n!==1?'s':''));
+  else html='<span style="color:var(--text-faint);font-style:italic;">No notes yet</span>';
+  el.innerHTML=html;
+}
+
+function _updateTileSummaryTasklist(){
+  var el=document.getElementById('tile-summary-tasklist');
+  if(!el)return;
+  var todayKey=todayStr();
+  var allTasks=[];
+  state.projects.forEach(function(p){
+    p.subtasks.forEach(function(st){allTasks.push(st);});
+  });
+  (state.tasks||[]).forEach(function(t){if(!t.done)allTasks.push(t);});
+  
+  var dueToday=0,overdue=0,highPri=0;
+  allTasks.forEach(function(t){
+    if(t.due===todayKey)dueToday++;
+    else if(t.due&&t.due<todayKey)overdue++;
+    if(t.priority==='high')highPri++;
+  });
+  var done=(state.completedTasks||[]).length;
+  
+  var html='';
+  if(allTasks.length>0)html+=_summaryPill(allTasks.length+' active');
+  if(overdue>0)html+=_summaryPill(overdue+' overdue','urgent');
+  if(dueToday>0)html+=_summaryPill(dueToday+' today','warn');
+  if(highPri>0)html+=_summaryPill('\u26a0 '+highPri+' high pri');
+  if(done>0)html+=_summaryPill('\u2713 '+done+' done');
+  if(!html)html='<span style="color:var(--text-faint);font-style:italic;">No tasks yet</span>';
+  el.innerHTML=html;
+}
+
 function checkOverflows(){document.querySelectorAll('.panel-content').forEach(pc=>{if(pc.scrollHeight>pc.clientHeight+10){pc.classList.add('has-overflow');}else{pc.classList.remove('has-overflow');}});}
 // Run overflow check after renders
 const _origRenderProjects=renderProjects;renderProjects=function(){_origRenderProjects();checkOverflows();}
@@ -5661,7 +5880,11 @@ function updateCompletedWorkoutsCounter(){
 async function initApp(){
 await load();
 initPanelVisibility();applyPanelOrder();applyPanelVisibility();updateLockUI();updateClock();updateTimeLeft();setInterval(updateClock,1000);setInterval(updateTimeLeft,30000);updateTimerDisplay();renderPointsBadge();awardDailyLogin();
-renderProjects();renderReminders();renderThoughts();renderNotes();renderRoutines();renderTaskList();checkDailyRoutineReset();newDecisionPrompt();initDragDrop();
+// Check for routine daily reset every minute (handles dashboards left open overnight)
+setInterval(checkDailyRoutineReset,60000);
+// Also re-check when tab becomes visible again (handles laptop sleep/wake, phone unlock)
+document.addEventListener('visibilitychange',function(){if(!document.hidden){checkDailyRoutineReset();awardDailyLogin();}});
+renderProjects();renderReminders();renderThoughts();renderNotes();renderRoutines();renderTaskList();checkDailyRoutineReset();newDecisionPrompt();initDragDrop();updateAllTileSummaries();
 if(_isMobile()){showMobileHome();}else{document.querySelector('.header')&&document.querySelector('.header').classList.add('mobile-visible');}
 if(state.energy){const c=document.querySelectorAll('#energyPills .em-pill');const m=['high','good','low','crashed'];const i=m.indexOf(state.energy);if(i>=0)c[i].classList.add('selected');}
 if(state.mood){const c=document.querySelectorAll('#moodPills .em-pill');const m=['focused','scattered','anxious','calm'];const i=m.indexOf(state.mood);if(i>=0)c[i].classList.add('selected');}
