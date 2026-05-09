@@ -2034,7 +2034,35 @@ function stopAlarm(){
 // PROJECTS
 function addProject(){const n=document.getElementById('newProjName').value.trim();if(!n)return;state.projects.push({id:'p'+Date.now(),name:n,due:document.getElementById('newProjDue').value,expanded:true,subtasks:[]});document.getElementById('newProjName').value='';document.getElementById('newProjDue').value='';save();renderProjects();renderTaskList();toast('Project added');}
 function deleteProject(id){if(!confirm('Delete project and all subtasks?'))return;state.projects=state.projects.filter(p=>p.id!==id);save();renderProjects();renderTaskList();}
-function toggleProjectExpand(id){const p=state.projects.find(p=>p.id===id);if(p)p.expanded=!p.expanded;save();renderProjects();}
+function toggleProjectExpand(id){
+  const p=state.projects.find(p=>p.id===id);
+  if(!p)return;
+  p.expanded=!p.expanded;
+  save();
+  // Capture overlay scroll position before re-render
+  var overlayBody=document.getElementById('panelOverlayBody');
+  var prevScroll=overlayBody?overlayBody.scrollTop:0;
+  renderProjects();
+  // Restore scroll, then scroll the toggled project into view if it just opened
+  if(overlayBody){
+    overlayBody.scrollTop=prevScroll;
+    if(p.expanded){
+      // Scroll the just-opened project into view (smooth, with offset for header)
+      setTimeout(function(){
+        var card=overlayBody.querySelector('.project-card .proj-header[onclick*="'+id+'"]');
+        if(card&&card.parentNode){
+          var rect=card.parentNode.getBoundingClientRect();
+          var bodyRect=overlayBody.getBoundingClientRect();
+          var targetTop=card.parentNode.offsetTop-overlayBody.offsetTop-10;
+          // Only scroll if the card is not already at the top of the visible area
+          if(rect.top<bodyRect.top+10||rect.top>bodyRect.bottom-100){
+            overlayBody.scrollTo({top:targetTop,behavior:'smooth'});
+          }
+        }
+      },50);
+    }
+  }
+}
 
 // Per-project "completed folder" expand state (memory only, doesn't persist)
 var _projCompletedOpen={};
