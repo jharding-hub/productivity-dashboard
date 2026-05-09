@@ -1,27 +1,43 @@
 {
-  "name": "Productivity Dashboard",
-  "short_name": "Productivity",
-  "description": "Personal productivity dashboard with projects, tasks, notes, timers, and Outlook integration.",
+  "name": "Centerpost",
+  "short_name": "Centerpost",
+  "description": "Your hub for projects, tasks, wellness, and reflection. ADHD-aware productivity dashboard.",
   "start_url": "./index.html",
+  "scope": "./",
   "display": "standalone",
-  "background_color": "#1a1917",
-  "theme_color": "#d4a853",
+  "background_color": "#1a1a1a",
+  "theme_color": "#1a1a1a",
   "orientation": "any",
   "icons": [
     {
-      "src": "data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 512 512'><rect width='512' height='512' rx='90' fill='%231a1917'/><text x='256' y='340' font-size='280' text-anchor='middle' fill='%23d4a853'>⚡</text></svg>",
+      "src": "icons/icon-192.png",
+      "sizes": "192x192",
+      "type": "image/png",
+      "purpose": "any"
+    },
+    {
+      "src": "icons/icon-512.png",
       "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "any"
+    },
+    {
+      "src": "icons/icon-192.png",
+      "sizes": "192x192",
+      "type": "image/png",
+      "purpose": "maskable"
+    },
+    {
+      "src": "icons/icon-512.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "maskable"
+    },
+    {
+      "src": "icons/centerpost-icon.svg",
+      "sizes": "any",
       "type": "image/svg+xml",
-      "purpose": "any maskable"
+      "purpose": "any"
     }
-  ],
-  "share_target": {
-    "action": "./index.html",
-    "method": "GET",
-    "params": {
-      "title": "share_title",
-      "text":  "share_text",
-      "url":   "share_url"
-    }
-  }
+  ]
 }
