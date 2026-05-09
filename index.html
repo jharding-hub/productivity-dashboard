@@ -129,6 +129,8 @@ body{font-family:'DM Sans',sans-serif;background:var(--bg);color:var(--text);min
 .panel-overlay-body .panel{padding:0;border:none;background:transparent;animation:none;}
 .panel-overlay-body .panel-header .drag-handle{display:none;}
 .panel-overlay-body .panel-header .expand-btn{display:none;}
+.panel-overlay-body .panel-content{max-height:none !important;overflow:visible !important;}
+.panel-overlay-body .panel-tile-summary{display:none !important;}
 
 @keyframes panelOverlayFade{from{opacity:0;}to{opacity:1;}}
 @keyframes panelOverlayPop{from{opacity:0;transform:translateX(-50%) translateY(20px) scale(0.96);}to{opacity:1;transform:translateX(-50%) translateY(0) scale(1);}}
