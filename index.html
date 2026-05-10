@@ -99,7 +99,7 @@ body{font-family:'DM Sans',sans-serif;background:var(--bg);color:var(--text);min
 .panel{background:var(--surface);border:1px solid var(--border);border-radius:var(--radius);padding:18px;animation:fadeUp 0.4s ease both;transition:box-shadow 0.2s,opacity 0.2s,transform 0.2s;display:flex;flex-direction:column;}
 
 /* ═══ TILE MODE — collapsed panel showing only title + add bar ═══ */
-.panel.panel-tile{cursor:default;min-height:auto;}
+.panel.panel-tile{cursor:default;min-height:240px;display:flex;flex-direction:column;}
 .panel.panel-tile .panel-content,
 .panel.panel-tile .tasklist-controls,
 .panel.panel-tile .note-filter-row,
@@ -113,8 +113,10 @@ body{font-family:'DM Sans',sans-serif;background:var(--bg);color:var(--text);min
 .panel.panel-tile .panel-tile-summary-pill.warn{color:var(--accent);}
 .panel.panel-tile .panel-tile-summary-pill.urgent{color:var(--red);font-weight:600;}
 
-/* The add bar/form remains visible in tile mode at the bottom */
-.panel.panel-tile .tile-add-region{margin-top:6px;}
+/* The add bar/form is centered in the tile body */
+.panel.panel-tile{justify-content:flex-start;}
+.panel.panel-tile .tile-add-region{margin-top:auto;padding-top:24px;padding-bottom:8px;}
+.panel.panel-tile .panel-tile-summary{margin-bottom:auto;}
 
 /* ═══ EXPANSION OVERLAY (full-screen modal for expanded panels) ═══ */
 .panel-overlay{position:fixed;inset:0;z-index:1000;display:none;}
@@ -2038,30 +2040,25 @@ function toggleProjectExpand(id){
   const p=state.projects.find(p=>p.id===id);
   if(!p)return;
   p.expanded=!p.expanded;
-  save();
-  // Capture overlay scroll position before re-render
-  var overlayBody=document.getElementById('panelOverlayBody');
-  var prevScroll=overlayBody?overlayBody.scrollTop:0;
-  renderProjects();
-  // Restore scroll, then scroll the toggled project into view if it just opened
-  if(overlayBody){
-    overlayBody.scrollTop=prevScroll;
-    if(p.expanded){
-      // Scroll the just-opened project into view (smooth, with offset for header)
-      setTimeout(function(){
-        var card=overlayBody.querySelector('.project-card .proj-header[onclick*="'+id+'"]');
-        if(card&&card.parentNode){
-          var rect=card.parentNode.getBoundingClientRect();
-          var bodyRect=overlayBody.getBoundingClientRect();
-          var targetTop=card.parentNode.offsetTop-overlayBody.offsetTop-10;
-          // Only scroll if the card is not already at the top of the visible area
-          if(rect.top<bodyRect.top+10||rect.top>bodyRect.bottom-100){
-            overlayBody.scrollTo({top:targetTop,behavior:'smooth'});
-          }
-        }
-      },50);
+  // SURGICAL: just toggle the class on the existing DOM element instead of full re-render.
+  // Full re-render was resetting overlay scroll position and causing the expanded
+  // content to appear off-screen. This avoids the issue entirely.
+  // We still find the project card via its onclick attribute (matches the project id).
+  var allCards=document.querySelectorAll('.project-card');
+  var found=false;
+  allCards.forEach(function(card){
+    var hdr=card.querySelector('.proj-header');
+    if(hdr&&hdr.getAttribute('onclick')&&hdr.getAttribute('onclick').indexOf("'"+id+"'")>=0){
+      var area=card.querySelector('.subtask-area');
+      var arrow=card.querySelector('.proj-expand');
+      if(area)area.classList.toggle('open',p.expanded);
+      if(arrow)arrow.classList.toggle('open',p.expanded);
+      found=true;
     }
-  }
+  });
+  // Persist to storage; if for some reason the card wasn't found in DOM, fall back to full re-render
+  save();
+  if(!found)renderProjects();
 }
 
 // Per-project "completed folder" expand state (memory only, doesn't persist)
