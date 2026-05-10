@@ -21,7 +21,7 @@
 :root{--bg:#1a1917;--surface:#242320;--surface-raised:#2e2d29;--surface-hover:#38362f;--border:#3d3b33;--border-focus:#6b6554;--text:#e8e2d6;--text-dim:#a09882;--text-faint:#6b6554;--accent:#d4a853;--accent-dim:#b08a3a;--accent-glow:rgba(212,168,83,0.15);--red:#c75f5f;--red-dim:rgba(199,95,95,0.15);--green:#6bab73;--green-dim:rgba(107,171,115,0.15);--blue:#5f8fc7;--blue-dim:rgba(95,143,199,0.15);--purple:#9b7ec7;--purple-dim:rgba(155,126,199,0.15);--orange:#c7925f;--orange-dim:rgba(199,146,95,0.15);--teal:#5fafb0;--teal-dim:rgba(95,175,176,0.15);--radius:10px;--radius-sm:6px;}
 *{margin:0;padding:0;box-sizing:border-box;}
 body{font-family:'DM Sans',sans-serif;background:var(--bg);color:var(--text);min-height:100vh;min-height:100dvh;line-height:1.5;padding-top:env(safe-area-inset-top);padding-bottom:env(safe-area-inset-bottom);}
-.header{padding:14px 24px 12px;display:grid;grid-template-columns:auto 1fr auto;align-items:center;gap:12px;border-bottom:1px solid var(--border);position:sticky;top:0;background:var(--bg);z-index:50;min-height:64px;}
+.header{padding:12px 24px 10px;display:grid;grid-template-columns:auto 1fr auto;align-items:center;gap:12px;border-bottom:1px solid var(--border);position:sticky;top:0;background:var(--bg);z-index:50;min-height:78px;}
 .day-progress-bar{position:absolute;left:215px;right:240px;top:50%;transform:translateY(-50%);height:36px;background:#d4a853;z-index:1;pointer-events:none;border-radius:6px;}
 .day-progress-elapsed{position:absolute;left:0;top:0;bottom:0;background:#f5f0e0;transition:width 1s ease;border-radius:6px 0 0 6px;}
 .day-progress-marker{position:absolute;top:0;bottom:0;width:1px;background:rgba(0,0,0,0.3);}
@@ -41,8 +41,10 @@ body{font-family:'DM Sans',sans-serif;background:var(--bg);color:var(--text);min
 /* Wrapper for left-side points badge */
 .points-wrap{position:relative;z-index:2;display:flex;align-items:center;}
 
-.header h1{font-family:'Fraunces',serif;font-size:33px;font-weight:600;color:#1a1a1a;letter-spacing:-0.5px;text-align:center;margin:0;position:relative;z-index:2;text-shadow:0 1px 2px rgba(255,255,255,0.8);}
+.header h1{font-family:'Fraunces',serif;font-size:33px;font-weight:600;color:#1a1a1a;letter-spacing:-0.5px;text-align:center;margin:0;position:relative;z-index:2;text-shadow:0 1px 2px rgba(255,255,255,0.8);line-height:1;}
 .header h1 span{display:none;}
+.header-title-wrap{display:flex;flex-direction:column;align-items:center;justify-content:center;gap:2px;position:relative;z-index:2;}
+.header-subtitle{font-family:'Fraunces',serif;font-size:12px;font-weight:400;color:#1a1a1a;letter-spacing:2px;text-transform:uppercase;opacity:0.55;text-shadow:0 1px 2px rgba(255,255,255,0.6);}
 .header-right{display:flex;align-items:center;justify-content:flex-end;gap:8px;position:relative;z-index:2;}
 .time-left-wrap{position:relative;z-index:2;}
 /* BOTTOM STATUS BAR */
@@ -56,9 +58,10 @@ body{font-family:'DM Sans',sans-serif;background:var(--bg);color:var(--text);min
 /* Push content above bottom bar */
 .app-wrap{padding-bottom:40px;}
 @media(max-width:768px){
-  .header{grid-template-columns:auto 1fr auto;padding:10px 14px 8px;gap:8px;}
+  .header{grid-template-columns:auto 1fr auto;padding:8px 14px 6px;gap:8px;min-height:64px;}
   .header h1{font-size:18px;}
   .header h1 span{display:none;}
+  .header-subtitle{font-size:9px;letter-spacing:1.5px;}
   .task-timer-wrap{display:none;}
   .day-progress-bar{left:130px;right:14px;height:28px;}
   .points-badge-lg{padding:6px 12px;gap:8px;}
@@ -643,9 +646,10 @@ body.unlocked .date-editable{border-bottom-color:var(--border);}
 @media(max-width:1100px){.dashboard{grid-template-columns:1fr 1fr;}.panel-narrow{grid-column:span 1;}}
 @media(max-width:768px){
   .dashboard{grid-template-columns:1fr;padding:12px 14px 16px;gap:12px;}
-  .header{padding:14px 14px 10px;}
+  .header{padding:10px 14px 8px;min-height:64px;}
   .header h1{font-size:18px;}
   .header h1 span{display:none;}
+  .header-subtitle{font-size:9px;letter-spacing:1.5px;}
   .panel{display:none;}
   .panel.mobile-visible{display:flex;}
   .panel.hidden-panel{display:none!important;}
@@ -1021,8 +1025,11 @@ body.unlocked .date-editable{border-bottom-color:var(--border);}
     </div>
     <div class="points-popup" id="pointsPopup" style="display:none;"></div>
   </div>
-  <!-- Center: Title only -->
-  <h1>Centerpost</h1>
+  <!-- Center: Title + tagline -->
+  <div class="header-title-wrap">
+    <h1>Centerpost</h1>
+    <div class="header-subtitle">Productivity Dashboard</div>
+  </div>
   <!-- Hidden time-left bar (kept for backwards compat with updateTimeLeft fn) -->
   <div class="time-left-bar" style="display:none;"><div class="time-left-bar-fill" id="timeLeftBar" style="width:100%"></div></div>
   <!-- Right: Task Timer -->
