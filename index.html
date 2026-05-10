@@ -97,7 +97,7 @@ body{font-family:'DM Sans',sans-serif;background:var(--bg);color:var(--text);min
 .panel{background:var(--surface);border:1px solid var(--border);border-radius:var(--radius);padding:18px;animation:fadeUp 0.4s ease both;transition:box-shadow 0.2s,opacity 0.2s,transform 0.2s;display:flex;flex-direction:column;}
 
 /* ═══ TILE MODE — collapsed panel showing only title + add bar ═══ */
-.panel.panel-tile{cursor:default;min-height:240px;display:flex;flex-direction:column;}
+.panel.panel-tile{cursor:default;min-height:280px;display:flex;flex-direction:column;}
 .panel.panel-tile .panel-content,
 .panel.panel-tile .tasklist-controls,
 .panel.panel-tile .note-filter-row,
@@ -106,8 +106,8 @@ body{font-family:'DM Sans',sans-serif;background:var(--bg);color:var(--text);min
 .panel.panel-tile .panel-header{cursor:pointer;user-select:none;transition:opacity 0.15s;}
 .panel.panel-tile .panel-header:hover{opacity:0.85;}
 .panel.panel-tile .panel-header .expand-btn .expand-arrow{transform:rotate(-90deg);}
-.panel.panel-tile .panel-tile-summary{display:flex;align-items:center;gap:8px;padding:8px 0;font-size:13px;color:var(--text-dim);border-top:1px dashed var(--border);margin-top:6px;flex-wrap:wrap;}
-.panel.panel-tile .panel-tile-summary-pill{display:inline-flex;align-items:center;gap:5px;padding:4px 11px;background:var(--surface-raised);border-radius:14px;font-size:13px;font-weight:500;}
+.panel.panel-tile .panel-tile-summary{display:flex;align-items:center;gap:10px;padding:12px 0;font-size:19px;color:var(--text-dim);border-top:1px dashed var(--border);margin-top:6px;flex-wrap:wrap;}
+.panel.panel-tile .panel-tile-summary-pill{display:inline-flex;align-items:center;gap:7px;padding:6px 16px;background:var(--surface-raised);border-radius:18px;font-size:19px;font-weight:500;}
 .panel.panel-tile .panel-tile-summary-pill.warn{color:var(--accent);background:rgba(212,168,83,0.12);}
 .panel.panel-tile .panel-tile-summary-pill.urgent{color:var(--red);font-weight:700;background:rgba(229,57,53,0.12);}
 
@@ -153,7 +153,7 @@ body{font-family:'DM Sans',sans-serif;background:var(--bg);color:var(--text);min
 .panel-title .icon{font-size:17px;}
 .panel-badge{font-size:10px;font-weight:600;padding:2px 8px;border-radius:20px;background:var(--accent-glow);color:var(--accent);}
 .panel-badge.completed-badge{background:var(--green-dim);color:var(--green);}
-.panel.panel-tile .panel-badge{font-size:13px;font-weight:700;padding:3px 11px;border-radius:14px;}
+.panel.panel-tile .panel-badge{font-size:19px;font-weight:700;padding:5px 16px;border-radius:18px;}
 .panel-content{flex:1;overflow-y:auto;overflow-x:hidden;scroll-behavior:smooth;position:relative;min-height:0;max-height:317px;}
 .panel.expanded .panel-content{max-height:none;}
 
