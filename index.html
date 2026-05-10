@@ -30,10 +30,9 @@ body{font-family:'DM Sans',sans-serif;background:var(--bg);color:var(--text);min
 /* The bar now fills the full center column width */
 .day-progress-bar{position:relative;width:100%;height:46px;background:linear-gradient(to right,#d4a853 0%,#d4a853 58%,#e8884a 76%,#7a9cc4 90%,#4a6fa5 100%);border-radius:8px;overflow:visible;flex-shrink:0;}
 
-/* Title: left third of bar, centered within it */
+/* Title: centered across full bar */
 .header-title-on-bar{
-  position:absolute;left:0;width:33.33%;top:0;bottom:0;
-  display:flex;align-items:center;justify-content:center;
+  position:absolute;inset:0;display:flex;align-items:center;justify-content:center;
   font-family:'Fraunces',serif;font-size:41px;font-weight:700;letter-spacing:-0.5px;
   color:#1a1a1a;text-shadow:0 1px 3px rgba(255,255,255,0.4);
   z-index:5;pointer-events:none;line-height:1;
@@ -59,10 +58,9 @@ body{font-family:'DM Sans',sans-serif;background:var(--bg);color:var(--text);min
 .day-progress-edge-label{position:absolute;bottom:2px;font-size:8px;font-weight:700;color:rgba(0,0,0,0.4);white-space:nowrap;line-height:1;pointer-events:none;z-index:4;}
 .day-progress-edge-label.start{left:4px;}
 .day-progress-edge-label.end{right:4px;}
-.day-progress-now{position:absolute;top:0;bottom:0;width:0;z-index:6;display:flex;align-items:center;justify-content:center;}
-.day-progress-now::after{content:'☀️';position:absolute;font-size:30px;top:50%;transform:translate(-50%,-50%);left:0;line-height:1;}
-.day-progress-now.resting{display:flex !important;left:calc(100% - 20px) !important;}
-.day-progress-now.resting::after{content:'🌙';}
+.day-progress-now{display:none !important;}
+.day-progress-now::after{content:'';}
+.day-progress-now.resting{display:none !important;}
 @keyframes pulse-line{0%,100%{opacity:1;transform:scaleY(1);}50%{opacity:0.6;transform:scaleY(0.95);}}
 
 /* Time-left text overlay sits inside the bar */
