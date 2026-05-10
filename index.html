@@ -21,10 +21,39 @@
 :root{--bg:#1a1917;--surface:#242320;--surface-raised:#2e2d29;--surface-hover:#38362f;--border:#3d3b33;--border-focus:#6b6554;--text:#e8e2d6;--text-dim:#a09882;--text-faint:#6b6554;--accent:#d4a853;--accent-dim:#b08a3a;--accent-glow:rgba(212,168,83,0.15);--red:#c75f5f;--red-dim:rgba(199,95,95,0.15);--green:#6bab73;--green-dim:rgba(107,171,115,0.15);--blue:#5f8fc7;--blue-dim:rgba(95,143,199,0.15);--purple:#9b7ec7;--purple-dim:rgba(155,126,199,0.15);--orange:#c7925f;--orange-dim:rgba(199,146,95,0.15);--teal:#5fafb0;--teal-dim:rgba(95,175,176,0.15);--radius:10px;--radius-sm:6px;}
 *{margin:0;padding:0;box-sizing:border-box;}
 body{font-family:'DM Sans',sans-serif;background:var(--bg);color:var(--text);min-height:100vh;min-height:100dvh;line-height:1.5;padding-top:env(safe-area-inset-top);padding-bottom:env(safe-area-inset-bottom);}
-.header{padding:12px 24px 10px;display:grid;grid-template-columns:auto 1fr auto;align-items:center;gap:12px;border-bottom:1px solid var(--border);position:sticky;top:0;background:var(--bg);z-index:50;min-height:92px;}
-.day-progress-bar{position:absolute;left:215px;right:240px;top:50%;transform:translateY(-50%);height:36px;background:#d4a853;z-index:1;pointer-events:none;border-radius:6px;margin-top:8px;}
-.day-progress-elapsed{position:absolute;left:0;top:0;bottom:0;background:#f5f0e0;transition:width 1s ease;border-radius:6px 0 0 6px;}
-.day-progress-marker{position:absolute;top:0;bottom:0;width:1px;background:rgba(0,0,0,0.25);overflow:visible;}
+/* ═══ HEADER ═══ */
+.header{padding:14px 24px 10px;display:grid;grid-template-columns:auto 1fr auto;align-items:center;gap:16px;border-bottom:1px solid var(--border);position:sticky;top:0;background:var(--bg);z-index:50;min-height:110px;}
+
+/* Center column: stacks bar on top, subtitle below */
+.header-center{display:flex;flex-direction:column;align-items:stretch;gap:6px;position:relative;}
+
+/* The bar now fills the full center column width */
+.day-progress-bar{position:relative;width:100%;height:46px;background:#d4a853;border-radius:8px;overflow:visible;flex-shrink:0;}
+
+/* Title overlaid centered on the bar */
+.header-title-on-bar{
+  position:absolute;inset:0;display:flex;align-items:center;justify-content:center;
+  font-family:'Fraunces',serif;font-size:41px;font-weight:700;letter-spacing:-0.5px;
+  color:#1a1a1a;text-shadow:0 1px 3px rgba(255,255,255,0.5);
+  z-index:5;pointer-events:none;line-height:1;
+}
+
+/* Subtitle below the bar */
+.header-subtitle{
+  font-family:'Fraunces',serif;font-size:14px;font-weight:400;
+  letter-spacing:2.5px;text-transform:uppercase;
+  text-align:center;line-height:1;
+  /* Dark mode default: light text */
+  color:rgba(220,205,175,0.75);
+}
+/* Light mode: dark text */
+@media(prefers-color-scheme:light){
+  .header-subtitle{color:rgba(40,30,15,0.65);}
+  .header-title-on-bar{color:#1a1a1a;text-shadow:0 1px 3px rgba(255,255,255,0.6);}
+}
+
+.day-progress-elapsed{position:absolute;left:0;top:0;bottom:0;background:#f5f0e0;transition:width 1s ease;border-radius:8px 0 0 8px;}
+.day-progress-marker{position:absolute;top:0;bottom:0;width:1px;background:rgba(0,0,0,0.2);overflow:visible;}
 .day-progress-marker-label{position:absolute;bottom:2px;left:50%;transform:translateX(-50%);font-size:8px;font-weight:700;color:rgba(0,0,0,0.4);white-space:nowrap;line-height:1;pointer-events:none;z-index:4;}
 .day-progress-edge-label{position:absolute;bottom:2px;font-size:8px;font-weight:700;color:rgba(0,0,0,0.4);white-space:nowrap;line-height:1;pointer-events:none;z-index:4;}
 .day-progress-edge-label.start{left:4px;}
@@ -45,10 +74,7 @@ body{font-family:'DM Sans',sans-serif;background:var(--bg);color:var(--text);min
 /* Wrapper for left-side points badge */
 .points-wrap{position:relative;z-index:2;display:flex;align-items:center;}
 
-.header h1{font-family:'Fraunces',serif;font-size:33px;font-weight:600;color:#1a1a1a;letter-spacing:-0.5px;text-align:center;margin:0;position:relative;z-index:2;text-shadow:0 1px 2px rgba(255,255,255,0.8);line-height:1;}
-.header h1 span{display:none;}
-.header-title-wrap{display:flex;flex-direction:column;align-items:center;justify-content:center;gap:2px;position:relative;z-index:2;}
-.header-subtitle{font-family:'Fraunces',serif;font-size:11px;font-weight:400;color:var(--text-dim);letter-spacing:2.5px;text-transform:uppercase;opacity:0.75;position:relative;z-index:2;}
+.points-wrap{position:relative;z-index:2;display:flex;align-items:center;}
 .header-right{display:flex;align-items:center;justify-content:flex-end;gap:8px;position:relative;z-index:2;}
 .time-left-wrap{position:relative;z-index:2;}
 /* BOTTOM STATUS BAR */
@@ -62,12 +88,12 @@ body{font-family:'DM Sans',sans-serif;background:var(--bg);color:var(--text);min
 /* Push content above bottom bar */
 .app-wrap{padding-bottom:40px;}
 @media(max-width:768px){
-  .header{grid-template-columns:auto 1fr auto;padding:8px 14px 6px;gap:8px;min-height:74px;}
-  .header h1{font-size:18px;}
-  .header h1 span{display:none;}
-  .header-subtitle{font-size:9px;letter-spacing:1.5px;}
+  .header{grid-template-columns:auto 1fr auto;padding:8px 14px 6px;gap:8px;min-height:86px;}
+  .header-title-on-bar{font-size:22px;}
+  .header-subtitle{font-size:10px;letter-spacing:1.5px;}
+  .day-progress-bar{height:34px;}
   .task-timer-wrap{display:none;}
-  .day-progress-bar{left:130px;right:14px;height:28px;}
+  .day-progress-bar{height:30px;border-radius:6px;}
   .points-badge-lg{padding:6px 12px;gap:8px;}
   .points-badge-lg .points-tier-icon{font-size:22px;}
   .points-badge-lg .points-value{font-size:18px;}
@@ -650,10 +676,10 @@ body.unlocked .date-editable{border-bottom-color:var(--border);}
 @media(max-width:1100px){.dashboard{grid-template-columns:1fr 1fr;}.panel-narrow{grid-column:span 1;}}
 @media(max-width:768px){
   .dashboard{grid-template-columns:1fr;padding:12px 14px 16px;gap:12px;}
-  .header{padding:10px 14px 8px;min-height:74px;}
-  .header h1{font-size:18px;}
-  .header h1 span{display:none;}
-  .header-subtitle{font-size:9px;letter-spacing:1.5px;}
+  .header{padding:10px 14px 8px;min-height:86px;}
+  .header-title-on-bar{font-size:22px;}
+  .header-subtitle{font-size:10px;letter-spacing:1.5px;}
+  .day-progress-bar{height:34px;}
   .panel{display:none;}
   .panel.mobile-visible{display:flex;}
   .panel.hidden-panel{display:none!important;}
@@ -995,36 +1021,7 @@ body.unlocked .date-editable{border-bottom-color:var(--border);}
 <!-- APP (hidden until auth) -->
 <div class="app-wrap" id="appWrap">
 <div class="header">
-  <!-- Day progress bar (background) with embedded Time Left -->
-  <div class="day-progress-bar" id="dayProgressBar">
-    <div class="day-progress-elapsed" id="dayProgressElapsed"></div>
-    <!-- Edge labels -->
-    <span class="day-progress-edge-label start">5a</span>
-    <span class="day-progress-edge-label end">8p</span>
-    <!-- Hour markers with time labels (6a–7p) -->
-    <div class="day-progress-marker" style="left:6.67%;"><span class="day-progress-marker-label">6a</span></div>
-    <div class="day-progress-marker" style="left:13.33%;"><span class="day-progress-marker-label">7a</span></div>
-    <div class="day-progress-marker" style="left:20%;"><span class="day-progress-marker-label">8a</span></div>
-    <div class="day-progress-marker" style="left:26.67%;"><span class="day-progress-marker-label">9a</span></div>
-    <div class="day-progress-marker" style="left:33.33%;"><span class="day-progress-marker-label">10a</span></div>
-    <div class="day-progress-marker" style="left:40%;"><span class="day-progress-marker-label">11a</span></div>
-    <div class="day-progress-marker" style="left:46.67%;"><span class="day-progress-marker-label">12p</span></div>
-    <div class="day-progress-marker" style="left:53.33%;"><span class="day-progress-marker-label">1p</span></div>
-    <div class="day-progress-marker" style="left:60%;"><span class="day-progress-marker-label">2p</span></div>
-    <div class="day-progress-marker" style="left:66.67%;"><span class="day-progress-marker-label">3p</span></div>
-    <div class="day-progress-marker" style="left:73.33%;"><span class="day-progress-marker-label">4p</span></div>
-    <div class="day-progress-marker" style="left:80%;"><span class="day-progress-marker-label">5p</span></div>
-    <div class="day-progress-marker" style="left:86.67%;"><span class="day-progress-marker-label">6p</span></div>
-    <div class="day-progress-marker" style="left:93.33%;"><span class="day-progress-marker-label">7p</span></div>
-    <!-- Time-left text overlay inside bar -->
-    <div class="time-left-overlay" id="timeLeftOverlay">
-      <span class="time-left-overlay-label" id="timeLeftLabel">Time Left</span>
-      <span class="time-left-overlay-value" id="timeLeftVal">--:--</span>
-    </div>
-    <!-- Current time indicator -->
-    <div class="day-progress-now" id="dayProgressNow"></div>
-  </div>
-  <!-- Left: Points Badge (LARGE) -->
+  <!-- Left: Points Badge -->
   <div class="points-wrap" id="pointsWrap">
     <div class="points-badge points-badge-lg" id="pointsBadge" onclick="togglePointsPopup()" title="Click for breakdown">
       <span class="points-tier-icon" id="ptTierIcon">🥉</span>
@@ -1032,9 +1029,39 @@ body.unlocked .date-editable{border-bottom-color:var(--border);}
     </div>
     <div class="points-popup" id="pointsPopup" style="display:none;"></div>
   </div>
-  <!-- Center: Title + tagline -->
-  <div class="header-title-wrap">
-    <h1>Centerpost</h1>
+  <!-- Center: Bar + title overlay + subtitle below -->
+  <div class="header-center">
+    <div class="day-progress-bar" id="dayProgressBar">
+      <div class="day-progress-elapsed" id="dayProgressElapsed"></div>
+      <!-- Edge labels -->
+      <span class="day-progress-edge-label start">5a</span>
+      <span class="day-progress-edge-label end">8p</span>
+      <!-- Hour markers with time labels (6a–7p) -->
+      <div class="day-progress-marker" style="left:6.67%;"><span class="day-progress-marker-label">6a</span></div>
+      <div class="day-progress-marker" style="left:13.33%;"><span class="day-progress-marker-label">7a</span></div>
+      <div class="day-progress-marker" style="left:20%;"><span class="day-progress-marker-label">8a</span></div>
+      <div class="day-progress-marker" style="left:26.67%;"><span class="day-progress-marker-label">9a</span></div>
+      <div class="day-progress-marker" style="left:33.33%;"><span class="day-progress-marker-label">10a</span></div>
+      <div class="day-progress-marker" style="left:40%;"><span class="day-progress-marker-label">11a</span></div>
+      <div class="day-progress-marker" style="left:46.67%;"><span class="day-progress-marker-label">12p</span></div>
+      <div class="day-progress-marker" style="left:53.33%;"><span class="day-progress-marker-label">1p</span></div>
+      <div class="day-progress-marker" style="left:60%;"><span class="day-progress-marker-label">2p</span></div>
+      <div class="day-progress-marker" style="left:66.67%;"><span class="day-progress-marker-label">3p</span></div>
+      <div class="day-progress-marker" style="left:73.33%;"><span class="day-progress-marker-label">4p</span></div>
+      <div class="day-progress-marker" style="left:80%;"><span class="day-progress-marker-label">5p</span></div>
+      <div class="day-progress-marker" style="left:86.67%;"><span class="day-progress-marker-label">6p</span></div>
+      <div class="day-progress-marker" style="left:93.33%;"><span class="day-progress-marker-label">7p</span></div>
+      <!-- Time-left text overlay inside bar -->
+      <div class="time-left-overlay" id="timeLeftOverlay">
+        <span class="time-left-overlay-label" id="timeLeftLabel">Time Left</span>
+        <span class="time-left-overlay-value" id="timeLeftVal">--:--</span>
+      </div>
+      <!-- Current time indicator -->
+      <div class="day-progress-now" id="dayProgressNow"></div>
+      <!-- Title overlaid on bar -->
+      <div class="header-title-on-bar">Centerpost</div>
+    </div>
+    <!-- Subtitle sits below the bar -->
     <div class="header-subtitle">Productivity Dashboard</div>
   </div>
   <!-- Hidden time-left bar (kept for backwards compat with updateTimeLeft fn) -->
