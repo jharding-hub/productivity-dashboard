@@ -28,9 +28,7 @@ body{font-family:'DM Sans',sans-serif;background:var(--bg);color:var(--text);min
 .day-progress-now{position:absolute;top:0;bottom:0;width:2px;background:#000;z-index:3;animation:pulse-line 2s ease-in-out infinite;display:flex;align-items:center;justify-content:center;}
 .day-progress-now::after{content:'';position:absolute;width:42px;height:42px;top:50%;transform:translate(-50%,-50%);left:0;background-image:url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><circle cx='50' cy='50' r='44' fill='none' stroke='%231a1a1a' stroke-width='6'/><g transform='translate(50 50)' stroke='%231a1a1a' stroke-width='5' stroke-linecap='round'><line x1='0' y1='-40' x2='0' y2='-18'/><line x1='0' y1='-40' x2='0' y2='-18' transform='rotate(45)'/><line x1='0' y1='-40' x2='0' y2='-18' transform='rotate(90)'/><line x1='0' y1='-40' x2='0' y2='-18' transform='rotate(135)'/><line x1='0' y1='-40' x2='0' y2='-18' transform='rotate(180)'/><line x1='0' y1='-40' x2='0' y2='-18' transform='rotate(225)'/><line x1='0' y1='-40' x2='0' y2='-18' transform='rotate(270)'/><line x1='0' y1='-40' x2='0' y2='-18' transform='rotate(315)'/></g><circle cx='50' cy='50' r='14' fill='none' stroke='%231a1a1a' stroke-width='4'/><circle cx='50' cy='50' r='6' fill='%231a1a1a'/></svg>");background-size:contain;background-repeat:no-repeat;animation:wheel-roll 4s linear infinite;}
 @keyframes wheel-roll{from{transform:translate(-50%,-50%) rotate(0deg);}to{transform:translate(-50%,-50%) rotate(360deg);}}
-.day-progress-now.resting{background:transparent;animation:none;}
-.day-progress-now.resting::after{content:'🛌';font-size:32px;transform:translateY(-50%) scaleX(1);left:10px;animation:sleep-bob 3s ease-in-out infinite;}
-@keyframes sleep-bob{0%,100%{transform:translateY(-50%) scaleX(1) rotate(-2deg);}50%{transform:translateY(-50%) scaleX(1) rotate(2deg);}}
+.day-progress-now.resting{display:none !important;}
 @keyframes pulse-line{0%,100%{opacity:1;transform:scaleY(1);}50%{opacity:0.6;transform:scaleY(0.95);}}
 
 /* Time-left text overlay sits inside the bar */
@@ -542,7 +540,7 @@ body.unlocked .date-editable:hover{border-bottom-color:var(--accent);background:
 .note-filter-row .note-search{flex:2;}
 .decision-prompt{background:var(--surface-raised);border:1px solid var(--border);border-radius:var(--radius-sm);padding:12px;font-size:13px;color:var(--text-dim);line-height:1.6;margin-bottom:8px;}
 .decision-prompt strong{color:var(--accent);font-weight:600;}
-.modal-overlay{position:fixed;inset:0;background:rgba(0,0,0,0.6);z-index:200;display:none;align-items:center;justify-content:center;padding:20px;}
+.modal-overlay{position:fixed;inset:0;background:rgba(0,0,0,0.6);z-index:1100;display:none;align-items:center;justify-content:center;padding:20px;}
 .modal-overlay.show{display:flex;}
 .modal{background:var(--surface);border:1px solid var(--border);border-radius:var(--radius);padding:24px;max-width:480px;width:100%;max-height:80vh;overflow-y:auto;}
 .modal h3{font-family:'Fraunces',serif;font-size:18px;color:var(--accent);margin-bottom:12px;}
@@ -1096,9 +1094,7 @@ body.unlocked .date-editable:hover{border-bottom-color:var(--accent);background:
   <button class="toolkit-btn toolkit-timer" onclick="openTimerModal()">&#9201;<span>Timer</span></button>
   <button class="toolkit-btn toolkit-mood" onclick="openEnergyModal()">&#9889;<span>Energy &amp; Mood</span></button>
   <button class="toolkit-btn toolkit-journal" onclick="openJournal()">&#128221;<span>Journal</span></button>
-  <button class="toolkit-btn toolkit-weather" onclick="openWeatherModal()">&#127780;<span>Weather</span></button>
   <button class="toolkit-btn toolkit-workout" onclick="openWorkoutModal()">&#127947;<span>Workout</span></button>
-  <button class="toolkit-btn toolkit-spinner" onclick="openSpinnerModal()">&#127869;<span>Dinner Wheel</span></button>
   <button class="toolkit-btn toolkit-halt" onclick="openHaltModal()">&#128721;<span>HALT+</span></button>
   <button class="toolkit-btn toolkit-wellness" onclick="openWellnessModal()">&#9784;&#65039;<span>Wellness</span></button>
 </div>
