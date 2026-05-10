@@ -197,13 +197,13 @@ input[type="date"]::-webkit-calendar-picker-indicator,input[type="time"]::-webki
 .proj-multi-option.action-new{color:var(--accent);font-style:italic;border-top:1px solid var(--border);}
 
 /* EDITABLE - only active when body.unlocked */
-.editable{padding:1px 2px;border-radius:2px;border-bottom:1px dashed transparent;transition:all 0.15s;}
-body.unlocked .editable{cursor:text;border-bottom-color:var(--border);}
-body.unlocked .editable:hover{border-bottom-color:var(--text-faint);background:rgba(255,255,255,0.03);}
+.editable{padding:1px 2px;border-radius:2px;border-bottom:1px dashed transparent;transition:all 0.15s;cursor:text;}
+body.unlocked .editable{border-bottom-color:var(--border);}
+.editable:hover{border-bottom-color:var(--text-faint);background:rgba(255,255,255,0.03);}
 .editable:focus{outline:none;border-bottom-color:var(--accent)!important;background:var(--surface-raised)!important;}
-.date-editable{padding:1px 4px;border-radius:2px;border-bottom:1px dashed transparent;transition:all 0.15s;display:inline-block;}
-body.unlocked .date-editable{cursor:pointer;border-bottom-color:var(--border);}
-body.unlocked .date-editable:hover{border-bottom-color:var(--accent);background:rgba(255,255,255,0.03);}
+.date-editable{padding:1px 4px;border-radius:2px;border-bottom:1px dashed transparent;transition:all 0.15s;display:inline-block;cursor:pointer;}
+body.unlocked .date-editable{border-bottom-color:var(--border);}
+.date-editable:hover{border-bottom-color:var(--accent);background:rgba(255,255,255,0.03);}
 .date-edit-input{width:130px;font-size:11px;padding:2px 4px;display:inline-block;}
 
 /* PROJECTS */
@@ -1924,14 +1924,13 @@ function updateLockUI(){const btn=document.getElementById('lockBtn');if(state.pa
 // INLINE EDITING - only works when unlocked
 function makeEditable(el,onSave){
   el.classList.add('editable');
-  el.addEventListener('focus',function(){if(state.panelsLocked){this.blur();return;}});
-  el.addEventListener('blur',function(){if(!state.panelsLocked)onSave(el.textContent.trim());});
+  el.addEventListener('blur',function(){onSave(el.textContent.trim());});
   el.addEventListener('keydown',function(e){if(e.key==='Enter'){e.preventDefault();el.blur();}if(e.key==='Escape')el.blur();});
 }
 function refreshEditables(){
-  const editable=!state.panelsLocked;
+  // Editables are ALWAYS editable now. The "lock" only affects panel drag-drop, not content edits.
   document.querySelectorAll('.editable').forEach(el=>{
-    el.setAttribute('contenteditable',editable?'true':'false');
+    el.setAttribute('contenteditable','true');
   });
 }
 
@@ -2241,7 +2240,6 @@ function editReminderDate(id,v){const r=state.reminders.find(r=>r.id===id);if(r)
 function editReminderTime(id,v){const r=state.reminders.find(r=>r.id===id);if(r){r.time=v;save();renderReminders();}}
 function makeDateClickable(el,currentVal,onSave){
   el.addEventListener('click',function(e){
-    if(state.panelsLocked)return;
     e.stopPropagation();
     const inp=document.createElement('input');
     inp.type='date';inp.className='date-edit-input';
@@ -2254,7 +2252,6 @@ function makeDateClickable(el,currentVal,onSave){
 }
 function makeTimeClickable(el,currentVal,onSave){
   el.addEventListener('click',function(e){
-    if(state.panelsLocked)return;
     e.stopPropagation();
     const inp=document.createElement('input');
     inp.type='time';inp.className='date-edit-input';inp.style.width='100px';
