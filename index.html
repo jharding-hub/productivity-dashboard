@@ -28,7 +28,7 @@ body{font-family:'DM Sans',sans-serif;background:var(--bg);color:var(--text);min
 .header-center{display:flex;flex-direction:column;align-items:stretch;position:relative;}
 
 /* The bar now fills the full center column width */
-.day-progress-bar{position:relative;width:100%;height:46px;background:#d4a853;border-radius:8px;overflow:visible;flex-shrink:0;}
+.day-progress-bar{position:relative;width:100%;height:46px;background:linear-gradient(to right,#d4a853 0%,#d4a853 58%,#e8884a 76%,#7a9cc4 90%,#4a6fa5 100%);border-radius:8px;overflow:visible;flex-shrink:0;}
 
 /* Title: left third of bar, centered within it */
 .header-title-on-bar{
@@ -59,18 +59,14 @@ body{font-family:'DM Sans',sans-serif;background:var(--bg);color:var(--text);min
 .day-progress-edge-label{position:absolute;bottom:2px;font-size:8px;font-weight:700;color:rgba(0,0,0,0.4);white-space:nowrap;line-height:1;pointer-events:none;z-index:4;}
 .day-progress-edge-label.start{left:4px;}
 .day-progress-edge-label.end{right:4px;}
-.day-progress-now{position:absolute;top:0;bottom:0;width:2px;background:#000;z-index:3;animation:pulse-line 2s ease-in-out infinite;display:flex;align-items:center;justify-content:center;}
-.day-progress-now::after{content:'';position:absolute;width:42px;height:42px;top:50%;transform:translate(-50%,-50%);left:0;background-image:url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><circle cx='50' cy='50' r='44' fill='none' stroke='%231a1a1a' stroke-width='6'/><g transform='translate(50 50)' stroke='%231a1a1a' stroke-width='5' stroke-linecap='round'><line x1='0' y1='-40' x2='0' y2='-18'/><line x1='0' y1='-40' x2='0' y2='-18' transform='rotate(45)'/><line x1='0' y1='-40' x2='0' y2='-18' transform='rotate(90)'/><line x1='0' y1='-40' x2='0' y2='-18' transform='rotate(135)'/><line x1='0' y1='-40' x2='0' y2='-18' transform='rotate(180)'/><line x1='0' y1='-40' x2='0' y2='-18' transform='rotate(225)'/><line x1='0' y1='-40' x2='0' y2='-18' transform='rotate(270)'/><line x1='0' y1='-40' x2='0' y2='-18' transform='rotate(315)'/></g><circle cx='50' cy='50' r='14' fill='none' stroke='%231a1a1a' stroke-width='4'/><circle cx='50' cy='50' r='6' fill='%231a1a1a'/></svg>");background-size:contain;background-repeat:no-repeat;animation:wheel-roll 4s linear infinite;}
-@keyframes wheel-roll{from{transform:translate(-50%,-50%) rotate(0deg);}to{transform:translate(-50%,-50%) rotate(360deg);}}
-.day-progress-now.resting{display:none !important;}
+.day-progress-now{position:absolute;top:0;bottom:0;width:0;z-index:6;display:flex;align-items:center;justify-content:center;}
+.day-progress-now::after{content:'☀️';position:absolute;font-size:30px;top:50%;transform:translate(-50%,-50%);left:0;line-height:1;}
+.day-progress-now.resting{display:flex !important;left:calc(100% - 20px) !important;}
+.day-progress-now.resting::after{content:'🌙';}
 @keyframes pulse-line{0%,100%{opacity:1;transform:scaleY(1);}50%{opacity:0.6;transform:scaleY(0.95);}}
 
 /* Time-left text overlay sits inside the bar */
-.time-left-overlay{position:absolute;left:14px;top:50%;transform:translateY(-50%);display:flex;align-items:center;gap:8px;z-index:2;pointer-events:none;font-family:'Fraunces',serif;}
-.time-left-overlay-label{font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:1.2px;color:#1a1a1a;text-shadow:0 1px 2px rgba(255,255,255,0.6);}
-.time-left-overlay-value{font-size:18px;font-weight:700;font-variant-numeric:tabular-nums;color:#1a1a1a;text-shadow:0 1px 2px rgba(255,255,255,0.6);}
-.time-left-overlay-value.warn{color:#7a2a00;}
-.time-left-overlay-value.low{color:#7a0000;}
+/* (time-left overlay removed) */
 
 /* Wrapper for left-side points badge */
 .points-wrap{position:relative;z-index:2;display:flex;align-items:center;}
@@ -98,8 +94,7 @@ body{font-family:'DM Sans',sans-serif;background:var(--bg);color:var(--text);min
   .points-badge-lg{padding:6px 12px;gap:8px;}
   .points-badge-lg .points-tier-icon{font-size:22px;}
   .points-badge-lg .points-value{font-size:18px;}
-  .time-left-overlay-label{font-size:9px;}
-  .time-left-overlay-value{font-size:14px;}
+  /* time-left overlay removed */
   .status-bar{padding:6px 14px;gap:8px;}
   .status-bar .user-email-display{max-width:90px;}
 }
@@ -1052,12 +1047,7 @@ body.unlocked .date-editable{border-bottom-color:var(--border);}
       <div class="day-progress-marker" style="left:80%;"><span class="day-progress-marker-label">5p</span></div>
       <div class="day-progress-marker" style="left:86.67%;"><span class="day-progress-marker-label">6p</span></div>
       <div class="day-progress-marker" style="left:93.33%;"><span class="day-progress-marker-label">7p</span></div>
-      <!-- Time-left text overlay inside bar -->
-      <div class="time-left-overlay" id="timeLeftOverlay">
-        <span class="time-left-overlay-label" id="timeLeftLabel">Time Left</span>
-        <span class="time-left-overlay-value" id="timeLeftVal">--:--</span>
-      </div>
-      <!-- Current time indicator -->
+      <!-- Current time indicator (sun/moon) -->
       <div class="day-progress-now" id="dayProgressNow"></div>
       <!-- Title: left third of bar -->
       <div class="header-title-on-bar">Centerpost</div>
@@ -4579,32 +4569,7 @@ function _wellFormatDate(iso){
 // ═══════════════════════════════════════
 var TL_START_H=5,TL_END_H=20;
 function updateTimeLeft(){
-  var now=new Date();
-  var nowMin=now.getHours()*60+now.getMinutes()+now.getSeconds()/60;
-  var startMin=TL_START_H*60,endMin=TL_END_H*60,totalMin=endMin-startMin;
-  var valEl=document.getElementById('timeLeftVal');
-  var barEl=document.getElementById('timeLeftBar');
-  var lblEl=document.getElementById('timeLeftLabel');
-  if(!valEl)return;
-  if(nowMin<startMin){
-    var till=startMin-nowMin;
-    valEl.textContent=Math.floor(till/60)+'h '+Math.round(till%60)+'m';
-    valEl.className='time-left-overlay-value';
-    if(barEl)barEl.style.width='100%';
-    if(lblEl)lblEl.textContent='Time Left';
-  }else if(nowMin>=endMin){
-    valEl.textContent='Rest';
-    valEl.className='time-left-overlay-value low';
-    if(barEl)barEl.style.width='0%';
-    if(lblEl)lblEl.textContent='Time to Rest';
-  }else{
-    var rem=endMin-nowMin;
-    var hh=Math.floor(rem/60),mm=Math.floor(rem%60);
-    valEl.textContent=hh+'h '+(mm<10?'0':'')+mm+'m';
-    if(barEl)barEl.style.width=((rem/totalMin)*100)+'%';
-    valEl.className='time-left-overlay-value'+(rem<=60?' low':rem<=180?' warn':'');
-    if(lblEl)lblEl.textContent='Time Left';
-  }
+  // Text overlay removed — just update the day progress position
   updateDayProgress();
 }
 
@@ -4618,33 +4583,23 @@ function updateDayProgress(){
   
   var elapsed=0;
   if(nowMin<startMin){
-    // Before productive day starts - show 0% elapsed (all yellow)
+    // Before 5am — show at start, no indicator
     elapsed=0;
+    nowEl.style.left='0%';
     nowEl.style.display='none';
     nowEl.classList.remove('resting');
   }else if(nowMin>=endMin){
-    // After productive day ends - show 100% elapsed (all pale yellow), sleep emoji next to "Rest" on left
+    // After 8pm — full bar, moon at right edge (via CSS)
     elapsed=100;
-    // Time-left overlay sits at left:14px with "Time to Rest" + value (~120px wide)
-    // Position sleep emoji just to the right of that text
-    var timeLeftEl=document.getElementById('timeLeftOverlay');
-    var barEl=document.getElementById('dayProgressBar');
-    if(timeLeftEl&&barEl){
-      var tlRect=timeLeftEl.getBoundingClientRect();
-      var barRect=barEl.getBoundingClientRect();
-      var pxOffset=(tlRect.right-barRect.left)+10; // 10px gap after text
-      nowEl.style.left=pxOffset+'px';
-    }else{
-      nowEl.style.left='160px';
-    }
-    nowEl.style.display='block';
+    nowEl.style.left='';   // CSS handles position via .resting rule
+    nowEl.style.display='flex';
     nowEl.classList.add('resting');
   }else{
-    // During productive day - calculate percentage elapsed
+    // During productive day — sun follows progress
     var elapsedMin=nowMin-startMin;
     elapsed=(elapsedMin/totalMin)*100;
     nowEl.style.left=elapsed+'%';
-    nowEl.style.display='block';
+    nowEl.style.display='flex';
     nowEl.classList.remove('resting');
   }
   
