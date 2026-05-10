@@ -2232,9 +2232,11 @@ function toggleSubtask(pid,sid){
 }
 function deleteSubtask(pid,sid){const p=state.projects.find(p=>p.id===pid);if(p)p.subtasks=p.subtasks.filter(s=>s.id!==sid);save();renderProjects();renderTaskList();}
 function editProjectName(pid,v){if(!v)return;const p=state.projects.find(p=>p.id===pid);if(p)p.name=v;save();}
-function editSubtaskName(pid,sid,v){if(!v)return;const p=state.projects.find(p=>p.id===pid);const s=p&&p.subtasks.find(s=>s.id===sid);if(s)s.name=v;save();}
+function editSubtaskName(pid,sid,v){if(!v)return;const p=state.projects.find(p=>p.id===pid);const s=p&&p.subtasks.find(s=>s.id===sid);if(s)s.name=v;save();renderTaskList();}
 function editProjectDue(pid,v){const p=state.projects.find(p=>p.id===pid);if(p){p.due=v;save();renderProjects();}}
-function editSubtaskDue(pid,sid,v){const p=state.projects.find(p=>p.id===pid);const s=p&&p.subtasks.find(s=>s.id===sid);if(s){s.due=v;save();renderProjects();}}
+function editSubtaskDue(pid,sid,v){const p=state.projects.find(p=>p.id===pid);const s=p&&p.subtasks.find(s=>s.id===sid);if(s){s.due=v;save();renderProjects();renderTaskList();var modalOpen=document.getElementById('projDetailModal').classList.contains('open');if(modalOpen)openProjectModal(pid);}}
+function editStandaloneTaskName(id,v){if(!v)return;var t=(state.tasks||[]).find(function(x){return x.id===id;});if(t){t.name=v;save();renderTaskList();var modalOpen=document.getElementById('projDetailModal').classList.contains('open');if(modalOpen&&t.projectId)openProjectModal(t.projectId);else if(modalOpen&&t.projectIds&&t.projectIds.length)openProjectModal(t.projectIds[0]);}}
+function editStandaloneTaskDue(id,v){var t=(state.tasks||[]).find(function(x){return x.id===id;});if(t){t.due=v;save();renderTaskList();var modalOpen=document.getElementById('projDetailModal').classList.contains('open');if(modalOpen&&t.projectId)openProjectModal(t.projectId);else if(modalOpen&&t.projectIds&&t.projectIds.length)openProjectModal(t.projectIds[0]);}}
 function editReminderDate(id,v){const r=state.reminders.find(r=>r.id===id);if(r){r.date=v;save();renderReminders();}}
 function editReminderTime(id,v){const r=state.reminders.find(r=>r.id===id);if(r){r.time=v;save();renderReminders();}}
 function makeDateClickable(el,currentVal,onSave){
@@ -3211,16 +3213,45 @@ function renderTaskList(){
     el.innerHTML='<div class="empty-state">No tasks yet. Add one below or create subtasks in Projects.</div>';
   }else{
     el.innerHTML=all.map(function(t){
+      var nameId='tlname_'+t.id;
+      var dueId='tldue_'+t.id;
+      var dueHTML;
+      if(t.due){
+        dueHTML='<span class="date-editable tl-due-edit" id="'+dueId+'">'+fmtDate(t.due)+'</span>';
+      }else{
+        dueHTML='<span class="date-editable tl-due-edit" id="'+dueId+'" style="color:var(--text-faint);">+ date</span>';
+      }
       return '<div class="tl-item">'+
         '<div class="tl-check" onclick="toggleTaskDone(\''+t.id+'\',\''+t.source+'\',\''+t.projectId+'\')"></div>'+
-        '<div class="tl-body"><div class="tl-name"><span class="priority-dot priority-'+t.priority+'"></span>'+esc(t.name)+'</div>'+
+        '<div class="tl-body"><div class="tl-name"><span class="priority-dot priority-'+t.priority+'"></span><span class="editable" id="'+nameId+'">'+esc(t.name)+'</span></div>'+
         '<div class="tl-meta">'+(t.projectName?'<span class="tl-proj-badge">'+esc(t.projectName)+'</span>':'')+
         (t.timeEst?'<span class="tl-time-badge">'+fmtTimeEst(t.timeEst)+'</span>':'')+
-        (t.due?'<span>'+fmtDate(t.due)+'</span>':'')+
+        dueHTML+
         '</div></div>'+
         (t.source==='standalone'?'<span class="tl-del" onclick="deleteStandaloneTask(\''+t.id+'\')">\u2715</span>':'')+
         '</div>';
     }).join('');
+    // Wire editables
+    all.forEach(function(t){
+      var nameEl=document.getElementById('tlname_'+t.id);
+      var dueEl=document.getElementById('tldue_'+t.id);
+      if(nameEl){
+        if(t.source==='standalone'){
+          makeEditable(nameEl,function(v){editStandaloneTaskName(t.id,v);});
+        }else{
+          // Subtask in a project
+          makeEditable(nameEl,function(v){editSubtaskName(t.projectId,t.id,v);});
+        }
+      }
+      if(dueEl){
+        if(t.source==='standalone'){
+          makeDateClickable(dueEl,t.due,function(v){editStandaloneTaskDue(t.id,v);});
+        }else{
+          makeDateClickable(dueEl,t.due,function(v){editSubtaskDue(t.projectId,t.id,v);});
+        }
+      }
+    });
+    refreshEditables();
   }
   document.getElementById('taskListCount').textContent=all.length;
   // Update completed counter badge (green)
@@ -4153,12 +4184,21 @@ function openProjectModal(pid){
       if(a.due)return -1;if(b.due)return 1;return 0;
     });
     html+=sorted.map(function(st){
+      var nameId='pmd_stname_'+st.id;
+      var dueId='pmd_stdue_'+st.id;
+      var dueHTML;
+      if(st.due){
+        dueHTML='<span class="date-editable" id="'+dueId+'" style="font-size:11px;color:var(--text-dim);">'+fmtDate(st.due)+'</span>';
+      }else{
+        dueHTML='<span class="date-editable" id="'+dueId+'" style="font-size:11px;color:var(--text-faint);">+ date</span>';
+      }
       return '<div class="pmd-subtask">'
         +'<div class="pmd-st-check" onclick="pmdToggleSubtask(\''+pid+'\',\''+st.id+'\')"></div>'
         +'<span class="pmd-st-name">'
-        +'<span class="priority-dot priority-'+( st.priority||'med')+'"></span>'+esc(st.name)+'</span>'
-        +(st.due?'<span class="st-due">'+fmtDate(st.due)+'</span>':'')
+        +'<span class="priority-dot priority-'+( st.priority||'med')+'"></span><span class="editable" id="'+nameId+'">'+esc(st.name)+'</span></span>'
+        +dueHTML
         +(st.timeEst?'<span class="tl-time-badge">'+fmtTimeEst(st.timeEst)+'</span>':'')
+        +'<span class="st-btn st-del" onclick="deleteSubtask(\''+pid+'\',\''+st.id+'\')" title="Delete">\u2715</span>'
         +'</div>';
     }).join('');
   }
@@ -4168,10 +4208,15 @@ function openProjectModal(pid){
   if(linkedTasks.length){
     html+='<div class="proj-modal-section"><div class="proj-modal-section-title">&#128203; Linked Tasks</div>';
     html+=linkedTasks.map(function(t){
+      var nameId='pmd_tname_'+t.id;
+      var dueId='pmd_tdue_'+t.id;
+      var dueHTML=t.due?
+        '<div class="pmd-item-meta">Due: <span class="date-editable" id="'+dueId+'">'+fmtDate(t.due)+'</span></div>':
+        '<div class="pmd-item-meta">Due: <span class="date-editable" id="'+dueId+'" style="color:var(--text-faint);">+ set</span></div>';
       return '<div class="pmd-item"><div class="pmd-item-label">'
         +'<span class="priority-dot priority-'+(t.priority||'med')+'"></span>'
-        +esc(t.name)+(t.done?' <span style="color:var(--text-faint);font-size:11px;">(done)</span>':'')
-        +'</div>'+(t.due?'<div class="pmd-item-meta">Due: '+fmtDate(t.due)+'</div>':'')+'</div>';
+        +'<span class="editable" id="'+nameId+'">'+esc(t.name)+'</span>'+(t.done?' <span style="color:var(--text-faint);font-size:11px;">(done)</span>':'')
+        +'</div>'+dueHTML+'</div>';
     }).join('');
     html+='</div>';
   }
@@ -4208,6 +4253,30 @@ function openProjectModal(pid){
     +'</div></div>';
 
   document.getElementById('pmdBody').innerHTML=html;
+  
+  // Wire editable subtask names + due dates inside the modal
+  p.subtasks.forEach(function(st){
+    var nameEl=document.getElementById('pmd_stname_'+st.id);
+    if(nameEl){
+      makeEditable(nameEl,function(v){editSubtaskName(pid,st.id,v);});
+    }
+    var dueEl=document.getElementById('pmd_stdue_'+st.id);
+    if(dueEl){
+      makeDateClickable(dueEl,st.due,function(v){editSubtaskDue(pid,st.id,v);});
+    }
+  });
+  // Wire editable linked tasks (standalone tasks tagged to this project)
+  linkedTasks.forEach(function(t){
+    var nameEl=document.getElementById('pmd_tname_'+t.id);
+    if(nameEl){
+      makeEditable(nameEl,function(v){editStandaloneTaskName(t.id,v);});
+    }
+    var dueEl=document.getElementById('pmd_tdue_'+t.id);
+    if(dueEl){
+      makeDateClickable(dueEl,t.due,function(v){editStandaloneTaskDue(t.id,v);});
+    }
+  });
+  refreshEditables();
 }
 
 function closeProjectModal(){
