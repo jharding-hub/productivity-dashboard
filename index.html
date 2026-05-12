@@ -917,6 +917,21 @@ body.unlocked .date-editable{border-bottom-color:var(--border);}
 .toolkit-btn:hover{transform:translateY(-2px);box-shadow:0 4px 14px rgba(0,0,0,0.3);}
 .toolkit-breath:hover{border-color:var(--teal);color:var(--teal);background:var(--teal-dim);}
 .toolkit-timer:hover{border-color:var(--green);color:var(--green);background:var(--green-dim);}
+.toolkit-timer-wrap{position:relative;display:flex;}
+.toolkit-timer-wrap .toolkit-btn{flex:1;}
+.timer-controls{display:inline-flex;align-items:center;gap:4px;margin-left:4px;}
+.timer-ctrl-btn{cursor:pointer;padding:2px 4px;border-radius:3px;font-size:13px;line-height:1;}
+.timer-ctrl-btn:hover{background:rgba(255,255,255,0.1);}
+.timer-menu{font-size:12px;}
+.timer-dropdown{position:absolute;top:calc(100% + 6px);left:0;right:0;background:var(--surface-raised);border:1.5px solid var(--green);border-radius:var(--radius-sm);box-shadow:0 8px 20px rgba(0,0,0,0.4);z-index:200;overflow:hidden;}
+.timer-dropdown-item{display:flex;align-items:center;gap:8px;padding:9px 12px;cursor:pointer;font-size:13px;color:var(--text);border-bottom:1px solid var(--border);transition:background 0.15s;}
+.timer-dropdown-item:last-child{border-bottom:none;}
+.timer-dropdown-item:hover{background:var(--green-dim);color:var(--green);}
+.timer-dropdown-item.current{background:var(--green-dim);color:var(--green);font-weight:600;}
+.timer-dropdown-item .td-icon{font-size:15px;width:20px;text-align:center;flex-shrink:0;}
+.timer-dropdown-item .td-name{flex:1;}
+.timer-dropdown-item .td-check{font-size:11px;color:var(--green);}
+.toolkit-btn.timer-running{border-color:var(--green);color:var(--green);background:var(--green-dim);}
 .toolkit-mood:hover{border-color:var(--accent);color:var(--accent);background:var(--accent-glow);}
 .toolkit-journal:hover{border-color:var(--purple);color:var(--purple);background:var(--purple-dim);}
 .toolkit-radar:hover{border-color:var(--blue);color:var(--blue);background:var(--blue-dim);}
@@ -1122,7 +1137,17 @@ body.unlocked .date-editable{border-bottom-color:var(--border);}
     <div class="music-dropdown" id="musicDropdown" style="display:none;"></div>
   </div>
   <button class="toolkit-btn toolkit-breath" onclick="openBreathworkModal()">&#128311;<span>Breathwork</span></button>
-  <button class="toolkit-btn toolkit-timer" onclick="openTimerModal()">&#9201;<span>Timer</span></button>
+  <div class="toolkit-timer-wrap">
+    <button class="toolkit-btn toolkit-timer" id="timerBtn" onclick="timerHandleClick()" title="Click to start/pause • Use ☰ to pick duration">
+      <span id="timerBtnIcon">&#9201;</span>
+      <span id="timerBtnLabel">Timer</span>
+      <span class="timer-controls" id="timerControls" style="display:none;">
+        <span class="timer-ctrl-btn" id="timerStateIcon">&#9654;</span>
+        <span class="timer-ctrl-btn timer-menu" onclick="event.stopPropagation();timerToggleDropdown()" title="Pick duration" role="button" tabindex="0">&#9776;</span>
+      </span>
+    </button>
+    <div class="timer-dropdown" id="timerDropdown" style="display:none;"></div>
+  </div>
   <button class="toolkit-btn toolkit-mood" onclick="openEnergyModal()">&#9889;<span>Energy &amp; Mood</span></button>
   <button class="toolkit-btn toolkit-journal" onclick="openJournal()">&#128221;<span>Journal</span></button>
   <button class="toolkit-btn toolkit-workout" onclick="openWorkoutModal()">&#127947;<span>Workout</span></button>
@@ -1483,33 +1508,6 @@ body.unlocked .date-editable{border-bottom-color:var(--border);}
 </div>
 
 <!-- TIMER MODAL -->
-<div class="modal-blur-overlay" id="timerModal">
-<div class="modal-blur-backdrop" onclick="closeTimerModal()"></div>
-<div class="modal-blur-panel">
-  <div class="modal-blur-header">
-    <div class="modal-blur-title">&#9201; Focus Timer</div>
-    <button class="modal-blur-close" onclick="closeTimerModal()">&#10005;</button>
-  </div>
-  <div class="modal-blur-body">
-    <div class="timer-modal-display" id="timerDisplay">25:00</div>
-    <div class="timer-modal-bar"><div class="timer-modal-bar-fill" id="timerBar" style="width:100%"></div></div>
-    <div class="timer-modal-controls">
-      <button class="btn" onclick="startTimer()">&#9654; Start</button>
-      <button class="btn" onclick="pauseTimer()">&#9208; Pause</button>
-      <button class="btn" onclick="resetTimer()">&#8634; Reset</button>
-    </div>
-    <div class="timer-modal-presets">
-      <button class="timer-preset-btn active" id="tp25" onclick="setTimerPresetDirect(25,this)">25 min</button>
-      <button class="timer-preset-btn" id="tp15" onclick="setTimerPresetDirect(15,this)">15 min</button>
-      <button class="timer-preset-btn" id="tp5"  onclick="setTimerPresetDirect(5,this)">5 min break</button>
-      <button class="timer-preset-btn" id="tp45" onclick="setTimerPresetDirect(45,this)">45 min</button>
-    </div>
-    <!-- hidden select kept for existing setTimerPreset() compatibility -->
-    <select id="timerPreset" onchange="setTimerPreset()" style="display:none;"><option value="25">25</option><option value="15">15</option><option value="5">5</option><option value="45">45</option></select>
-  </div>
-</div>
-</div>
-
 <!-- JOURNAL OVERLAY -->
 <div class="journal-overlay" id="journalOverlay">
 <div class="journal-backdrop" id="journalBackdrop" onclick="closeJournal()"></div>
@@ -1973,42 +1971,93 @@ function initDragDrop(){document.querySelectorAll('.panel').forEach(panel=>{pane
 function updateClock(){const now=new Date();const t=now.toLocaleTimeString('en-US',{hour12:true});const clk=document.getElementById('clock');if(clk)clk.textContent=t;const cd=document.getElementById('clockDate');if(cd)cd.textContent=now.toLocaleDateString('en-US',{weekday:'long',year:'numeric',month:'long',day:'numeric'});const mhc=document.getElementById('mobileHomeClock');if(mhc)mhc.textContent=t;}
 
 // TIMER (with soft alarm)
+// ═══════════════════════════════════════
+// FOCUS TIMER (inline button, no modal)
+// ═══════════════════════════════════════
+const TIMER_PRESETS=[
+  {label:'25 min',minutes:25,icon:'🎯'},
+  {label:'15 min',minutes:15,icon:'⚡'},
+  {label:'5 min break',minutes:5,icon:'☕'},
+  {label:'45 min',minutes:45,icon:'🔥'},
+  {label:'60 min',minutes:60,icon:'⏳'}
+];
 let timerTotal=25*60,timerLeft=25*60,timerInterval=null,timerRunning=false;
 let timerAlarmTimeout=null,audioCtx=null;
 let alarmOscillators=[],alarmGain=null,alarmPlaying=false;
-let timerEndAt=null; // absolute ms timestamp when timer will reach 0
+let timerEndAt=null;
+let timerCurrentPresetIdx=0; // default 25 min
+
+function _timerFmtLabel(){
+  if(!timerRunning&&timerLeft===timerTotal){
+    // Idle — just show preset name
+    return TIMER_PRESETS[timerCurrentPresetIdx].label;
+  }
+  // Counting down — show MM:SS
+  var m=Math.floor(timerLeft/60),s=timerLeft%60;
+  return String(m).padStart(2,'0')+':'+String(s).padStart(2,'0');
+}
 
 function updateTimerDisplay(){
-  const m=Math.floor(timerLeft/60),s=timerLeft%60;
-  document.getElementById('timerDisplay').textContent=String(m).padStart(2,'0')+':'+String(s).padStart(2,'0');
-  document.getElementById('timerBar').style.width=(timerTotal>0?(timerLeft/timerTotal)*100:0)+'%';
+  var lbl=document.getElementById('timerBtnLabel');
+  var icon=document.getElementById('timerStateIcon');
+  var btn=document.getElementById('timerBtn');
+  var ctrls=document.getElementById('timerControls');
+  if(!lbl)return;
+
+  lbl.textContent=_timerFmtLabel();
+
+  // Show controls once timer has been used
+  if(ctrls)ctrls.style.display=(timerRunning||timerLeft<timerTotal)?'inline-flex':'none';
+
+  // State icon: ⏸ when running, ▶ when paused
+  if(icon)icon.textContent=timerRunning?'\u23F8':'\u25B6';
+
+  // Green tint when running
+  if(btn)btn.classList.toggle('timer-running',timerRunning);
+
   if(timerLeft<=0&&timerRunning){
     timerRunning=false;clearInterval(timerInterval);timerInterval=null;timerEndAt=null;
-    playAlarm();toast('\u23F0 Focus session complete!');
-    timerAlarmTimeout=setTimeout(function(){stopAlarm();},12000);
+    if(btn)btn.classList.remove('timer-running');
+    if(ctrls)ctrls.style.display='none';
+    if(lbl)lbl.textContent='Done!';
+    playAlarm();
+    toast('\u23F0 Focus session complete! +3 pts');
+    addPoints('timer',document.getElementById('timerBtn'));
+    timerAlarmTimeout=setTimeout(function(){
+      stopAlarm();
+      timerLeft=timerTotal;
+      updateTimerDisplay();
+    },12000);
   }
 }
 
 function _tickTimer(){
-  // Recompute from wall clock — immune to sleep, throttling, and tab hiding
   if(timerEndAt!==null){
     timerLeft=Math.max(0,Math.round((timerEndAt-Date.now())/1000));
   }
   updateTimerDisplay();
 }
 
+function timerHandleClick(){
+  // If dropdown is open, close it
+  var dd=document.getElementById('timerDropdown');
+  if(dd&&dd.style.display==='block'){dd.style.display='none';return;}
+  // Otherwise toggle play/pause
+  if(timerRunning){pauseTimer();}
+  else{startTimer();}
+}
+
 function startTimer(){
   if(timerRunning)return;
   stopAlarm();
   timerRunning=true;
-  // Set end time from current timerLeft so a paused timer resumes correctly
   timerEndAt=Date.now()+(timerLeft*1000);
-  timerInterval=setInterval(_tickTimer,500); // 500ms poll — catches up fast after sleep
+  timerInterval=setInterval(_tickTimer,500);
+  updateTimerDisplay();
 }
 
 function pauseTimer(){
   if(!timerRunning)return;
-  // Snapshot the real remaining time before stopping
   if(timerEndAt!==null)timerLeft=Math.max(0,Math.round((timerEndAt-Date.now())/1000));
   timerRunning=false;timerEndAt=null;
   clearInterval(timerInterval);timerInterval=null;
@@ -2021,13 +2070,60 @@ function resetTimer(){
   updateTimerDisplay();
 }
 
+function timerToggleDropdown(){
+  var dd=document.getElementById('timerDropdown');
+  if(!dd)return;
+  if(dd.style.display==='block'){dd.style.display='none';return;}
+
+  var html=TIMER_PRESETS.map(function(p,i){
+    var cur=i===timerCurrentPresetIdx;
+    return '<div class="timer-dropdown-item'+(cur?' current':'')+'" onclick="event.stopPropagation();timerSelectPreset('+i+')">'
+      +'<span class="td-icon">'+p.icon+'</span>'
+      +'<span class="td-name">'+p.label+'</span>'
+      +(cur?'<span class="td-check">&#9654; set</span>':'')
+      +'</div>';
+  }).join('');
+  dd.innerHTML=html;
+  dd.style.display='block';
+
+  setTimeout(function(){
+    var handler=function(e){
+      var wrap=document.querySelector('.toolkit-timer-wrap');
+      if(!wrap||!wrap.contains(e.target)){
+        dd.style.display='none';
+        document.removeEventListener('click',handler);
+      }
+    };
+    document.addEventListener('click',handler);
+  },10);
+}
+
+function timerSelectPreset(idx){
+  var dd=document.getElementById('timerDropdown');
+  if(dd)dd.style.display='none';
+  timerCurrentPresetIdx=idx;
+  pauseTimer();stopAlarm();
+  timerTotal=TIMER_PRESETS[idx].minutes*60;
+  timerLeft=timerTotal;timerEndAt=null;
+  updateTimerDisplay();
+  // Auto-start immediately after selecting
+  startTimer();
+}
+
+// Keep these for any legacy calls
 function setTimerPreset(){
   var v=parseInt(document.getElementById('timerPreset').value);
   timerTotal=v*60;timerLeft=timerTotal;timerEndAt=null;
   pauseTimer();stopAlarm();updateTimerDisplay();
 }
+function setTimerPresetDirect(min,el){
+  timerTotal=min*60;timerLeft=timerTotal;timerEndAt=null;
+  pauseTimer();stopAlarm();updateTimerDisplay();
+}
+function openTimerModal(){timerToggleDropdown();}
+function closeTimerModal(){}
 
-// Reconcile when page becomes visible after sleep or tab switch
+// Reconcile after sleep/tab switch
 document.addEventListener('visibilitychange',function(){
   if(document.visibilityState==='visible'&&timerRunning&&timerEndAt!==null){
     timerLeft=Math.max(0,Math.round((timerEndAt-Date.now())/1000));
