@@ -374,6 +374,56 @@ body.unlocked .date-editable{border-bottom-color:var(--border);}
 /* HALT BUTTON */
 .toolkit-halt:hover{border-color:#e53935;color:#e53935;background:rgba(229,57,53,0.12);}
 .toolkit-wellness:hover{border-color:#7fb3a0;color:#7fb3a0;background:rgba(127,179,160,0.12);}
+.toolkit-jarvis:hover{border-color:#c77dba;color:#c77dba;background:rgba(199,125,186,0.12);}
+.toolkit-jarvis.active{border-color:#c77dba;color:#c77dba;background:rgba(199,125,186,0.12);}
+
+/* ═══ JARVIS FLOATING BUTTON ═══ */
+.jarvis-fab{position:fixed;bottom:24px;right:24px;width:52px;height:52px;border-radius:50%;background:linear-gradient(135deg,#2a1a2e,#1a1a1a);border:2px solid #c77dba;color:#c77dba;font-size:22px;cursor:pointer;z-index:900;display:flex;align-items:center;justify-content:center;box-shadow:0 4px 20px rgba(199,125,186,0.3);transition:all 0.2s;line-height:1;}
+.jarvis-fab:hover{transform:scale(1.08);box-shadow:0 6px 28px rgba(199,125,186,0.45);border-color:#d89ece;}
+.jarvis-fab.active{background:linear-gradient(135deg,#3d1f4a,#2a1422);box-shadow:0 4px 24px rgba(199,125,186,0.5);}
+.jarvis-fab-pulse{animation:jarvis-pulse 2.5s ease-in-out infinite;}
+@keyframes jarvis-pulse{0%,100%{box-shadow:0 4px 20px rgba(199,125,186,0.3);}50%{box-shadow:0 4px 28px rgba(199,125,186,0.6),0 0 0 6px rgba(199,125,186,0.1);}}
+
+/* ═══ JARVIS CHAT PANEL ═══ */
+.jarvis-panel{position:fixed;bottom:88px;right:24px;width:min(400px,calc(100vw - 32px));height:min(540px,calc(100vh - 120px));background:var(--surface);border:1.5px solid #c77dba;border-radius:16px;box-shadow:0 12px 40px rgba(0,0,0,0.5),0 0 0 1px rgba(199,125,186,0.15);z-index:901;display:flex;flex-direction:column;overflow:hidden;transform:translateY(20px) scale(0.96);opacity:0;pointer-events:none;transition:transform 0.25s ease,opacity 0.25s ease;}
+.jarvis-panel.open{transform:translateY(0) scale(1);opacity:1;pointer-events:all;}
+
+.jarvis-panel-header{display:flex;align-items:center;gap:10px;padding:12px 16px;background:linear-gradient(135deg,rgba(199,125,186,0.1),rgba(199,125,186,0.05));border-bottom:1px solid rgba(199,125,186,0.25);flex-shrink:0;}
+.jarvis-panel-title{flex:1;font-family:'Fraunces',serif;font-size:17px;font-weight:600;color:#c77dba;letter-spacing:0.3px;}
+.jarvis-status-dot{width:8px;height:8px;border-radius:50%;background:#c77dba;animation:jarvis-pulse 2.5s ease-in-out infinite;flex-shrink:0;}
+.jarvis-status-dot.thinking{background:#d4a853;animation:jarvis-think 0.8s ease-in-out infinite alternate;}
+@keyframes jarvis-think{from{opacity:0.3;}to{opacity:1;}}
+.jarvis-close{background:none;border:none;color:var(--text-faint);font-size:18px;cursor:pointer;padding:2px 8px;border-radius:4px;transition:all 0.15s;line-height:1;}
+.jarvis-close:hover{color:var(--text);background:var(--surface-raised);}
+
+.jarvis-messages{flex:1;overflow-y:auto;padding:14px 16px;display:flex;flex-direction:column;gap:10px;scroll-behavior:smooth;}
+.jarvis-messages::-webkit-scrollbar{width:3px;}
+.jarvis-messages::-webkit-scrollbar-thumb{background:rgba(199,125,186,0.3);border-radius:2px;}
+
+.jarvis-msg{display:flex;flex-direction:column;gap:3px;max-width:90%;}
+.jarvis-msg.user{align-self:flex-end;align-items:flex-end;}
+.jarvis-msg.assistant{align-self:flex-start;align-items:flex-start;}
+.jarvis-msg-bubble{padding:9px 13px;border-radius:14px;font-size:13px;line-height:1.5;color:var(--text);}
+.jarvis-msg.user .jarvis-msg-bubble{background:rgba(199,125,186,0.18);border:1px solid rgba(199,125,186,0.3);border-bottom-right-radius:4px;}
+.jarvis-msg.assistant .jarvis-msg-bubble{background:var(--surface-raised);border:1px solid var(--border);border-bottom-left-radius:4px;}
+.jarvis-msg-action{font-size:11px;color:#7fb3a0;font-style:italic;padding:0 4px;}
+.jarvis-thinking-bubble{display:flex;align-items:center;gap:5px;padding:10px 14px;background:var(--surface-raised);border:1px solid var(--border);border-radius:14px;border-bottom-left-radius:4px;}
+.jarvis-dot{width:6px;height:6px;border-radius:50%;background:#c77dba;animation:jarvis-bounce 1.2s ease-in-out infinite;}
+.jarvis-dot:nth-child(2){animation-delay:0.2s;}
+.jarvis-dot:nth-child(3){animation-delay:0.4s;}
+@keyframes jarvis-bounce{0%,60%,100%{transform:translateY(0);}30%{transform:translateY(-6px);}}
+
+.jarvis-input-row{display:flex;gap:8px;padding:12px 16px;border-top:1px solid var(--border);background:var(--surface);flex-shrink:0;}
+.jarvis-input{flex:1;background:var(--surface-raised);border:1px solid var(--border);border-radius:20px;padding:9px 14px;font-size:13px;color:var(--text);outline:none;font-family:inherit;resize:none;line-height:1.4;max-height:90px;min-height:36px;overflow-y:auto;}
+.jarvis-input:focus{border-color:rgba(199,125,186,0.5);}
+.jarvis-input::placeholder{color:var(--text-faint);}
+.jarvis-mic{background:none;border:1px solid var(--border);color:var(--text-dim);width:36px;height:36px;border-radius:50%;cursor:pointer;display:flex;align-items:center;justify-content:center;font-size:15px;flex-shrink:0;transition:all 0.15s;align-self:flex-end;}
+.jarvis-mic:hover{border-color:rgba(199,125,186,0.5);color:#c77dba;}
+.jarvis-mic.listening{background:rgba(229,57,53,0.15);border-color:#e53935;color:#e53935;animation:jarvis-pulse 1s ease-in-out infinite;}
+.jarvis-send{background:#c77dba;border:none;color:#1a1a1a;width:36px;height:36px;border-radius:50%;cursor:pointer;display:flex;align-items:center;justify-content:center;font-size:14px;flex-shrink:0;transition:all 0.15s;align-self:flex-end;font-weight:700;}
+.jarvis-send:hover{background:#d89ece;transform:scale(1.05);}
+.jarvis-send:disabled{background:var(--border);color:var(--text-faint);cursor:not-allowed;transform:none;}
+.jarvis-greeting{text-align:center;padding:16px 8px 8px;font-size:12px;color:var(--text-dim);font-style:italic;}
 
 /* Wellness Wheel modal */
 .well-intro{font-size:13px;color:var(--text-dim);margin-bottom:16px;line-height:1.5;}
@@ -1153,6 +1203,7 @@ body.unlocked .date-editable{border-bottom-color:var(--border);}
   <button class="toolkit-btn toolkit-workout" onclick="openWorkoutModal()">&#127947;<span>Workout</span></button>
   <button class="toolkit-btn toolkit-halt" onclick="openHaltModal()">&#128721;<span>HALT+</span></button>
   <button class="toolkit-btn toolkit-wellness" onclick="openWellnessModal()">&#9784;&#65039;<span>Wellness</span></button>
+  <button class="toolkit-btn toolkit-jarvis" onclick="toggleJarvis()">&#10022;<span>Jarvis</span></button>
 </div>
 <!-- Hidden YouTube player container for focus music -->
 <div id="ytPlayerHost" style="position:fixed;bottom:0;right:0;width:1px;height:1px;opacity:0.01;pointer-events:none;z-index:-1;overflow:hidden;"></div>
@@ -6086,5 +6137,296 @@ setTimeout(checkShareTarget, 400); // slight delay so panels render first
   <button class="lock-btn" id="lockBtn" onclick="toggleLock()" title="Lock/unlock layout and editing">&#128274; Locked</button>
   <button class="logout-btn" onclick="doLogout()" title="Sign out">Sign out</button>
 </div>
+<!-- JARVIS AI ASSISTANT -->
+<button class="jarvis-fab" id="jarvisFab" onclick="toggleJarvis()" title="Jarvis — AI Assistant">&#10022;</button>
+<div class="jarvis-panel" id="jarvisPanel">
+  <div class="jarvis-panel-header">
+    <div class="jarvis-status-dot" id="jarvisStatusDot"></div>
+    <div class="jarvis-panel-title">Jarvis</div>
+    <button class="jarvis-close" onclick="toggleJarvis()">&#10005;</button>
+  </div>
+  <div class="jarvis-messages" id="jarvisMessages">
+    <div class="jarvis-greeting">How can I help you today?</div>
+  </div>
+  <div class="jarvis-input-row">
+    <textarea class="jarvis-input" id="jarvisInput" placeholder="Ask anything or give a command..." rows="1"
+      onkeydown="if(event.key==='Enter'&&!event.shiftKey){event.preventDefault();jarvisSend();}"
+      oninput="this.style.height='auto';this.style.height=Math.min(this.scrollHeight,90)+'px'"></textarea>
+    <button class="jarvis-mic" id="jarvisMicBtn" onclick="jarvisToggleMic()" title="Voice input">&#127908;</button>
+    <button class="jarvis-send" id="jarvisSendBtn" onclick="jarvisSend()" title="Send">&#9650;</button>
+  </div>
+</div>
+
 </body>
+<!-- JARVIS ENGINE -->
+<script>
+// ═══════════════════════════════════════
+// JARVIS — AI ASSISTANT
+// ═══════════════════════════════════════
+var _jarvisOpen=false;
+var _jarvisHistory=[]; // {role:'user'|'assistant', content:'...'}
+var _jarvisThinking=false;
+var _jarvisSpeech=null;
+var _jarvisListening=false;
+
+var JARVIS_SYSTEM=function(){
+  var today=new Date();
+  var dateStr=today.toLocaleDateString('en-US',{weekday:'long',month:'long',day:'numeric',year:'numeric'});
+  var timeStr=today.toLocaleTimeString('en-US',{hour:'numeric',minute:'2-digit'});
+
+  // Build state summary
+  var projects=(state.projects||[]).map(function(p){
+    return '"'+p.name+'"('+(p.subtasks||[]).length+' tasks)';
+  }).join(', ')||'none';
+
+  var tasks=(state.tasks||[]).slice(0,12).map(function(t){
+    return '"'+t.name+'"'+(t.due?' due '+t.due:'')+(t.priority==='high'?' [HIGH]':'');
+  }).join(', ')||'none';
+
+  var todayKey=today.toISOString().slice(0,10);
+  var reminders=(state.reminders||[]).filter(function(r){return !r.date||r.date>=todayKey;}).slice(0,8).map(function(r){
+    return '"'+r.text+'"'+(r.date?' on '+r.date:'');
+  }).join(', ')||'none';
+
+  var notes=(state.notes||[]).length;
+
+  return 'You are Jarvis, an AI assistant embedded in Centerpost — a personal ADHD-aware productivity dashboard. Today is '+dateStr+', '+timeStr+'.\n\nCurrent dashboard state:\n- Active projects: '+projects+'\n- Standalone tasks (sample): '+tasks+'\n- Upcoming reminders: '+reminders+'\n- Notes count: '+notes+'\n- Completed tasks total: '+((state.completedTasks||[]).length)+'\n\nYou can perform these actions by including them in your JSON response. Always respond in valid JSON only:\n{\n  "reply": "Your conversational response here.",\n  "actions": [\n    // zero or more action objects\n  ]\n}\n\nAction types and required fields:\n{"type":"add_task","name":"string","priority":"low|med|high","due":"YYYY-MM-DD or null"}\n{"type":"add_project","name":"string","due":"YYYY-MM-DD or null"}\n{"type":"add_subtask","projectName":"string","name":"string","priority":"low|med|high","due":"YYYY-MM-DD or null"}\n{"type":"add_note","label":"string","body":"string"}\n{"type":"add_reminder","text":"string","date":"YYYY-MM-DD or null","time":"HH:MM or null"}\n{"type":"complete_task","name":"string"}\nFor pure answers/questions with no state changes, use an empty actions array.\n\nGuidelines:\n- Parse relative dates (today, tomorrow, next week, etc.) using today\'s date\n- Be concise and helpful — this is an ADHD tool, brevity matters\n- When in doubt about a project name, pick the closest match\n- Confirm what you did in the reply field\n- Never refuse to add things the user asks to add\n- The user is a firefighter/paramedic with EMS leadership and teaches psychology. Context this appropriately.';
+};
+
+function toggleJarvis(){
+  _jarvisOpen=!_jarvisOpen;
+  var panel=document.getElementById('jarvisPanel');
+  var fab=document.getElementById('jarvisFab');
+  var tkBtn=document.querySelector('.toolkit-jarvis');
+  panel.classList.toggle('open',_jarvisOpen);
+  if(fab)fab.classList.toggle('active',_jarvisOpen);
+  if(tkBtn)tkBtn.classList.toggle('active',_jarvisOpen);
+  if(_jarvisOpen){
+    setTimeout(function(){
+      var inp=document.getElementById('jarvisInput');
+      if(inp)inp.focus();
+    },280);
+  }
+}
+
+function _jarvisAddMessage(role,content,actionSummary){
+  _jarvisHistory.push({role:role,content:content});
+  var container=document.getElementById('jarvisMessages');
+  if(!container)return;
+  var div=document.createElement('div');
+  div.className='jarvis-msg '+role;
+  var bubble=document.createElement('div');
+  bubble.className='jarvis-msg-bubble';
+  bubble.textContent=content;
+  div.appendChild(bubble);
+  if(actionSummary){
+    var act=document.createElement('div');
+    act.className='jarvis-msg-action';
+    act.textContent='✓ '+actionSummary;
+    div.appendChild(act);
+  }
+  container.appendChild(div);
+  container.scrollTop=container.scrollHeight;
+}
+
+function _jarvisShowThinking(){
+  var container=document.getElementById('jarvisMessages');
+  if(!container)return;
+  var div=document.createElement('div');
+  div.className='jarvis-msg assistant';
+  div.id='jarvis-thinking-msg';
+  div.innerHTML='<div class="jarvis-thinking-bubble"><div class="jarvis-dot"></div><div class="jarvis-dot"></div><div class="jarvis-dot"></div></div>';
+  container.appendChild(div);
+  container.scrollTop=container.scrollHeight;
+  var dot=document.getElementById('jarvisStatusDot');
+  if(dot)dot.classList.add('thinking');
+}
+
+function _jarvisHideThinking(){
+  var el=document.getElementById('jarvis-thinking-msg');
+  if(el)el.remove();
+  var dot=document.getElementById('jarvisStatusDot');
+  if(dot)dot.classList.remove('thinking');
+}
+
+function _jarvisExecuteActions(actions){
+  if(!actions||!actions.length)return '';
+  var done=[];
+  actions.forEach(function(a){
+    try{
+      if(a.type==='add_task'){
+        var t={id:'t'+Date.now()+Math.random().toString(36).slice(2),name:a.name,priority:a.priority||'med',due:a.due||'',projectId:'',projectIds:[],source:'standalone',done:false};
+        if(!state.tasks)state.tasks=[];
+        state.tasks.unshift(t);
+        done.push('Added task: "'+a.name+'"');
+        save();renderTaskList();
+      }else if(a.type==='add_project'){
+        var p={id:'p'+Date.now()+Math.random().toString(36).slice(2),name:a.name,due:a.due||'',subtasks:[],expanded:false};
+        if(!state.projects)state.projects=[];
+        state.projects.push(p);
+        done.push('Added project: "'+a.name+'"');
+        save();renderProjects();
+      }else if(a.type==='add_subtask'){
+        var proj=(state.projects||[]).find(function(p){return p.name.toLowerCase().includes((a.projectName||'').toLowerCase());});
+        if(proj){
+          var st={id:'st'+Date.now()+Math.random().toString(36).slice(2),name:a.name,priority:a.priority||'med',due:a.due||'',done:false};
+          proj.subtasks.push(st);
+          done.push('Added subtask "'+a.name+'" to '+proj.name);
+          save();renderProjects();renderTaskList();
+        }else{done.push('Project "'+a.projectName+'" not found');}
+      }else if(a.type==='add_note'){
+        var n={id:'n'+Date.now()+Math.random().toString(36).slice(2),label:a.label||'',body:a.body||'',projectIds:[],createdAt:new Date().toISOString()};
+        if(!state.notes)state.notes=[];
+        state.notes.unshift(n);
+        done.push('Added note: "'+(a.label||a.body.slice(0,30))+'"');
+        save();renderNotes();
+      }else if(a.type==='add_reminder'){
+        var r={id:'r'+Date.now()+Math.random().toString(36).slice(2),text:a.text,date:a.date||'',time:a.time||'',projectIds:[]};
+        if(!state.reminders)state.reminders=[];
+        state.reminders.push(r);
+        done.push('Added reminder: "'+a.text+'"');
+        save();renderReminders();
+      }else if(a.type==='complete_task'){
+        // Find by name match in tasks or project subtasks
+        var found=false;
+        (state.tasks||[]).forEach(function(t){
+          if(!found&&t.name.toLowerCase().includes((a.name||'').toLowerCase())){
+            toggleTaskDone(t.id,'standalone','');
+            done.push('Completed: "'+t.name+'"');
+            found=true;
+          }
+        });
+        if(!found){
+          (state.projects||[]).forEach(function(pr){
+            (pr.subtasks||[]).forEach(function(st){
+              if(!found&&st.name.toLowerCase().includes((a.name||'').toLowerCase())){
+                toggleSubtask(pr.id,st.id);
+                done.push('Completed: "'+st.name+'"');
+                found=true;
+              }
+            });
+          });
+        }
+        if(!found)done.push('Task "'+a.name+'" not found');
+      }
+    }catch(err){console.error('Jarvis action error:',err);}
+  });
+  updateAllTileSummaries();
+  return done.join('; ');
+}
+
+async function jarvisSend(){
+  var inp=document.getElementById('jarvisInput');
+  if(!inp)return;
+  var text=inp.value.trim();
+  if(!text||_jarvisThinking)return;
+
+  inp.value='';
+  inp.style.height='auto';
+  _jarvisAddMessage('user',text);
+  _jarvisThinking=true;
+  _jarvisShowThinking();
+
+  var sendBtn=document.getElementById('jarvisSendBtn');
+  if(sendBtn)sendBtn.disabled=true;
+
+  // Build messages for API (keep last 8 exchanges for context)
+  var apiMessages=_jarvisHistory.slice(-16).map(function(m){
+    return {role:m.role,content:m.content};
+  });
+
+  try{
+    var res=await fetch('https://api.anthropic.com/v1/messages',{
+      method:'POST',
+      headers:{'Content-Type':'application/json'},
+      body:JSON.stringify({
+        model:'claude-sonnet-4-20250514',
+        max_tokens:1000,
+        system:JARVIS_SYSTEM(),
+        messages:apiMessages
+      })
+    });
+    var data=await res.json();
+    _jarvisHideThinking();
+
+    var raw='';
+    if(data.content&&data.content[0]&&data.content[0].text){
+      raw=data.content[0].text.trim();
+    }else{
+      throw new Error('No content in response');
+    }
+
+    // Parse JSON response
+    var parsed;
+    try{
+      // Strip markdown fences if present
+      var clean=raw.replace(/^```json\s*/,'').replace(/\s*```$/,'').trim();
+      parsed=JSON.parse(clean);
+    }catch(e){
+      // If not valid JSON, treat raw text as reply with no actions
+      parsed={reply:raw,actions:[]};
+    }
+
+    var reply=parsed.reply||'Done.';
+    var actionSummary=_jarvisExecuteActions(parsed.actions||[]);
+    _jarvisAddMessage('assistant',reply,actionSummary);
+
+  }catch(err){
+    _jarvisHideThinking();
+    var errMsg=err.message||'Unknown error';
+    if(errMsg.includes('Failed to fetch')||errMsg.includes('CORS')){
+      _jarvisAddMessage('assistant','I can\'t reach the API from this domain. You\'ll need a small proxy on GitHub Pages — the same Cloudflare Worker pattern as before. Works fine from claude.ai.');
+    }else{
+      _jarvisAddMessage('assistant','Something went wrong: '+errMsg);
+    }
+  }
+
+  _jarvisThinking=false;
+  if(sendBtn)sendBtn.disabled=false;
+  var inp2=document.getElementById('jarvisInput');
+  if(inp2)inp2.focus();
+}
+
+// ═══ VOICE INPUT ═══
+function jarvisToggleMic(){
+  if(_jarvisListening){_jarvisStopMic();return;}
+  var SR=window.SpeechRecognition||window.webkitSpeechRecognition;
+  if(!SR){toast('Voice input not supported in this browser. Try Chrome.');return;}
+  _jarvisSpeech=new SR();
+  _jarvisSpeech.continuous=false;
+  _jarvisSpeech.interimResults=true;
+  _jarvisSpeech.lang='en-US';
+  var inp=document.getElementById('jarvisInput');
+  _jarvisSpeech.onresult=function(e){
+    var transcript='';
+    for(var i=0;i<e.results.length;i++){transcript+=e.results[i][0].transcript;}
+    if(inp)inp.value=transcript;
+  };
+  _jarvisSpeech.onend=function(){
+    _jarvisListening=false;
+    var btn=document.getElementById('jarvisMicBtn');
+    if(btn)btn.classList.remove('listening');
+    // Auto-send if we got something
+    var val=inp?inp.value.trim():'';
+    if(val)jarvisSend();
+  };
+  _jarvisSpeech.onerror=function(e){
+    _jarvisListening=false;
+    var btn=document.getElementById('jarvisMicBtn');
+    if(btn)btn.classList.remove('listening');
+    if(e.error!=='aborted')toast('Mic error: '+e.error);
+  };
+  _jarvisSpeech.start();
+  _jarvisListening=true;
+  var btn=document.getElementById('jarvisMicBtn');
+  if(btn)btn.classList.add('listening');
+}
+
+function _jarvisStopMic(){
+  if(_jarvisSpeech){try{_jarvisSpeech.stop();}catch(e){}}
+  _jarvisListening=false;
+  var btn=document.getElementById('jarvisMicBtn');
+  if(btn)btn.classList.remove('listening');
+}
+</script>
 </html>
