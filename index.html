@@ -6163,6 +6163,12 @@ setTimeout(checkShareTarget, 400); // slight delay so panels render first
 // ═══════════════════════════════════════
 // JARVIS — AI ASSISTANT
 // ═══════════════════════════════════════
+
+// ── Proxy config ─────────────────────────────────────────────────────
+// After deploying your Cloudflare Worker, paste its URL here:
+//   e.g. 'https://centerpost-jarvis.YOUR-SUBDOMAIN.workers.dev'
+// Leave as empty string to attempt direct API call (works in claude.ai, blocked on GitHub Pages).
+var JARVIS_PROXY_URL = '';
 var _jarvisOpen=false;
 var _jarvisHistory=[]; // {role:'user'|'assistant', content:'...'}
 var _jarvisThinking=false;
@@ -6336,7 +6342,8 @@ async function jarvisSend(){
   });
 
   try{
-    var res=await fetch('https://api.anthropic.com/v1/messages',{
+    var endpoint = JARVIS_PROXY_URL || 'https://api.anthropic.com/v1/messages';
+    var res=await fetch(endpoint,{
       method:'POST',
       headers:{'Content-Type':'application/json'},
       body:JSON.stringify({
@@ -6374,8 +6381,8 @@ async function jarvisSend(){
   }catch(err){
     _jarvisHideThinking();
     var errMsg=err.message||'Unknown error';
-    if(errMsg.includes('Failed to fetch')||errMsg.includes('CORS')){
-      _jarvisAddMessage('assistant','I can\'t reach the API from this domain. You\'ll need a small proxy on GitHub Pages — the same Cloudflare Worker pattern as before. Works fine from claude.ai.');
+    if(errMsg.includes('Failed to fetch')||errMsg.includes('CORS')||errMsg.includes('NetworkError')){
+      _jarvisAddMessage('assistant','To use Jarvis on centerpost.app, set your Cloudflare Worker URL in the JARVIS_PROXY_URL constant near the top of the Jarvis script block. See the jarvis-worker.js and wrangler.toml files for setup instructions.');
     }else{
       _jarvisAddMessage('assistant','Something went wrong: '+errMsg);
     }
