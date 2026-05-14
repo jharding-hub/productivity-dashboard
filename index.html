@@ -6168,7 +6168,7 @@ setTimeout(checkShareTarget, 400); // slight delay so panels render first
 // After deploying your Cloudflare Worker, paste its URL here:
 //   e.g. 'https://centerpost-jarvis.YOUR-SUBDOMAIN.workers.dev'
 // Leave as empty string to attempt direct API call (works in claude.ai, blocked on GitHub Pages).
-var JARVIS_PROXY_URL = 'centerpost-jarvis.medicjth.workers.dev';
+var JARVIS_PROXY_URL = 'https://centerpost-jarvis.medicjth.workers.dev';
 var _jarvisOpen=false;
 var _jarvisHistory=[]; // {role:'user'|'assistant', content:'...'}
 var _jarvisThinking=false;
@@ -6196,7 +6196,7 @@ var JARVIS_SYSTEM=function(){
 
   var notes=(state.notes||[]).length;
 
-  return 'You are Jarvis, an AI assistant embedded in Centerpost — a personal ADHD-aware productivity dashboard. Today is '+dateStr+', '+timeStr+'.\n\nCurrent dashboard state:\n- Active projects: '+projects+'\n- Standalone tasks (sample): '+tasks+'\n- Upcoming reminders: '+reminders+'\n- Notes count: '+notes+'\n- Completed tasks total: '+((state.completedTasks||[]).length)+'\n\nYou can perform these actions by including them in your JSON response. Always respond in valid JSON only:\n{\n  "reply": "Your conversational response here.",\n  "actions": [\n    // zero or more action objects\n  ]\n}\n\nAction types and required fields:\n{"type":"add_task","name":"string","priority":"low|med|high","due":"YYYY-MM-DD or null"}\n{"type":"add_project","name":"string","due":"YYYY-MM-DD or null"}\n{"type":"add_subtask","projectName":"string","name":"string","priority":"low|med|high","due":"YYYY-MM-DD or null"}\n{"type":"add_note","label":"string","body":"string"}\n{"type":"add_reminder","text":"string","date":"YYYY-MM-DD or null","time":"HH:MM or null"}\n{"type":"complete_task","name":"string"}\nFor pure answers/questions with no state changes, use an empty actions array.\n\nGuidelines:\n- Parse relative dates (today, tomorrow, next week, etc.) using today\'s date\n- Be concise and helpful — this is an ADHD tool, brevity matters\n- When in doubt about a project name, pick the closest match\n- Confirm what you did in the reply field\n- Never refuse to add things the user asks to add\n- The user is a firefighter/paramedic with EMS leadership and teaches psychology. Context this appropriately.';
+  return 'You are Jarvis, an AI assistant embedded in Centerpost — a personal ADHD-aware productivity dashboard. Today is '+dateStr+', '+timeStr+'.\n\nCurrent dashboard state:\n- Active projects: '+projects+'\n- Standalone tasks (sample): '+tasks+'\n- Upcoming reminders: '+reminders+'\n- Notes count: '+notes+'\n- Completed tasks total: '+((state.completedTasks||[]).length)+'\n\nCRITICAL: You MUST respond with ONLY a raw JSON object. No markdown, no code fences, no explanation before or after. The ENTIRE response must be parseable as JSON.\n\nResponse format:\n{"reply":"Your conversational response here.","actions":[]}\n\nAction types you can include in the actions array:\n{"type":"add_task","name":"string","priority":"low|med|high","due":"YYYY-MM-DD or null"}\n{"type":"add_project","name":"string","due":"YYYY-MM-DD or null"}\n{"type":"add_subtask","projectName":"string","name":"string","priority":"low|med|high","due":"YYYY-MM-DD or null"}\n{"type":"add_note","label":"string","body":"string"}\n{"type":"add_reminder","text":"string","date":"YYYY-MM-DD or null","time":"HH:MM or null"}\n{"type":"complete_task","name":"string"}\n\nFor questions with no state changes, use an empty actions array []. Parse relative dates using today\'s date. Be concise — this is an ADHD tool. The user is a firefighter/paramedic with EMS leadership who teaches psychology. Context responses appropriately.';
 };
 
 function toggleJarvis(){
@@ -6363,15 +6363,24 @@ async function jarvisSend(){
       throw new Error('No content in response');
     }
 
-    // Parse JSON response
+    // Parse JSON response — robustly extract the JSON object regardless of surrounding text
     var parsed;
     try{
-      // Strip markdown fences if present
-      var clean=raw.replace(/^```json\s*/,'').replace(/\s*```$/,'').trim();
+      // Strategy 1: strip markdown fences, try direct parse
+      var clean=raw.replace(/^```json\s*/,'').replace(/^```\s*/,'').replace(/\s*```$/,'').trim();
       parsed=JSON.parse(clean);
-    }catch(e){
-      // If not valid JSON, treat raw text as reply with no actions
-      parsed={reply:raw,actions:[]};
+    }catch(e1){
+      try{
+        // Strategy 2: extract first {...} block from anywhere in the response
+        var start=raw.indexOf('{');
+        var end=raw.lastIndexOf('}');
+        if(start!==-1&&end>start){
+          parsed=JSON.parse(raw.slice(start,end+1));
+        }else{throw new Error('No JSON object found');}
+      }catch(e2){
+        // Strategy 3: treat entire response as plain text reply, no actions
+        parsed={reply:raw,actions:[]};
+      }
     }
 
     var reply=parsed.reply||'Done.';
