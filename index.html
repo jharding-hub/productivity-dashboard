@@ -395,6 +395,13 @@ body.unlocked .date-editable{border-bottom-color:var(--border);}
 .jarvis-close{background:none;border:none;color:var(--text-faint);font-size:18px;cursor:pointer;padding:2px 8px;border-radius:4px;transition:all 0.15s;line-height:1;}
 .jarvis-close:hover{color:var(--text);background:var(--surface-raised);}
 
+/* Wake-word toggle in panel header */
+.jarvis-wake-btn{background:none;border:1px solid var(--border);color:var(--text-faint);font-size:14px;cursor:pointer;padding:3px 8px;border-radius:14px;transition:all 0.15s;line-height:1;display:flex;align-items:center;justify-content:center;}
+.jarvis-wake-btn:hover{border-color:#c77dba;color:#c77dba;}
+.jarvis-wake-btn.enabled{border-color:rgba(199,125,186,0.5);color:#c77dba;background:rgba(199,125,186,0.08);}
+.jarvis-wake-btn.active{border-color:#c77dba;background:rgba(199,125,186,0.15);animation:jarvis-wake-pulse 2s ease-in-out infinite;}
+@keyframes jarvis-wake-pulse{0%,100%{box-shadow:0 0 0 0 rgba(199,125,186,0.4);}50%{box-shadow:0 0 0 5px rgba(199,125,186,0);}}
+
 .jarvis-messages{flex:1;overflow-y:auto;padding:14px 16px;display:flex;flex-direction:column;gap:10px;scroll-behavior:smooth;}
 .jarvis-messages::-webkit-scrollbar{width:3px;}
 .jarvis-messages::-webkit-scrollbar-thumb{background:rgba(199,125,186,0.3);border-radius:2px;}
@@ -6142,6 +6149,7 @@ setTimeout(checkShareTarget, 400); // slight delay so panels render first
   <div class="jarvis-panel-header">
     <div class="jarvis-status-dot" id="jarvisStatusDot"></div>
     <div class="jarvis-panel-title">Jarvis</div>
+    <button class="jarvis-wake-btn enabled" id="jarvisWakeBtn" onclick="toggleWakeWord()" title='Wake word ON ("Hey Jarvis")'>&#127908;</button>
     <button class="jarvis-close" onclick="toggleJarvis()">&#10005;</button>
   </div>
   <div class="jarvis-messages" id="jarvisMessages">
@@ -6178,25 +6186,151 @@ var JARVIS_SYSTEM=function(){
   var today=new Date();
   var dateStr=today.toLocaleDateString('en-US',{weekday:'long',month:'long',day:'numeric',year:'numeric'});
   var timeStr=today.toLocaleTimeString('en-US',{hour:'numeric',minute:'2-digit'});
-
-  // Build state summary
-  var projects=(state.projects||[]).map(function(p){
-    return '"'+p.name+'"('+(p.subtasks||[]).length+' tasks)';
-  }).join(', ')||'none';
-
-  var tasks=(state.tasks||[]).slice(0,12).map(function(t){
-    return '"'+t.name+'"'+(t.due?' due '+t.due:'')+(t.priority==='high'?' [HIGH]':'');
-  }).join(', ')||'none';
-
   var todayKey=today.toISOString().slice(0,10);
-  var reminders=(state.reminders||[]).filter(function(r){return !r.date||r.date>=todayKey;}).slice(0,8).map(function(r){
-    return '"'+r.text+'"'+(r.date?' on '+r.date:'');
-  }).join(', ')||'none';
 
-  var notes=(state.notes||[]).length;
+  // ── Build COMPLETE structured context ───────────────────────────
+  // Projects with all subtasks (full detail)
+  var projects=(state.projects||[]).map(function(p){
+    return {
+      id:p.id,
+      name:p.name,
+      due:p.due||null,
+      subtaskCount:(p.subtasks||[]).length,
+      subtasks:(p.subtasks||[]).map(function(st){
+        return {
+          name:st.name,
+          due:st.due||null,
+          priority:st.priority||'med',
+          timeEst:st.timeEst||null,
+          done:!!st.done
+        };
+      })
+    };
+  });
 
-  return 'You are Jarvis, an AI assistant embedded in Centerpost — a personal ADHD-aware productivity dashboard. Today is '+dateStr+', '+timeStr+'.\n\nCurrent dashboard state:\n- Active projects: '+projects+'\n- Standalone tasks (sample): '+tasks+'\n- Upcoming reminders: '+reminders+'\n- Notes count: '+notes+'\n- Completed tasks total: '+((state.completedTasks||[]).length)+'\n\nCRITICAL: You MUST respond with ONLY a raw JSON object. No markdown, no code fences, no explanation before or after. The ENTIRE response must be parseable as JSON.\n\nResponse format:\n{"reply":"Your conversational response here.","actions":[]}\n\nAction types you can include in the actions array:\n{"type":"add_task","name":"string","priority":"low|med|high","due":"YYYY-MM-DD or null"}\n{"type":"add_project","name":"string","due":"YYYY-MM-DD or null"}\n{"type":"add_subtask","projectName":"string","name":"string","priority":"low|med|high","due":"YYYY-MM-DD or null"}\n{"type":"add_note","label":"string","body":"string"}\n{"type":"add_reminder","text":"string","date":"YYYY-MM-DD or null","time":"HH:MM or null"}\n{"type":"complete_task","name":"string"}\n\nFor questions with no state changes, use an empty actions array []. Parse relative dates using today\'s date. Be concise — this is an ADHD tool. The user is a firefighter/paramedic with EMS leadership who teaches psychology. Context responses appropriately.';
+  // All standalone tasks
+  var tasks=(state.tasks||[]).filter(function(t){return !t.done;}).map(function(t){
+    var projName='';
+    if(t.projectId){
+      var p=(state.projects||[]).find(function(p){return p.id===t.projectId;});
+      if(p)projName=p.name;
+    }
+    if(!projName&&t.projectIds&&t.projectIds.length){
+      var names=t.projectIds.map(function(pid){
+        var p=(state.projects||[]).find(function(p){return p.id===pid;});
+        return p?p.name:null;
+      }).filter(Boolean);
+      projName=names.join(', ');
+    }
+    return {
+      name:t.name,
+      due:t.due||null,
+      priority:t.priority||'med',
+      timeEst:t.timeEst||null,
+      project:projName||null
+    };
+  });
+
+  // All notes (truncate body to keep size sane)
+  var notes=(state.notes||[]).map(function(n){
+    var body=(n.body||'').slice(0,300);
+    if((n.body||'').length>300)body+='...';
+    var projNames=[];
+    if(n.projectIds&&n.projectIds.length){
+      projNames=n.projectIds.map(function(pid){
+        var p=(state.projects||[]).find(function(p){return p.id===pid;});
+        return p?p.name:null;
+      }).filter(Boolean);
+    }
+    return {label:n.label||'',body:body,projects:projNames};
+  });
+
+  // All upcoming reminders (future or undated)
+  var reminders=(state.reminders||[]).filter(function(r){
+    return !r.date||r.date>=todayKey;
+  }).map(function(r){
+    var projNames=[];
+    if(r.projectIds&&r.projectIds.length){
+      projNames=r.projectIds.map(function(pid){
+        var p=(state.projects||[]).find(function(p){return p.id===pid;});
+        return p?p.name:null;
+      }).filter(Boolean);
+    }
+    return {text:r.text,date:r.date||null,time:r.time||null,projects:projNames};
+  });
+
+  // Recent completed tasks (last 20)
+  var completed=(state.completedTasks||[]).slice(0,20).map(function(ct){
+    return {name:ct.name,project:ct.projectName||null,archivedAt:ct.archivedAt||null};
+  });
+
+  // Completed/archived projects
+  var archivedProjects=(state.completedProjects||[]).map(function(cp){
+    return {name:cp.name,completedTaskCount:cp.completedTaskCount||0,archivedAt:cp.archivedAt||null};
+  });
+
+  // Wellness notes (your reflections on the 8 SAMHSA dimensions)
+  var wellness=[];
+  var wn=state.wellnessNotes||{};
+  Object.keys(wn).forEach(function(k){
+    if(wn[k]&&wn[k].note){
+      wellness.push({dimension:k,note:wn[k].note,updatedAt:wn[k].updatedAt||null});
+    }
+  });
+
+  // Routines status today
+  var routines={};
+  ['morning','evening','custom'].forEach(function(tab){
+    if(state.routines&&state.routines[tab]){
+      routines[tab]=state.routines[tab].map(function(r){return {name:r.name,done:!!r.done};});
+    }
+  });
+
+  // Energy/Mood
+  var energyMood={};
+  if(state.energyEntries&&state.energyEntries.length){
+    var latestE=state.energyEntries[state.energyEntries.length-1];
+    energyMood.energy={level:latestE.level,note:latestE.note||'',time:latestE.time||null};
+  }
+  if(state.moodEntries&&state.moodEntries.length){
+    var latestM=state.moodEntries[state.moodEntries.length-1];
+    energyMood.mood={value:latestM.value,note:latestM.note||'',time:latestM.time||null};
+  }
+
+  // Points/tier status
+  var pointsInfo={
+    current:(state.points&&state.points.current)||0,
+    lifetimeTotal:(state.points&&state.points.lifetimeTotal)||0,
+    tier:_jarvisCurrentTier()
+  };
+
+  var context={
+    today:dateStr,
+    time:timeStr,
+    todayDate:todayKey,
+    projects:projects,
+    standaloneTasks:tasks,
+    notes:notes,
+    upcomingReminders:reminders,
+    recentlyCompletedTasks:completed,
+    archivedProjects:archivedProjects,
+    wellnessReflections:wellness,
+    todaysRoutines:routines,
+    energyMood:energyMood,
+    points:pointsInfo
+  };
+
+  return 'You are Jarvis, an AI assistant embedded in Centerpost — a personal ADHD-aware productivity dashboard built and used by Joe, a firefighter/paramedic with 30+ years experience, EMS leadership role at Fishers Public Safety, and college instructor in cognitive psychology / sensation & perception. He is ADHD with an ENFP profile.\n\nIt is now '+dateStr+', '+timeStr+'.\n\nYou have FULL access to the dashboard state below. Reference it precisely to answer questions about due dates, subtasks, projects, completed work, wellness reflections, routines, energy/mood, or anything else.\n\n=== DASHBOARD STATE ===\n'+JSON.stringify(context,null,2)+'\n=== END STATE ===\n\nCRITICAL: You MUST respond with ONLY a raw JSON object. No markdown, no code fences, no explanation before or after. The ENTIRE response must be parseable as JSON.\n\nResponse format:\n{"reply":"Your conversational response here.","actions":[]}\n\nAction types you can include in the actions array:\n{"type":"add_task","name":"string","priority":"low|med|high","due":"YYYY-MM-DD or null"}\n{"type":"add_project","name":"string","due":"YYYY-MM-DD or null"}\n{"type":"add_subtask","projectName":"string","name":"string","priority":"low|med|high","due":"YYYY-MM-DD or null"}\n{"type":"add_note","label":"string","body":"string"}\n{"type":"add_reminder","text":"string","date":"YYYY-MM-DD or null","time":"HH:MM or null"}\n{"type":"complete_task","name":"string"}\n\nFor questions with no state changes, use an empty actions array []. Parse relative dates using today\'s date. Be concise — this is an ADHD tool, brevity matters. When asked about specifics (due dates, subtask names, completion status), pull exact values from the state above.';
 };
+
+function _jarvisCurrentTier(){
+  var current=(state.points&&state.points.current)||0;
+  if(current>=1500)return 'Mythic';
+  if(current>=700)return 'Diamond';
+  if(current>=300)return 'Gold';
+  if(current>=100)return 'Silver';
+  return 'Bronze';
+}
 
 function toggleJarvis(){
   _jarvisOpen=!_jarvisOpen;
@@ -6457,6 +6591,10 @@ async function jarvisSend(){
   if(sendBtn)sendBtn.disabled=false;
   var inp2=document.getElementById('jarvisInput');
   if(inp2)inp2.focus();
+  // Restart wake-word listener once the exchange is complete
+  if(typeof _wakeWordEnabled!=='undefined'&&_wakeWordEnabled&&!_wakeWordActive){
+    setTimeout(_startWakeWord,800);
+  }
 }
 
 // ═══ VOICE INPUT ═══
@@ -6500,5 +6638,159 @@ function _jarvisStopMic(){
   var btn=document.getElementById('jarvisMicBtn');
   if(btn)btn.classList.remove('listening');
 }
+
+// ═══════════════════════════════════════
+// WAKE WORD — "Hey Jarvis"
+// ═══════════════════════════════════════
+var _wakeWordSR=null;
+var _wakeWordActive=false;       // currently armed and listening for wake word
+var _wakeWordEnabled=true;       // user-toggleable preference (persists)
+var _wakeWordRetryTimer=null;
+var _wakeWordSupported=!!(window.SpeechRecognition||window.webkitSpeechRecognition);
+var WAKE_PHRASES=['hey jarvis','hi jarvis','hey, jarvis','okay jarvis','ok jarvis','jarvis'];
+
+function _wakeWordMatches(transcript){
+  var t=transcript.toLowerCase().trim();
+  for(var i=0;i<WAKE_PHRASES.length;i++){
+    if(t.indexOf(WAKE_PHRASES[i])>=0)return true;
+  }
+  return false;
+}
+
+function _startWakeWord(){
+  if(!_wakeWordSupported||!_wakeWordEnabled||_wakeWordActive)return;
+  if(_jarvisListening)return; // command mic has priority
+  var SR=window.SpeechRecognition||window.webkitSpeechRecognition;
+  try{
+    _wakeWordSR=new SR();
+    _wakeWordSR.continuous=true;
+    _wakeWordSR.interimResults=true;
+    _wakeWordSR.lang='en-US';
+    _wakeWordSR.onresult=function(e){
+      for(var i=e.resultIndex;i<e.results.length;i++){
+        var transcript=e.results[i][0].transcript;
+        if(_wakeWordMatches(transcript)){
+          _onWakeWordDetected();
+          return;
+        }
+      }
+    };
+    _wakeWordSR.onerror=function(e){
+      // 'no-speech' and 'aborted' are normal; just keep restarting
+      if(e.error==='not-allowed'||e.error==='service-not-allowed'){
+        _wakeWordEnabled=false;
+        _updateWakeWordUI();
+        toast('Mic permission denied. Wake word disabled.');
+      }
+    };
+    _wakeWordSR.onend=function(){
+      _wakeWordActive=false;
+      // Auto-restart if still enabled and command mic isn't active
+      if(_wakeWordEnabled&&!_jarvisListening&&document.visibilityState==='visible'){
+        clearTimeout(_wakeWordRetryTimer);
+        _wakeWordRetryTimer=setTimeout(_startWakeWord,400);
+      }
+    };
+    _wakeWordSR.start();
+    _wakeWordActive=true;
+    _updateWakeWordUI();
+  }catch(err){
+    console.warn('[Wake word] start failed:',err);
+    _wakeWordActive=false;
+  }
+}
+
+function _stopWakeWord(){
+  clearTimeout(_wakeWordRetryTimer);
+  if(_wakeWordSR){try{_wakeWordSR.stop();_wakeWordSR.abort();}catch(e){}}
+  _wakeWordSR=null;
+  _wakeWordActive=false;
+  _updateWakeWordUI();
+}
+
+function _onWakeWordDetected(){
+  // Pause wake word, open Jarvis, start command capture
+  _stopWakeWord();
+  if(!_jarvisOpen)toggleJarvis();
+  // Brief audible cue + auto-start mic for command
+  toast('\u{1F3A4} Listening...');
+  setTimeout(function(){
+    if(!_jarvisListening)jarvisToggleMic();
+  },300);
+}
+
+function toggleWakeWord(){
+  _wakeWordEnabled=!_wakeWordEnabled;
+  if(!state)state={};
+  state.jarvisWakeEnabled=_wakeWordEnabled;
+  if(typeof save==='function')save();
+  if(_wakeWordEnabled){
+    _startWakeWord();
+    toast('Wake word enabled — say "Hey Jarvis"');
+  }else{
+    _stopWakeWord();
+    toast('Wake word disabled');
+  }
+  _updateWakeWordUI();
+}
+
+function _updateWakeWordUI(){
+  var btn=document.getElementById('jarvisWakeBtn');
+  if(!btn)return;
+  if(!_wakeWordSupported){
+    btn.style.display='none';
+    return;
+  }
+  btn.title=_wakeWordEnabled?'Wake word ON ("Hey Jarvis") — tap to disable':'Wake word OFF — tap to enable';
+  btn.classList.toggle('enabled',_wakeWordEnabled);
+  btn.classList.toggle('active',_wakeWordActive&&_wakeWordEnabled);
+  btn.textContent=_wakeWordEnabled?'\u{1F3A4}':'\u{1F507}';
+}
+
+// Resume wake word when command mic finishes
+var _origJarvisToggleMic=jarvisToggleMic;
+jarvisToggleMic=function(){
+  // If wake word was listening, pause it while command mic is active
+  if(_wakeWordActive)_stopWakeWord();
+  _origJarvisToggleMic.apply(this,arguments);
+};
+
+// Tab visibility — pause when hidden, restart when visible
+document.addEventListener('visibilitychange',function(){
+  if(document.visibilityState==='hidden'){
+    if(_wakeWordActive)_stopWakeWord();
+  }else if(document.visibilityState==='visible'){
+    if(_wakeWordEnabled&&!_wakeWordActive&&!_jarvisListening){
+      setTimeout(_startWakeWord,500);
+    }
+  }
+});
+
+// Init wake word on dashboard load — restore saved preference, auto-start if enabled
+function _initWakeWord(){
+  // Restore from persisted state
+  if(state&&typeof state.jarvisWakeEnabled==='boolean'){
+    _wakeWordEnabled=state.jarvisWakeEnabled;
+  }
+  _updateWakeWordUI();
+  // Only auto-start after a user gesture has occurred at some point;
+  // otherwise some browsers block the mic. Will start on first toggle or after first click.
+  if(_wakeWordEnabled&&_wakeWordSupported){
+    // Defer to give DOM time and avoid auto-start before any user interaction
+    var primed=false;
+    var primer=function(){
+      if(primed)return;
+      primed=true;
+      document.removeEventListener('click',primer);
+      document.removeEventListener('keydown',primer);
+      if(_wakeWordEnabled&&!_wakeWordActive)_startWakeWord();
+    };
+    document.addEventListener('click',primer,{once:true});
+    document.addEventListener('keydown',primer,{once:true});
+  }
+}
+
+// Wait for state to be loaded before init
+setTimeout(_initWakeWord,1500);
 </script>
 </html>
