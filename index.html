@@ -6352,14 +6352,71 @@ async function jarvisSend(){
         messages:apiMessages
       })
     });
-    var data=await res.json();
+    
+    // Read raw response text first so we can log and inspect on error
+    var rawText=await res.text();
+    var data;
+    try{data=JSON.parse(rawText);}catch(e){data={parseError:true,raw:rawText};}
+    
+    console.log('[Jarvis] HTTP',res.status,data);
     _jarvisHideThinking();
 
+    // ── HTTP-level errors ───────────────────────────────────────
+    if(!res.ok){
+      var statusMsg='HTTP '+res.status;
+      var detail='';
+      if(data&&data.error){
+        // Worker error format: {error: "...", detail?: "..."}
+        // Anthropic error format: {type:"error", error:{type:"...", message:"..."}}
+        if(typeof data.error==='string'){
+          detail=data.error+(data.detail?' — '+data.detail:'');
+        }else if(data.error.message){
+          detail=(data.error.type?'['+data.error.type+'] ':'')+data.error.message;
+        }
+      }else if(data&&data.parseError){
+        detail='Non-JSON response: '+(data.raw||'').slice(0,200);
+      }
+      
+      // Provide actionable guidance for common cases
+      var hint='';
+      if(res.status===401||(detail&&detail.toLowerCase().includes('api key'))){
+        hint=' → Check that ANTHROPIC_API_KEY secret is set on the Cloudflare Worker (Settings → Variables and Secrets).';
+      }else if(res.status===403){
+        hint=' → The Worker is rejecting this origin. Make sure your domain is in ALLOWED_ORIGINS in jarvis-worker.js.';
+      }else if(res.status===404){
+        hint=' → Endpoint not found. Verify JARVIS_PROXY_URL is correct.';
+      }else if(res.status===429){
+        hint=' → Rate limited. Wait a moment and retry.';
+      }else if(res.status===500||res.status===502){
+        hint=' → Worker or upstream error. Check Cloudflare Worker logs (Logs tab in dashboard) for details.';
+      }
+      
+      _jarvisAddMessage('assistant',statusMsg+': '+(detail||'unknown error')+hint);
+      _jarvisThinking=false;
+      if(sendBtn)sendBtn.disabled=false;
+      return;
+    }
+
+    // ── Anthropic error response inside 200 OK (rare but possible) ─
+    if(data&&data.type==='error'){
+      var aErr=data.error||{};
+      _jarvisAddMessage('assistant','API error ['+(aErr.type||'unknown')+']: '+(aErr.message||'unknown'));
+      _jarvisThinking=false;
+      if(sendBtn)sendBtn.disabled=false;
+      return;
+    }
+
+    // ── Extract message content ────────────────────────────────
     var raw='';
-    if(data.content&&data.content[0]&&data.content[0].text){
-      raw=data.content[0].text.trim();
-    }else{
-      throw new Error('No content in response');
+    if(data&&data.content&&Array.isArray(data.content)&&data.content.length>0){
+      // Join all text-type content blocks (model could return multiple)
+      raw=data.content.filter(function(b){return b.type==='text'&&b.text;}).map(function(b){return b.text;}).join('').trim();
+    }
+    if(!raw){
+      _jarvisAddMessage('assistant','Empty response from API. Stop reason: '+(data.stop_reason||'unknown')+'. Check console for full payload.');
+      _jarvisThinking=false;
+      if(sendBtn)sendBtn.disabled=false;
+      return;
     }
 
     // Parse JSON response — robustly extract the JSON object regardless of surrounding text
