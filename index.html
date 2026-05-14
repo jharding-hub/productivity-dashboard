@@ -922,6 +922,8 @@ body.unlocked .date-editable{border-bottom-color:var(--border);}
 .wo-exercise{padding:10px 12px;border-bottom:1px solid #ddd8cc;background:#fff;}
 .wo-exercise:last-child{border-bottom:none;}
 .wo-ex-top{display:flex;align-items:center;gap:6px;margin-bottom:6px;}
+.wo-quicksub{transition:transform 0.2s ease,background 0.15s;background:var(--surface-raised);border-color:var(--border);}
+.wo-quicksub:hover{background:rgba(127,179,160,0.15);border-color:var(--green);color:var(--green);}
 .wo-ex-select{flex:1;font-family:inherit;font-size:13px;font-weight:700;color:#0a3d8f;background:#fff;border:none;border-bottom:2px solid #0a3d8f;padding:2px 0;cursor:pointer;outline:none;-webkit-appearance:none;appearance:none;background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='10' height='7'%3E%3Cpath d='M0 0l5 7 5-7z' fill='%230a3d8f'/%3E%3C/svg%3E");background-repeat:no-repeat;background-position:right 2px center;padding-right:16px;}
 .wo-ex-select option{color:#1a1510;background:#fff;font-weight:500;}
 .wo-ex-note{font-size:10px;color:#7a6a50;margin-bottom:6px;}
@@ -5824,7 +5826,61 @@ const WO_EXERCISES={
   trap_bar_dl:{name:'Trap Bar Deadlift',muscles:'Quads · Glutes · Hamstrings · Lower Back',
     steps:['Stand inside hex bar. Grip handles.','Hinge to grab, flat back, hips above knees.','Drive through floor simultaneously with hips and shoulders.','Lockout — squeeze glutes, stand tall.'],
     tip:'Trap bar reduces lower back stress vs conventional. Higher quad involvement. Excellent for athletes.',
-    alts:['db_deadlift','rdl','hip_thrust','kb_swing','stiff_leg_dl','sumo_rdl','good_morning','cable_pull_through','nordic_curl']}
+    alts:['db_deadlift','rdl','hip_thrust','kb_swing','stiff_leg_dl','sumo_rdl','good_morning','cable_pull_through','nordic_curl']},
+
+  // ── CORE (anti-extension, anti-rotation, anti-lateral flexion) ──
+  plank:{name:'Plank',muscles:'Core (anti-extension) · Glutes · Shoulders',
+    steps:['Forearms on floor, elbows under shoulders. Feet hip-width.','Body straight line head to heels.','Squeeze glutes and brace abs hard — no sagging hips.','Breathe steadily. Hold for time.'],
+    tip:'Quality over duration. 30 seconds with perfect form beats 2 minutes with sagging hips. Progress by adding load (plate on back).',
+    alts:['side_plank','dead_bug','pallof_press','ab_wheel','hanging_knee_raise','farmer_carry','suitcase_carry']},
+  side_plank:{name:'Side Plank',muscles:'Obliques · QL · Glute Medius',
+    steps:['Lie on side. Forearm on floor, elbow under shoulder.','Lift hips so body is straight line from ankle to head.','Top arm reaches toward ceiling or rests on hip.','Hold for time, then switch sides.'],
+    tip:'Anti-lateral flexion is often neglected. Crucial for spine stability under one-sided loads (think patient carries).',
+    alts:['plank','dead_bug','pallof_press','ab_wheel','hanging_knee_raise','suitcase_carry']},
+  dead_bug:{name:'Dead Bug',muscles:'Deep Core · Transverse Abdominis · Hip Flexors',
+    steps:['Lie on back, arms straight up, knees over hips at 90°.','Press lower back into floor — maintain throughout.','Slowly extend opposite arm and leg toward floor.','Return controlled. Alternate sides.'],
+    tip:'Trains the core to resist extension under limb movement. Foundation for everything else. Slow is hard.',
+    alts:['plank','side_plank','pallof_press','ab_wheel','hanging_knee_raise']},
+  pallof_press:{name:'Pallof Press (Cable)',muscles:'Core (anti-rotation) · Obliques · Shoulders',
+    steps:['Cable at chest height. Stand sideways to cable, feet shoulder-width.','Grip handle with both hands at chest.','Press arms straight out, resisting the rotational pull.','Hold 2 sec, return. Complete all reps, switch sides.'],
+    tip:'The cable WANTS to twist you. Your job is to refuse. Single best anti-rotation exercise for occupational core strength.',
+    alts:['plank','side_plank','dead_bug','ab_wheel','hanging_knee_raise','suitcase_carry']},
+  ab_wheel:{name:'Ab Wheel Rollout',muscles:'Core · Lats · Shoulders · Hip Flexors',
+    steps:['Kneel on pad, grip ab wheel under shoulders.','Roll forward, extending arms — keep core braced, no back sag.','Roll only as far as you can without losing flat back.','Pull back using abs and lats.'],
+    tip:'Start kneeling, partial range. Build to full extension before attempting from feet. One of the hardest core exercises.',
+    alts:['plank','side_plank','dead_bug','pallof_press','hanging_knee_raise']},
+  hanging_knee_raise:{name:'Hanging Knee Raise',muscles:'Lower Abs · Hip Flexors · Grip',
+    steps:['Hang from pull-up bar, dead hang.','Knees up toward chest — curl pelvis at top.','Lower slowly, no swing.','Progress to straight leg raises.'],
+    tip:'The pelvic tilt at the top is what hits the abs. Just lifting knees without that = mostly hip flexor work.',
+    alts:['plank','side_plank','dead_bug','pallof_press','ab_wheel']},
+
+  // ── LOADED CARRIES (occupational — grip + core + gait under load) ──
+  farmer_carry:{name:'Farmer Carry',muscles:'Grip · Core · Traps · Forearms · Glutes',
+    steps:['Heavy DBs or KBs at sides. Stand tall, shoulders pulled back.','Walk forward with normal gait. Do NOT shuffle.','Brace core, breathe steady. No side-bending.','Carry for distance or time.'],
+    tip:'Single most occupationally relevant exercise for first responders. Pair patient transfers and gear carries with this. Start ~25% bodyweight per hand, build up.',
+    alts:['suitcase_carry','overhead_carry','plank','side_plank','pallof_press']},
+  suitcase_carry:{name:'Suitcase Carry',muscles:'Core (anti-lateral flexion) · Grip · Obliques · QL',
+    steps:['One heavy DB or KB in ONE hand. Other hand free.','Walk tall — do NOT let weighted side dip down.','Active brace against the asymmetric load.','Carry for distance, then switch sides.'],
+    tip:'The unbalanced load forces obliques and QL to work hard. Direct training for one-sided carries like jump bags or scene gear.',
+    alts:['farmer_carry','overhead_carry','side_plank','pallof_press','plank']},
+  overhead_carry:{name:'Overhead Carry',muscles:'Shoulders · Core · Upper Back · Grip',
+    steps:['Press DB or KB overhead with one or both arms.','Lock arms out — bicep by ear.','Walk forward maintaining the lockout.','Tight core, ribs down, no arching back.'],
+    tip:'Tests shoulder stability and overhead mobility under fatigue. Start light. Excellent for overhead reach jobs (extrication, hose pulls).',
+    alts:['farmer_carry','suitcase_carry','plank','pallof_press','db_shoulder_press']},
+
+  // ── CALVES ──
+  standing_calf_raise:{name:'Standing Calf Raise',muscles:'Gastrocnemius (upper calf)',
+    steps:['Stand on edge of step, balls of feet on edge, heels off.','Hold DBs at sides or use calf raise machine.','Lower heels below step level — feel stretch.','Press up onto toes hard, squeeze 1 sec at top.','Lower slowly.'],
+    tip:'Knee straight = gastroc (upper calf). Full ROM is key — most people barely move. Reps 10–15.',
+    alts:['seated_calf_raise','single_leg_calf_raise','walking_lunge','step_ups']},
+  seated_calf_raise:{name:'Seated Calf Raise',muscles:'Soleus (lower calf)',
+    steps:['Seated calf machine or DB on knees with feet on plate.','Knees bent 90° throughout.','Lower heels, stretch.','Press up onto toes, hold 1 sec.','Lower slowly.'],
+    tip:'Knee bent = soleus (lower calf). Often more responsive than gastroc. Pair with standing calf raise for full development.',
+    alts:['standing_calf_raise','single_leg_calf_raise','walking_lunge','step_ups']},
+  single_leg_calf_raise:{name:'Single-Leg Calf Raise',muscles:'Gastrocnemius · Balance · Foot Stability',
+    steps:['Stand on one foot on edge of step. Other foot lifted.','Hold DB on same side for added load.','Lower heel below step.','Press up onto toes, hold 1 sec.','Complete all reps, switch sides.'],
+    tip:'Catches and corrects side-to-side imbalances. Helps with ankle stability on uneven ground.',
+    alts:['standing_calf_raise','seated_calf_raise','walking_lunge','step_ups']}
 };
 
 // ── 3-Day Evidence-Based Whole-Body Program ───────────────────────────────
@@ -5833,38 +5889,41 @@ const WO_EXERCISES={
 const WO_PROGRAM=[
   {
     day:'A',name:'Push + Knee-Dominant',
-    rationale:'Horizontal push + quad-dominant lower. Vertical push + unilateral. Tricep isolation.',
+    rationale:'Horizontal push + quad-dominant lower. Vertical push + unilateral. Tricep isolation. Core anti-extension finisher.',
     exercises:[
       {id:'db_bench',sets:'3×10–12',rest:'90 sec',note:'Horizontal push'},
       {id:'goblet_squat',sets:'3×12–15',rest:'90 sec',note:'Knee-dominant lower'},
       {id:'db_shoulder_press',sets:'3×10–12',rest:'90 sec',note:'Vertical push'},
       {id:'step_ups',sets:'3×10 each',rest:'90 sec',note:'Unilateral quad/glute'},
       {id:'db_tricep_ext',sets:'3×12–15',rest:'60 sec',note:'Tricep long-head'},
-      {id:'leg_press',sets:'3×12–15',rest:'90 sec',note:'Bilateral quad load'}
+      {id:'standing_calf_raise',sets:'3×12–15',rest:'45 sec',note:'Gastroc'},
+      {id:'plank',sets:'3×30–45 sec',rest:'45 sec',note:'Core finisher — anti-extension'}
     ]
   },
   {
     day:'B',name:'Pull + Hip-Dominant',
-    rationale:'Vertical pull + hip-hinge posterior. Horizontal pull + unilateral lower. Rear delt + bicep.',
+    rationale:'Vertical pull + hip-hinge posterior. Horizontal pull + unilateral lower. Rear delt + bicep. Anti-extension core finisher.',
     exercises:[
       {id:'pullups',sets:'3×max',rest:'2 min',note:'Vertical pull'},
       {id:'rdl',sets:'3×10–12',rest:'90 sec',note:'Hip-dominant posterior'},
       {id:'db_row',sets:'3×10 each',rest:'90 sec',note:'Horizontal pull'},
       {id:'bulgarian_split',sets:'3×10 each',rest:'90 sec',note:'Unilateral posterior'},
       {id:'face_pull',sets:'3×15–20',rest:'60 sec',note:'Rear delt / rotator cuff'},
-      {id:'db_bicep_curl',sets:'3×12–15',rest:'60 sec',note:'Bicep isolation'}
+      {id:'db_bicep_curl',sets:'3×12–15',rest:'60 sec',note:'Bicep isolation'},
+      {id:'dead_bug',sets:'3×8 each side',rest:'45 sec',note:'Core finisher — deep core'}
     ]
   },
   {
-    day:'C',name:'Full-Body Compound',
-    rationale:'Hip hinge compound + upper chest. Horizontal pull + quad variation. Lateral delt + frontal plane lower.',
+    day:'C',name:'Full-Body Compound + Carry',
+    rationale:'Hip hinge compound + upper chest. Horizontal pull + quad variation. Lateral delt + frontal plane lower. Loaded carry for grip, core, occupational strength.',
     exercises:[
       {id:'db_deadlift',sets:'3×8–10',rest:'2 min',note:'Full compound hip hinge'},
       {id:'db_incline',sets:'3×10–12',rest:'90 sec',note:'Upper chest push'},
       {id:'cable_row',sets:'3×10–12',rest:'90 sec',note:'Horizontal pull'},
       {id:'hack_squat',sets:'3×12–15',rest:'90 sec',note:'Quad-dominant variation'},
       {id:'lateral_raise',sets:'3×12–15',rest:'60 sec',note:'Lateral delt isolation'},
-      {id:'db_lateral_lunge',sets:'3×12 each',rest:'60 sec',note:'Frontal plane lower'}
+      {id:'db_lateral_lunge',sets:'3×12 each',rest:'60 sec',note:'Frontal plane lower'},
+      {id:'farmer_carry',sets:'3×30–40 sec',rest:'60 sec',note:'Loaded carry — grip + core + occupational'}
     ]
   }
 ];
@@ -6032,6 +6091,7 @@ function _renderExercise(ex,slotId){
   return '<div class="wo-exercise">'
     +'<div class="wo-ex-top">'
     +'<select class="wo-ex-select" data-primary="'+ex.id+'" onchange="woExChanged(this)">'+opts+'</select>'
+    +'<button class="btn btn-sm wo-quicksub" onclick="woQuickSub(this)" title="Random alternative — for crowded gym or variety" style="font-size:11px;padding:3px 8px;flex-shrink:0;">&#127922;</button>'
     +'<button class="btn btn-sm" onclick="showExerciseInfo(this.closest(\'.wo-exercise\').querySelector(\'.wo-ex-select\').value)" style="font-size:11px;padding:3px 9px;flex-shrink:0;">&#9432; How-to</button>'
     +'</div>'
     +'<div class="wo-ex-note">'+ex.sets+' &bull; '+ex.note+'</div>'
@@ -6054,6 +6114,26 @@ function woExChanged(sel){
   if(inputs[0])inputs[0].value=log.sets||'';
   if(inputs[1])inputs[1].value=log.weight||'';
   if(inputs[2])inputs[2].value=log.reps||'';
+}
+
+function woQuickSub(btnEl){
+  var container=btnEl.closest('.wo-exercise');
+  var sel=container.querySelector('.wo-ex-select');
+  if(!sel)return;
+  // Collect all option values except the currently selected one
+  var current=sel.value;
+  var opts=Array.from(sel.options).map(function(o){return o.value;}).filter(function(v){return v!==current;});
+  if(opts.length===0){toast('No alternatives available');return;}
+  // Pick a random one
+  var pick=opts[Math.floor(Math.random()*opts.length)];
+  sel.value=pick;
+  // Trigger change handler manually so log values update
+  woExChanged(sel);
+  // Brief flash to show change happened
+  btnEl.style.transform='scale(1.2)';
+  setTimeout(function(){btnEl.style.transform='';},200);
+  var newName=(WO_EXERCISES[pick]||{}).name||pick;
+  toast('\u{1F3B2} Swapped to '+newName);
 }
 
 function woLog(exId,field,val){
