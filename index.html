@@ -402,6 +402,13 @@ body.unlocked .date-editable{border-bottom-color:var(--border);}
 .jarvis-wake-btn.active{border-color:#c77dba;background:rgba(199,125,186,0.15);animation:jarvis-wake-pulse 2s ease-in-out infinite;}
 @keyframes jarvis-wake-pulse{0%,100%{box-shadow:0 0 0 0 rgba(199,125,186,0.4);}50%{box-shadow:0 0 0 5px rgba(199,125,186,0);}}
 
+/* Voice readback toggle in panel header */
+.jarvis-voice-btn{background:none;border:1px solid var(--border);color:var(--text-faint);font-size:14px;cursor:pointer;padding:3px 8px;border-radius:14px;transition:all 0.15s;line-height:1;display:flex;align-items:center;justify-content:center;}
+.jarvis-voice-btn:hover{border-color:#c77dba;color:#c77dba;}
+.jarvis-voice-btn.enabled{border-color:rgba(199,125,186,0.5);color:#c77dba;background:rgba(199,125,186,0.08);}
+.jarvis-voice-btn.speaking{border-color:#c77dba;background:rgba(199,125,186,0.2);animation:jarvis-voice-pulse 1.2s ease-in-out infinite;}
+@keyframes jarvis-voice-pulse{0%,100%{box-shadow:0 0 0 0 rgba(199,125,186,0.5);}50%{box-shadow:0 0 0 6px rgba(199,125,186,0);}}
+
 .jarvis-messages{flex:1;overflow-y:auto;padding:14px 16px;display:flex;flex-direction:column;gap:10px;scroll-behavior:smooth;}
 .jarvis-messages::-webkit-scrollbar{width:3px;}
 .jarvis-messages::-webkit-scrollbar-thumb{background:rgba(199,125,186,0.3);border-radius:2px;}
@@ -6150,6 +6157,7 @@ setTimeout(checkShareTarget, 400); // slight delay so panels render first
     <div class="jarvis-status-dot" id="jarvisStatusDot"></div>
     <div class="jarvis-panel-title">Jarvis</div>
     <button class="jarvis-wake-btn enabled" id="jarvisWakeBtn" onclick="toggleWakeWord()" title='Wake word ON ("Hey Jarvis")'>&#127908;</button>
+    <button class="jarvis-voice-btn enabled" id="jarvisVoiceBtn" onclick="toggleJarvisVoice()" title="Voice readback ON — tap to mute">&#128266;</button>
     <button class="jarvis-close" onclick="toggleJarvis()">&#10005;</button>
   </div>
   <div class="jarvis-messages" id="jarvisMessages">
@@ -6792,5 +6800,163 @@ function _initWakeWord(){
 
 // Wait for state to be loaded before init
 setTimeout(_initWakeWord,1500);
+
+// ═══════════════════════════════════════
+// VOICE READBACK — TTS for Jarvis replies
+// ═══════════════════════════════════════
+var _jarvisVoiceEnabled=true;            // user-toggleable preference (persists)
+var _jarvisVoiceSupported=!!window.speechSynthesis;
+var _jarvisCurrentUtterance=null;
+var _jarvisPreferredVoice=null;
+
+function _jarvisPickVoice(){
+  if(!_jarvisVoiceSupported)return null;
+  var voices=window.speechSynthesis.getVoices();
+  if(!voices||!voices.length)return null;
+  // Preference order: high-quality English voices
+  var prefs=['Google US English','Samantha','Microsoft Aria Online (Natural) - English (United States)','Microsoft Jenny Online (Natural) - English (United States)','Karen','Daniel','Alex'];
+  for(var i=0;i<prefs.length;i++){
+    var v=voices.find(function(vc){return vc.name===prefs[i];});
+    if(v)return v;
+  }
+  // Fallback: first en-US voice
+  var enUS=voices.find(function(v){return v.lang==='en-US';});
+  if(enUS)return enUS;
+  // Fallback: any English voice
+  var en=voices.find(function(v){return v.lang&&v.lang.indexOf('en')===0;});
+  return en||voices[0];
+}
+
+function _jarvisCleanForSpeech(text){
+  if(!text)return '';
+  // Strip markdown, URLs, and special characters that don't speak well
+  return text
+    .replace(/```[\s\S]*?```/g,'')          // code blocks
+    .replace(/`([^`]+)`/g,'$1')             // inline code
+    .replace(/\*\*([^*]+)\*\*/g,'$1')       // bold
+    .replace(/\*([^*]+)\*/g,'$1')           // italics
+    .replace(/\[([^\]]+)\]\([^)]+\)/g,'$1') // markdown links → just text
+    .replace(/https?:\/\/\S+/g,'')          // raw URLs
+    .replace(/#+\s/g,'')                    // headers
+    .replace(/[\u{1F300}-\u{1FAFF}\u{2600}-\u{27BF}]/gu,'') // emoji
+    .replace(/\s+/g,' ')                    // collapse whitespace
+    .trim();
+}
+
+function _jarvisSpeak(text){
+  if(!_jarvisVoiceEnabled||!_jarvisVoiceSupported)return;
+  var clean=_jarvisCleanForSpeech(text);
+  if(!clean)return;
+  
+  // Cancel any in-flight utterance
+  try{window.speechSynthesis.cancel();}catch(e){}
+  
+  // Pause wake word during speech to avoid feedback loop
+  var wakeWasActive=_wakeWordActive;
+  if(wakeWasActive)_stopWakeWord();
+  
+  var u=new SpeechSynthesisUtterance(clean);
+  u.rate=1.05;       // slightly faster than default for snappier feel
+  u.pitch=1.0;
+  u.volume=1.0;
+  if(_jarvisPreferredVoice)u.voice=_jarvisPreferredVoice;
+  
+  var voiceBtn=document.getElementById('jarvisVoiceBtn');
+  
+  u.onstart=function(){
+    if(voiceBtn)voiceBtn.classList.add('speaking');
+  };
+  u.onend=function(){
+    _jarvisCurrentUtterance=null;
+    if(voiceBtn)voiceBtn.classList.remove('speaking');
+    // Resume wake word listener if it was active before speaking
+    if(wakeWasActive&&_wakeWordEnabled){
+      setTimeout(_startWakeWord,400);
+    }
+  };
+  u.onerror=function(e){
+    _jarvisCurrentUtterance=null;
+    if(voiceBtn)voiceBtn.classList.remove('speaking');
+    if(wakeWasActive&&_wakeWordEnabled){
+      setTimeout(_startWakeWord,400);
+    }
+  };
+  
+  _jarvisCurrentUtterance=u;
+  try{window.speechSynthesis.speak(u);}catch(err){
+    console.warn('[Jarvis voice] speak failed:',err);
+    if(wakeWasActive&&_wakeWordEnabled)setTimeout(_startWakeWord,400);
+  }
+}
+
+function _jarvisStopSpeaking(){
+  if(!_jarvisVoiceSupported)return;
+  try{window.speechSynthesis.cancel();}catch(e){}
+  _jarvisCurrentUtterance=null;
+  var voiceBtn=document.getElementById('jarvisVoiceBtn');
+  if(voiceBtn)voiceBtn.classList.remove('speaking');
+}
+
+function toggleJarvisVoice(){
+  // If currently speaking, stop and disable
+  if(_jarvisCurrentUtterance||(window.speechSynthesis&&window.speechSynthesis.speaking)){
+    _jarvisStopSpeaking();
+    _jarvisVoiceEnabled=false;
+  }else{
+    _jarvisVoiceEnabled=!_jarvisVoiceEnabled;
+  }
+  if(!state)state={};
+  state.jarvisVoiceEnabled=_jarvisVoiceEnabled;
+  if(typeof save==='function')save();
+  _updateVoiceUI();
+  toast(_jarvisVoiceEnabled?'Voice readback enabled':'Voice readback muted');
+}
+
+function _updateVoiceUI(){
+  var btn=document.getElementById('jarvisVoiceBtn');
+  if(!btn)return;
+  if(!_jarvisVoiceSupported){
+    btn.style.display='none';
+    return;
+  }
+  btn.title=_jarvisVoiceEnabled?'Voice readback ON — tap to mute':'Voice readback OFF — tap to enable';
+  btn.classList.toggle('enabled',_jarvisVoiceEnabled);
+  btn.textContent=_jarvisVoiceEnabled?'\u{1F50A}':'\u{1F507}';
+}
+
+// Voices in many browsers load asynchronously
+if(_jarvisVoiceSupported){
+  _jarvisPreferredVoice=_jarvisPickVoice();
+  window.speechSynthesis.onvoiceschanged=function(){
+    _jarvisPreferredVoice=_jarvisPickVoice();
+  };
+}
+
+// Hook into _jarvisAddMessage to auto-speak assistant replies
+var _origJarvisAddMessage=_jarvisAddMessage;
+_jarvisAddMessage=function(role,content,actionSummary){
+  _origJarvisAddMessage.apply(this,arguments);
+  if(role==='assistant'&&_jarvisVoiceEnabled){
+    // Speak the reply (action summary is shown visually, not voiced)
+    _jarvisSpeak(content);
+  }
+};
+
+// Stop speaking when panel closes
+var _origToggleJarvis=toggleJarvis;
+toggleJarvis=function(){
+  // If we're closing the panel while speaking, stop the speech
+  if(_jarvisOpen&&_jarvisCurrentUtterance)_jarvisStopSpeaking();
+  _origToggleJarvis.apply(this,arguments);
+};
+
+// Restore preference on load
+function _initJarvisVoice(){
+  if(state&&typeof state.jarvisVoiceEnabled==='boolean'){
+    _jarvisVoiceEnabled=state.jarvisVoiceEnabled;
+  }
+  _updateVoiceUI();
+}
+setTimeout(_initJarvisVoice,1500);
 </script>
 </html>
