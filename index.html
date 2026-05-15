@@ -716,6 +716,99 @@ body.unlocked .date-editable{border-bottom-color:var(--border);}
 .tl-del{color:var(--text-faint);cursor:pointer;font-size:13px;opacity:0;transition:opacity 0.15s;}
 .tl-item:hover .tl-del{opacity:1;}.tl-del:hover{color:var(--red);}
 .tl-add-form{display:flex;flex-direction:column;gap:6px;margin-top:10px;padding-top:10px;border-top:1px solid var(--border);}
+
+/* ═══ TIMELINE PANEL ═══ */
+.tl-viewport{
+  max-height:520px;overflow-y:auto;overflow-x:hidden;
+  background:linear-gradient(180deg,rgba(91,232,255,0.02),rgba(91,232,255,0.005));
+  border:1px solid var(--border);border-radius:var(--radius-sm);
+  margin-top:8px;position:relative;
+}
+.tl-viewport::-webkit-scrollbar{width:5px;}
+.tl-viewport::-webkit-scrollbar-thumb{background:rgba(91,232,255,0.25);border-radius:3px;}
+
+.tl-grid{position:relative;width:100%;}
+
+/* Hour rows */
+.tl-hour-row{
+  position:relative;height:52px;
+  border-bottom:1px solid rgba(255,255,255,0.05);
+  display:flex;align-items:flex-start;
+}
+.tl-hour-row::after{
+  content:'';position:absolute;left:48px;right:0;top:50%;
+  border-top:1px dashed rgba(255,255,255,0.04);
+}
+.tl-hour-label{
+  width:48px;flex-shrink:0;padding:4px 8px;
+  font-family:'Courier New',monospace;font-size:10px;font-weight:700;
+  color:var(--text-faint);letter-spacing:0.5px;text-align:right;
+  border-right:1px solid var(--border);
+}
+
+/* Now indicator — red horizontal line */
+.tl-now-line{
+  position:absolute;left:48px;right:0;height:2px;
+  background:#e53935;z-index:10;pointer-events:none;
+  box-shadow:0 0 6px rgba(229,57,53,0.6),0 0 12px rgba(229,57,53,0.3);
+}
+.tl-now-line::before{
+  content:'';position:absolute;left:-6px;top:-4px;
+  width:10px;height:10px;border-radius:50%;background:#e53935;
+  box-shadow:0 0 8px rgba(229,57,53,0.8);
+}
+.tl-now-line::after{
+  content:'NOW';position:absolute;right:4px;top:-8px;
+  font-family:'Courier New',monospace;font-size:9px;font-weight:700;
+  color:#e53935;background:var(--surface);padding:1px 5px;border-radius:3px;
+  letter-spacing:1px;
+}
+
+/* Time blocks */
+.tl-block{
+  position:absolute;left:54px;right:6px;min-height:24px;
+  border-radius:6px;padding:5px 8px;cursor:pointer;
+  font-size:12px;line-height:1.3;overflow:hidden;
+  border-left:3px solid;
+  transition:all 0.15s;z-index:5;
+  display:flex;flex-direction:column;gap:1px;
+}
+.tl-block:hover{transform:translateX(2px);box-shadow:0 2px 8px rgba(0,0,0,0.3);}
+.tl-block-title{font-weight:700;color:var(--text);font-size:12px;}
+.tl-block-meta{font-size:10px;color:var(--text-dim);font-family:'Courier New',monospace;letter-spacing:0.3px;}
+.tl-block-proj{font-size:9px;font-weight:700;letter-spacing:0.8px;text-transform:uppercase;opacity:0.85;}
+.tl-block-priority{display:inline-block;font-size:9px;font-weight:700;padding:1px 5px;border-radius:8px;margin-left:4px;letter-spacing:0.5px;}
+.tl-block-priority.priority-high{background:rgba(229,57,53,0.25);color:#ff6b6b;}
+.tl-block-priority.priority-med{background:rgba(212,168,83,0.2);color:#d4a853;}
+.tl-block-priority.priority-low{background:rgba(127,179,160,0.18);color:#7fb3a0;}
+.tl-block-del{position:absolute;top:3px;right:5px;font-size:11px;color:rgba(255,255,255,0.4);cursor:pointer;display:none;line-height:1;padding:1px 4px;}
+.tl-block:hover .tl-block-del{display:block;}
+.tl-block-del:hover{color:#e53935;}
+
+/* Project color palette — auto-assigned via hash */
+.tl-block.tl-color-0{background:rgba(91,140,232,0.18);border-left-color:#5b8ce8;}
+.tl-block.tl-color-1{background:rgba(127,179,160,0.18);border-left-color:#7fb3a0;}
+.tl-block.tl-color-2{background:rgba(232,140,106,0.18);border-left-color:#e88c6a;}
+.tl-block.tl-color-3{background:rgba(199,125,186,0.18);border-left-color:#c77dba;}
+.tl-block.tl-color-4{background:rgba(160,160,170,0.15);border-left-color:#a0a0aa;}
+.tl-block.tl-color-5{background:rgba(212,168,83,0.18);border-left-color:#d4a853;}
+.tl-block.tl-color-6{background:rgba(91,232,255,0.15);border-left-color:#5be8ff;}
+.tl-block.tl-color-7{background:rgba(255,107,157,0.16);border-left-color:#ff6b9d;}
+.tl-block.tl-color-no-proj{background:rgba(255,255,255,0.04);border-left-color:rgba(255,255,255,0.2);}
+
+/* Legend */
+.tl-legend{
+  display:flex;flex-wrap:wrap;gap:6px;
+  padding:6px 4px;margin-top:4px;font-size:10px;
+}
+.tl-legend-item{
+  display:inline-flex;align-items:center;gap:5px;
+  padding:2px 8px;border-radius:10px;
+  background:var(--surface-raised);border:1px solid var(--border);
+}
+.tl-legend-dot{width:9px;height:9px;border-radius:2px;flex-shrink:0;}
+.tl-legend-label{color:var(--text-dim);font-weight:600;}
+
 .tl-add-row{display:flex;gap:6px;flex-wrap:wrap;}.tl-add-row>*{flex:1;min-width:0;}
 .tl-add-row select{min-width:80px;}
 .tl-or-new{font-size:11px;color:var(--text-faint);padding:2px 6px;cursor:pointer;border:1px dashed var(--border);border-radius:var(--radius-sm);text-align:center;}
@@ -1412,6 +1505,44 @@ body.unlocked .date-editable{border-bottom-color:var(--border);}
 <div class="decision-prompt" id="decisionPrompt"></div>
 <button class="btn" onclick="newDecisionPrompt()">New prompt</button></div>
 
+<!-- 12. TIMELINE / DAY BLOCKS -->
+<div class="panel" data-panel="timeline" data-nav="timeline" data-tile="0">
+<div class="panel-header"><div class="panel-title"><span class="drag-handle">&#10495;</span><span class="icon">&#128197;</span> Today's Timeline</div>
+<div style="display:flex;gap:6px;align-items:center;">
+  <span class="panel-badge" id="tlBlockCount">0</span>
+  <button class="expand-btn" onclick="exportTimelineICS()" title="Export today as .ics" style="font-size:14px;">&#128229;</button>
+</div></div>
+<div class="tl-legend" id="tlLegend"></div>
+<div class="tl-viewport">
+  <div class="tl-grid" id="tlGrid"></div>
+</div>
+<div class="tl-add-form" style="margin-top:10px;padding-top:10px;border-top:1px solid var(--border);">
+  <div class="section-label">Add Block</div>
+  <div style="display:flex;gap:6px;">
+    <input type="text" id="tlBlockName" placeholder="Block name (e.g. 'Deep work — QA review')" onkeydown="if(event.key==='Enter')addTimelineBlock()" style="flex:1;">
+  </div>
+  <div class="tl-add-row" style="flex-wrap:wrap;">
+    <input type="time" id="tlBlockStart" style="max-width:110px;" value="09:00">
+    <select id="tlBlockDur" style="max-width:90px;">
+      <option value="30">30m</option>
+      <option value="60" selected>1hr</option>
+      <option value="90">1.5hr</option>
+      <option value="120">2hr</option>
+      <option value="180">3hr</option>
+      <option value="240">4hr</option>
+    </select>
+    <div class="proj-multi-picker" id="tlBlockProjPicker" data-target="tlBlockProj" onclick="openProjMultiPicker(event,this)" style="font-size:11px;padding:3px 6px;min-height:26px;flex:1;"><span class="proj-multi-placeholder">+ Project (color)</span></div>
+    <input type="hidden" id="tlBlockProj" value="">
+    <button class="btn btn-accent btn-sm" onclick="addTimelineBlock()">+ Add</button>
+  </div>
+  <div style="display:flex;gap:6px;margin-top:6px;flex-wrap:wrap;">
+    <button class="btn btn-sm" onclick="exportTimelineICS()" style="font-size:11px;">&#128197; Download .ics</button>
+    <button class="btn btn-sm" onclick="connectOutlookGraph()" style="font-size:11px;" title="Microsoft Graph API two-way sync (requires Azure AD app setup)">&#128279; Outlook Sync</button>
+    <button class="btn btn-sm" onclick="clearTimelineBlocks()" style="font-size:11px;color:var(--text-dim);">Clear manual blocks</button>
+  </div>
+</div>
+</div>
+
 </div>
 
 <div class="dynamic-panels" id="dynamicPanels">
@@ -2035,7 +2166,7 @@ function startRealtimeSync(){
       state={...state,...cloud};
       state.visiblePanels=Object.assign({},cloud.visiblePanels||{},localVP);
       state.knownPanels=localKP&&localKP.length>=(cloud.knownPanels||[]).length?localKP:cloud.knownPanels||localKP;
-      renderProjects();renderReminders();renderThoughts();renderNotes();renderRoutines();renderTaskList();
+      renderProjects();renderReminders();renderThoughts();renderNotes();renderRoutines();renderTaskList();renderTimeline();
       applyPanelVisibility();
       showStateAdvice();updateWellnessVisibility();
       setSyncStatus('synced','Synced');
@@ -6321,9 +6452,295 @@ await load();
 initPanelVisibility();applyPanelOrder();applyPanelVisibility();updateLockUI();updateClock();updateTimeLeft();setInterval(updateClock,1000);setInterval(updateTimeLeft,30000);updateTimerDisplay();renderPointsBadge();awardDailyLogin();
 // Check for routine daily reset every minute (handles dashboards left open overnight)
 setInterval(checkDailyRoutineReset,60000);
+// ═══════════════════════════════════════
+// TIMELINE PANEL — daily time-blocking
+// ═══════════════════════════════════════
+const TL_DAY_START_H=6;   // 6 AM
+const TL_DAY_END_H=22;    // 10 PM
+const TL_HOUR_PX=52;      // px per hour
+const TL_COLOR_COUNT=8;   // palette size
+
+function _tlProjectColor(projectId){
+  if(!projectId)return 'no-proj';
+  // Stable hash → palette index
+  var hash=0;
+  for(var i=0;i<projectId.length;i++)hash=((hash<<5)-hash+projectId.charCodeAt(i))|0;
+  return Math.abs(hash)%TL_COLOR_COUNT;
+}
+
+function _tlMinutesToY(minutes){
+  // minutes from midnight → Y px offset within tl-grid
+  var startMin=TL_DAY_START_H*60;
+  return ((minutes-startMin)/60)*TL_HOUR_PX;
+}
+
+function _tlParseTime(hhmm){
+  if(!hhmm||hhmm.indexOf(':')<0)return null;
+  var parts=hhmm.split(':');
+  return parseInt(parts[0])*60+parseInt(parts[1]);
+}
+
+function _tlFmtTime(min){
+  var h=Math.floor(min/60),m=min%60;
+  var ap=h<12?'a':'p';
+  var h12=h===0?12:h>12?h-12:h;
+  return h12+(m===0?'':':'+(m<10?'0':'')+m)+ap;
+}
+
+function _tlFmtHour(h){
+  var ap=h<12?'a':'p';
+  var h12=h===0?12:h>12?h-12:h;
+  return h12+ap;
+}
+
+function _tlCollectBlocks(){
+  // Returns array of block objects for today
+  var today=todayStr();
+  var blocks=[];
+  
+  // 1. Manual blocks from state.tlBlocks (filter to today)
+  (state.tlBlocks||[]).forEach(function(b){
+    if(b.date===today){
+      blocks.push({
+        id:b.id,name:b.name,startMin:_tlParseTime(b.time),durMin:parseInt(b.duration||60),
+        projectId:b.projectId||'',priority:b.priority||'med',source:'manual'
+      });
+    }
+  });
+  
+  // 2. Reminders with both date===today AND time set
+  (state.reminders||[]).forEach(function(r){
+    if(r.date===today&&r.time){
+      var projId=(r.projectIds&&r.projectIds[0])||r.projectId||'';
+      blocks.push({
+        id:'rem_'+r.id,name:r.text,startMin:_tlParseTime(r.time),durMin:30,
+        projectId:projId,priority:'med',source:'reminder'
+      });
+    }
+  });
+  
+  // 3. Subtasks with due===today AND time (subtasks already have timeEst as duration)
+  (state.projects||[]).forEach(function(p){
+    (p.subtasks||[]).forEach(function(st){
+      if(st.due===today&&st.time){
+        blocks.push({
+          id:'st_'+st.id,name:st.name,startMin:_tlParseTime(st.time),
+          durMin:parseInt(st.timeEst)||60,
+          projectId:p.id,priority:st.priority||'med',source:'subtask'
+        });
+      }
+    });
+  });
+  
+  // 4. Standalone tasks with due===today AND time
+  (state.tasks||[]).forEach(function(t){
+    if(!t.done&&t.due===today&&t.time){
+      var projId=t.projectId||(t.projectIds&&t.projectIds[0])||'';
+      blocks.push({
+        id:'task_'+t.id,name:t.name,startMin:_tlParseTime(t.time),
+        durMin:parseInt(t.timeEst)||60,
+        projectId:projId,priority:t.priority||'med',source:'task'
+      });
+    }
+  });
+  
+  // Filter out blocks with no valid time
+  return blocks.filter(function(b){return b.startMin!==null&&!isNaN(b.startMin);});
+}
+
+function _tlBuildLegend(){
+  // Build legend from projects that have blocks today
+  var blocks=_tlCollectBlocks();
+  var seen={};
+  blocks.forEach(function(b){
+    if(b.projectId&&!seen[b.projectId])seen[b.projectId]=true;
+  });
+  var projIds=Object.keys(seen);
+  var el=document.getElementById('tlLegend');
+  if(!el)return;
+  if(projIds.length===0){el.innerHTML='';return;}
+  
+  var palette=['#5b8ce8','#7fb3a0','#e88c6a','#c77dba','#a0a0aa','#d4a853','#5be8ff','#ff6b9d'];
+  var html=projIds.map(function(pid){
+    var p=(state.projects||[]).find(function(p){return p.id===pid;});
+    if(!p)return '';
+    var c=_tlProjectColor(pid);
+    return '<span class="tl-legend-item"><span class="tl-legend-dot" style="background:'+palette[c]+';"></span><span class="tl-legend-label">'+esc(p.name)+'</span></span>';
+  }).join('');
+  el.innerHTML=html;
+}
+
+function renderTimeline(){
+  var grid=document.getElementById('tlGrid');
+  if(!grid)return;
+  
+  // Build hour rows
+  var html='';
+  for(var h=TL_DAY_START_H;h<TL_DAY_END_H;h++){
+    html+='<div class="tl-hour-row" style="height:'+TL_HOUR_PX+'px;"><div class="tl-hour-label">'+_tlFmtHour(h)+'</div></div>';
+  }
+  grid.innerHTML=html;
+  
+  // Place "now" line
+  var now=new Date();
+  var nowMin=now.getHours()*60+now.getMinutes();
+  if(nowMin>=TL_DAY_START_H*60&&nowMin<TL_DAY_END_H*60){
+    var nowY=_tlMinutesToY(nowMin);
+    var nowDiv=document.createElement('div');
+    nowDiv.className='tl-now-line';
+    nowDiv.style.top=nowY+'px';
+    grid.appendChild(nowDiv);
+  }
+  
+  // Place blocks
+  var blocks=_tlCollectBlocks();
+  blocks.forEach(function(b){
+    if(b.startMin<TL_DAY_START_H*60||b.startMin>=TL_DAY_END_H*60)return;
+    var y=_tlMinutesToY(b.startMin);
+    var height=Math.max(24,(b.durMin/60)*TL_HOUR_PX-2);
+    var colorClass='tl-color-'+_tlProjectColor(b.projectId);
+    var proj=b.projectId?(state.projects||[]).find(function(p){return p.id===b.projectId;}):null;
+    var projName=proj?proj.name:'';
+    var endMin=b.startMin+b.durMin;
+    var div=document.createElement('div');
+    div.className='tl-block '+colorClass;
+    div.style.top=y+'px';
+    div.style.height=height+'px';
+    div.dataset.blockId=b.id;
+    div.dataset.source=b.source;
+    var priorityLabel='';
+    if(b.priority==='high')priorityLabel='<span class="tl-block-priority priority-high">HIGH</span>';
+    else if(b.priority==='low')priorityLabel='<span class="tl-block-priority priority-low">low</span>';
+    div.innerHTML=
+      '<div class="tl-block-title">'+esc(b.name)+priorityLabel+'</div>'
+      +'<div class="tl-block-meta">'+_tlFmtTime(b.startMin)+' – '+_tlFmtTime(endMin)+' · '+b.durMin+'m</div>'
+      +(projName?'<div class="tl-block-proj">'+esc(projName)+'</div>':'')
+      +(b.source==='manual'?'<div class="tl-block-del" onclick="event.stopPropagation();deleteTimelineBlock(\''+b.id+'\')" title="Delete block">&#10005;</div>':'');
+    grid.appendChild(div);
+  });
+  
+  // Update count badge + legend
+  var countEl=document.getElementById('tlBlockCount');
+  if(countEl)countEl.textContent=blocks.length;
+  _tlBuildLegend();
+}
+
+function addTimelineBlock(){
+  var nameEl=document.getElementById('tlBlockName');
+  var timeEl=document.getElementById('tlBlockStart');
+  var durEl=document.getElementById('tlBlockDur');
+  var projEl=document.getElementById('tlBlockProj');
+  var name=nameEl.value.trim();
+  if(!name){toast('Block needs a name');return;}
+  if(!timeEl.value){toast('Pick a start time');return;}
+  
+  if(!state.tlBlocks)state.tlBlocks=[];
+  var projIds=(projEl.value||'').split(',').map(function(s){return s.trim();}).filter(Boolean);
+  state.tlBlocks.push({
+    id:'tlb'+Date.now()+Math.random().toString(36).slice(2),
+    name:name,
+    date:todayStr(),
+    time:timeEl.value,
+    duration:parseInt(durEl.value)||60,
+    projectId:projIds[0]||'',
+    projectIds:projIds,
+    priority:'med'
+  });
+  save();
+  nameEl.value='';
+  // Reset picker UI
+  projEl.value='';
+  var picker=document.getElementById('tlBlockProjPicker');
+  if(picker)picker.innerHTML='<span class="proj-multi-placeholder">+ Project (color)</span>';
+  renderTimeline();
+  toast('Block added');
+}
+
+function deleteTimelineBlock(id){
+  if(!confirm('Delete this block?'))return;
+  state.tlBlocks=(state.tlBlocks||[]).filter(function(b){return b.id!==id;});
+  save();renderTimeline();
+}
+
+function clearTimelineBlocks(){
+  var today=todayStr();
+  var todayCount=(state.tlBlocks||[]).filter(function(b){return b.date===today;}).length;
+  if(todayCount===0){toast('No manual blocks to clear');return;}
+  if(!confirm('Delete all '+todayCount+' manual blocks for today?'))return;
+  state.tlBlocks=(state.tlBlocks||[]).filter(function(b){return b.date!==today;});
+  save();renderTimeline();
+  toast('Manual blocks cleared');
+}
+
+// ═══ Outlook .ics export ═══
+function _icsEscape(s){
+  return (s||'').replace(/\\/g,'\\\\').replace(/;/g,'\\;').replace(/,/g,'\\,').replace(/\n/g,'\\n');
+}
+
+function _icsTimestamp(date,minutes){
+  // date is YYYY-MM-DD, minutes is from midnight
+  var d=new Date(date+'T00:00:00');
+  d.setMinutes(d.getMinutes()+minutes);
+  var pad=function(n){return n<10?'0'+n:''+n;};
+  return d.getFullYear()+pad(d.getMonth()+1)+pad(d.getDate())+'T'+pad(d.getHours())+pad(d.getMinutes())+'00';
+}
+
+function exportTimelineICS(){
+  var blocks=_tlCollectBlocks();
+  if(blocks.length===0){toast('No blocks today to export');return;}
+  var today=todayStr();
+  var lines=[
+    'BEGIN:VCALENDAR',
+    'VERSION:2.0',
+    'PRODID:-//Centerpost//Timeline//EN',
+    'CALSCALE:GREGORIAN',
+    'METHOD:PUBLISH'
+  ];
+  blocks.forEach(function(b){
+    var proj=b.projectId?(state.projects||[]).find(function(p){return p.id===b.projectId;}):null;
+    var summary=b.name;
+    if(b.priority==='high')summary='[HIGH] '+summary;
+    var description=(proj?'Project: '+proj.name+'\n':'')+'Source: '+b.source+' (Centerpost)';
+    lines.push('BEGIN:VEVENT');
+    lines.push('UID:'+b.id+'@centerpost.app');
+    lines.push('DTSTAMP:'+_icsTimestamp(today,b.startMin));
+    lines.push('DTSTART:'+_icsTimestamp(today,b.startMin));
+    lines.push('DTEND:'+_icsTimestamp(today,b.startMin+b.durMin));
+    lines.push('SUMMARY:'+_icsEscape(summary));
+    lines.push('DESCRIPTION:'+_icsEscape(description));
+    if(proj)lines.push('CATEGORIES:'+_icsEscape(proj.name));
+    lines.push('END:VEVENT');
+  });
+  lines.push('END:VCALENDAR');
+  var ics=lines.join('\r\n');
+  var blob=new Blob([ics],{type:'text/calendar'});
+  var url=URL.createObjectURL(blob);
+  var a=document.createElement('a');
+  a.href=url;
+  a.download='centerpost-timeline-'+today+'.ics';
+  document.body.appendChild(a);a.click();document.body.removeChild(a);
+  URL.revokeObjectURL(url);
+  toast('Downloaded .ics — drag into Outlook');
+}
+
+function connectOutlookGraph(){
+  toast('Outlook two-way sync requires Azure AD app setup — coming in next build');
+}
+
+// Auto-refresh timeline every minute so the "now" line moves
+setInterval(function(){
+  var el=document.getElementById('tlGrid');
+  if(el&&document.visibilityState==='visible')renderTimeline();
+},60000);
+
+// ═══════════════════════════════════════
+// END TIMELINE
+// ═══════════════════════════════════════
+
 // Also re-check when tab becomes visible again (handles laptop sleep/wake, phone unlock)
-document.addEventListener('visibilitychange',function(){if(!document.hidden){checkDailyRoutineReset();awardDailyLogin();}});
-renderProjects();renderReminders();renderThoughts();renderNotes();renderRoutines();renderTaskList();checkDailyRoutineReset();newDecisionPrompt();initDragDrop();updateAllTileSummaries();
+document.addEventListener('visibilitychange',function(){if(!document.hidden){checkDailyRoutineReset();awardDailyLogin();renderTimeline();}});
+
+renderProjects();renderReminders();renderThoughts();renderNotes();renderRoutines();renderTaskList();renderTimeline();checkDailyRoutineReset();newDecisionPrompt();initDragDrop();updateAllTileSummaries();
 if(_isMobile()){showMobileHome();}else{document.querySelector('.header')&&document.querySelector('.header').classList.add('mobile-visible');}
 if(state.energy){const c=document.querySelectorAll('#energyPills .em-pill');const m=['high','good','low','crashed'];const i=m.indexOf(state.energy);if(i>=0)c[i].classList.add('selected');}
 if(state.mood){const c=document.querySelectorAll('#moodPills .em-pill');const m=['focused','scattered','anxious','calm'];const i=m.indexOf(state.mood);if(i>=0)c[i].classList.add('selected');}
