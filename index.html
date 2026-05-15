@@ -6602,7 +6602,7 @@ function handleWorkTodayClick(itemType,itemId,projectId){
   document.getElementById('wtDuration').value=String(duration);
   document.getElementById('wtSuggestion').textContent='💡 Suggested: '+_tlFmtTime(suggested)+' — first open slot in your day';
   _wtUpdateConflicts();
-  document.getElementById('workTodayModal').classList.add('active');
+  document.getElementById('workTodayModal').classList.add('open');
   
   // Wire change handlers to refresh conflict warning live
   var t=document.getElementById('wtTime');
@@ -6628,7 +6628,7 @@ function _wtUpdateConflicts(){
 }
 
 function closeWorkTodayModal(){
-  document.getElementById('workTodayModal').classList.remove('active');
+  document.getElementById('workTodayModal').classList.remove('open');
   _wtCurrentItem=null;
 }
 
@@ -6639,14 +6639,42 @@ function confirmWorkToday(){
   if(!timeVal){toast('Pick a time');return;}
   if(!durVal){toast('Pick a duration');return;}
   
+  // ── Late-end warning: if block ends after 8pm ─────────────────────
+  var startMin=_tlParseTime(timeVal);
+  var endMin=startMin+durVal;
+  var END_OF_DAY=20*60; // 8 PM
+  if(endMin>END_OF_DAY){
+    var endLabel=_tlFmtTime(endMin);
+    var msg='⚠ This block would end at '+endLabel+' — after 8pm.\n\n'
+      +'OK  →  Schedule today anyway\n'
+      +'Cancel  →  Push to tomorrow (same start time)';
+    if(!confirm(msg)){
+      // Push to tomorrow
+      _scheduleForTomorrow(timeVal,durVal);
+      return;
+    }
+  }
+  
+  _writeBlock(todayStr(),timeVal,durVal);
+}
+
+function _scheduleForTomorrow(timeVal,durVal){
+  var tomorrow=new Date();
+  tomorrow.setDate(tomorrow.getDate()+1);
+  var pad=function(n){return n<10?'0'+n:''+n;};
+  var tomorrowStr=tomorrow.getFullYear()+'-'+pad(tomorrow.getMonth()+1)+'-'+pad(tomorrow.getDate());
+  _writeBlock(tomorrowStr,timeVal,durVal);
+}
+
+function _writeBlock(dateStr,timeVal,durVal){
   if(!state.tlBlocks)state.tlBlocks=[];
   state.tlBlocks.push({
     id:'tlb'+Date.now()+Math.random().toString(36).slice(2),
     name:_wtCurrentItem.name,
-    date:todayStr(),
+    date:dateStr,
     time:timeVal,
     duration:durVal,
-    projectId:_wtCurrentItem.type==='subtask'||_wtCurrentItem.type==='project'?_wtCurrentItem.projectId:'',
+    projectId:(_wtCurrentItem.type==='subtask'||_wtCurrentItem.type==='project')?_wtCurrentItem.projectId:'',
     projectIds:[],
     priority:_wtCurrentItem.priority,
     linkedType:_wtCurrentItem.type,
@@ -6656,7 +6684,12 @@ function confirmWorkToday(){
   closeWorkTodayModal();
   renderProjects();renderTaskList();renderTimeline();
   if(typeof updateDayProgress==='function')updateDayProgress();
-  toast('Scheduled — '+_tlFmtTime(_tlParseTime(timeVal)));
+  var today=todayStr();
+  if(dateStr===today){
+    toast('Scheduled today — '+_tlFmtTime(_tlParseTime(timeVal)));
+  }else{
+    toast('Pushed to tomorrow — '+_tlFmtTime(_tlParseTime(timeVal)));
+  }
 }
 
 // ═══ Banner overlay — block strip on day-progress-bar ═══
