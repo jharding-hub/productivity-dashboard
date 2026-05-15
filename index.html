@@ -809,6 +809,36 @@ body.unlocked .date-editable{border-bottom-color:var(--border);}
 .tl-legend-dot{width:9px;height:9px;border-radius:2px;flex-shrink:0;}
 .tl-legend-label{color:var(--text-dim);font-weight:600;}
 
+/* Work-Today scheduling button */
+.wt-clock-btn{
+  display:inline-flex;align-items:center;justify-content:center;
+  width:22px;height:22px;border-radius:50%;
+  background:var(--surface-raised);border:1px solid var(--border);
+  color:var(--text-faint);cursor:pointer;font-size:11px;
+  transition:all 0.15s;flex-shrink:0;line-height:1;
+}
+.wt-clock-btn:hover{border-color:rgba(91,232,255,0.5);color:#5be8ff;background:rgba(91,232,255,0.08);}
+.wt-clock-btn.scheduled{
+  border-color:#5be8ff;color:#5be8ff;
+  background:rgba(91,232,255,0.15);
+  box-shadow:0 0 6px rgba(91,232,255,0.3);
+}
+.wt-clock-btn.scheduled:hover{background:rgba(91,232,255,0.25);}
+
+/* Banner timeline block overlays */
+.day-progress-bar-blocks{
+  position:absolute;left:0;right:0;bottom:0;height:10px;
+  pointer-events:none;z-index:7;border-radius:0 0 10px 10px;overflow:hidden;
+}
+.dpb-block{
+  position:absolute;top:0;bottom:0;
+  border-radius:2px;opacity:0.92;
+  border-top:1px solid rgba(0,0,0,0.25);
+  box-shadow:inset 0 1px 0 rgba(255,255,255,0.2);
+}
+.dpb-block:hover{opacity:1;}
+
+
 .tl-add-row{display:flex;gap:6px;flex-wrap:wrap;}.tl-add-row>*{flex:1;min-width:0;}
 .tl-add-row select{min-width:80px;}
 .tl-or-new{font-size:11px;color:var(--text-faint);padding:2px 6px;cursor:pointer;border:1px dashed var(--border);border-radius:var(--radius-sm);text-align:center;}
@@ -2738,7 +2768,7 @@ if(linkedTasks.length||linkedNotes.length||linkedReminders.length){
   linkedHtml+='</div>';
 }
 
-return '<div class="project-card"><div class="proj-header" onclick="openProjectModal(\''+p.id+'\')"><span class="proj-expand '+(p.expanded?'open':'')+'">\u25B6</span><div class="proj-info"><div class="proj-name-row"><span class="proj-name editable" id="pn_'+p.id+'">'+esc(p.name)+'</span><button class="proj-edit-btn" onclick="event.stopPropagation();promptEditProject(\''+p.id+'\')" title="Rename project">&#9998;</button></div><div class="proj-meta"><span>'+total+' subtask'+(total!==1?'s':'')+'</span>'+(linkedNotes.length?'<span>'+linkedNotes.length+' note'+(linkedNotes.length!==1?'s':'')+'</span>':'')+''+(linkedReminders.length?'<span>'+linkedReminders.length+' reminder'+(linkedReminders.length!==1?'s':'')+'</span>':'')+'</div></div><div style="display:flex;gap:4px;align-items:center;"><span class="st-btn st-cal" onclick="exportProjectICS(\''+p.id+'\')">\u{1F4C5}</span><button class="proj-complete-btn" onclick="event.stopPropagation();markProjectComplete(\''+p.id+'\',this)" title="Mark complete">\u2713</button><span class="proj-delete" onclick="deleteProject(\''+p.id+'\')">\u2715</span></div></div><div class="subtask-area '+(p.expanded?'open':'')+'"><div class="proj-due-display">'+(p.due?'<span class="date-editable" id="pd_'+p.id+'">Ends: '+fmtDate(p.due)+'</span>':'<span class="date-editable" id="pd_'+p.id+'" style="color:var(--text-faint);">+ set end date</span>')+'</div>'+_renderProjSummary(p,total,linkedNotes.length,linkedReminders.length,projCompletedItems)+'<div class="subtask-list">'+(sorted.length===0?'<div class="empty-state" style="padding:10px;">No subtasks yet.</div>':sorted.map(st=>{return '<div class="subtask-item"><div class="st-check" onclick="toggleSubtask(\''+p.id+"','"+st.id+'\')"></div><span class="st-name editable" id="sn_'+st.id+'"><span class="priority-dot priority-'+st.priority+'"></span>'+esc(st.name)+'</span>'+(st.due?'<span class="st-due date-editable" id="sd_'+st.id+'">'+fmtDate(st.due)+'</span>':'<span class="st-due date-editable" id="sd_'+st.id+'" style="color:var(--text-faint);">+ date</span>')+'<div class="st-actions">'+(st.timeEst?'<span class="tl-time-badge">'+fmtTimeEst(st.timeEst)+'</span>':'')+'<span class="st-btn st-cal" onclick="exportSubtaskICS(\''+p.id+"','"+st.id+'\')">\u{1F4C5}</span><span class="st-btn st-del" onclick="deleteSubtask(\''+p.id+"','"+st.id+'\')">\u2715</span></div></div>';}).join(''))+'</div><div class="subtask-add"><input type="text" id="stN_'+p.id+'" placeholder="New subtask..." onkeydown="if(event.key===\'Enter\')addSubtask(\''+p.id+'\')"><button class="mic-btn" id="stMic_'+p.id+'" onclick="toggleMic(\'stN_'+p.id+'\',\'stMic_'+p.id+'\')" title="Voice input">&#127908;</button><select id="stP_'+p.id+'"><option value="low">Low</option><option value="med" selected>Med</option><option value="high">High</option></select><select id="stT_'+p.id+'" class="time-est-select"><option value="">Time?</option><option value="30">30m</option><option value="60">1hr</option><option value="90">1.5hr</option><option value="120">2hr</option><option value="180">3hr</option><option value="240">4hr</option><option value="999">4hr+</option></select><input type="date" id="stD_'+p.id+'"><button class="btn btn-accent btn-sm" onclick="addSubtask(\''+p.id+'\')">+</button></div></div></div>';}).join('');
+return '<div class="project-card"><div class="proj-header" onclick="openProjectModal(\''+p.id+'\')"><span class="proj-expand '+(p.expanded?'open':'')+'">\u25B6</span><div class="proj-info"><div class="proj-name-row"><span class="proj-name editable" id="pn_'+p.id+'">'+esc(p.name)+'</span><button class="proj-edit-btn" onclick="event.stopPropagation();promptEditProject(\''+p.id+'\')" title="Rename project">&#9998;</button></div><div class="proj-meta"><span>'+total+' subtask'+(total!==1?'s':'')+'</span>'+(linkedNotes.length?'<span>'+linkedNotes.length+' note'+(linkedNotes.length!==1?'s':'')+'</span>':'')+''+(linkedReminders.length?'<span>'+linkedReminders.length+' reminder'+(linkedReminders.length!==1?'s':'')+'</span>':'')+'</div></div><div style="display:flex;gap:4px;align-items:center;"><span class="wt-clock-btn '+(_isScheduledToday(p.id)?'scheduled':'')+'" onclick="event.stopPropagation();handleWorkTodayClick(\'project\',\''+p.id+'\',\''+p.id+'\')" title="Work on today" style="width:20px;height:20px;font-size:10px;">\u{1F4C5}</span><span class="st-btn st-cal" onclick="exportProjectICS(\''+p.id+'\')">\u{1F4C5}</span><button class="proj-complete-btn" onclick="event.stopPropagation();markProjectComplete(\''+p.id+'\',this)" title="Mark complete">\u2713</button><span class="proj-delete" onclick="deleteProject(\''+p.id+'\')">\u2715</span></div></div><div class="subtask-area '+(p.expanded?'open':'')+'"><div class="proj-due-display">'+(p.due?'<span class="date-editable" id="pd_'+p.id+'">Ends: '+fmtDate(p.due)+'</span>':'<span class="date-editable" id="pd_'+p.id+'" style="color:var(--text-faint);">+ set end date</span>')+'</div>'+_renderProjSummary(p,total,linkedNotes.length,linkedReminders.length,projCompletedItems)+'<div class="subtask-list">'+(sorted.length===0?'<div class="empty-state" style="padding:10px;">No subtasks yet.</div>':sorted.map(st=>{return '<div class="subtask-item"><div class="st-check" onclick="toggleSubtask(\''+p.id+"','"+st.id+'\')"></div><span class="st-name editable" id="sn_'+st.id+'"><span class="priority-dot priority-'+st.priority+'"></span>'+esc(st.name)+'</span>'+(st.due?'<span class="st-due date-editable" id="sd_'+st.id+'">'+fmtDate(st.due)+'</span>':'<span class="st-due date-editable" id="sd_'+st.id+'" style="color:var(--text-faint);">+ date</span>')+'<div class="st-actions">'+(st.timeEst?'<span class="tl-time-badge">'+fmtTimeEst(st.timeEst)+'</span>':'')+'<span class="wt-clock-btn '+(_isScheduledToday(st.id)?'scheduled':'')+'" onclick="event.stopPropagation();handleWorkTodayClick(\'subtask\',\''+st.id+'\',\''+p.id+'\')" title="Work on today" style="width:18px;height:18px;font-size:9px;">\u{1F4C5}</span><span class="st-btn st-cal" onclick="exportSubtaskICS(\''+p.id+"','"+st.id+'\')">\u{1F4C5}</span><span class="st-btn st-del" onclick="deleteSubtask(\''+p.id+"','"+st.id+'\')">\u2715</span></div></div>';}).join(''))+'</div><div class="subtask-add"><input type="text" id="stN_'+p.id+'" placeholder="New subtask..." onkeydown="if(event.key===\'Enter\')addSubtask(\''+p.id+'\')"><button class="mic-btn" id="stMic_'+p.id+'" onclick="toggleMic(\'stN_'+p.id+'\',\'stMic_'+p.id+'\')" title="Voice input">&#127908;</button><select id="stP_'+p.id+'"><option value="low">Low</option><option value="med" selected>Med</option><option value="high">High</option></select><select id="stT_'+p.id+'" class="time-est-select"><option value="">Time?</option><option value="30">30m</option><option value="60">1hr</option><option value="90">1.5hr</option><option value="120">2hr</option><option value="180">3hr</option><option value="240">4hr</option><option value="999">4hr+</option></select><input type="date" id="stD_'+p.id+'"><button class="btn btn-accent btn-sm" onclick="addSubtask(\''+p.id+'\')">+</button></div></div></div>';}).join('');
 document.getElementById('projCount').textContent=state.projects.length;
 // Append "Completed Projects" section at the bottom of the projects list
 el.innerHTML+=_renderCompletedProjectsSection();
@@ -3663,6 +3693,7 @@ function renderTaskList(){
         (t.timeEst?'<span class="tl-time-badge">'+fmtTimeEst(t.timeEst)+'</span>':'')+
         dueHTML+
         '</div></div>'+
+        '<span class="wt-clock-btn '+(_isScheduledToday(t.id)?'scheduled':'')+'" onclick="event.stopPropagation();handleWorkTodayClick(\''+t.source+'\',\''+t.id+'\',\''+(t.projectId||'')+'\')" title="Work on this today">&#128197;</span>'+
         (t.source==='standalone'?'<span class="tl-del" onclick="deleteStandaloneTask(\''+t.id+'\')">\u2715</span>':'')+
         '</div>';
     }).join('');
@@ -5010,6 +5041,8 @@ function updateDayProgress(){
   }
   
   elapsedEl.style.width=elapsed+'%';
+  // Render scheduled block overlays on the bar
+  if(typeof renderBannerBlocks==='function')renderBannerBlocks();
 }
 
 // ═══════════════════════════════════════
@@ -6468,6 +6501,209 @@ function _tlProjectColor(projectId){
   return Math.abs(hash)%TL_COLOR_COUNT;
 }
 
+// ═══ WORK TODAY scheduling ═══
+var _wtCurrentItem=null; // {type, id, projectId, name, defaultDuration}
+
+function _isScheduledToday(itemId){
+  var today=todayStr();
+  return (state.tlBlocks||[]).some(function(b){
+    return b.date===today&&b.linkedId===itemId;
+  });
+}
+
+function _findScheduledBlock(itemId){
+  var today=todayStr();
+  return (state.tlBlocks||[]).find(function(b){return b.date===today&&b.linkedId===itemId;});
+}
+
+function _suggestWorkTime(durationMin){
+  // Find first available slot of >=durationMin minutes between now-rounded-up and 6pm
+  var blocks=_tlCollectBlocks();
+  var now=new Date();
+  var nowMin=now.getHours()*60+now.getMinutes();
+  // Round up to next half-hour
+  var startCandidate=Math.max(540,Math.ceil(nowMin/30)*30); // 9am minimum
+  var dayEnd=18*60; // 6pm
+  if(startCandidate>=dayEnd)startCandidate=Math.max(8*60,nowMin); // late-day fallback
+  
+  // Sort blocks by start
+  var sorted=blocks.slice().sort(function(a,b){return a.startMin-b.startMin;});
+  
+  // Walk gaps
+  var candidate=startCandidate;
+  for(var i=0;i<sorted.length;i++){
+    var b=sorted[i];
+    var bEnd=b.startMin+b.durMin;
+    if(b.startMin>=candidate+durationMin){
+      // Found a gap before this block
+      return candidate;
+    }
+    if(bEnd>candidate){
+      candidate=Math.ceil(bEnd/15)*15; // round up to next 15-min
+    }
+  }
+  // No conflict — return the candidate
+  return candidate;
+}
+
+function _findConflicts(startMin,durMin,excludeId){
+  var endMin=startMin+durMin;
+  var blocks=_tlCollectBlocks();
+  return blocks.filter(function(b){
+    if(b.linkedId===excludeId)return false;
+    var bEnd=b.startMin+b.durMin;
+    return b.startMin<endMin&&bEnd>startMin;
+  });
+}
+
+function handleWorkTodayClick(itemType,itemId,projectId){
+  // If already scheduled, ask what to do
+  var existing=_findScheduledBlock(itemId);
+  if(existing){
+    var name=existing.name;
+    if(confirm('"'+name+'" is scheduled at '+_tlFmtTime(_tlParseTime(existing.time))+'.\n\nUnschedule it?')){
+      state.tlBlocks=(state.tlBlocks||[]).filter(function(b){return b.id!==existing.id;});
+      save();
+      renderProjects();renderTaskList();renderTimeline();
+      if(typeof updateDayProgress==='function')updateDayProgress();
+      toast('Unscheduled');
+    }
+    return;
+  }
+  
+  // Resolve the item
+  var name='',duration=60,priority='med';
+  if(itemType==='task'){
+    var t=(state.tasks||[]).find(function(t){return t.id===itemId;});
+    if(!t){toast('Task not found');return;}
+    name=t.name;duration=parseInt(t.timeEst)||60;priority=t.priority||'med';
+  }else if(itemType==='subtask'){
+    var p=(state.projects||[]).find(function(p){return p.id===projectId;});
+    if(!p){toast('Project not found');return;}
+    var st=(p.subtasks||[]).find(function(s){return s.id===itemId;});
+    if(!st){toast('Subtask not found');return;}
+    name=st.name;duration=parseInt(st.timeEst)||60;priority=st.priority||'med';
+  }else if(itemType==='project'){
+    var pr=(state.projects||[]).find(function(p){return p.id===itemId;});
+    if(!pr){toast('Project not found');return;}
+    name=pr.name+' (work session)';duration=60;priority='med';
+  }else{return;}
+  
+  if(duration>240)duration=240; // cap
+  
+  _wtCurrentItem={type:itemType,id:itemId,projectId:projectId||'',name:name,duration:duration,priority:priority};
+  
+  // Suggest a time
+  var suggested=_suggestWorkTime(duration);
+  var hh=Math.floor(suggested/60),mm=suggested%60;
+  var timeStr=(hh<10?'0':'')+hh+':'+(mm<10?'0':'')+mm;
+  
+  // Open modal
+  document.getElementById('wtItemName').textContent=name;
+  document.getElementById('wtTime').value=timeStr;
+  document.getElementById('wtDuration').value=String(duration);
+  document.getElementById('wtSuggestion').textContent='💡 Suggested: '+_tlFmtTime(suggested)+' — first open slot in your day';
+  _wtUpdateConflicts();
+  document.getElementById('workTodayModal').classList.add('active');
+  
+  // Wire change handlers to refresh conflict warning live
+  var t=document.getElementById('wtTime');
+  var d=document.getElementById('wtDuration');
+  t.oninput=_wtUpdateConflicts;
+  d.onchange=_wtUpdateConflicts;
+}
+
+function _wtUpdateConflicts(){
+  if(!_wtCurrentItem)return;
+  var timeVal=document.getElementById('wtTime').value;
+  var durVal=parseInt(document.getElementById('wtDuration').value);
+  if(!timeVal||!durVal)return;
+  var startMin=_tlParseTime(timeVal);
+  var conflicts=_findConflicts(startMin,durVal,_wtCurrentItem.id);
+  var cEl=document.getElementById('wtConflict');
+  if(conflicts.length){
+    cEl.style.display='block';
+    cEl.textContent='⚠ Overlaps with: '+conflicts.map(function(c){return c.name;}).join(', ');
+  }else{
+    cEl.style.display='none';
+  }
+}
+
+function closeWorkTodayModal(){
+  document.getElementById('workTodayModal').classList.remove('active');
+  _wtCurrentItem=null;
+}
+
+function confirmWorkToday(){
+  if(!_wtCurrentItem)return;
+  var timeVal=document.getElementById('wtTime').value;
+  var durVal=parseInt(document.getElementById('wtDuration').value);
+  if(!timeVal){toast('Pick a time');return;}
+  if(!durVal){toast('Pick a duration');return;}
+  
+  if(!state.tlBlocks)state.tlBlocks=[];
+  state.tlBlocks.push({
+    id:'tlb'+Date.now()+Math.random().toString(36).slice(2),
+    name:_wtCurrentItem.name,
+    date:todayStr(),
+    time:timeVal,
+    duration:durVal,
+    projectId:_wtCurrentItem.type==='subtask'||_wtCurrentItem.type==='project'?_wtCurrentItem.projectId:'',
+    projectIds:[],
+    priority:_wtCurrentItem.priority,
+    linkedType:_wtCurrentItem.type,
+    linkedId:_wtCurrentItem.id
+  });
+  save();
+  closeWorkTodayModal();
+  renderProjects();renderTaskList();renderTimeline();
+  if(typeof updateDayProgress==='function')updateDayProgress();
+  toast('Scheduled — '+_tlFmtTime(_tlParseTime(timeVal)));
+}
+
+// ═══ Banner overlay — block strip on day-progress-bar ═══
+function renderBannerBlocks(){
+  var bar=document.getElementById('dayProgressBar');
+  if(!bar)return;
+  // Remove existing overlay container
+  var existing=bar.querySelector('.day-progress-bar-blocks');
+  if(existing)existing.remove();
+  
+  var blocks=_tlCollectBlocks();
+  if(blocks.length===0)return;
+  
+  // Banner window: 5am → 8pm = 15 hours
+  var BANNER_START=5*60,BANNER_END=20*60,BANNER_RANGE=BANNER_END-BANNER_START;
+  
+  var palette=['#5b8ce8','#7fb3a0','#e88c6a','#c77dba','#a0a0aa','#d4a853','#5be8ff','#ff6b9d'];
+  
+  var container=document.createElement('div');
+  container.className='day-progress-bar-blocks';
+  
+  blocks.forEach(function(b){
+    var startMin=b.startMin;
+    var endMin=startMin+b.durMin;
+    // Clip to banner range
+    if(endMin<=BANNER_START||startMin>=BANNER_END)return;
+    var clippedStart=Math.max(startMin,BANNER_START);
+    var clippedEnd=Math.min(endMin,BANNER_END);
+    var leftPct=((clippedStart-BANNER_START)/BANNER_RANGE)*100;
+    var widthPct=((clippedEnd-clippedStart)/BANNER_RANGE)*100;
+    var colorIdx=_tlProjectColor(b.projectId);
+    var color=colorIdx==='no-proj'?'rgba(255,255,255,0.4)':palette[colorIdx];
+    
+    var block=document.createElement('div');
+    block.className='dpb-block';
+    block.style.left=leftPct+'%';
+    block.style.width=widthPct+'%';
+    block.style.background=color;
+    block.title=b.name+' — '+_tlFmtTime(startMin)+' to '+_tlFmtTime(endMin);
+    container.appendChild(block);
+  });
+  
+  bar.appendChild(container);
+}
+
 function _tlMinutesToY(minutes){
   // minutes from midnight → Y px offset within tl-grid
   var startMin=TL_DAY_START_H*60;
@@ -6623,6 +6859,8 @@ function renderTimeline(){
   var countEl=document.getElementById('tlBlockCount');
   if(countEl)countEl.textContent=blocks.length;
   _tlBuildLegend();
+  // Refresh banner overlay
+  if(typeof renderBannerBlocks==='function')renderBannerBlocks();
 }
 
 function addTimelineBlock(){
@@ -6782,6 +7020,43 @@ setTimeout(checkShareTarget, 400); // slight delay so panels render first
     <button class="jarvis-mic" id="jarvisMicBtn" onclick="jarvisToggleMic()" title="Voice input">&#127908;</button>
     <button class="jarvis-send" id="jarvisSendBtn" onclick="jarvisSend()" title="Send">&#9650;</button>
   </div>
+</div>
+
+<!-- WORK TODAY MODAL -->
+<div class="modal-blur-overlay" id="workTodayModal">
+<div class="modal-blur-backdrop" onclick="closeWorkTodayModal()"></div>
+<div class="modal-blur-panel" style="max-width:420px;">
+  <div class="modal-blur-header">
+    <div class="modal-blur-title">&#128197; Schedule for Today</div>
+    <button class="modal-blur-close" onclick="closeWorkTodayModal()">&#10005;</button>
+  </div>
+  <div class="modal-blur-body">
+    <div id="wtItemName" style="font-size:14px;font-weight:600;color:var(--text);margin-bottom:14px;padding:10px 12px;background:var(--surface-raised);border-radius:6px;border-left:3px solid #5be8ff;"></div>
+    
+    <div class="section-label" style="margin-bottom:6px;">When?</div>
+    <div style="display:flex;gap:8px;align-items:center;margin-bottom:14px;">
+      <input type="time" id="wtTime" style="flex:1;font-size:15px;padding:8px;">
+      <select id="wtDuration" style="font-size:13px;padding:8px;">
+        <option value="15">15m</option>
+        <option value="30">30m</option>
+        <option value="60" selected>1hr</option>
+        <option value="90">1.5hr</option>
+        <option value="120">2hr</option>
+        <option value="180">3hr</option>
+        <option value="240">4hr</option>
+      </select>
+    </div>
+    
+    <div id="wtSuggestion" style="font-size:11px;color:var(--text-dim);margin-bottom:14px;padding:8px 10px;background:rgba(91,232,255,0.05);border:1px solid rgba(91,232,255,0.15);border-radius:4px;font-style:italic;"></div>
+    
+    <div id="wtConflict" style="display:none;font-size:11px;color:#e88c6a;margin-bottom:10px;padding:6px 10px;background:rgba(232,140,106,0.08);border-radius:4px;"></div>
+    
+    <div style="display:flex;gap:8px;justify-content:flex-end;">
+      <button class="btn btn-sm" onclick="closeWorkTodayModal()" style="font-size:12px;">Cancel</button>
+      <button class="btn btn-accent btn-sm" id="wtScheduleBtn" onclick="confirmWorkToday()" style="font-size:12px;background:#5be8ff;color:#02141a;">Schedule</button>
+    </div>
+  </div>
+</div>
 </div>
 
 </body>
