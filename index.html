@@ -3693,7 +3693,7 @@ function renderTaskList(){
         (t.timeEst?'<span class="tl-time-badge">'+fmtTimeEst(t.timeEst)+'</span>':'')+
         dueHTML+
         '</div></div>'+
-        '<span class="wt-clock-btn '+(_isScheduledToday(t.id)?'scheduled':'')+'" onclick="event.stopPropagation();handleWorkTodayClick(\''+t.source+'\',\''+t.id+'\',\''+(t.projectId||'')+'\')" title="Work on this today">&#128197;</span>'+
+        '<span class="wt-clock-btn '+(_isScheduledToday(t.id)?'scheduled':'')+'" onclick="event.stopPropagation();handleWorkTodayClick(\''+(t.source==='standalone'?'task':'subtask')+'\',\''+t.id+'\',\''+(t.projectId||'')+'\')" title="Work on this today">&#128197;</span>'+
         (t.source==='standalone'?'<span class="tl-del" onclick="deleteStandaloneTask(\''+t.id+'\')">\u2715</span>':'')+
         '</div>';
     }).join('');
