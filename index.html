@@ -6480,11 +6480,9 @@ function updateCompletedWorkoutsCounter(){
 
 
 
-async function initApp(){
-await load();
-initPanelVisibility();applyPanelOrder();applyPanelVisibility();updateLockUI();updateClock();updateTimeLeft();setInterval(updateClock,1000);setInterval(updateTimeLeft,30000);updateTimerDisplay();renderPointsBadge();awardDailyLogin();
-// Check for routine daily reset every minute (handles dashboards left open overnight)
-setInterval(checkDailyRoutineReset,60000);
+// ═══════════════════════════════════════
+// TIMELINE + WORK-TODAY — at script scope so renderers and HTML onclick handlers can see them
+// ═══════════════════════════════════════
 // ═══════════════════════════════════════
 // TIMELINE PANEL — daily time-blocking
 // ═══════════════════════════════════════
@@ -6974,6 +6972,16 @@ setInterval(function(){
 // ═══════════════════════════════════════
 // END TIMELINE
 // ═══════════════════════════════════════
+
+// ═══════════════════════════════════════
+// END TIMELINE
+// ═══════════════════════════════════════
+
+async function initApp(){
+await load();
+initPanelVisibility();applyPanelOrder();applyPanelVisibility();updateLockUI();updateClock();updateTimeLeft();setInterval(updateClock,1000);setInterval(updateTimeLeft,30000);updateTimerDisplay();renderPointsBadge();awardDailyLogin();
+// Check for routine daily reset every minute (handles dashboards left open overnight)
+setInterval(checkDailyRoutineReset,60000);
 
 // Also re-check when tab becomes visible again (handles laptop sleep/wake, phone unlock)
 document.addEventListener('visibilitychange',function(){if(!document.hidden){checkDailyRoutineReset();awardDailyLogin();renderTimeline();}});
