@@ -102,7 +102,38 @@ body{font-family:'DM Sans',sans-serif;background:var(--bg);color:var(--text);min
 .lock-btn.unlocked{background:var(--accent-glow);color:var(--accent);border-color:var(--accent-dim);}
 /* MOBILE NAV — hidden on desktop, home tile grid on mobile */
 .nav-tabs{display:none;}
-.mobile-home{display:none;position:fixed;inset:0;top:0;bottom:0;z-index:50;background:var(--bg);overflow-y:auto;padding:calc(env(safe-area-inset-top)+14px) 14px calc(env(safe-area-inset-bottom)+14px);}
+.mobile-home{display:none;position:fixed;inset:0;top:0;bottom:0;z-index:50;background:var(--bg);overflow-y:auto;padding:calc(env(safe-area-inset-top)+14px) 14px calc(env(safe-area-inset-bottom)+14px);overscroll-behavior-y:contain;}
+
+/* ═══ PULL-TO-REFRESH ═══ */
+.ptr-indicator{
+  position:fixed;top:0;left:50%;transform:translate(-50%,-100%);
+  width:46px;height:46px;border-radius:50%;
+  background:var(--surface-raised);border:1.5px solid var(--accent-dim);
+  box-shadow:0 4px 16px rgba(0,0,0,0.3);
+  display:flex;align-items:center;justify-content:center;
+  z-index:200;pointer-events:none;
+  transition:opacity 0.2s;opacity:0;
+  /* iOS safe-area aware */
+  margin-top:env(safe-area-inset-top);
+}
+.ptr-indicator.visible{opacity:1;}
+.ptr-indicator.refreshing{
+  background:var(--accent-glow);border-color:var(--accent);
+}
+.ptr-arrow{
+  font-size:20px;color:var(--accent);line-height:1;
+  transition:transform 0.2s ease;
+  transform-origin:center;
+}
+.ptr-indicator.threshold-met .ptr-arrow{transform:rotate(180deg);}
+.ptr-indicator.refreshing .ptr-arrow{
+  animation:ptr-spin 0.8s linear infinite;
+  font-size:18px;
+}
+@keyframes ptr-spin{
+  from{transform:rotate(0deg);}
+  to{transform:rotate(360deg);}
+}
 
 /* Mobile home header — banner-style title with gradient bar.
    Padding-top combines iOS safe-area-inset (notch height, 0 on non-notch devices)
@@ -1662,6 +1693,7 @@ body.unlocked .date-editable{border-bottom-color:var(--border);}
 
 <!-- MOBILE HOME SCREEN (tile grid) -->
 <div class="mobile-home" id="mobileHome">
+  <div class="ptr-indicator" id="ptrIndicator"><span class="ptr-arrow" id="ptrArrow">&#8595;</span></div>
   <div class="mobile-home-header">
     <div class="mobile-home-title">Centerpost</div>
     <div class="mobile-home-subtitle">Productivity Dashboard</div>
@@ -7172,7 +7204,144 @@ initPanelVisibility();applyPanelOrder();applyPanelVisibility();updateLockUI();up
 // Check for routine daily reset every minute (handles dashboards left open overnight)
 setInterval(checkDailyRoutineReset,60000);
 
-// Also re-check when tab becomes visible again (handles laptop sleep/wake, phone unlock)
+// ═══════════════════════════════════════
+// PULL-TO-REFRESH (mobile)
+// ═══════════════════════════════════════
+(function(){
+  var THRESHOLD=70;        // px to drag before refresh fires
+  var MAX_PULL=120;        // max visual drag distance
+  var DAMPING=0.5;         // resistance after threshold
+  var startY=0,currentY=0,pulling=false,refreshing=false;
+  var ind=null;
+  
+  function getIndicator(){
+    if(!ind)ind=document.getElementById('ptrIndicator');
+    return ind;
+  }
+  
+  function updateIndicator(distance){
+    var el=getIndicator();
+    if(!el)return;
+    if(distance<=0){
+      el.style.transform='translate(-50%,-100%)';
+      el.classList.remove('visible','threshold-met');
+      return;
+    }
+    var capped=Math.min(distance,MAX_PULL);
+    // Translate down: at 0 it's offscreen (-100%), at THRESHOLD it should be at ~12px below top
+    var offsetPx=Math.min(capped*0.6,80);
+    el.style.transform='translate(-50%,calc(-100% + '+offsetPx+'px))';
+    el.classList.add('visible');
+    if(distance>=THRESHOLD){
+      el.classList.add('threshold-met');
+    }else{
+      el.classList.remove('threshold-met');
+    }
+  }
+  
+  function reset(){
+    var el=getIndicator();
+    if(el){
+      el.style.transition='transform 0.25s ease,opacity 0.2s';
+      el.style.transform='translate(-50%,-100%)';
+      el.classList.remove('visible','threshold-met','refreshing');
+      setTimeout(function(){if(el)el.style.transition='';},300);
+    }
+    pulling=false;
+    startY=0;currentY=0;
+  }
+  
+  async function triggerRefresh(){
+    if(refreshing)return;
+    refreshing=true;
+    var el=getIndicator();
+    if(el){
+      el.classList.add('refreshing','visible');
+      el.classList.remove('threshold-met');
+      el.style.transform='translate(-50%,calc(-100% + 80px))';
+    }
+    try{
+      if(typeof load==='function')await load();
+      if(typeof renderProjects==='function')renderProjects();
+      if(typeof renderReminders==='function')renderReminders();
+      if(typeof renderNotes==='function')renderNotes();
+      if(typeof renderTaskList==='function')renderTaskList();
+      if(typeof renderTimeline==='function')renderTimeline();
+      if(typeof renderRoutines==='function')renderRoutines();
+      if(typeof updateAllTileSummaries==='function')updateAllTileSummaries();
+      if(typeof buildMobileHome==='function')buildMobileHome();
+      if(typeof toast==='function')toast('Refreshed');
+    }catch(e){
+      console.warn('[PTR] refresh error:',e);
+    }
+    // Hold the spinner briefly so user sees the refresh happened
+    setTimeout(function(){
+      refreshing=false;
+      reset();
+    },600);
+  }
+  
+  // Only attach on touch devices
+  if(!('ontouchstart' in window))return;
+  
+  var container=null;
+  function ensureContainer(){
+    if(!container)container=document.getElementById('mobileHome');
+    return container;
+  }
+  
+  document.addEventListener('touchstart',function(e){
+    if(refreshing)return;
+    var c=ensureContainer();
+    if(!c)return;
+    // Only when mobile home is the active view (display:block in mobile)
+    var style=window.getComputedStyle(c);
+    if(style.display==='none')return;
+    // Only fire if scroll is at top
+    if(c.scrollTop>0)return;
+    startY=e.touches[0].clientY;
+    currentY=startY;
+    pulling=true;
+  },{passive:true});
+  
+  document.addEventListener('touchmove',function(e){
+    if(!pulling||refreshing)return;
+    currentY=e.touches[0].clientY;
+    var delta=currentY-startY;
+    // If user scrolls UP (delta<0) or we lose top contact, cancel
+    if(delta<=0){
+      updateIndicator(0);
+      return;
+    }
+    var c=ensureContainer();
+    if(c&&c.scrollTop>0){
+      pulling=false;
+      updateIndicator(0);
+      return;
+    }
+    // Apply damping past threshold
+    var dist=delta;
+    if(dist>THRESHOLD)dist=THRESHOLD+(dist-THRESHOLD)*DAMPING;
+    updateIndicator(dist);
+  },{passive:true});
+  
+  document.addEventListener('touchend',function(){
+    if(!pulling||refreshing)return;
+    var delta=currentY-startY;
+    if(delta>=THRESHOLD){
+      triggerRefresh();
+    }else{
+      reset();
+    }
+  },{passive:true});
+  
+  document.addEventListener('touchcancel',function(){
+    if(!pulling||refreshing)return;
+    reset();
+  },{passive:true});
+})();
+
+
 document.addEventListener('visibilitychange',function(){if(!document.hidden){checkDailyRoutineReset();awardDailyLogin();renderTimeline();}});
 
 renderProjects();renderReminders();renderThoughts();renderNotes();renderRoutines();renderTaskList();renderTimeline();checkDailyRoutineReset();newDecisionPrompt();initDragDrop();updateAllTileSummaries();
