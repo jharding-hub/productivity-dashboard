@@ -308,7 +308,7 @@ body.unlocked .date-editable{border-bottom-color:var(--border);}
 .time-left-bar-fill{height:100%;border-radius:2px;background:var(--accent);transition:width 60s linear;}
 
 /* TASK TIMER IN HEADER */
-.task-timer-wrap{display:flex;align-items:center;gap:6px;padding:5px 10px;background:var(--surface-raised);border:1px solid var(--border);border-radius:var(--radius-sm);}
+.task-timer-wrap{display:flex;align-items:center;gap:6px;padding:5px 10px;background:var(--surface-raised);border:1px solid var(--border);border-radius:var(--radius-sm);flex-shrink:0;}
 
 /* ═══ POINTS / REWARDS SYSTEM ═══ */
 .points-badge{display:inline-flex;align-items:center;gap:6px;padding:5px 12px;background:var(--surface-raised);border:1.5px solid var(--border);border-radius:var(--radius-sm);cursor:pointer;transition:all 0.2s;font-weight:600;user-select:none;}
@@ -365,7 +365,7 @@ body.unlocked .date-editable{border-bottom-color:var(--border);}
   .points-tier-icon{font-size:14px;}
   .points-popup{right:8px;}
 }
-.task-timer-display{font-size:18px;font-weight:700;font-variant-numeric:tabular-nums;color:var(--text);min-width:52px;text-align:center;}
+.task-timer-display{font-size:18px;font-weight:700;font-variant-numeric:tabular-nums;color:var(--text);width:90px;min-width:90px;text-align:center;display:inline-block;flex-shrink:0;font-family:'Courier New',monospace;letter-spacing:0.5px;}
 .task-timer-display.running{color:var(--green);}
 .task-timer-btn{background:none;border:none;cursor:pointer;font-size:14px;padding:2px 5px;color:var(--text-dim);transition:color 0.15s;}
 .task-timer-btn:hover{color:var(--text);}
@@ -1385,7 +1385,7 @@ body.unlocked .date-editable{border-bottom-color:var(--border);}
   <div class="header-right">
     <div class="task-timer-wrap" id="taskTimerWrap">
       <button class="task-timer-btn" id="ttStartBtn" onclick="ttStart()" title="Start task timer">&#9654;</button>
-      <div class="task-timer-display" id="ttDisplay">0:00:00</div>
+      <div class="task-timer-display" id="ttDisplay">00:00:00</div>
       <button class="task-timer-btn" onclick="ttPause()" title="Pause">&#9208;</button>
       <button class="task-timer-btn" onclick="ttReset()" title="Reset">&#8634;</button>
     </div>
@@ -5487,7 +5487,7 @@ function _spawnBurst(parent,cx,cy,color){
 // TASK TIMER (elapsed stopwatch)
 // ═══════════════════════════════════════
 var _ttRunning=false,_ttElapsed=0,_ttStart=null,_ttTick=null,_ttAwarded=false;
-function _ttFmt(ms){var s=Math.floor(ms/1000),h=Math.floor(s/3600);s=s%3600;var m=Math.floor(s/60);s=s%60;return h+':'+(m<10?'0':'')+m+':'+(s<10?'0':'')+s;}
+function _ttFmt(ms){var s=Math.floor(ms/1000),h=Math.floor(s/3600);s=s%3600;var m=Math.floor(s/60);s=s%60;return (h<10?'0':'')+h+':'+(m<10?'0':'')+m+':'+(s<10?'0':'')+s;}
 function ttStart(){
   if(_ttRunning)return;
   _ttRunning=true;_ttStart=Date.now()-_ttElapsed;
@@ -5511,7 +5511,7 @@ function ttPause(){
 }
 function ttReset(){
   ttPause();_ttElapsed=0;_ttStart=null;_ttAwarded=false;
-  var el=document.getElementById('ttDisplay');if(el){el.textContent='0:00:00';el.className='task-timer-display';}
+  var el=document.getElementById('ttDisplay');if(el){el.textContent='00:00:00';el.className='task-timer-display';}
   var btn=document.getElementById('ttStartBtn');if(btn)btn.textContent='\u25B6';
 }
 
