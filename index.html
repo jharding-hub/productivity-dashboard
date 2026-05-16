@@ -102,7 +102,7 @@ body{font-family:'DM Sans',sans-serif;background:var(--bg);color:var(--text);min
 .lock-btn.unlocked{background:var(--accent-glow);color:var(--accent);border-color:var(--accent-dim);}
 /* MOBILE NAV — hidden on desktop, home tile grid on mobile */
 .nav-tabs{display:none;}
-.mobile-home{display:none;position:fixed;inset:0;top:0;bottom:0;z-index:50;background:var(--bg);overflow-y:auto;padding:calc(env(safe-area-inset-top)+14px) 14px calc(env(safe-area-inset-bottom)+14px);overscroll-behavior-y:contain;}
+.mobile-home{display:none;position:fixed;inset:0;top:0;bottom:0;z-index:50;background:var(--bg);overflow-y:auto;padding:max(env(safe-area-inset-top),50px) 14px calc(env(safe-area-inset-bottom)+14px);overscroll-behavior-y:contain;}
 
 /* ═══ PULL-TO-REFRESH ═══ */
 .ptr-indicator{
@@ -136,15 +136,18 @@ body{font-family:'DM Sans',sans-serif;background:var(--bg);color:var(--text);min
 }
 
 /* Mobile home header — banner-style title with gradient bar.
-   Padding-top combines iOS safe-area-inset (notch height, 0 on non-notch devices)
-   with an explicit 32px so the title clears the speaker/camera dead zone even when iOS
-   doesn't report a notch (e.g., older iPhones, iPhone SE, most Android phones). */
+   max() guarantees a minimum even if iOS reports 0 for safe-area in standalone mode,
+   which is a known iOS PWA bug when status-bar-style is black-translucent. */
 .mobile-home-header{
   display:flex;flex-direction:column;align-items:center;gap:4px;
   margin-bottom:18px;
-  padding-top:calc(env(safe-area-inset-top)+32px);
+  padding-top:max(env(safe-area-inset-top),20px);
   padding-bottom:14px;border-bottom:1px solid var(--border);
 }
+
+/* Standalone PWA mode: extra clearance for notched devices that don't report safe-area properly */
+body.standalone-pwa .mobile-home{padding-top:max(env(safe-area-inset-top),60px);}
+body.standalone-pwa .mobile-home-header{padding-top:max(env(safe-area-inset-top),30px);}
 .mobile-home-title{
   font-family:'Fraunces',serif;font-size:34px;font-weight:700;
   color:var(--text);letter-spacing:-0.5px;line-height:1;
@@ -3193,6 +3196,18 @@ function newDecisionPrompt(){const el=document.getElementById('decisionPrompt');
 // MOBILE
 // ─── MOBILE HOME TILE NAVIGATION ─────────────────────────────────────────
 var _isMobile=function(){return window.innerWidth<=768;};
+
+// Detect standalone PWA mode (launched from home screen, not Safari)
+// iOS exposes navigator.standalone, modern browsers also support display-mode media query
+(function _detectStandalone(){
+  var isStandalone=
+    (window.matchMedia&&window.matchMedia('(display-mode: standalone)').matches)
+    ||window.navigator.standalone===true
+    ||document.referrer.startsWith('android-app://');
+  if(isStandalone){
+    document.body.classList.add('standalone-pwa');
+  }
+})();
 
 const MOBILE_PANELS=[
   {id:'projects', icon:'&#128194;', label:'Projects',   badge:'projCount'},
