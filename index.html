@@ -102,12 +102,16 @@ body{font-family:'DM Sans',sans-serif;background:var(--bg);color:var(--text);min
 .lock-btn.unlocked{background:var(--accent-glow);color:var(--accent);border-color:var(--accent-dim);}
 /* MOBILE NAV — hidden on desktop, home tile grid on mobile */
 .nav-tabs{display:none;}
-.mobile-home{display:none;position:fixed;inset:0;top:0;bottom:0;z-index:50;background:var(--bg);overflow-y:auto;padding:14px 14px calc(env(safe-area-inset-bottom)+14px);}
+.mobile-home{display:none;position:fixed;inset:0;top:0;bottom:0;z-index:50;background:var(--bg);overflow-y:auto;padding:calc(env(safe-area-inset-top)+14px) 14px calc(env(safe-area-inset-bottom)+14px);}
 
-/* Mobile home header — banner-style title with gradient bar */
+/* Mobile home header — banner-style title with gradient bar.
+   Padding-top combines iOS safe-area-inset (notch height, 0 on non-notch devices)
+   with an explicit 32px so the title clears the speaker/camera dead zone even when iOS
+   doesn't report a notch (e.g., older iPhones, iPhone SE, most Android phones). */
 .mobile-home-header{
   display:flex;flex-direction:column;align-items:center;gap:4px;
-  margin-bottom:18px;padding-top:calc(env(safe-area-inset-top)+8px);
+  margin-bottom:18px;
+  padding-top:calc(env(safe-area-inset-top)+32px);
   padding-bottom:14px;border-bottom:1px solid var(--border);
 }
 .mobile-home-title{
