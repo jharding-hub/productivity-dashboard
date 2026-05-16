@@ -817,6 +817,8 @@ body.unlocked .date-editable{border-bottom-color:var(--border);}
   color:var(--text-faint);cursor:pointer;font-size:11px;
   transition:all 0.15s;flex-shrink:0;line-height:1;
 }
+/* Work-today modal needs to stack above panel-overlay (1000) and project modal (1100) */
+#workTodayModal{z-index:1300;}
 .wt-clock-btn:hover{border-color:rgba(91,232,255,0.5);color:#5be8ff;background:rgba(91,232,255,0.08);}
 .wt-clock-btn.scheduled{
   border-color:#5be8ff;color:#5be8ff;
