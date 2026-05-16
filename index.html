@@ -829,16 +829,21 @@ body.unlocked .date-editable{border-bottom-color:var(--border);}
 
 /* Banner timeline block overlays */
 .day-progress-bar-blocks{
-  position:absolute;left:0;right:0;bottom:0;height:10px;
-  pointer-events:none;z-index:7;border-radius:0 0 10px 10px;overflow:hidden;
+  position:absolute;left:0;right:0;bottom:0;height:21px;
+  pointer-events:none;z-index:7;border-radius:0 0 10px 10px;overflow:visible;
 }
 .dpb-block{
   position:absolute;top:0;bottom:0;
-  border-radius:2px;opacity:0.92;
-  border-top:1px solid rgba(0,0,0,0.25);
+  border-radius:3px;opacity:0.85;
+  border-top:1px solid rgba(0,0,0,0.3);
   box-shadow:inset 0 1px 0 rgba(255,255,255,0.2);
+  pointer-events:auto;cursor:grab;
+  transition:opacity 0.15s,transform 0.1s;
 }
-.dpb-block:hover{opacity:1;}
+.dpb-block:hover{opacity:1;transform:scaleY(1.08);}
+.dpb-block.dragging{cursor:grabbing;opacity:1;z-index:20;box-shadow:0 0 12px rgba(91,232,255,0.6),inset 0 1px 0 rgba(255,255,255,0.3);}
+.tl-block.dragging{cursor:grabbing;opacity:0.85;z-index:20;box-shadow:0 0 16px rgba(91,232,255,0.5);}
+.tl-block{cursor:grab;}
 
 
 .tl-add-row{display:flex;gap:6px;flex-wrap:wrap;}.tl-add-row>*{flex:1;min-width:0;}
@@ -6694,7 +6699,109 @@ function _writeBlock(dateStr,timeVal,durVal){
   }
 }
 
-// ═══ Banner overlay — block strip on day-progress-bar ═══
+// ═══ Drag-to-reschedule (works on both banner and timeline) ═══
+var _tlDragInProgress=false;
+
+function _tlAttachDragHandlers(el,blockId,mode){
+  // mode: 'banner' (horizontal drag) or 'timeline' (vertical drag)
+  // Only state.tlBlocks entries (manual blocks + clock-button scheduled) are draggable;
+  // source-linked auto-blocks (reminders/tasks with embedded times) skip drag.
+  var inTlBlocks=(state.tlBlocks||[]).some(function(b){return b.id===blockId;});
+  if(!inTlBlocks){el.style.cursor='default';return;}
+  
+  var dragging=false,startCoord=0,initialStartMin=0,pxPerMin=0,blockRef=null,pendingMin=null;
+  
+  el.addEventListener('pointerdown',function(e){
+    if(e.button!==0&&e.pointerType==='mouse')return; // left button only for mouse
+    blockRef=(state.tlBlocks||[]).find(function(b){return b.id===blockId;});
+    if(!blockRef)return;
+    e.preventDefault();
+    e.stopPropagation();
+    
+    initialStartMin=_tlParseTime(blockRef.time);
+    pendingMin=initialStartMin;
+    
+    if(mode==='banner'){
+      var bar=document.getElementById('dayProgressBar');
+      if(!bar)return;
+      var rect=bar.getBoundingClientRect();
+      // Banner spans 5am-8pm = 900 min
+      pxPerMin=rect.width/900;
+      startCoord=e.clientX;
+    }else{
+      // Timeline: 52px per hour
+      pxPerMin=TL_HOUR_PX/60;
+      startCoord=e.clientY;
+    }
+    
+    dragging=true;
+    _tlDragInProgress=true;
+    try{el.setPointerCapture(e.pointerId);}catch(err){}
+    el.classList.add('dragging');
+  });
+  
+  el.addEventListener('pointermove',function(e){
+    if(!dragging)return;
+    e.preventDefault();
+    
+    var deltaPx=(mode==='banner'?e.clientX:e.clientY)-startCoord;
+    var deltaMin=deltaPx/pxPerMin;
+    // Snap to 15-min increments
+    var snappedDelta=Math.round(deltaMin/15)*15;
+    var newStartMin=initialStartMin+snappedDelta;
+    
+    // Constrain to valid range
+    var maxStart=24*60-(parseInt(blockRef.duration)||60);
+    newStartMin=Math.max(0,Math.min(maxStart,newStartMin));
+    pendingMin=newStartMin;
+    
+    // Live visual update
+    if(mode==='banner'){
+      var BANNER_START=5*60,BANNER_RANGE=900;
+      var dur=parseInt(blockRef.duration)||60;
+      var endMin=newStartMin+dur;
+      if(endMin<=BANNER_START||newStartMin>=20*60){el.style.display='none';return;}
+      var clippedStart=Math.max(newStartMin,BANNER_START);
+      var clippedEnd=Math.min(endMin,20*60);
+      el.style.display='';
+      el.style.left=((clippedStart-BANNER_START)/BANNER_RANGE)*100+'%';
+      el.style.width=((clippedEnd-clippedStart)/BANNER_RANGE)*100+'%';
+    }else{
+      el.style.top=_tlMinutesToY(newStartMin)+'px';
+    }
+  });
+  
+  var commit=function(e){
+    if(!dragging)return;
+    dragging=false;
+    _tlDragInProgress=false;
+    try{el.releasePointerCapture(e.pointerId);}catch(err){}
+    el.classList.remove('dragging');
+    
+    if(pendingMin===null||pendingMin===initialStartMin){
+      // No real movement — re-render to clean up any partial visual changes
+      renderTimeline();
+      return;
+    }
+    
+    // Commit new time to state
+    var hh=Math.floor(pendingMin/60),mm=pendingMin%60;
+    var newTime=(hh<10?'0':'')+hh+':'+(mm<10?'0':'')+mm;
+    var liveBlock=(state.tlBlocks||[]).find(function(b){return b.id===blockId;});
+    if(liveBlock){
+      liveBlock.time=newTime;
+      save();
+      renderTimeline();
+      if(typeof updateDayProgress==='function')updateDayProgress();
+      toast('Moved to '+_tlFmtTime(pendingMin));
+    }
+  };
+  
+  el.addEventListener('pointerup',commit);
+  el.addEventListener('pointercancel',commit);
+}
+
+
 function renderBannerBlocks(){
   var bar=document.getElementById('dayProgressBar');
   if(!bar)return;
@@ -6730,7 +6837,9 @@ function renderBannerBlocks(){
     block.style.left=leftPct+'%';
     block.style.width=widthPct+'%';
     block.style.background=color;
-    block.title=b.name+' — '+_tlFmtTime(startMin)+' to '+_tlFmtTime(endMin);
+    block.title=b.name+' — '+_tlFmtTime(startMin)+' to '+_tlFmtTime(endMin)+' · drag to reschedule';
+    block.dataset.blockId=b.id;
+    _tlAttachDragHandlers(block,b.id,'banner');
     container.appendChild(block);
   });
   
@@ -6885,6 +6994,7 @@ function renderTimeline(){
       +'<div class="tl-block-meta">'+_tlFmtTime(b.startMin)+' – '+_tlFmtTime(endMin)+' · '+b.durMin+'m</div>'
       +(projName?'<div class="tl-block-proj">'+esc(projName)+'</div>':'')
       +(b.source==='manual'?'<div class="tl-block-del" onclick="event.stopPropagation();deleteTimelineBlock(\''+b.id+'\')" title="Delete block">&#10005;</div>':'');
+    _tlAttachDragHandlers(div,b.id,'timeline');
     grid.appendChild(div);
   });
   
@@ -7000,6 +7110,7 @@ function connectOutlookGraph(){
 
 // Auto-refresh timeline every minute so the "now" line moves
 setInterval(function(){
+  if(_tlDragInProgress)return; // Don't yank the block out of the user's hand
   var el=document.getElementById('tlGrid');
   if(el&&document.visibilityState==='visible')renderTimeline();
 },60000);
