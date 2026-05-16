@@ -54,8 +54,8 @@ body{font-family:'DM Sans',sans-serif;background:var(--bg);color:var(--text);min
 
 .day-progress-elapsed{position:absolute;left:0;top:0;bottom:0;background:rgba(0,0,0,0.28);transition:width 1s ease;border-radius:8px 0 0 8px;}
 .day-progress-marker{position:absolute;top:0;bottom:0;width:1px;background:rgba(0,0,0,0.25);overflow:visible;}
-.day-progress-marker-label{position:absolute;bottom:3px;left:50%;transform:translateX(-50%);font-size:13px;font-weight:700;color:rgba(0,0,0,0.55);white-space:nowrap;line-height:1;pointer-events:none;z-index:4;}
-.day-progress-edge-label{position:absolute;bottom:3px;font-size:13px;font-weight:700;color:rgba(0,0,0,0.55);white-space:nowrap;line-height:1;pointer-events:none;z-index:4;}
+.day-progress-marker-label{position:absolute;top:3px;left:50%;transform:translateX(-50%);font-size:13px;font-weight:700;color:rgba(0,0,0,0.55);white-space:nowrap;line-height:1;pointer-events:none;z-index:4;}
+.day-progress-edge-label{position:absolute;top:3px;font-size:13px;font-weight:700;color:rgba(0,0,0,0.55);white-space:nowrap;line-height:1;pointer-events:none;z-index:4;}
 .day-progress-edge-label.start{left:5px;}
 .day-progress-edge-label.end{right:5px;}
 .day-progress-now{position:absolute;top:0;bottom:0;width:3px;background:rgba(255,255,255,0.7);z-index:6;border-radius:2px;pointer-events:none;box-shadow:0 0 6px rgba(255,255,255,0.5);}
@@ -791,7 +791,7 @@ body.unlocked .date-editable{border-bottom-color:var(--border);}
 .tl-block.tl-color-2{background:rgba(232,140,106,0.18);border-left-color:#e88c6a;}
 .tl-block.tl-color-3{background:rgba(199,125,186,0.18);border-left-color:#c77dba;}
 .tl-block.tl-color-4{background:rgba(160,160,170,0.15);border-left-color:#a0a0aa;}
-.tl-block.tl-color-5{background:rgba(212,168,83,0.18);border-left-color:#d4a853;}
+.tl-block.tl-color-5{background:rgba(158,123,255,0.18);border-left-color:#9e7bff;}
 .tl-block.tl-color-6{background:rgba(91,232,255,0.15);border-left-color:#5be8ff;}
 .tl-block.tl-color-7{background:rgba(255,107,157,0.16);border-left-color:#ff6b9d;}
 .tl-block.tl-color-no-proj{background:rgba(255,255,255,0.04);border-left-color:rgba(255,255,255,0.2);}
@@ -829,7 +829,7 @@ body.unlocked .date-editable{border-bottom-color:var(--border);}
 
 /* Banner timeline block overlays */
 .day-progress-bar-blocks{
-  position:absolute;left:0;right:0;bottom:0;height:21px;
+  position:absolute;left:0;right:0;bottom:0;height:15px;
   pointer-events:none;z-index:7;border-radius:0 0 10px 10px;overflow:visible;
 }
 .dpb-block{
@@ -6815,7 +6815,7 @@ function renderBannerBlocks(){
   // Banner window: 5am → 8pm = 15 hours
   var BANNER_START=5*60,BANNER_END=20*60,BANNER_RANGE=BANNER_END-BANNER_START;
   
-  var palette=['#5b8ce8','#7fb3a0','#e88c6a','#c77dba','#a0a0aa','#d4a853','#5be8ff','#ff6b9d'];
+  var palette=['#5b8ce8','#7fb3a0','#e88c6a','#c77dba','#a0a0aa','#9e7bff','#5be8ff','#ff6b9d'];
   
   var container=document.createElement('div');
   container.className='day-progress-bar-blocks';
@@ -6938,7 +6938,7 @@ function _tlBuildLegend(){
   if(!el)return;
   if(projIds.length===0){el.innerHTML='';return;}
   
-  var palette=['#5b8ce8','#7fb3a0','#e88c6a','#c77dba','#a0a0aa','#d4a853','#5be8ff','#ff6b9d'];
+  var palette=['#5b8ce8','#7fb3a0','#e88c6a','#c77dba','#a0a0aa','#9e7bff','#5be8ff','#ff6b9d'];
   var html=projIds.map(function(pid){
     var p=(state.projects||[]).find(function(p){return p.id===pid;});
     if(!p)return '';
