@@ -1234,6 +1234,35 @@ body.unlocked .date-editable{border-bottom-color:var(--border);}
 .wo-section{margin-bottom:12px;}
 .wo-section-title{font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:1px;color:#7a6a50;margin-bottom:8px;display:flex;align-items:center;gap:6px;}
 .wo-section-title::after{content:'';flex:1;height:1px;background:#d0c8b8;}
+
+/* Workout track selector */
+.wo-track-selector{
+  margin-bottom:14px;padding:10px 12px;
+  background:rgba(91,232,255,0.04);
+  border:1px solid rgba(91,232,255,0.18);
+  border-radius:8px;
+}
+.wo-track-label{
+  font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:1px;
+  color:var(--text-dim);margin-bottom:8px;
+}
+.wo-track-buttons{
+  display:flex;gap:6px;flex-wrap:wrap;
+}
+.wo-track-btn{
+  flex:1;min-width:90px;
+  display:flex;flex-direction:column;align-items:center;justify-content:center;
+  gap:3px;padding:8px 6px;
+  background:var(--surface-raised);border:1.5px solid var(--border);border-radius:6px;
+  cursor:pointer;transition:all 0.15s;font-family:inherit;
+  -webkit-tap-highlight-color:transparent;
+}
+.wo-track-btn:hover{border-color:rgba(91,232,255,0.5);background:rgba(91,232,255,0.08);}
+.wo-track-btn:active{transform:scale(0.97);}
+.wo-track-btn.active{border-color:#5be8ff;background:rgba(91,232,255,0.18);box-shadow:0 0 8px rgba(91,232,255,0.25);}
+.wo-track-icon{font-size:18px;line-height:1;}
+.wo-track-name{font-size:11px;font-weight:700;color:var(--text);letter-spacing:0.2px;}
+.wo-track-btn.active .wo-track-name{color:#5be8ff;}
 .wo-superset{background:#ffffff;border:1.5px solid #c8bfa8;border-radius:var(--radius-sm);margin-bottom:10px;overflow:hidden;box-shadow:0 2px 6px rgba(0,0,0,0.12);}
 .wo-superset-header{display:flex;align-items:center;gap:8px;padding:8px 12px;border-bottom:1.5px solid #c8bfa8;background:#eeebe3;}
 .wo-superset-label{font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:0.5px;}
@@ -1277,6 +1306,42 @@ body.unlocked .date-editable{border-bottom-color:var(--border);}
 .wo-cooldown-item{font-size:12px;color:#2a2218;padding:3px 0;display:flex;align-items:center;gap:6px;}
 .wo-cooldown-item::before{content:'•';color:#1a7a3a;font-weight:700;}
 .wo-day-rationale{margin-bottom:10px;padding:8px 12px;background:rgba(10,61,143,0.08);border:1px solid rgba(10,61,143,0.2);border-radius:var(--radius-sm);font-size:11px;color:#0a3d8f;line-height:1.5;}
+
+/* ═══ WORKOUT PROGRAM SELECTOR ═══ */
+.wo-program-selector{
+  margin-bottom:14px;padding:10px 12px;
+  background:var(--surface-raised);border:1px solid var(--border);
+  border-radius:var(--radius-sm);
+}
+.wo-program-selector-label{
+  font-size:10px;font-weight:700;color:var(--text-dim);
+  letter-spacing:1.2px;text-transform:uppercase;margin-bottom:8px;
+}
+.wo-program-selector-options{
+  display:grid;grid-template-columns:repeat(3,1fr);gap:6px;
+}
+.wo-program-btn{
+  display:flex;flex-direction:column;align-items:center;gap:4px;
+  padding:10px 6px;
+  background:var(--surface);border:1.5px solid var(--border);
+  border-radius:var(--radius-sm);cursor:pointer;
+  font-family:inherit;color:var(--text);
+  transition:all 0.15s;
+  -webkit-tap-highlight-color:transparent;
+}
+.wo-program-btn:hover{border-color:var(--accent-dim);background:var(--accent-glow);}
+.wo-program-btn:active{transform:scale(0.97);}
+.wo-program-btn.active{
+  border-color:var(--accent);background:var(--accent-glow);
+  box-shadow:0 0 0 1px var(--accent) inset;
+}
+.wo-program-btn-icon{font-size:22px;line-height:1;}
+.wo-program-btn-name{font-size:11px;font-weight:700;line-height:1.2;text-align:center;}
+.wo-program-btn.active .wo-program-btn-name{color:var(--accent);}
+@media(max-width:480px){
+  .wo-program-btn-name{font-size:10px;}
+  .wo-program-btn-icon{font-size:20px;}
+}
 .wo-day-rationale strong{color:#082b6a;}
 /* Workout modal body — light/bright for gym visibility */
 #workoutModal .modal-blur-body{background:#f4f2ee;padding:14px 16px;}
@@ -6256,7 +6321,213 @@ const WO_EXERCISES={
   single_leg_calf_raise:{name:'Single-Leg Calf Raise',muscles:'Gastrocnemius · Balance · Foot Stability',
     steps:['Stand on one foot on edge of step. Other foot lifted.','Hold DB on same side for added load.','Lower heel below step.','Press up onto toes, hold 1 sec.','Complete all reps, switch sides.'],
     tip:'Catches and corrects side-to-side imbalances. Helps with ankle stability on uneven ground.',
-    alts:['standing_calf_raise','seated_calf_raise','walking_lunge','step_ups']}
+    alts:['standing_calf_raise','seated_calf_raise','walking_lunge','step_ups']},
+
+  // ═══ BODY-PART SPLIT additions ══════════════════════════════════════
+  cable_fly:{name:'Cable Fly (Chest)',muscles:'Pecs · Front Delts',
+    steps:['Cables at upper position. Stand center, slight forward lean.','Grab handles, arms slightly bent, palms forward.','Bring hands together in front of chest in arc motion.','Squeeze pecs at midline. Slow return.'],
+    tip:'Stretch is where the chest grows. Don\'t shortcut the lengthening phase.',
+    alts:['db_fly','db_bench','db_incline','pec_deck','push_up']},
+  db_fly:{name:'DB Fly',muscles:'Pecs · Front Delts',
+    steps:['Lie on bench, DBs above chest, slight elbow bend.','Lower DBs in wide arc, feeling chest stretch.','Bring DBs back up in same arc — don\'t bend elbows more at top.','Squeeze pecs together at top.'],
+    tip:'Keep that slight elbow bend locked throughout. Going too heavy turns this into a press.',
+    alts:['cable_fly','db_bench','db_incline','pec_deck','push_up']},
+  pec_deck:{name:'Pec Deck Machine',muscles:'Pecs · Front Delts',
+    steps:['Set seat height — pads at chest level.','Press handles together with controlled arc.','Squeeze 1 sec at midline.','Slow return to stretched position.'],
+    tip:'Fixed path makes this great for end-of-workout pump work when you\'re fatigued.',
+    alts:['cable_fly','db_fly','db_bench','push_up']},
+  skull_crusher:{name:'Skull Crusher (EZ Bar)',muscles:'Triceps (all heads)',
+    steps:['Lie on bench, EZ bar held overhead, arms vertical.','Lower bar to forehead by bending elbows only — upper arms stay vertical.','Press back up using triceps.','Lock out without moving upper arms.'],
+    tip:'The "skull crusher" name is a warning. Control the descent. Elbows track inward slightly.',
+    alts:['db_tricep_ext','tricep_pushdown','close_grip_bench','tricep_kickback','dip']},
+  tricep_pushdown:{name:'Tricep Pushdown (Cable)',muscles:'Triceps (lateral head emphasis)',
+    steps:['Cable at top, rope or straight bar attachment.','Elbows pinned to sides throughout.','Push down until arms locked, squeeze 1 sec.','Slow return — feel stretch at top.'],
+    tip:'Elbow position is everything. If they flare out, you\'re recruiting chest. Lock them at your sides.',
+    alts:['skull_crusher','db_tricep_ext','close_grip_bench','tricep_kickback','dip']},
+  tricep_kickback:{name:'Tricep Kickback (DB)',muscles:'Triceps · Rear Delt (stabilizer)',
+    steps:['Bent over, one hand on bench, DB in opposite hand.','Upper arm parallel to floor and locked there.','Extend forearm back until arm is straight.','Squeeze, slow return.'],
+    tip:'Low-load isolation. Great for tricep finishers.',
+    alts:['db_tricep_ext','tricep_pushdown','skull_crusher','close_grip_bench','dip']},
+  close_grip_bench:{name:'Close-Grip Bench Press',muscles:'Triceps · Inner Chest',
+    steps:['Bench press setup, hands ~shoulder-width (not narrower than that).','Lower bar to lower chest, elbows tucked.','Press back up driving through triceps.','Lock out elbows fully.'],
+    tip:'Don\'t go narrower than shoulder-width — wrist pain isn\'t worth it. Tucking elbows is what loads triceps.',
+    alts:['skull_crusher','db_tricep_ext','tricep_pushdown','dip','push_up']},
+  dip:{name:'Dips (Triceps focus)',muscles:'Triceps · Lower Chest · Front Delts',
+    steps:['Dip bars, body upright (not leaning forward — that targets chest).','Lower until upper arms parallel to floor.','Press back up using triceps.','Lock out fully.'],
+    tip:'Upright torso = triceps. Leaning forward = chest. Pick your focus and commit.',
+    alts:['close_grip_bench','tricep_pushdown','skull_crusher','db_tricep_ext','push_up']},
+  lat_pulldown:{name:'Lat Pulldown (Cable)',muscles:'Lats · Biceps · Rear Delts',
+    steps:['Sit at machine, knees secured, wide grip on bar.','Lean back slightly, pull bar to upper chest.','Squeeze shoulder blades together at bottom.','Slow controlled return — full stretch at top.'],
+    tip:'Don\'t pull behind the neck (shoulder injury risk). Bar to upper chest is the safe target.',
+    alts:['pullups','db_row','cable_row','straight_arm_pulldown']},
+  straight_arm_pulldown:{name:'Straight-Arm Pulldown (Cable)',muscles:'Lats (isolation) · Long head triceps',
+    steps:['Cable at top, slight forward lean, arms straight and pointed up.','Push bar down in arc to thighs, keeping arms straight.','Feel lats engage throughout.','Slow controlled return.'],
+    tip:'Pure lat isolation — no bicep recruitment. Great for end-of-back-day pump work.',
+    alts:['lat_pulldown','pullups','db_row','cable_row']},
+  bent_over_row:{name:'Bent-Over Row (Barbell)',muscles:'Mid Back · Lats · Rear Delts',
+    steps:['Hinge at hips with barbell, back flat, knees slightly bent.','Row bar to lower chest/upper abs.','Squeeze shoulder blades.','Slow return with control.'],
+    tip:'Bigger compound version of DB row. Form first, weight second — keep that flat back.',
+    alts:['db_row','cable_row','lat_pulldown','pullups','t_bar_row']},
+  t_bar_row:{name:'T-Bar Row',muscles:'Mid Back · Lats · Traps',
+    steps:['Straddle T-bar or landmine, grip handles, hinge to row position.','Pull bar to chest, squeeze shoulder blades.','Slow return.','Keep back flat throughout.'],
+    tip:'Hits the mid-back hard. Great alternative when bent-over rows bother your lower back.',
+    alts:['bent_over_row','db_row','cable_row','lat_pulldown']},
+  hammer_curl:{name:'Hammer Curl (DB)',muscles:'Brachialis · Biceps · Forearms',
+    steps:['Stand or sit, DBs at sides, neutral grip (palms facing each other).','Curl DBs up keeping palms neutral throughout.','Squeeze at top, slow return.','Elbows pinned at sides.'],
+    tip:'Hits brachialis, the muscle UNDER your biceps that pushes them up. Adds visible arm thickness.',
+    alts:['db_bicep_curl','preacher_curl','cable_curl','concentration_curl','chin_up']},
+  preacher_curl:{name:'Preacher Curl (DB or EZ Bar)',muscles:'Biceps (short head emphasis)',
+    steps:['Sit at preacher bench, upper arms on pad.','Curl weight up with strict form — no swinging.','Squeeze at top, slow eccentric.','Don\'t fully lock out at bottom (keep tension).'],
+    tip:'Eliminates body english. Pure bicep stretch and contraction. Don\'t go heavy — strict reps.',
+    alts:['db_bicep_curl','hammer_curl','cable_curl','concentration_curl','chin_up']},
+  cable_curl:{name:'Cable Curl',muscles:'Biceps · Forearms',
+    steps:['Cable at low pulley, straight bar or rope attachment.','Curl up with elbows pinned, palms up.','Squeeze hard at top — cables maintain tension here.','Slow return, controlled.'],
+    tip:'Constant tension throughout the rep — cables don\'t lose load at peak like dumbbells do.',
+    alts:['db_bicep_curl','hammer_curl','preacher_curl','concentration_curl','chin_up']},
+  concentration_curl:{name:'Concentration Curl (DB)',muscles:'Biceps (peak emphasis)',
+    steps:['Sit, lean forward, DB in one hand, elbow braced against inner thigh.','Curl DB up with slow control.','Squeeze hard at top, slow descent.','Complete all reps, switch sides.'],
+    tip:'Highest measured bicep EMG of any curl variation (American Council on Exercise study). Isolation gold.',
+    alts:['db_bicep_curl','hammer_curl','preacher_curl','cable_curl','chin_up']},
+  chin_up:{name:'Chin-Up (Underhand)',muscles:'Biceps · Lats · Mid Back',
+    steps:['Underhand grip on pull-up bar, shoulder-width.','Hang fully, pull body up until chin clears bar.','Squeeze biceps and lats at top.','Lower with control to full hang.'],
+    tip:'More biceps than pull-ups. The "best bicep exercise nobody does" because it\'s hard. Add weight if you can do 10+.',
+    alts:['pullups','db_bicep_curl','preacher_curl','hammer_curl','cable_curl']},
+  rear_delt_fly:{name:'Rear Delt Fly (DB or Cable)',muscles:'Rear Delts · Mid Traps · Rhomboids',
+    steps:['Bent over (DB) or facing cable column with cables crossed at low pulley.','Arms slightly bent, lift weights out to sides — pinky up.','Squeeze shoulder blades at top.','Slow return.'],
+    tip:'Most people\'s rear delts are weak vs front. This evens you out and improves posture.',
+    alts:['face_pull','reverse_pec_deck','db_row','cable_row']},
+  reverse_pec_deck:{name:'Reverse Pec Deck',muscles:'Rear Delts · Mid Traps · Rhomboids',
+    steps:['Sit facing the pec deck (reverse direction). Grip handles.','Pull handles out and back, squeezing shoulder blades.','Pause 1 sec at full contraction.','Slow controlled return.'],
+    tip:'Cleaner ROM than DB rear delt flies — machine doesn\'t cheat for you.',
+    alts:['rear_delt_fly','face_pull','db_row','cable_row']},
+  front_raise:{name:'Front Raise (DB)',muscles:'Front Delts',
+    steps:['DBs in front of thighs, arms straight.','Raise one or both up to shoulder height in front of body.','Slow controlled descent.','No swinging.'],
+    tip:'Front delts already get hammered by bench/incline. One light set is plenty.',
+    alts:['db_shoulder_press','lateral_raise','arnold_press']},
+  arnold_press:{name:'Arnold Press (DB)',muscles:'All Three Delt Heads · Triceps',
+    steps:['Seated, DBs at shoulder height, palms facing you.','Press up while rotating palms to face forward at top.','Reverse motion on descent.','Smooth rotation throughout — no jerking.'],
+    tip:'Hits all three delt heads in one rep. Schwarzenegger\'s favorite for a reason.',
+    alts:['db_shoulder_press','lateral_raise','front_raise']},
+  shrug:{name:'DB Shrug',muscles:'Upper Traps',
+    steps:['Heavy DBs at sides, arms straight, stand tall.','Lift shoulders straight up toward ears.','Hold 1 sec at top.','Slow descent. No rolling motion.'],
+    tip:'Don\'t roll the shoulders — pure vertical movement. Rolling is an old myth and risks the rotator cuff.',
+    alts:['farmer_carry','db_row','db_shoulder_press']},
+
+  // ═══ BODYWEIGHT / HIIT track ════════════════════════════════════════
+  push_up:{name:'Push-Up',muscles:'Chest · Triceps · Front Delts · Core',
+    steps:['Plank position, hands shoulder-width, body straight.','Lower chest to floor, elbows ~45° from torso.','Press back up to start.','Brace core throughout — no sagging hips.'],
+    tip:'Hands wider = more chest. Hands closer = more tricep (diamond). Both build the chest.',
+    alts:['db_bench','db_incline','dip','incline_push_up','decline_push_up','diamond_push_up']},
+  incline_push_up:{name:'Incline Push-Up',muscles:'Lower Chest · Triceps · Core',
+    steps:['Hands on elevated surface (couch, bench, counter).','Body angled, plank-tight from head to heels.','Lower chest to surface, press back up.','Higher surface = easier.'],
+    tip:'Regression for standard push-ups. Lower the surface as you build strength.',
+    alts:['push_up','decline_push_up','diamond_push_up','db_bench']},
+  decline_push_up:{name:'Decline Push-Up',muscles:'Upper Chest · Front Delts · Triceps',
+    steps:['Feet on elevated surface, hands on floor.','Plank position, body straight.','Lower chest toward floor.','Press back up.'],
+    tip:'Progression from standard. Hits upper chest harder. Higher feet = harder.',
+    alts:['push_up','diamond_push_up','db_incline','dip']},
+  diamond_push_up:{name:'Diamond Push-Up',muscles:'Triceps (heavy) · Inner Chest',
+    steps:['Hands together under chest, thumbs and index fingers forming diamond.','Lower chest to hands.','Press back up.','Keep elbows tracking close to torso.'],
+    tip:'Tricep-dominant push-up variation. Hard. Build to it from regular push-ups.',
+    alts:['push_up','decline_push_up','close_grip_bench','dip']},
+  pike_push_up:{name:'Pike Push-Up',muscles:'Shoulders · Triceps · Upper Chest',
+    steps:['Push-up start, then pike hips up — body in inverted V.','Bend elbows, lower head toward floor between hands.','Press back up to pike position.','Higher feet = more shoulder load.'],
+    tip:'Bodyweight overhead press substitute. Building block toward handstand push-ups.',
+    alts:['handstand_hold','push_up','decline_push_up','db_shoulder_press']},
+  handstand_hold:{name:'Wall Handstand Hold',muscles:'Shoulders · Core · Wrists',
+    steps:['Hands on floor 6" from wall, kick up to handstand.','Heels touch wall, stack joints (wrists, elbows, shoulders, hips, ankles).','Push floor away — no shoulder shrug.','Hold for time.'],
+    tip:'Build static strength before handstand push-ups. Quality holds > sloppy reps.',
+    alts:['pike_push_up','db_shoulder_press','plank']},
+  inverted_row:{name:'Inverted Row',muscles:'Mid Back · Lats · Rear Delts · Biceps',
+    steps:['Bar/sturdy table at hip-to-chest height. Grip overhand, body underneath.','Hang at full arm extension, body straight.','Pull chest to bar, squeeze shoulder blades.','Slow controlled descent.'],
+    tip:'Bodyweight row. Higher bar = easier, lower bar = harder. Feet elevated = harder still.',
+    alts:['pullups','db_row','lat_pulldown','chin_up']},
+  bw_squat:{name:'Bodyweight Squat',muscles:'Quads · Glutes · Core',
+    steps:['Feet shoulder-width, toes slightly out.','Sit back and down, chest tall, knees track over toes.','Descend until thighs parallel (or lower).','Drive through heels to stand.'],
+    tip:'Foundation of all squat work. Build to 30+ reps before adding load.',
+    alts:['goblet_squat','jump_squat','pistol_progression','lunge_bw']},
+  jump_squat:{name:'Jump Squat',muscles:'Quads · Glutes · Power · Calves',
+    steps:['Descend into squat.','Explode up, jumping as high as possible.','Land softly, immediately descend into next rep.','Knees soft on landing.'],
+    tip:'Plyometric/HIIT staple. Land softly — joints take the brunt if you slap-land.',
+    alts:['bw_squat','goblet_squat','box_jump','jump_lunge','burpee']},
+  pistol_progression:{name:'Pistol Squat Progression',muscles:'Quads · Glutes · Balance · Mobility',
+    steps:['Stand on one leg, other leg extended forward.','Slowly descend by bending standing leg.','Use TRX or door frame for assist as needed.','Press back up, stay tall.'],
+    tip:'Bodyweight single-leg squat. Progress: assisted → unassisted partial → full pistol. Takes months.',
+    alts:['bulgarian_split','bw_squat','step_ups','reverse_lunge','split_squat']},
+  lunge_bw:{name:'Bodyweight Lunge',muscles:'Quads · Glutes · Hamstrings · Balance',
+    steps:['Step forward or backward, lower back knee toward floor.','Front shin vertical, knee tracks over ankle.','Drive through front heel to return.','Alternate or all one side.'],
+    tip:'Forward lunges build quads more, reverse lunges easier on knees. Pick based on what your knees say.',
+    alts:['reverse_lunge','split_squat','walking_lunge','bulgarian_split','jump_lunge']},
+  jump_lunge:{name:'Jump Lunge (Plyometric)',muscles:'Quads · Glutes · Power · Cardio',
+    steps:['Start in lunge position.','Jump explosively, switch legs mid-air.','Land in opposite lunge.','Continue alternating.'],
+    tip:'High demand. Keep that front shin vertical even when fatigued — that\'s when knees go bad.',
+    alts:['jump_squat','lunge_bw','box_jump','burpee']},
+  glute_bridge:{name:'Glute Bridge',muscles:'Glutes · Hamstrings · Core',
+    steps:['Lie on back, knees bent, feet flat on floor near butt.','Push through heels to lift hips up.','Squeeze glutes hard at top.','Slow descent.'],
+    tip:'Bodyweight hip thrust substitute. Single-leg version when bilateral becomes easy.',
+    alts:['single_leg_glute_bridge','hip_thrust','rdl','cable_pull_through']},
+  single_leg_glute_bridge:{name:'Single-Leg Glute Bridge',muscles:'Glutes · Hamstrings · Core',
+    steps:['Lie on back, one knee bent foot on floor, other leg extended.','Push through standing heel, lift hips.','Squeeze glute at top, keep extended leg in line with body.','Slow descent, switch sides each set.'],
+    tip:'Unilateral glute work that catches imbalances. Great for runners and on-foot first responders.',
+    alts:['glute_bridge','hip_thrust','bulgarian_split','step_ups']},
+  burpee:{name:'Burpee',muscles:'Full Body · Cardio · Power',
+    steps:['Stand. Squat down, hands on floor.','Kick legs back to plank, do a push-up (optional).','Jump feet back to hands.','Stand and jump with hands overhead.'],
+    tip:'The classic full-body HIIT exercise. Drop the push-up if pace is the goal. 10 burpees = a serious minute.',
+    alts:['mountain_climber','jump_squat','bear_crawl','jump_lunge']},
+  mountain_climber:{name:'Mountain Climber',muscles:'Core · Cardio · Hip Flexors · Shoulders',
+    steps:['Plank position, hands under shoulders.','Drive one knee toward chest.','Switch legs quickly, like running in place.','Keep hips low — no piking up.'],
+    tip:'Cardio + core + shoulder stability all at once. Pace it like sprint intervals.',
+    alts:['burpee','bear_crawl','plank','high_knees']},
+  bear_crawl:{name:'Bear Crawl',muscles:'Core · Shoulders · Quads · Coordination',
+    steps:['Hands and feet on floor, knees hovering just off ground.','Crawl forward — opposite hand and foot move together.','Knees stay low (1-2" off floor).','Quick small steps.'],
+    tip:'Anti-rotation core work disguised as cardio. Looks easy until you try it.',
+    alts:['mountain_climber','crab_walk','burpee','plank']},
+  crab_walk:{name:'Crab Walk',muscles:'Shoulders · Triceps · Glutes · Core',
+    steps:['Sit, hands behind you, feet flat in front.','Lift hips so body forms reverse plank.','Walk forward or backward.','Hips stay lifted throughout.'],
+    tip:'Hits triceps and posterior chain together — rare combo. Burns the back of the arms.',
+    alts:['bear_crawl','plank','glute_bridge','dip']},
+  high_knees:{name:'High Knees',muscles:'Cardio · Hip Flexors · Calves',
+    steps:['Stand tall, run in place.','Drive knees up toward chest — at least to belt height.','Pump arms.','Keep pace fast.'],
+    tip:'Easy HIIT warm-up or finisher. Tabata-style for 4 min wrecks the cardio system.',
+    alts:['mountain_climber','burpee','jump_squat','jumping_jack']},
+  jumping_jack:{name:'Jumping Jack',muscles:'Cardio · Shoulders · Calves',
+    steps:['Stand feet together, arms at sides.','Jump feet out wide while raising arms overhead.','Jump back to start.','Keep pace consistent.'],
+    tip:'Warm-up classic. 30-60 sec gets the heart rate primed for harder intervals.',
+    alts:['high_knees','mountain_climber','burpee','jump_squat']},
+  box_jump:{name:'Box Jump',muscles:'Quads · Glutes · Power · Calves',
+    steps:['Stand in front of sturdy box (12-30" tall).','Quarter squat, swing arms back.','Explode up onto box, landing soft with quarter squat.','Step DOWN (don\'t jump down — protects knees).'],
+    tip:'Step down every rep. Jumping down compounds knee load over reps and is the #1 box jump injury.',
+    alts:['jump_squat','jump_lunge','burpee','step_ups']},
+  jump_rope:{name:'Jump Rope',muscles:'Cardio · Calves · Coordination',
+    steps:['Rope handles in each hand, rope behind feet.','Small jumps, just clearing the rope.','Light on toes, knees soft.','Wrists turn the rope, not arms.'],
+    tip:'Most underrated cardio tool. 10 min jump rope ≈ 30 min jogging at higher impact efficiency.',
+    alts:['jumping_jack','high_knees','box_jump','mountain_climber']},
+  hollow_hold:{name:'Hollow Body Hold',muscles:'Deep Core · Hip Flexors',
+    steps:['Lie on back. Arms overhead, legs straight.','Lift shoulders and legs off floor, lower back pressed into floor.','Hold the "banana" position.','Breathe steadily. Hold for time.'],
+    tip:'Gymnastics staple. Foundation for advanced bodyweight skills. Lower back must stay glued to floor.',
+    alts:['plank','dead_bug','hanging_knee_raise','ab_wheel']},
+  
+  // ═══ HIIT PROTOCOL BLOCKS (treated as "exercises" so they fit the same UI) ═══
+  tabata_burpees:{name:'Tabata Burpees (4 min)',muscles:'Full Body · Maximal Cardio',
+    steps:['Set a Tabata timer: 20 sec work / 10 sec rest, 8 rounds = 4 min total.','Burpees for the 20 sec all-out.','Rest fully for 10 sec.','Count total reps across rounds — aim to maintain.'],
+    tip:'Authentic Tabata is ALL OUT effort. If you can do more than 8-10 burpees per round, push harder. Track total reps weekly.',
+    alts:['tabata_mountain_climbers','amrap_full_body','emom_squats']},
+  tabata_mountain_climbers:{name:'Tabata Mountain Climbers (4 min)',muscles:'Core · Cardio',
+    steps:['20 sec all-out mountain climbers.','10 sec rest.','Repeat 8 rounds = 4 min total.','Count reps — both knees count as one rep.'],
+    tip:'Lower-impact Tabata option than burpees. Still wrecks the cardio system.',
+    alts:['tabata_burpees','amrap_full_body','emom_squats']},
+  emom_squats:{name:'EMOM Squats (10 min)',muscles:'Quads · Glutes · Conditioning',
+    steps:['Every Minute On the Minute, do 15 bodyweight squats.','Rest remainder of the minute.','When reps spill into the next minute, you\'re done.','Goal: complete all 10 rounds.'],
+    tip:'EMOM forces consistency. Rest decreases as you fatigue. 150 squats in 10 min is no joke.',
+    alts:['tabata_burpees','amrap_full_body','jump_squat']},
+  amrap_full_body:{name:'AMRAP Full Body (15 min)',muscles:'Full Body · Conditioning',
+    steps:['Set 15-min timer. Do as many rounds as possible:','10 push-ups','15 bodyweight squats','20 mountain climbers (count both knees)','30 sec plank','Track total rounds completed each week.'],
+    tip:'CrossFit-style metcon. Steady pace beats sprint-and-die. Track rounds to measure progress.',
+    alts:['tabata_burpees','emom_squats','tabata_mountain_climbers']},
+  sprint_intervals:{name:'Sprint Intervals (Outdoor)',muscles:'Power · VO2 Max · Legs',
+    steps:['Warm up 5 min easy jog.','Sprint 30 sec at 85-90% effort.','Recover 90 sec walking.','Repeat 6-8 rounds. Cool down 5 min.'],
+    tip:'Best evidence-based cardio for first-responder fitness. Mimics scene-burst physiology. Outdoor track or open field.',
+    alts:['jump_rope','tabata_burpees','box_jump','emom_squats']}
 };
 
 // ── 3-Day Evidence-Based Whole-Body Program ───────────────────────────────
@@ -6303,6 +6574,103 @@ const WO_PROGRAM=[
     ]
   }
 ];
+
+// ── BODY-PART SPLIT (Option 2: Chest/Tri · Back/Bi · Legs/Shoulders) ────────
+// Evidence basis: Classic isolation-focused split for hypertrophy. Higher volume
+// per muscle on its dedicated day. Best when frequency-per-muscle isn't a priority
+// and you want focused exhaustion of one area at a time.
+const WO_PROGRAM_BODYSPLIT=[
+  {
+    day:'A',name:'Chest + Triceps',
+    rationale:'High-volume chest work paired with the muscle group most synergistic — triceps. Chest compounds first while fresh, then isolation work, then tricep finishers.',
+    exercises:[
+      {id:'db_bench',sets:'4×8–10',rest:'90 sec',note:'Primary chest compound'},
+      {id:'db_incline',sets:'3×10–12',rest:'90 sec',note:'Upper chest emphasis'},
+      {id:'cable_fly',sets:'3×12–15',rest:'60 sec',note:'Chest stretch + pump'},
+      {id:'close_grip_bench',sets:'3×8–10',rest:'90 sec',note:'Compound tricep movement'},
+      {id:'skull_crusher',sets:'3×10–12',rest:'60 sec',note:'Long head emphasis'},
+      {id:'tricep_pushdown',sets:'3×12–15',rest:'45 sec',note:'Lateral head finisher'},
+      {id:'plank',sets:'3×30–45 sec',rest:'45 sec',note:'Core finisher'}
+    ]
+  },
+  {
+    day:'B',name:'Back + Biceps',
+    rationale:'Vertical pull, horizontal pull, lat isolation, then bicep work. Back gets the priority — biceps are heavily involved already, so isolation comes last.',
+    exercises:[
+      {id:'pullups',sets:'4×max',rest:'2 min',note:'Vertical pull priority'},
+      {id:'bent_over_row',sets:'4×8–10',rest:'90 sec',note:'Heavy compound row'},
+      {id:'lat_pulldown',sets:'3×10–12',rest:'90 sec',note:'Lat isolation'},
+      {id:'face_pull',sets:'3×15–20',rest:'45 sec',note:'Rear delts + rotator cuff'},
+      {id:'db_bicep_curl',sets:'3×10–12',rest:'60 sec',note:'Bicep compound'},
+      {id:'hammer_curl',sets:'3×10–12',rest:'60 sec',note:'Brachialis emphasis'},
+      {id:'dead_bug',sets:'3×8 each side',rest:'45 sec',note:'Anti-extension core'}
+    ]
+  },
+  {
+    day:'C',name:'Legs + Shoulders',
+    rationale:'Quad-dominant + hip-dominant lower work, then full shoulder rotation (front, side, rear delts). Most demanding day — leave it for when energy is highest.',
+    exercises:[
+      {id:'goblet_squat',sets:'4×8–10',rest:'2 min',note:'Quad-dominant compound'},
+      {id:'rdl',sets:'4×8–10',rest:'90 sec',note:'Posterior chain'},
+      {id:'bulgarian_split',sets:'3×10 each',rest:'90 sec',note:'Unilateral'},
+      {id:'standing_calf_raise',sets:'4×12–15',rest:'45 sec',note:'Calves'},
+      {id:'db_shoulder_press',sets:'4×8–10',rest:'90 sec',note:'Vertical push'},
+      {id:'lateral_raise',sets:'3×12–15',rest:'45 sec',note:'Side delts'},
+      {id:'rear_delt_fly',sets:'3×12–15',rest:'45 sec',note:'Rear delts'}
+    ]
+  }
+];
+
+// ── BODYWEIGHT / HIIT (Option 3: No gym, weighted vest optional) ────────────
+// Evidence basis: HIIT (Gibala et al., 2012) produces VO2 max gains equivalent to
+// continuous cardio in a fraction of the time. Strength block uses bodyweight
+// progressions (Calatayud et al., 2014) showing push-ups can match bench press
+// for hypertrophy in similar rep ranges.
+const WO_PROGRAM_BODYWEIGHT=[
+  {
+    day:'A',name:'Upper Power + HIIT',
+    rationale:'Bodyweight push/pull at hypertrophy rep ranges, followed by an all-out HIIT finisher. Use weighted vest for added load if available. 30-40 min total.',
+    exercises:[
+      {id:'push_up',sets:'4×10–20',rest:'60 sec',note:'Primary push (incline/decline to scale)'},
+      {id:'inverted_row',sets:'4×8–15',rest:'60 sec',note:'Primary pull'},
+      {id:'pike_push_up',sets:'3×8–12',rest:'60 sec',note:'Shoulder/overhead push'},
+      {id:'diamond_push_up',sets:'3×8–12',rest:'45 sec',note:'Tricep focus'},
+      {id:'plank',sets:'3×45–60 sec',rest:'30 sec',note:'Core anti-extension'},
+      {id:'tabata_burpees',sets:'1× 4 min',rest:'—',note:'HIIT finisher'}
+    ]
+  },
+  {
+    day:'B',name:'Lower Power + HIIT',
+    rationale:'Bodyweight squat/hinge patterns at higher volume, unilateral work for stability, finishing with sprint or jump intervals for explosive power.',
+    exercises:[
+      {id:'bw_squat',sets:'4×15–25',rest:'60 sec',note:'Squat pattern volume'},
+      {id:'reverse_lunge',sets:'3×10 each',rest:'60 sec',note:'Unilateral (bodyweight)'},
+      {id:'single_leg_glute_bridge',sets:'3×10 each',rest:'45 sec',note:'Posterior chain isolation'},
+      {id:'standing_calf_raise',sets:'3×15–25',rest:'30 sec',note:'Calves (bodyweight)'},
+      {id:'hollow_hold',sets:'3×20–40 sec',rest:'30 sec',note:'Deep core static'},
+      {id:'sprint_intervals',sets:'1× 6–8 rounds',rest:'—',note:'HIIT finisher'}
+    ]
+  },
+  {
+    day:'C',name:'Full Body MetCon',
+    rationale:'Mixed-modality circuit. Builds work capacity that translates to occupational tasks (scene calls, patient transfers, long shifts). AMRAP format pushes endurance.',
+    exercises:[
+      {id:'burpee',sets:'3×8–12',rest:'60 sec',note:'Warm-up explosive set'},
+      {id:'push_up',sets:'3×12–20',rest:'45 sec',note:'Upper push'},
+      {id:'inverted_row',sets:'3×10–15',rest:'45 sec',note:'Upper pull'},
+      {id:'jump_squat',sets:'3×10–15',rest:'45 sec',note:'Lower explosive'},
+      {id:'bear_crawl',sets:'3×30–45 sec',rest:'30 sec',note:'Anti-rotation core'},
+      {id:'amrap_full_body',sets:'1× 15 min',rest:'—',note:'Conditioning finisher'}
+    ]
+  }
+];
+
+// Track registry — all available program variations
+const WO_TRACKS={
+  primary:{name:'Primary',icon:'💪',label:'Gym · Push/Pull/Full-body',program:WO_PROGRAM},
+  bodysplit:{name:'Body Split',icon:'🏋️',label:'Gym · Chest+Tri / Back+Bi / Legs+Shoulders',program:WO_PROGRAM_BODYSPLIT},
+  bodyweight:{name:'Bodyweight + HIIT',icon:'🤸',label:'No gym · BW + HIIT, 30–40 min',program:WO_PROGRAM_BODYWEIGHT}
+};
 
 const WO_COOLDOWN=[
   'Chest doorway stretch — 30 sec each side',
@@ -6430,16 +6798,43 @@ function _renderLiftDay(){
   var liftDayMap={0:0,2:1,4:2};
   var progIdx=liftDayMap[WO_ACTIVE_DAY];
   if(progIdx===undefined)progIdx=0;
-  var prog=WO_PROGRAM[progIdx];
-  var html='<div class="wo-section"><div class="wo-section-title">Warmup (10 min)</div>'
-    +'<div class="wo-cooldown"><div class="wo-cooldown-item">Treadmill walk at warmup pace — 10 minutes</div></div></div>';
+  
+  // Determine which track is selected for this day (default 'primary')
+  if(!state.workoutTracks)state.workoutTracks={};
+  var dayLetter=['A','B','C'][progIdx];
+  var trackId=state.workoutTracks[dayLetter]||'primary';
+  if(!WO_TRACKS[trackId])trackId='primary';
+  
+  var program=WO_TRACKS[trackId].program;
+  var prog=program[progIdx];
+  
+  // ── Track selector at top ────────────────────────────────────────
+  var html='<div class="wo-track-selector">'
+    +'<div class="wo-track-label">Workout style:</div>'
+    +'<div class="wo-track-buttons">';
+  Object.keys(WO_TRACKS).forEach(function(tid){
+    var t=WO_TRACKS[tid];
+    var active=tid===trackId?' active':'';
+    html+='<button class="wo-track-btn'+active+'" onclick="setWorkoutTrack(\''+dayLetter+'\',\''+tid+'\')" title="'+esc(t.label)+'">'
+      +'<span class="wo-track-icon">'+t.icon+'</span>'
+      +'<span class="wo-track-name">'+t.name+'</span>'
+      +'</button>';
+  });
+  html+='</div></div>';
+  
+  // Warmup
+  html+='<div class="wo-section"><div class="wo-section-title">Warmup (10 min)</div>'
+    +'<div class="wo-cooldown"><div class="wo-cooldown-item">'
+    +(trackId==='bodyweight'?'5 min easy jog or jumping jacks + dynamic stretches (leg swings, arm circles)':'Treadmill walk at warmup pace — 10 minutes')
+    +'</div></div></div>';
+  
   html+='<div class="wo-day-rationale"><strong>Day '+prog.day+': '+prog.name+'</strong><br>'+prog.rationale+'</div>';
   
-  // Render all 6 exercises as simple list
+  // Render all exercises
   html+='<div class="wo-section"><div class="wo-section-title">Today\'s Exercises</div>';
   prog.exercises.forEach(function(ex,idx){
     html+=_renderExercise(ex,'ex_'+idx);
-    if(idx<prog.exercises.length-1){
+    if(idx<prog.exercises.length-1&&ex.rest!=='—'){
       html+='<div style="text-align:center;padding:8px 0;"><span class="wo-rest-badge">&#9202; '+ex.rest+' rest</span></div>';
     }
   });
@@ -6457,6 +6852,20 @@ function _renderLiftDay(){
     +'</div>';
   
   return html;
+}
+
+function setWorkoutTrack(dayLetter,trackId){
+  if(!state.workoutTracks)state.workoutTracks={};
+  state.workoutTracks[dayLetter]=trackId;
+  save();
+  // Re-render the workout modal
+  if(typeof openWorkoutModal==='function'){
+    var body=document.querySelector('#workoutModal .modal-blur-body');
+    if(body){
+      body.innerHTML=_renderLiftDay();
+    }
+  }
+  toast('Switched to '+WO_TRACKS[trackId].name);
 }
 
 function _renderExercise(ex,slotId){
