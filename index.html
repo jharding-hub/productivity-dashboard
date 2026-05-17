@@ -6900,6 +6900,9 @@ function _tlAttachDragHandlers(el,blockId,mode){
   
   el.addEventListener('pointerdown',function(e){
     if(e.button!==0&&e.pointerType==='mouse')return; // left button only for mouse
+    // If pointerdown originated on the delete X (or any element marked as a control),
+    // bail out — let that element's own click handler fire normally.
+    if(e.target&&e.target.closest&&e.target.closest('.tl-block-del'))return;
     blockRef=(state.tlBlocks||[]).find(function(b){return b.id===blockId;});
     if(!blockRef)return;
     e.preventDefault();
@@ -7237,9 +7240,14 @@ function addTimelineBlock(){
 }
 
 function deleteTimelineBlock(id){
-  if(!confirm('Delete this block?'))return;
+  var block=(state.tlBlocks||[]).find(function(b){return b.id===id;});
+  var blockName=block?block.name:'this block';
+  if(!confirm('Delete "'+blockName+'"?'))return;
   state.tlBlocks=(state.tlBlocks||[]).filter(function(b){return b.id!==id;});
-  save();renderTimeline();
+  save();
+  renderProjects();renderTaskList();renderTimeline();
+  if(typeof updateDayProgress==='function')updateDayProgress();
+  toast('Deleted');
 }
 
 function clearTimelineBlocks(){
