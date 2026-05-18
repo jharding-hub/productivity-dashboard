@@ -7144,11 +7144,12 @@ function handleWorkTodayClick(itemType,itemId,projectId){
   if(duration>240)duration=240; // cap
   
   _wtCurrentItem={type:itemType,id:itemId,projectId:projectId||'',name:name,duration:duration,priority:priority};
-  _wtSelectedDay='today'; // reset to today on each open
+  // Default to the day the timeline panel is currently showing (today or tomorrow)
+  _wtSelectedDay=(typeof _tlViewDay!=='undefined'&&_tlViewDay==='tomorrow')?'tomorrow':'today';
   
   // Reset the day toggle visuals
   document.querySelectorAll('.wt-day-btn').forEach(function(btn){
-    if(btn.dataset.day==='today'){
+    if(btn.dataset.day===_wtSelectedDay){
       btn.classList.add('active');
       btn.style.background='rgba(91,232,255,0.18)';
       btn.style.color='#5be8ff';
@@ -7159,10 +7160,10 @@ function handleWorkTodayClick(itemType,itemId,projectId){
     }
   });
   var titleEl=document.getElementById('wtModalTitle');
-  if(titleEl)titleEl.innerHTML='&#128197; Schedule for Today';
+  if(titleEl)titleEl.innerHTML='&#128197; Schedule for '+(_wtSelectedDay==='tomorrow'?'Tomorrow':'Today');
   
-  // Suggest a time for today initially
-  var suggested=_suggestWorkTime(duration,todayStr());
+  // Suggest a time for the selected day
+  var suggested=_suggestWorkTime(duration,_wtTargetDate());
   var hh=Math.floor(suggested/60),mm=suggested%60;
   var timeStr=(hh<10?'0':'')+hh+':'+(mm<10?'0':'')+mm;
   
@@ -7170,7 +7171,7 @@ function handleWorkTodayClick(itemType,itemId,projectId){
   document.getElementById('wtItemName').textContent=name;
   document.getElementById('wtTime').value=timeStr;
   document.getElementById('wtDuration').value=String(duration);
-  document.getElementById('wtSuggestion').textContent='💡 Suggested (today): '+_tlFmtTime(suggested)+' — first open slot';
+  document.getElementById('wtSuggestion').textContent='💡 Suggested ('+_wtSelectedDay+'): '+_tlFmtTime(suggested)+' — first open slot';
   _wtUpdateConflicts();
   
   // Reset modal to standard "Schedule" button if it was previously in edit mode
@@ -7740,10 +7741,12 @@ function addTimelineBlock(){
   
   if(!state.tlBlocks)state.tlBlocks=[];
   var projIds=(projEl.value||'').split(',').map(function(s){return s.trim();}).filter(Boolean);
+  // Use the active panel view day so blocks land on whatever day the user is looking at
+  var blockDate=(typeof _tlViewDate==='function')?_tlViewDate():todayStr();
   state.tlBlocks.push({
     id:'tlb'+Date.now()+Math.random().toString(36).slice(2),
     name:name,
-    date:todayStr(),
+    date:blockDate,
     time:timeEl.value,
     duration:parseInt(durEl.value)||60,
     projectId:projIds[0]||'',
@@ -7757,7 +7760,9 @@ function addTimelineBlock(){
   var picker=document.getElementById('tlBlockProjPicker');
   if(picker)picker.innerHTML='<span class="proj-multi-placeholder">+ Project (color)</span>';
   renderTimeline();
-  toast('Block added');
+  if(typeof updateDayProgress==='function')updateDayProgress();
+  var dayLabel=blockDate===todayStr()?'today':(blockDate===tomorrowStr()?'tomorrow':blockDate);
+  toast('Block added to '+dayLabel);
 }
 
 function deleteTimelineBlock(id){
