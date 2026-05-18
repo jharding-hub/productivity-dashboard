@@ -7544,11 +7544,23 @@ function _tlFmtHour(h){
 }
 
 function _tlCollectBlocks(targetDate){
-  // Returns array of block objects for the given date (defaults to today)
+  // Returns array of block objects for the given date (defaults to today).
+  // Sources: explicit tlBlocks (manual + scheduled-via-modal) take priority.
+  // Auto-derivation from reminders/subtasks/tasks happens ONLY if no tlBlock
+  // already links to that item — prevents an item from showing on multiple
+  // days when its "official" schedule has been moved via the schedule modal.
   var today=targetDate||todayStr();
   var blocks=[];
   
-  // 1. Manual blocks from state.tlBlocks (filter to the date)
+  // Build set of all linkedIds across ALL tlBlocks (any date).
+  // If a tlBlock anywhere points to a task/subtask, that tlBlock is the
+  // canonical scheduling for that item — skip auto-derivation entirely.
+  var linkedIds={};
+  (state.tlBlocks||[]).forEach(function(b){
+    if(b.linkedId)linkedIds[b.linkedId]=true;
+  });
+  
+  // 1. Manual / modal-scheduled tlBlocks for THIS date
   (state.tlBlocks||[]).forEach(function(b){
     if(b.date===today){
       blocks.push({
@@ -7558,9 +7570,9 @@ function _tlCollectBlocks(targetDate){
     }
   });
   
-  // 2. Reminders with both date matching AND time set
+  // 2. Reminders with date matching AND time set — auto-derive if no tlBlock links to it
   (state.reminders||[]).forEach(function(r){
-    if(r.date===today&&r.time){
+    if(r.date===today&&r.time&&!linkedIds[r.id]){
       var projId=(r.projectIds&&r.projectIds[0])||r.projectId||'';
       blocks.push({
         id:'rem_'+r.id,name:r.text,startMin:_tlParseTime(r.time),durMin:30,
@@ -7569,10 +7581,10 @@ function _tlCollectBlocks(targetDate){
     }
   });
   
-  // 3. Subtasks with due matching AND time (subtasks already have timeEst as duration)
+  // 3. Subtasks with due matching AND time — auto-derive only if no tlBlock links to it
   (state.projects||[]).forEach(function(p){
     (p.subtasks||[]).forEach(function(st){
-      if(st.due===today&&st.time){
+      if(st.due===today&&st.time&&!linkedIds[st.id]){
         blocks.push({
           id:'st_'+st.id,name:st.name,startMin:_tlParseTime(st.time),
           durMin:parseInt(st.timeEst)||60,
@@ -7582,9 +7594,9 @@ function _tlCollectBlocks(targetDate){
     });
   });
   
-  // 4. Standalone tasks with due matching AND time
+  // 4. Standalone tasks with due matching AND time — auto-derive only if no tlBlock links to it
   (state.tasks||[]).forEach(function(t){
-    if(!t.done&&t.due===today&&t.time){
+    if(!t.done&&t.due===today&&t.time&&!linkedIds[t.id]){
       var projId=t.projectId||(t.projectIds&&t.projectIds[0])||'';
       blocks.push({
         id:'task_'+t.id,name:t.name,startMin:_tlParseTime(t.time),
