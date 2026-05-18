@@ -1682,11 +1682,15 @@ body.unlocked .date-editable{border-bottom-color:var(--border);}
 
 <!-- 12. TIMELINE / DAY BLOCKS -->
 <div class="panel" data-panel="timeline" data-nav="timeline" data-tile="0">
-<div class="panel-header"><div class="panel-title"><span class="drag-handle">&#10495;</span><span class="icon">&#128197;</span> Today's Timeline</div>
+<div class="panel-header"><div class="panel-title"><span class="drag-handle">&#10495;</span><span class="icon">&#128197;</span> <span id="tlPanelTitle">Today's Timeline</span></div>
 <div style="display:flex;gap:6px;align-items:center;">
   <span class="panel-badge" id="tlBlockCount">0</span>
-  <button class="expand-btn" onclick="exportTimelineICS()" title="Export today as .ics" style="font-size:14px;">&#128229;</button>
+  <button class="expand-btn" onclick="exportTimelineICS()" title="Export current view as .ics" style="font-size:14px;">&#128229;</button>
 </div></div>
+<div class="tl-day-tabs" style="display:flex;gap:0;margin-bottom:8px;border-radius:6px;overflow:hidden;border:1px solid var(--border);">
+  <button type="button" class="tl-day-tab active" data-day="today" onclick="tlSetViewDay('today')" style="flex:1;padding:8px;border:0;background:rgba(91,232,255,0.18);color:#5be8ff;font-size:12px;font-weight:700;cursor:pointer;border-right:1px solid var(--border);">Today</button>
+  <button type="button" class="tl-day-tab" data-day="tomorrow" onclick="tlSetViewDay('tomorrow')" style="flex:1;padding:8px;border:0;background:var(--surface-raised);color:var(--text-dim);font-size:12px;font-weight:700;cursor:pointer;">Tomorrow</button>
+</div>
 <div class="tl-legend" id="tlLegend"></div>
 <div class="tl-viewport">
   <div class="tl-grid" id="tlGrid"></div>
@@ -7007,6 +7011,49 @@ function _tlProjectColor(projectId){
 
 // ═══ WORK TODAY scheduling ═══
 var _wtCurrentItem=null; // {type, id, projectId, name, defaultDuration}
+var _wtSelectedDay='today'; // 'today' or 'tomorrow'
+
+function tomorrowStr(){
+  var d=new Date();
+  d.setDate(d.getDate()+1);
+  var pad=function(n){return n<10?'0'+n:''+n;};
+  return d.getFullYear()+'-'+pad(d.getMonth()+1)+'-'+pad(d.getDate());
+}
+
+function _wtTargetDate(){
+  return _wtSelectedDay==='tomorrow'?tomorrowStr():todayStr();
+}
+
+function wtSetDay(day){
+  if(day!=='today'&&day!=='tomorrow')return;
+  _wtSelectedDay=day;
+  // Update toggle visual state
+  document.querySelectorAll('.wt-day-btn').forEach(function(btn){
+    if(btn.dataset.day===day){
+      btn.classList.add('active');
+      btn.style.background='rgba(91,232,255,0.18)';
+      btn.style.color='#5be8ff';
+    }else{
+      btn.classList.remove('active');
+      btn.style.background='var(--surface-raised)';
+      btn.style.color='var(--text-dim)';
+    }
+  });
+  // Update modal title
+  var titleEl=document.getElementById('wtModalTitle');
+  if(titleEl)titleEl.innerHTML='&#128197; Schedule for '+(day==='tomorrow'?'Tomorrow':'Today');
+  // Recompute suggestion + conflicts for the new day
+  if(_wtCurrentItem){
+    var dur=parseInt(document.getElementById('wtDuration').value)||60;
+    var suggested=_suggestWorkTime(dur,_wtTargetDate());
+    var hh=Math.floor(suggested/60),mm=suggested%60;
+    var timeStr=(hh<10?'0':'')+hh+':'+(mm<10?'0':'')+mm;
+    // Only auto-fill the suggestion if user hasn't manually changed it
+    document.getElementById('wtTime').value=timeStr;
+    document.getElementById('wtSuggestion').textContent='💡 Suggested ('+day+'): '+_tlFmtTime(suggested)+' — first open slot';
+    _wtUpdateConflicts();
+  }
+}
 
 function _isScheduledToday(itemId){
   var today=todayStr();
@@ -7020,15 +7067,22 @@ function _findScheduledBlock(itemId){
   return (state.tlBlocks||[]).find(function(b){return b.date===today&&b.linkedId===itemId;});
 }
 
-function _suggestWorkTime(durationMin){
-  // Find first available slot of >=durationMin minutes between now-rounded-up and 6pm
-  var blocks=_tlCollectBlocks();
-  var now=new Date();
-  var nowMin=now.getHours()*60+now.getMinutes();
-  // Round up to next half-hour
-  var startCandidate=Math.max(540,Math.ceil(nowMin/30)*30); // 9am minimum
-  var dayEnd=18*60; // 6pm
-  if(startCandidate>=dayEnd)startCandidate=Math.max(8*60,nowMin); // late-day fallback
+function _suggestWorkTime(durationMin,targetDate){
+  // Find first available slot of >=durationMin minutes between start and 6pm.
+  // For today: start is now-rounded-up (but no earlier than 9am).
+  // For tomorrow or any future day: start is 9am (no "now" constraint).
+  var isToday=!targetDate||targetDate===todayStr();
+  var blocks=_tlCollectBlocks(targetDate);
+  var startCandidate;
+  if(isToday){
+    var now=new Date();
+    var nowMin=now.getHours()*60+now.getMinutes();
+    startCandidate=Math.max(540,Math.ceil(nowMin/30)*30); // 9am or later
+    var dayEnd=18*60;
+    if(startCandidate>=dayEnd)startCandidate=Math.max(8*60,nowMin); // late-day fallback
+  }else{
+    startCandidate=540; // 9am for future days
+  }
   
   // Sort blocks by start
   var sorted=blocks.slice().sort(function(a,b){return a.startMin-b.startMin;});
@@ -7038,21 +7092,15 @@ function _suggestWorkTime(durationMin){
   for(var i=0;i<sorted.length;i++){
     var b=sorted[i];
     var bEnd=b.startMin+b.durMin;
-    if(b.startMin>=candidate+durationMin){
-      // Found a gap before this block
-      return candidate;
-    }
-    if(bEnd>candidate){
-      candidate=Math.ceil(bEnd/15)*15; // round up to next 15-min
-    }
+    if(b.startMin>=candidate+durationMin)return candidate;
+    if(bEnd>candidate)candidate=Math.ceil(bEnd/15)*15;
   }
-  // No conflict — return the candidate
   return candidate;
 }
 
-function _findConflicts(startMin,durMin,excludeId){
+function _findConflicts(startMin,durMin,excludeId,targetDate){
   var endMin=startMin+durMin;
-  var blocks=_tlCollectBlocks();
+  var blocks=_tlCollectBlocks(targetDate);
   return blocks.filter(function(b){
     if(b.linkedId===excludeId)return false;
     var bEnd=b.startMin+b.durMin;
@@ -7096,9 +7144,25 @@ function handleWorkTodayClick(itemType,itemId,projectId){
   if(duration>240)duration=240; // cap
   
   _wtCurrentItem={type:itemType,id:itemId,projectId:projectId||'',name:name,duration:duration,priority:priority};
+  _wtSelectedDay='today'; // reset to today on each open
   
-  // Suggest a time
-  var suggested=_suggestWorkTime(duration);
+  // Reset the day toggle visuals
+  document.querySelectorAll('.wt-day-btn').forEach(function(btn){
+    if(btn.dataset.day==='today'){
+      btn.classList.add('active');
+      btn.style.background='rgba(91,232,255,0.18)';
+      btn.style.color='#5be8ff';
+    }else{
+      btn.classList.remove('active');
+      btn.style.background='var(--surface-raised)';
+      btn.style.color='var(--text-dim)';
+    }
+  });
+  var titleEl=document.getElementById('wtModalTitle');
+  if(titleEl)titleEl.innerHTML='&#128197; Schedule for Today';
+  
+  // Suggest a time for today initially
+  var suggested=_suggestWorkTime(duration,todayStr());
   var hh=Math.floor(suggested/60),mm=suggested%60;
   var timeStr=(hh<10?'0':'')+hh+':'+(mm<10?'0':'')+mm;
   
@@ -7106,7 +7170,7 @@ function handleWorkTodayClick(itemType,itemId,projectId){
   document.getElementById('wtItemName').textContent=name;
   document.getElementById('wtTime').value=timeStr;
   document.getElementById('wtDuration').value=String(duration);
-  document.getElementById('wtSuggestion').textContent='💡 Suggested: '+_tlFmtTime(suggested)+' — first open slot in your day';
+  document.getElementById('wtSuggestion').textContent='💡 Suggested (today): '+_tlFmtTime(suggested)+' — first open slot';
   _wtUpdateConflicts();
   
   // Reset modal to standard "Schedule" button if it was previously in edit mode
@@ -7138,7 +7202,7 @@ function _wtUpdateConflicts(){
   var durVal=parseInt(document.getElementById('wtDuration').value);
   if(!timeVal||!durVal)return;
   var startMin=_tlParseTime(timeVal);
-  var conflicts=_findConflicts(startMin,durVal,_wtCurrentItem.id);
+  var conflicts=_findConflicts(startMin,durVal,_wtCurrentItem.id,_wtTargetDate());
   var cEl=document.getElementById('wtConflict');
   if(conflicts.length){
     cEl.style.display='block';
@@ -7160,23 +7224,27 @@ function confirmWorkToday(){
   if(!timeVal){toast('Pick a time');return;}
   if(!durVal){toast('Pick a duration');return;}
   
-  // ── Late-end warning: if block ends after 8pm ─────────────────────
-  var startMin=_tlParseTime(timeVal);
-  var endMin=startMin+durVal;
-  var END_OF_DAY=20*60; // 8 PM
-  if(endMin>END_OF_DAY){
-    var endLabel=_tlFmtTime(endMin);
-    var msg='⚠ This block would end at '+endLabel+' — after 8pm.\n\n'
-      +'OK  →  Schedule today anyway\n'
-      +'Cancel  →  Push to tomorrow (same start time)';
-    if(!confirm(msg)){
-      // Push to tomorrow
-      _scheduleForTomorrow(timeVal,durVal);
-      return;
+  var targetDate=_wtTargetDate();
+  var isToday=targetDate===todayStr();
+  
+  // Late-end warning only when scheduling for today
+  if(isToday){
+    var startMin=_tlParseTime(timeVal);
+    var endMin=startMin+durVal;
+    var END_OF_DAY=20*60; // 8 PM
+    if(endMin>END_OF_DAY){
+      var endLabel=_tlFmtTime(endMin);
+      var msg='⚠ This block would end at '+endLabel+' — after 8pm.\n\n'
+        +'OK  →  Schedule today anyway\n'
+        +'Cancel  →  Push to tomorrow (same start time)';
+      if(!confirm(msg)){
+        _scheduleForTomorrow(timeVal,durVal);
+        return;
+      }
     }
   }
   
-  _writeBlock(todayStr(),timeVal,durVal);
+  _writeBlock(targetDate,timeVal,durVal);
 }
 
 function _scheduleForTomorrow(timeVal,durVal){
@@ -7475,12 +7543,12 @@ function _tlFmtHour(h){
   return h12+ap;
 }
 
-function _tlCollectBlocks(){
-  // Returns array of block objects for today
-  var today=todayStr();
+function _tlCollectBlocks(targetDate){
+  // Returns array of block objects for the given date (defaults to today)
+  var today=targetDate||todayStr();
   var blocks=[];
   
-  // 1. Manual blocks from state.tlBlocks (filter to today)
+  // 1. Manual blocks from state.tlBlocks (filter to the date)
   (state.tlBlocks||[]).forEach(function(b){
     if(b.date===today){
       blocks.push({
@@ -7490,7 +7558,7 @@ function _tlCollectBlocks(){
     }
   });
   
-  // 2. Reminders with both date===today AND time set
+  // 2. Reminders with both date matching AND time set
   (state.reminders||[]).forEach(function(r){
     if(r.date===today&&r.time){
       var projId=(r.projectIds&&r.projectIds[0])||r.projectId||'';
@@ -7501,7 +7569,7 @@ function _tlCollectBlocks(){
     }
   });
   
-  // 3. Subtasks with due===today AND time (subtasks already have timeEst as duration)
+  // 3. Subtasks with due matching AND time (subtasks already have timeEst as duration)
   (state.projects||[]).forEach(function(p){
     (p.subtasks||[]).forEach(function(st){
       if(st.due===today&&st.time){
@@ -7514,7 +7582,7 @@ function _tlCollectBlocks(){
     });
   });
   
-  // 4. Standalone tasks with due===today AND time
+  // 4. Standalone tasks with due matching AND time
   (state.tasks||[]).forEach(function(t){
     if(!t.done&&t.due===today&&t.time){
       var projId=t.projectId||(t.projectIds&&t.projectIds[0])||'';
@@ -7531,8 +7599,8 @@ function _tlCollectBlocks(){
 }
 
 function _tlBuildLegend(){
-  // Build legend from projects that have blocks today
-  var blocks=_tlCollectBlocks();
+  // Build legend from projects that have blocks on the active view date
+  var blocks=_tlCollectBlocks(typeof _tlViewDate==='function'?_tlViewDate():undefined);
   var seen={};
   blocks.forEach(function(b){
     if(b.projectId&&!seen[b.projectId])seen[b.projectId]=true;
@@ -7552,9 +7620,39 @@ function _tlBuildLegend(){
   el.innerHTML=html;
 }
 
+var _tlViewDay='today'; // 'today' or 'tomorrow' — controls which day the panel shows
+
+function _tlViewDate(){
+  return _tlViewDay==='tomorrow'?tomorrowStr():todayStr();
+}
+
+function tlSetViewDay(day){
+  if(day!=='today'&&day!=='tomorrow')return;
+  _tlViewDay=day;
+  // Update tab visuals
+  document.querySelectorAll('.tl-day-tab').forEach(function(btn){
+    if(btn.dataset.day===day){
+      btn.classList.add('active');
+      btn.style.background='rgba(91,232,255,0.18)';
+      btn.style.color='#5be8ff';
+    }else{
+      btn.classList.remove('active');
+      btn.style.background='var(--surface-raised)';
+      btn.style.color='var(--text-dim)';
+    }
+  });
+  // Update panel title
+  var titleEl=document.getElementById('tlPanelTitle');
+  if(titleEl)titleEl.textContent=day==='tomorrow'?"Tomorrow's Timeline":"Today's Timeline";
+  renderTimeline();
+}
+
 function renderTimeline(){
   var grid=document.getElementById('tlGrid');
   if(!grid)return;
+  
+  var viewDate=_tlViewDate();
+  var isToday=viewDate===todayStr();
   
   // Build hour rows
   var html='';
@@ -7563,19 +7661,21 @@ function renderTimeline(){
   }
   grid.innerHTML=html;
   
-  // Place "now" line
-  var now=new Date();
-  var nowMin=now.getHours()*60+now.getMinutes();
-  if(nowMin>=TL_DAY_START_H*60&&nowMin<TL_DAY_END_H*60){
-    var nowY=_tlMinutesToY(nowMin);
-    var nowDiv=document.createElement('div');
-    nowDiv.className='tl-now-line';
-    nowDiv.style.top=nowY+'px';
-    grid.appendChild(nowDiv);
+  // Place "now" line — only when viewing today
+  if(isToday){
+    var now=new Date();
+    var nowMin=now.getHours()*60+now.getMinutes();
+    if(nowMin>=TL_DAY_START_H*60&&nowMin<TL_DAY_END_H*60){
+      var nowY=_tlMinutesToY(nowMin);
+      var nowDiv=document.createElement('div');
+      nowDiv.className='tl-now-line';
+      nowDiv.style.top=nowY+'px';
+      grid.appendChild(nowDiv);
+    }
   }
   
-  // Place blocks
-  var blocks=_tlCollectBlocks();
+  // Place blocks for the active view date
+  var blocks=_tlCollectBlocks(viewDate);
   blocks.forEach(function(b){
     if(b.startMin<TL_DAY_START_H*60||b.startMin>=TL_DAY_END_H*60)return;
     var y=_tlMinutesToY(b.startMin);
@@ -7660,12 +7760,14 @@ function deleteTimelineBlock(id){
 }
 
 function clearTimelineBlocks(){
-  var today=todayStr();
-  var todayCount=(state.tlBlocks||[]).filter(function(b){return b.date===today;}).length;
-  if(todayCount===0){toast('No manual blocks to clear');return;}
-  if(!confirm('Delete all '+todayCount+' manual blocks for today?'))return;
-  state.tlBlocks=(state.tlBlocks||[]).filter(function(b){return b.date!==today;});
+  var viewDate=(typeof _tlViewDate==='function')?_tlViewDate():todayStr();
+  var dayLabel=viewDate===todayStr()?'today':(viewDate===tomorrowStr()?'tomorrow':viewDate);
+  var count=(state.tlBlocks||[]).filter(function(b){return b.date===viewDate;}).length;
+  if(count===0){toast('No manual blocks to clear for '+dayLabel);return;}
+  if(!confirm('Delete all '+count+' manual blocks for '+dayLabel+'?'))return;
+  state.tlBlocks=(state.tlBlocks||[]).filter(function(b){return b.date!==viewDate;});
   save();renderTimeline();
+  if(typeof updateDayProgress==='function')updateDayProgress();
   toast('Manual blocks cleared');
 }
 
@@ -7683,9 +7785,10 @@ function _icsTimestamp(date,minutes){
 }
 
 function exportTimelineICS(){
-  var blocks=_tlCollectBlocks();
-  if(blocks.length===0){toast('No blocks today to export');return;}
-  var today=todayStr();
+  var viewDate=(typeof _tlViewDate==='function')?_tlViewDate():todayStr();
+  var dayLabel=viewDate===todayStr()?'today':(viewDate===tomorrowStr()?'tomorrow':viewDate);
+  var blocks=_tlCollectBlocks(viewDate);
+  if(blocks.length===0){toast('No blocks for '+dayLabel+' to export');return;}
   var lines=[
     'BEGIN:VCALENDAR',
     'VERSION:2.0',
@@ -7700,9 +7803,9 @@ function exportTimelineICS(){
     var description=(proj?'Project: '+proj.name+'\n':'')+'Source: '+b.source+' (Centerpost)';
     lines.push('BEGIN:VEVENT');
     lines.push('UID:'+b.id+'@centerpost.app');
-    lines.push('DTSTAMP:'+_icsTimestamp(today,b.startMin));
-    lines.push('DTSTART:'+_icsTimestamp(today,b.startMin));
-    lines.push('DTEND:'+_icsTimestamp(today,b.startMin+b.durMin));
+    lines.push('DTSTAMP:'+_icsTimestamp(viewDate,b.startMin));
+    lines.push('DTSTART:'+_icsTimestamp(viewDate,b.startMin));
+    lines.push('DTEND:'+_icsTimestamp(viewDate,b.startMin+b.durMin));
     lines.push('SUMMARY:'+_icsEscape(summary));
     lines.push('DESCRIPTION:'+_icsEscape(description));
     if(proj)lines.push('CATEGORIES:'+_icsEscape(proj.name));
@@ -7714,7 +7817,7 @@ function exportTimelineICS(){
   var url=URL.createObjectURL(blob);
   var a=document.createElement('a');
   a.href=url;
-  a.download='centerpost-timeline-'+today+'.ics';
+  a.download='centerpost-timeline-'+viewDate+'.ics';
   document.body.appendChild(a);a.click();document.body.removeChild(a);
   URL.revokeObjectURL(url);
   toast('Downloaded .ics — drag into Outlook');
@@ -7934,11 +8037,17 @@ setTimeout(checkShareTarget, 400); // slight delay so panels render first
 <div class="modal-blur-backdrop" onclick="closeWorkTodayModal()"></div>
 <div class="modal-blur-panel" style="max-width:420px;">
   <div class="modal-blur-header">
-    <div class="modal-blur-title">&#128197; Schedule for Today</div>
+    <div class="modal-blur-title" id="wtModalTitle">&#128197; Schedule</div>
     <button class="modal-blur-close" onclick="closeWorkTodayModal()">&#10005;</button>
   </div>
   <div class="modal-blur-body">
     <div id="wtItemName" style="font-size:14px;font-weight:600;color:var(--text);margin-bottom:14px;padding:10px 12px;background:var(--surface-raised);border-radius:6px;border-left:3px solid #5be8ff;"></div>
+    
+    <div class="section-label" style="margin-bottom:6px;">Day</div>
+    <div class="wt-day-toggle" id="wtDayToggle" style="display:flex;gap:0;margin-bottom:14px;border-radius:6px;overflow:hidden;border:1px solid var(--border);">
+      <button type="button" class="wt-day-btn active" data-day="today" onclick="wtSetDay('today')" style="flex:1;padding:9px;border:0;background:rgba(91,232,255,0.18);color:#5be8ff;font-size:13px;font-weight:700;cursor:pointer;border-right:1px solid var(--border);">Today</button>
+      <button type="button" class="wt-day-btn" data-day="tomorrow" onclick="wtSetDay('tomorrow')" style="flex:1;padding:9px;border:0;background:var(--surface-raised);color:var(--text-dim);font-size:13px;font-weight:700;cursor:pointer;">Tomorrow</button>
+    </div>
     
     <div class="section-label" style="margin-bottom:6px;">When?</div>
     <div style="display:flex;gap:8px;align-items:center;margin-bottom:14px;">
