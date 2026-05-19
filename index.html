@@ -289,7 +289,7 @@ input[type="date"]::-webkit-calendar-picker-indicator,input[type="time"]::-webki
 .proj-multi-chip-x{cursor:pointer;font-weight:700;opacity:0.7;}
 .proj-multi-chip-x:hover{opacity:1;color:var(--red);}
 .proj-multi-placeholder{color:var(--text-faint);}
-.proj-multi-dropdown{position:absolute;top:calc(100% + 4px);left:0;right:0;background:var(--surface);border:1px solid var(--border);border-radius:var(--radius-sm);box-shadow:0 4px 16px rgba(0,0,0,0.3);z-index:120;max-height:200px;overflow-y:auto;font-size:12px;}
+.proj-multi-dropdown{position:fixed;background:var(--surface);border:1px solid var(--border);border-radius:var(--radius-sm);box-shadow:0 6px 24px rgba(0,0,0,0.5);z-index:1500;max-height:240px;overflow-y:auto;font-size:12px;min-width:180px;}
 .proj-multi-option{padding:6px 10px;cursor:pointer;display:flex;align-items:center;gap:6px;color:var(--text);}
 .proj-multi-option:hover{background:var(--surface-hover);}
 .proj-multi-option.selected{background:var(--accent-glow);color:var(--accent);}
@@ -3107,17 +3107,19 @@ function openProjMultiPicker(ev,picker){
   if(ev.target.classList.contains('proj-multi-chip-x'))return;
   if(ev.target.closest('.proj-multi-dropdown'))return;
   
-  // Close any other open dropdowns
+  // Close any other open dropdowns (now portaled to body — find globally)
   document.querySelectorAll('.proj-multi-dropdown').forEach(function(d){
-    if(d.parentNode!==picker)d.remove();
+    if(d._owner!==picker)d.remove();
   });
   
-  var existing=picker.querySelector('.proj-multi-dropdown');
-  if(existing){existing.remove();return;}
+  // Toggle: if a dropdown for THIS picker is already open, close it
+  var existing=document.querySelector('.proj-multi-dropdown');
+  if(existing&&existing._owner===picker){existing.remove();return;}
   
   var selected=_getProjMultiSelected(picker);
   var dropdown=document.createElement('div');
   dropdown.className='proj-multi-dropdown';
+  dropdown._owner=picker; // tag for owner-aware close logic
   
   if(state.projects.length===0){
     var empty=document.createElement('div');
@@ -3138,7 +3140,6 @@ function openProjMultiPicker(ev,picker){
         if(idx>=0)sel.splice(idx,1);
         else sel.push(p.id);
         _setProjMultiSelected(picker,sel);
-        // Re-render dropdown checkmarks
         opt.classList.toggle('selected');
         opt.querySelector('.check-mark').textContent=opt.classList.contains('selected')?'✓':'';
       };
@@ -3167,17 +3168,60 @@ function openProjMultiPicker(ev,picker){
     dropdown.appendChild(newOpt);
   }
   
-  picker.appendChild(dropdown);
+  // Portal to body so panel/grid overflow can't clip us
+  document.body.appendChild(dropdown);
+  
+  // Position dropdown anchored to picker, flipped above if not enough room below
+  function positionDropdown(){
+    var rect=picker.getBoundingClientRect();
+    var ddH=dropdown.offsetHeight;
+    var ddW=Math.max(rect.width,180);
+    var spaceBelow=window.innerHeight-rect.bottom;
+    var spaceAbove=rect.top;
+    dropdown.style.width=ddW+'px';
+    // Prefer below; flip above only if too little room below AND more room above
+    var openUp=spaceBelow<ddH+10&&spaceAbove>spaceBelow;
+    if(openUp){
+      dropdown.style.top=Math.max(8,rect.top-ddH-4)+'px';
+    }else{
+      dropdown.style.top=(rect.bottom+4)+'px';
+    }
+    // Horizontal: align left edge with picker; clamp to viewport
+    var left=rect.left;
+    if(left+ddW>window.innerWidth-8)left=window.innerWidth-ddW-8;
+    if(left<8)left=8;
+    dropdown.style.left=left+'px';
+  }
+  positionDropdown();
+  // After a tick (for accurate offsetHeight), reposition
+  requestAnimationFrame(positionDropdown);
+  
+  // Reposition on scroll/resize while open
+  var repositionHandler=function(){positionDropdown();};
+  window.addEventListener('scroll',repositionHandler,true);
+  window.addEventListener('resize',repositionHandler);
   
   // Click-outside to close
   setTimeout(function(){
     var handler=function(e){
-      if(!picker.contains(e.target)){
-        dropdown.remove();
-        document.removeEventListener('click',handler);
-      }
+      if(picker.contains(e.target))return;
+      if(dropdown.contains(e.target))return;
+      dropdown.remove();
+      document.removeEventListener('click',handler);
+      window.removeEventListener('scroll',repositionHandler,true);
+      window.removeEventListener('resize',repositionHandler);
     };
     document.addEventListener('click',handler);
+    // Also clean up listeners when dropdown is removed for any other reason
+    var observer=new MutationObserver(function(){
+      if(!document.body.contains(dropdown)){
+        document.removeEventListener('click',handler);
+        window.removeEventListener('scroll',repositionHandler,true);
+        window.removeEventListener('resize',repositionHandler);
+        observer.disconnect();
+      }
+    });
+    observer.observe(document.body,{childList:true,subtree:false});
   },10);
 }
 
