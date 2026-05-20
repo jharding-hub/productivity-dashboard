@@ -791,6 +791,23 @@ body.unlocked .date-editable{border-bottom-color:var(--border);}
 .tl-item:hover .tl-del{opacity:1;}.tl-del:hover{color:var(--red);}
 .tl-add-form{display:flex;flex-direction:column;gap:6px;margin-top:10px;padding-top:10px;border-top:1px solid var(--border);}
 
+/* Upcoming-only filter checkbox row */
+.upcoming-filter-toggle{
+  display:flex;align-items:center;gap:8px;
+  margin:4px 0 8px 0;padding:7px 10px;
+  background:var(--surface-raised);border:1px solid var(--border);
+  border-radius:var(--radius-sm);cursor:pointer;
+  font-size:11px;color:var(--text-dim);
+  user-select:none;
+  transition:all 0.15s;
+}
+.upcoming-filter-toggle:hover{border-color:var(--accent-dim);}
+.upcoming-filter-toggle input[type="checkbox"]{
+  width:14px;height:14px;cursor:pointer;flex-shrink:0;accent-color:var(--accent);
+}
+.upcoming-filter-toggle input[type="checkbox"]:checked + span{color:var(--accent);font-weight:600;}
+.upcoming-filter-toggle span{line-height:1.3;flex:1;}
+
 /* ═══ TIMELINE PANEL ═══ */
 .tl-viewport{
   max-height:520px;overflow-y:auto;overflow-x:hidden;
@@ -1542,6 +1559,7 @@ body.unlocked .date-editable{border-bottom-color:var(--border);}
 <div class="panel-header" onclick="openPanelOverlay('projects')"><div class="panel-title"><span class="drag-handle">&#10495;</span><span class="icon">&#128194;</span> Projects</div>
 <div style="display:flex;gap:6px;align-items:center;"><span class="panel-badge" id="projCount">0</span><span class="panel-badge completed-badge" id="projCompletedBadge" style="display:none;">✓ 0</span><button class="expand-btn" onclick="event.stopPropagation();openPanelOverlay('projects')" title="Expand"><span class="expand-arrow">&#9660;</span></button></div></div>
 <div class="panel-tile-summary" id="tile-summary-projects" onclick="openPanelOverlay('projects')"></div>
+<label class="upcoming-filter-toggle" onclick="event.stopPropagation();"><input type="checkbox" id="projUpcomingOnly" onchange="renderProjects()"> <span>Show projects (overdue / due today or tomorrow)</span></label>
 <div class="panel-content" id="pc_projects">
 <div class="project-list" id="projectList"></div>
 </div>
@@ -1655,6 +1673,7 @@ body.unlocked .date-editable{border-bottom-color:var(--border);}
 <option value="all">All Projects</option>
 </select>
 </div>
+<label class="upcoming-filter-toggle" onclick="event.stopPropagation();"><input type="checkbox" id="taskUpcomingOnly" onchange="renderTaskList()"> <span>Show tasks (overdue / due today or tomorrow)</span></label>
 <div class="panel-content" id="pc_tasklist">
 <div class="tl-list" id="taskListItems"></div>
 <div id="taskListCompleted"></div>
@@ -2884,8 +2903,27 @@ function makeTimeClickable(el,currentVal,onSave){
   });
 }
 
-function renderProjects(){const el=document.getElementById('projectList');const today=todayStr();if(state.projects.length===0){el.innerHTML='<div class="empty-state">No projects yet.</div>'+_renderCompletedProjectsSection();document.getElementById('projCount').textContent='0';var emptyProjCompCount=(state.completedTasks||[]).filter(function(t){return t.source==='project';}).length;var emptyProjCompBadge=document.getElementById('projCompletedBadge');if(emptyProjCompBadge){emptyProjCompBadge.textContent='✓ '+emptyProjCompCount;emptyProjCompBadge.style.display=emptyProjCompCount>0?'inline-flex':'none';}updateNoteSelectors();if(typeof _updateTileSummaryProjects==='function')_updateTileSummaryProjects();return;}
-el.innerHTML=state.projects.map(p=>{const total=p.subtasks.length;const sorted=[...p.subtasks].sort((a,b)=>{if(a.due&&b.due)return a.due.localeCompare(b.due);if(a.due)return -1;if(b.due)return 1;return 0;});
+function renderProjects(){const el=document.getElementById('projectList');const today=todayStr();
+// Apply upcoming-only filter if checkbox is on
+var upcomingEl=document.getElementById('projUpcomingOnly');
+var upcomingOnly=upcomingEl&&upcomingEl.checked;
+var visibleProjects=state.projects;
+if(upcomingOnly){
+  var tomorrow=tomorrowStr();
+  visibleProjects=state.projects.filter(function(p){
+    // Project-level due in window?
+    if(p.due&&(p.due<today||p.due===today||p.due===tomorrow))return true;
+    // Any subtask in window?
+    return (p.subtasks||[]).some(function(st){
+      if(st.done)return false;
+      if(!st.due)return false;
+      return st.due<today||st.due===today||st.due===tomorrow;
+    });
+  });
+}
+if(state.projects.length===0){el.innerHTML='<div class="empty-state">No projects yet.</div>'+_renderCompletedProjectsSection();document.getElementById('projCount').textContent='0';var emptyProjCompCount=(state.completedTasks||[]).filter(function(t){return t.source==='project';}).length;var emptyProjCompBadge=document.getElementById('projCompletedBadge');if(emptyProjCompBadge){emptyProjCompBadge.textContent='✓ '+emptyProjCompCount;emptyProjCompBadge.style.display=emptyProjCompCount>0?'inline-flex':'none';}updateNoteSelectors();if(typeof _updateTileSummaryProjects==='function')_updateTileSummaryProjects();return;}
+if(upcomingOnly&&visibleProjects.length===0){el.innerHTML='';document.getElementById('projCount').textContent=state.projects.length;updateNoteSelectors();if(typeof _updateTileSummaryProjects==='function')_updateTileSummaryProjects();return;}
+el.innerHTML=visibleProjects.map(p=>{const total=p.subtasks.length;const sorted=[...p.subtasks].sort((a,b)=>{if(a.due&&b.due)return a.due.localeCompare(b.due);if(a.due)return -1;if(b.due)return 1;return 0;});
 
 // Completed items for this project (by id or fallback to name match for older records)
 const projCompletedItems=(state.completedTasks||[]).filter(function(ct){
@@ -3867,9 +3905,22 @@ function renderTaskList(){
   var all=getAllTasks();
   var sortBy=document.getElementById('tlSortBy');var sort=sortBy?sortBy.value:'priority';
   var filterProj=document.getElementById('tlFilterProj');var filt=filterProj?filterProj.value:'all';
+  var upcomingEl=document.getElementById('taskUpcomingOnly');
+  var upcomingOnly=upcomingEl&&upcomingEl.checked;
 
   // Filter
   if(filt!=='all')all=all.filter(function(t){return t.projectId===filt||(t.projectIds&&t.projectIds.indexOf(filt)>=0);});
+  
+  // Upcoming-only filter: keep only tasks that are overdue, due today, or due tomorrow
+  if(upcomingOnly){
+    var today=todayStr();
+    var tomorrow=tomorrowStr();
+    all=all.filter(function(t){
+      if(t.done)return false;
+      if(!t.due)return false;
+      return t.due<today||t.due===today||t.due===tomorrow;
+    });
+  }
 
   // Sort
   if(sort==='priority'){
@@ -3884,7 +3935,12 @@ function renderTaskList(){
 
   var today=new Date().toISOString().split('T')[0];
   if(all.length===0){
-    el.innerHTML='<div class="empty-state">No tasks yet. Add one below or create subtasks in Projects.</div>';
+    if(upcomingOnly){
+      // Filter is on and nothing matches — show blank per user spec
+      el.innerHTML='';
+    }else{
+      el.innerHTML='<div class="empty-state">No tasks yet. Add one below or create subtasks in Projects.</div>';
+    }
   }else{
     el.innerHTML=all.map(function(t){
       var nameId='tlname_'+t.id;
