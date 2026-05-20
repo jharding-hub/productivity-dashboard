@@ -2937,8 +2937,18 @@ if(upcomingOnly){
   });
 }
 if(state.projects.length===0){el.innerHTML='<div class="empty-state">No projects yet.</div>'+_renderCompletedProjectsSection();document.getElementById('projCount').textContent='0';var emptyProjCompCount=(state.completedTasks||[]).filter(function(t){return t.source==='project';}).length;var emptyProjCompBadge=document.getElementById('projCompletedBadge');if(emptyProjCompBadge){emptyProjCompBadge.textContent='✓ '+emptyProjCompCount;emptyProjCompBadge.style.display=emptyProjCompCount>0?'inline-flex':'none';}updateNoteSelectors();if(typeof _updateTileSummaryProjects==='function')_updateTileSummaryProjects();return;}
-if(upcomingOnly&&visibleProjects.length===0){el.innerHTML='';var pcpEl=document.getElementById('pc_projects');if(pcpEl){pcpEl.style.flex='none';pcpEl.style.minHeight='0';}document.getElementById('projCount').textContent=state.projects.length;updateNoteSelectors();if(typeof _updateTileSummaryProjects==='function')_updateTileSummaryProjects();return;}
-var pcpEl=document.getElementById('pc_projects');if(pcpEl){pcpEl.style.flex='';pcpEl.style.minHeight='';}
+var pcpEl=document.getElementById('pc_projects');
+if(!upcomingOnly){
+  // Unchecked — always blank
+  el.innerHTML='';
+  if(pcpEl){pcpEl.style.flex='none';pcpEl.style.minHeight='0';}
+  document.getElementById('projCount').textContent=state.projects.length;
+  updateNoteSelectors();
+  if(typeof _updateTileSummaryProjects==='function')_updateTileSummaryProjects();
+  return;
+}
+if(upcomingOnly&&visibleProjects.length===0){el.innerHTML='';if(pcpEl){pcpEl.style.flex='none';pcpEl.style.minHeight='0';}document.getElementById('projCount').textContent=state.projects.length;updateNoteSelectors();if(typeof _updateTileSummaryProjects==='function')_updateTileSummaryProjects();return;}
+if(pcpEl){pcpEl.style.flex='';pcpEl.style.minHeight='';}
 el.innerHTML=visibleProjects.map(p=>{const total=p.subtasks.length;const sorted=[...p.subtasks].sort((a,b)=>{if(a.due&&b.due)return a.due.localeCompare(b.due);if(a.due)return -1;if(b.due)return 1;return 0;});
 
 // Completed items for this project (by id or fallback to name match for older records)
@@ -3954,15 +3964,19 @@ function renderTaskList(){
 
   var today=new Date().toISOString().split('T')[0];
   var pcEl=document.getElementById('pc_tasklist');
+  
+  // If checkbox is unchecked, always blank — user must opt in to see content
+  if(!upcomingOnly){
+    el.innerHTML='';
+    if(pcEl){pcEl.style.flex='none';pcEl.style.minHeight='0';}
+    document.getElementById('taskListCount').textContent=totalCount;
+    return;
+  }
+  
+  // Checkbox is checked — show matching items or blank if none
   if(all.length===0){
-    if(upcomingOnly){
-      el.innerHTML='';
-      // Collapse the content area so add form sits right below filter row
-      if(pcEl){pcEl.style.flex='none';pcEl.style.minHeight='0';}
-    }else{
-      el.innerHTML='<div class="empty-state">No tasks yet. Add one below or create subtasks in Projects.</div>';
-      if(pcEl){pcEl.style.flex='';pcEl.style.minHeight='';}
-    }
+    el.innerHTML='';
+    if(pcEl){pcEl.style.flex='none';pcEl.style.minHeight='0';}
   }else{
     if(pcEl){pcEl.style.flex='';pcEl.style.minHeight='';}
     el.innerHTML=all.map(function(t){
