@@ -211,6 +211,21 @@ body.standalone-pwa .mobile-home-header{padding-top:max(env(safe-area-inset-top)
 .panel.panel-tile .panel-tile-summary-pill.warn{color:var(--accent);background:rgba(212,168,83,0.12);}
 .panel.panel-tile .panel-tile-summary-pill.urgent{color:var(--red);font-weight:700;background:rgba(229,57,53,0.12);}
 
+/* ─── INLINE list panels: tasks + projects always show their content ─── */
+/* panel-content visible, tile-summary hidden, header not a pointer */
+.panel.panel-tile[data-panel="projects"] .panel-content,
+.panel.panel-tile[data-panel="tasklist"] .panel-content{display:block !important;}
+.panel.panel-tile[data-panel="projects"] .tasklist-controls,
+.panel.panel-tile[data-panel="tasklist"] .tasklist-controls{display:flex !important;}
+.panel.panel-tile[data-panel="projects"] .panel-tile-summary,
+.panel.panel-tile[data-panel="tasklist"] .panel-tile-summary{display:none !important;}
+.panel.panel-tile[data-panel="projects"] .panel-header,
+.panel.panel-tile[data-panel="tasklist"] .panel-header{cursor:default;}
+.panel.panel-tile[data-panel="projects"] .panel-header:hover,
+.panel.panel-tile[data-panel="tasklist"] .panel-header:hover{opacity:1;}
+.panel.panel-tile[data-panel="projects"] .panel-header .expand-btn .expand-arrow,
+.panel.panel-tile[data-panel="tasklist"] .panel-header .expand-btn .expand-arrow{transform:none;}
+
 /* The add bar/form is centered in the tile body */
 .panel.panel-tile{justify-content:flex-start;}
 .panel.panel-tile .tile-add-region{margin-top:auto;padding-top:16px;padding-bottom:16px;border-top:1px solid var(--border);}
@@ -1556,9 +1571,9 @@ body.unlocked .date-editable{border-bottom-color:var(--border);}
 
 <!-- 1. PROJECTS -->
 <div class="panel panel-tile" data-panel="projects" data-nav="projects" data-tile="1">
-<div class="panel-header" onclick="openPanelOverlay('projects')"><div class="panel-title"><span class="drag-handle">&#10495;</span><span class="icon">&#128194;</span> Projects</div>
-<div style="display:flex;gap:6px;align-items:center;"><span class="panel-badge" id="projCount">0</span><span class="panel-badge completed-badge" id="projCompletedBadge" style="display:none;">✓ 0</span><button class="expand-btn" onclick="event.stopPropagation();openPanelOverlay('projects')" title="Expand"><span class="expand-arrow">&#9660;</span></button></div></div>
-<div class="panel-tile-summary" id="tile-summary-projects" onclick="openPanelOverlay('projects')"></div>
+<div class="panel-header"><div class="panel-title"><span class="drag-handle">&#10495;</span><span class="icon">&#128194;</span> Projects</div>
+<div style="display:flex;gap:6px;align-items:center;"><span class="panel-badge" id="projCount">0</span><span class="panel-badge completed-badge" id="projCompletedBadge" style="display:none;">✓ 0</span><button class="expand-btn" onclick="openPanelOverlay('projects')" title="Expand to full view"><span class="expand-arrow">&#9660;</span></button></div></div>
+<div class="panel-tile-summary" id="tile-summary-projects"></div>
 <label class="upcoming-filter-toggle" onclick="event.stopPropagation();"><input type="checkbox" id="projUpcomingOnly" onchange="renderProjects()"> <span>Show projects (overdue / due today or tomorrow)</span></label>
 <div class="panel-content" id="pc_projects">
 <div class="project-list" id="projectList"></div>
@@ -1659,9 +1674,9 @@ body.unlocked .date-editable{border-bottom-color:var(--border);}
 
 <!-- 12. TASK LIST -->
 <div class="panel panel-tile" data-panel="tasklist" data-nav="tasklist" data-tile="1">
-<div class="panel-header" onclick="openPanelOverlay('tasklist')"><div class="panel-title"><span class="drag-handle">&#10495;</span><span class="icon">&#128203;</span> Task List</div>
-<div style="display:flex;gap:6px;align-items:center;"><span class="panel-badge" id="taskListCount">0</span><span class="panel-badge completed-badge" id="taskListCompletedBadge" style="display:none;">✓ 0</span><button class="expand-btn" onclick="event.stopPropagation();openPanelOverlay('tasklist')" title="Expand"><span class="expand-arrow">&#9660;</span></button></div></div>
-<div class="panel-tile-summary" id="tile-summary-tasklist" onclick="openPanelOverlay('tasklist')"></div>
+<div class="panel-header"><div class="panel-title"><span class="drag-handle">&#10495;</span><span class="icon">&#128203;</span> Task List</div>
+<div style="display:flex;gap:6px;align-items:center;"><span class="panel-badge" id="taskListCount">0</span><span class="panel-badge completed-badge" id="taskListCompletedBadge" style="display:none;">✓ 0</span><button class="expand-btn" onclick="openPanelOverlay('tasklist')" title="Expand to full view"><span class="expand-arrow">&#9660;</span></button></div></div>
+<div class="panel-tile-summary" id="tile-summary-tasklist"></div>
 <div class="tasklist-controls">
 <select id="tlSortBy" onchange="renderTaskList()" style="width:auto;padding:4px 8px;font-size:11px;">
 <option value="priority">Sort: Priority</option>
