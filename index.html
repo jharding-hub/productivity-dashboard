@@ -2919,16 +2919,21 @@ function makeTimeClickable(el,currentVal,onSave){
 }
 
 function renderProjects(){const el=document.getElementById('projectList');const today=todayStr();
-// Apply upcoming-only filter if checkbox is on
+
+// Detect if we're rendering inside the overlay (panel-tile removed) vs the dashboard tile
+var projPanel=document.querySelector('.panel[data-panel="projects"]');
+var inOverlay=projPanel&&!projPanel.classList.contains('panel-tile');
+
+// Apply upcoming-only filter — only on the tile, never in overlay
 var upcomingEl=document.getElementById('projUpcomingOnly');
-var upcomingOnly=upcomingEl&&upcomingEl.checked;
+var upcomingOnly=!inOverlay&&upcomingEl&&upcomingEl.checked;
 var visibleProjects=state.projects;
 if(upcomingOnly){
   var tomorrow=tomorrowStr();
   visibleProjects=state.projects.filter(function(p){
-    // Project-level due in window?
+    // Project-level due date must be overdue, today, or tomorrow
     if(p.due&&(p.due<today||p.due===today||p.due===tomorrow))return true;
-    // Any subtask in window?
+    // Any open subtask with due in window
     return (p.subtasks||[]).some(function(st){
       if(st.done)return false;
       if(!st.due)return false;
@@ -2938,8 +2943,8 @@ if(upcomingOnly){
 }
 if(state.projects.length===0){el.innerHTML='<div class="empty-state">No projects yet.</div>'+_renderCompletedProjectsSection();document.getElementById('projCount').textContent='0';var emptyProjCompCount=(state.completedTasks||[]).filter(function(t){return t.source==='project';}).length;var emptyProjCompBadge=document.getElementById('projCompletedBadge');if(emptyProjCompBadge){emptyProjCompBadge.textContent='✓ '+emptyProjCompCount;emptyProjCompBadge.style.display=emptyProjCompCount>0?'inline-flex':'none';}updateNoteSelectors();if(typeof _updateTileSummaryProjects==='function')_updateTileSummaryProjects();return;}
 var pcpEl=document.getElementById('pc_projects');
-if(!upcomingOnly){
-  // Unchecked — always blank
+// Tile mode, unchecked — blank panel so add-form anchors to bottom
+if(!inOverlay&&!upcomingOnly){
   el.innerHTML='';
   if(pcpEl){pcpEl.style.flex='none';pcpEl.style.minHeight='0';}
   document.getElementById('projCount').textContent=state.projects.length;
@@ -2947,6 +2952,7 @@ if(!upcomingOnly){
   if(typeof _updateTileSummaryProjects==='function')_updateTileSummaryProjects();
   return;
 }
+// Checked but nothing matches — also blank
 if(upcomingOnly&&visibleProjects.length===0){el.innerHTML='';if(pcpEl){pcpEl.style.flex='none';pcpEl.style.minHeight='0';}document.getElementById('projCount').textContent=state.projects.length;updateNoteSelectors();if(typeof _updateTileSummaryProjects==='function')_updateTileSummaryProjects();return;}
 if(pcpEl){pcpEl.style.flex='';pcpEl.style.minHeight='';}
 el.innerHTML=visibleProjects.map(p=>{const total=p.subtasks.length;const sorted=[...p.subtasks].sort((a,b)=>{if(a.due&&b.due)return a.due.localeCompare(b.due);if(a.due)return -1;if(b.due)return 1;return 0;});
@@ -3932,7 +3938,11 @@ function renderTaskList(){
   var sortBy=document.getElementById('tlSortBy');var sort=sortBy?sortBy.value:'priority';
   var filterProj=document.getElementById('tlFilterProj');var filt=filterProj?filterProj.value:'all';
   var upcomingEl=document.getElementById('taskUpcomingOnly');
-  var upcomingOnly=upcomingEl&&upcomingEl.checked;
+
+  // Detect overlay mode — skip blank-when-unchecked if expanded
+  var taskPanel=document.querySelector('.panel[data-panel="tasklist"]');
+  var inOverlay=taskPanel&&!taskPanel.classList.contains('panel-tile');
+  var upcomingOnly=!inOverlay&&upcomingEl&&upcomingEl.checked;
 
   // Filter by project
   if(filt!=='all')all=all.filter(function(t){return t.projectId===filt||(t.projectIds&&t.projectIds.indexOf(filt)>=0);});
@@ -3965,8 +3975,8 @@ function renderTaskList(){
   var today=new Date().toISOString().split('T')[0];
   var pcEl=document.getElementById('pc_tasklist');
   
-  // If checkbox is unchecked, always blank — user must opt in to see content
-  if(!upcomingOnly){
+  // If unchecked and in tile mode — blank so add-form anchors at bottom
+  if(!inOverlay&&!upcomingOnly){
     el.innerHTML='';
     if(pcEl){pcEl.style.flex='none';pcEl.style.minHeight='0';}
     document.getElementById('taskListCount').textContent=totalCount;
