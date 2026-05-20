@@ -2930,14 +2930,19 @@ var upcomingOnly=!inOverlay&&upcomingEl&&upcomingEl.checked;
 var visibleProjects=state.projects;
 if(upcomingOnly){
   var tomorrow=tomorrowStr();
+  // 7-day lookback window for "overdue" — don't surface ancient stale items
+  var lookback=new Date();lookback.setDate(lookback.getDate()-7);
+  var pad=function(n){return n<10?'0'+n:''+n;};
+  var lookbackStr=lookback.getFullYear()+'-'+pad(lookback.getMonth()+1)+'-'+pad(lookback.getDate());
+  
   visibleProjects=state.projects.filter(function(p){
-    // Project-level due date must be overdue, today, or tomorrow
-    if(p.due&&(p.due<today||p.due===today||p.due===tomorrow))return true;
-    // Any open subtask with due in window
+    // Project-level due: overdue within 7 days, today, or tomorrow
+    if(p.due&&p.due>=lookbackStr&&(p.due<today||p.due===today||p.due===tomorrow))return true;
+    // Any open subtask due within 7-day overdue window, today, or tomorrow
     return (p.subtasks||[]).some(function(st){
       if(st.done)return false;
       if(!st.due)return false;
-      return st.due<today||st.due===today||st.due===tomorrow;
+      return st.due>=lookbackStr&&(st.due<today||st.due===today||st.due===tomorrow);
     });
   });
 }
@@ -3950,14 +3955,17 @@ function renderTaskList(){
   // Save total count (for badge) BEFORE applying upcoming filter
   var totalCount=all.filter(function(t){return !t.done;}).length;
   
-  // Upcoming-only filter: keep only tasks that are overdue, due today, or due tomorrow
+  // Upcoming-only filter: overdue within 7 days, due today, or due tomorrow
   if(upcomingOnly){
     var today=todayStr();
     var tomorrow=tomorrowStr();
+    var lookback=new Date();lookback.setDate(lookback.getDate()-7);
+    var pad=function(n){return n<10?'0'+n:''+n;};
+    var lookbackStr=lookback.getFullYear()+'-'+pad(lookback.getMonth()+1)+'-'+pad(lookback.getDate());
     all=all.filter(function(t){
       if(t.done)return false;
       if(!t.due)return false;
-      return t.due<today||t.due===today||t.due===tomorrow;
+      return t.due>=lookbackStr&&(t.due<today||t.due===today||t.due===tomorrow);
     });
   }
 
