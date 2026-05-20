@@ -8151,6 +8151,70 @@ setInterval(function(){
 // END TIMELINE
 // ═══════════════════════════════════════
 
+// ═══════════════════════════════════════
+// THEME SYSTEM
+// ═══════════════════════════════════════
+var THEMES=[
+  {key:'dark',name:'Dark',tier:'free',bg:'#1a1917',surface:'#242320',accent:'#d4a853'},
+  {key:'light',name:'Light',tier:'free',bg:'#f6f4f0',surface:'#ffffff',accent:'#b08830'},
+  {key:'starry',name:'Starry Night',tier:'pro',bg:'#0a0e1a',surface:'#10152a',accent:'#7b68ee'},
+  {key:'sunny',name:'Sunny Sky',tier:'pro',bg:'#e8f0fa',surface:'#ffffff',accent:'#e07828'},
+  {key:'ocean',name:'Midnight Ocean',tier:'pro',bg:'#0a1a1a',surface:'#0f2222',accent:'#20c9a6'},
+  {key:'sunset',name:'Sunset Horizon',tier:'pro',bg:'#1a1018',surface:'#1e1420',accent:'#e84a7a'},
+  {key:'police',name:'Police',tier:'premium',bg:'#0a0c14',surface:'#101420',accent:'#3a7aee'},
+  {key:'fire',name:'Fire / EMS',tier:'premium',bg:'#120808',surface:'#1a0e0e',accent:'#e53935'},
+  {key:'autumn',name:'Autumn Ember',tier:'premium',bg:'#f0ebe0',surface:'#faf5ec',accent:'#c06030'}
+];
+
+function applyTheme(key){
+  if(key==='dark'){
+    document.body.removeAttribute('data-theme');
+  }else{
+    document.body.setAttribute('data-theme',key);
+  }
+  if(!state.settings)state.settings={};
+  state.settings.theme=key;
+  save();
+  renderThemeSelector();
+  var theme=THEMES.find(function(t){return t.key===key;});
+  if(theme){
+    var metas=document.querySelectorAll('meta[name="theme-color"]');
+    metas.forEach(function(m){m.setAttribute('content',theme.bg);});
+  }
+}
+
+function renderThemeSelector(){
+  var el=document.getElementById('themeSelector');
+  if(!el)return;
+  var currentTheme=(state.settings&&state.settings.theme)||'dark';
+  el.innerHTML=THEMES.map(function(t){
+    var active=t.key===currentTheme?' active':'';
+    var tierClass=t.tier==='free'?'theme-tier-free':t.tier==='pro'?'theme-tier-pro':'theme-tier-premium';
+    var tierLabel=t.tier.charAt(0).toUpperCase()+t.tier.slice(1);
+    return '<button class="theme-btn'+active+'" onclick="applyTheme(\''+t.key+'\')">'+
+      '<div class="theme-swatch">'+
+        '<div class="theme-swatch-bg" style="background:'+t.bg+';"></div>'+
+        '<div class="theme-swatch-accent" style="background:'+t.accent+';"></div>'+
+      '</div>'+
+      '<div class="theme-btn-name">'+t.name+'</div>'+
+      '<span class="theme-tier-badge '+tierClass+'">'+tierLabel+'</span>'+
+    '</button>';
+  }).join('');
+}
+
+function _applySavedTheme(){
+  var saved=(state.settings&&state.settings.theme)||'dark';
+  if(saved!=='dark'){
+    document.body.setAttribute('data-theme',saved);
+  }
+  var theme=THEMES.find(function(t){return t.key===saved;});
+  if(theme){
+    var metas=document.querySelectorAll('meta[name="theme-color"]');
+    metas.forEach(function(m){m.setAttribute('content',theme.bg);});
+  }
+}
+
+
 async function initApp(){
 await load();
 initPanelVisibility();applyPanelOrder();applyPanelVisibility();updateLockUI();updateClock();updateTimeLeft();setInterval(updateClock,1000);setInterval(updateTimeLeft,30000);updateTimerDisplay();renderPointsBadge();awardDailyLogin();
@@ -8296,68 +8360,6 @@ setInterval(checkDailyRoutineReset,60000);
 
 
 
-// ═══════════════════════════════════════
-// THEME SYSTEM
-// ═══════════════════════════════════════
-var THEMES=[
-  {key:'dark',name:'Dark',tier:'free',bg:'#1a1917',surface:'#242320',accent:'#d4a853'},
-  {key:'light',name:'Light',tier:'free',bg:'#f6f4f0',surface:'#ffffff',accent:'#b08830'},
-  {key:'starry',name:'Starry Night',tier:'pro',bg:'#0a0e1a',surface:'#10152a',accent:'#7b68ee'},
-  {key:'sunny',name:'Sunny Sky',tier:'pro',bg:'#e8f0fa',surface:'#ffffff',accent:'#e07828'},
-  {key:'ocean',name:'Midnight Ocean',tier:'pro',bg:'#0a1a1a',surface:'#0f2222',accent:'#20c9a6'},
-  {key:'sunset',name:'Sunset Horizon',tier:'pro',bg:'#1a1018',surface:'#1e1420',accent:'#e84a7a'},
-  {key:'police',name:'Police',tier:'premium',bg:'#0a0c14',surface:'#101420',accent:'#3a7aee'},
-  {key:'fire',name:'Fire / EMS',tier:'premium',bg:'#120808',surface:'#1a0e0e',accent:'#e53935'},
-  {key:'autumn',name:'Autumn Ember',tier:'premium',bg:'#f0ebe0',surface:'#faf5ec',accent:'#c06030'}
-];
-
-function applyTheme(key){
-  if(key==='dark'){
-    document.body.removeAttribute('data-theme');
-  }else{
-    document.body.setAttribute('data-theme',key);
-  }
-  if(!state.settings)state.settings={};
-  state.settings.theme=key;
-  save();
-  renderThemeSelector();
-  var theme=THEMES.find(function(t){return t.key===key;});
-  if(theme){
-    var metas=document.querySelectorAll('meta[name="theme-color"]');
-    metas.forEach(function(m){m.setAttribute('content',theme.bg);});
-  }
-}
-
-function renderThemeSelector(){
-  var el=document.getElementById('themeSelector');
-  if(!el)return;
-  var currentTheme=(state.settings&&state.settings.theme)||'dark';
-  el.innerHTML=THEMES.map(function(t){
-    var active=t.key===currentTheme?' active':'';
-    var tierClass=t.tier==='free'?'theme-tier-free':t.tier==='pro'?'theme-tier-pro':'theme-tier-premium';
-    var tierLabel=t.tier.charAt(0).toUpperCase()+t.tier.slice(1);
-    return '<button class="theme-btn'+active+'" onclick="applyTheme(\''+t.key+'\')">'+
-      '<div class="theme-swatch">'+
-        '<div class="theme-swatch-bg" style="background:'+t.bg+';"></div>'+
-        '<div class="theme-swatch-accent" style="background:'+t.accent+';"></div>'+
-      '</div>'+
-      '<div class="theme-btn-name">'+t.name+'</div>'+
-      '<span class="theme-tier-badge '+tierClass+'">'+tierLabel+'</span>'+
-    '</button>';
-  }).join('');
-}
-
-function _applySavedTheme(){
-  var saved=(state.settings&&state.settings.theme)||'dark';
-  if(saved!=='dark'){
-    document.body.setAttribute('data-theme',saved);
-  }
-  var theme=THEMES.find(function(t){return t.key===saved;});
-  if(theme){
-    var metas=document.querySelectorAll('meta[name="theme-color"]');
-    metas.forEach(function(m){m.setAttribute('content',theme.bg);});
-  }
-}
 
 document.addEventListener('visibilitychange',function(){if(!document.hidden){checkDailyRoutineReset();awardDailyLogin();renderTimeline();}});
 
