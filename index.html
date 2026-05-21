@@ -1144,6 +1144,22 @@ body.unlocked .date-editable{border-bottom-color:var(--border);}
   .day-progress-bar{height:48px;}
   .panel{display:none;}
   .panel.mobile-visible{display:flex;}
+  /* All panels show full content on mobile vertical scroll — override tile-mode hiding */
+  .panel.panel-tile.mobile-visible .panel-content{display:block !important;max-height:none !important;}
+  .panel.panel-tile.mobile-visible .tasklist-controls{display:flex !important;}
+  .panel.panel-tile.mobile-visible .panel-tile-summary{display:none !important;}
+  .panel.panel-tile.mobile-visible .panel-header{cursor:default;}
+  .panel.panel-tile.mobile-visible .panel-header:hover{opacity:1;}
+  .panel.panel-tile.mobile-visible .panel-content-extra{display:block !important;}
+  .panel.panel-tile.mobile-visible .completed-projects-section{display:block !important;}
+  .panel.panel-tile.mobile-visible .note-filter-row{display:flex !important;}
+  .panel.panel-tile.mobile-visible .panel-header .expand-btn{display:none;}
+  /* Remove max-height constraint so panels expand fully */
+  .panel.mobile-visible .panel-content{max-height:none !important;}
+  /* Vertical spacing between panels */
+  .dashboard{gap:14px !important;padding-bottom:calc(80px + env(safe-area-inset-bottom)) !important;}
+  /* Remove panel-tile min-height on mobile — let content define height */
+  .panel.panel-tile.mobile-visible{min-height:auto !important;}
   .panel.hidden-panel{display:none!important;}
   .panel.user-hidden{display:none!important;}
   .drag-handle{display:none!important;}
@@ -1154,7 +1170,7 @@ body.unlocked .date-editable{border-bottom-color:var(--border);}
   /* Panel content pushed below back bar when shown */
   .app-wrap.panel-open{padding-top:52px;}
   .header{display:none;}
-  .header.mobile-visible{display:flex;}
+  .header.mobile-visible{display:grid;}
 }
 /* AUTH GATE */
 .login-gate{position:fixed;inset:0;background:var(--bg);z-index:9999;display:flex;align-items:center;justify-content:center;padding:20px;}
@@ -3494,15 +3510,24 @@ function buildMobileHome(){
 
 function showMobileHome(){
   if(!_isMobile())return;
-  // Hide all panels
-  document.querySelectorAll('.panel').forEach(function(p){p.classList.remove('mobile-visible');});
-  // Hide header, show home
-  var hdr=document.getElementById('appWrap')&&document.querySelector('.header');
-  if(hdr)hdr.classList.remove('mobile-visible');
-  document.getElementById('mobileHome').classList.add('active');
+  // Hide the tile-grid home screen
+  document.getElementById('mobileHome').classList.remove('active');
+  // Hide the back bar (not needed when all panels are visible)
   document.getElementById('mobileBackBar').classList.remove('active');
-  document.querySelector('.app-wrap')&&document.querySelector('.app-wrap').classList.remove('panel-open');
-  buildMobileHome();
+  // Show header with banner
+  var hdr=document.querySelector('.header');
+  if(hdr)hdr.classList.add('mobile-visible');
+  // Remove panel-open padding (not needed with sticky header)
+  var appWrap=document.querySelector('.app-wrap');
+  if(appWrap)appWrap.classList.remove('panel-open');
+  // Show ALL panels vertically (except hidden/user-hidden ones)
+  document.querySelectorAll('.panel').forEach(function(p){
+    if(p.classList.contains('hidden-panel')||p.classList.contains('user-hidden')){
+      p.classList.remove('mobile-visible');
+    }else{
+      p.classList.add('mobile-visible');
+    }
+  });
 }
 
 function showMobilePanel(panelId){
@@ -8309,19 +8334,19 @@ setInterval(checkDailyRoutineReset,60000);
   
   var container=null;
   function ensureContainer(){
-    if(!container)container=document.getElementById('mobileHome');
+    // In the new vertical layout, panels scroll inside app-wrap or the window
+    if(!container)container=document.querySelector('.app-wrap')||document.documentElement;
     return container;
   }
   
   document.addEventListener('touchstart',function(e){
     if(refreshing)return;
+    if(!_isMobile())return; // Only on mobile
     var c=ensureContainer();
     if(!c)return;
-    // Only when mobile home is the active view (display:block in mobile)
-    var style=window.getComputedStyle(c);
-    if(style.display==='none')return;
-    // Only fire if scroll is at top
-    if(c.scrollTop>0)return;
+    // Only fire if scroll is at top (check both element and window scroll)
+    var scrollTop=c.scrollTop||window.pageYOffset||0;
+    if(scrollTop>0)return;
     startY=e.touches[0].clientY;
     currentY=startY;
     pulling=true;
@@ -8337,10 +8362,13 @@ setInterval(checkDailyRoutineReset,60000);
       return;
     }
     var c=ensureContainer();
-    if(c&&c.scrollTop>0){
-      pulling=false;
-      updateIndicator(0);
-      return;
+    if(c){
+      var scrollTop=c.scrollTop||window.pageYOffset||0;
+      if(scrollTop>0){
+        pulling=false;
+        updateIndicator(0);
+        return;
+      }
     }
     // Apply damping past threshold
     var dist=delta;
