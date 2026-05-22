@@ -1153,7 +1153,7 @@ body.unlocked .date-editable{border-bottom-color:var(--border);}
   .panel.panel-tile.mobile-visible:not([data-panel="notes"]) .panel-content-extra{display:block !important;}
   .panel.panel-tile.mobile-visible:not([data-panel="notes"]) .completed-projects-section{display:block !important;}
   .panel.panel-tile.mobile-visible:not([data-panel="notes"]) .note-filter-row{display:flex !important;}
-  .panel.panel-tile.mobile-visible:not([data-panel="notes"]) .panel-header .expand-btn{display:none;}
+  .panel.panel-tile.mobile-visible:not([data-panel="notes"]):not([data-panel="projects"]):not([data-panel="tasklist"]) .panel-header .expand-btn{display:none;}
   /* Remove max-height constraint so panels expand fully (not notes) */
   .panel.mobile-visible:not([data-panel="notes"]) .panel-content{max-height:none !important;}
   /* Notes panel on mobile: keep tile mode, header clickable to open overlay */
