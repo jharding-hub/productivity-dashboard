@@ -1144,24 +1144,26 @@ body.unlocked .date-editable{border-bottom-color:var(--border);}
   .panel{display:none;}
   .panel.mobile-visible{display:flex;}
   /* All panels show full content on mobile vertical scroll — override tile-mode hiding */
-  /* EXCEPT notes panel which stays collapsed until tapped */
-  .panel.panel-tile.mobile-visible:not([data-panel="notes"]) .panel-content{display:block !important;max-height:none !important;}
-  .panel.panel-tile.mobile-visible:not([data-panel="notes"]) .tasklist-controls{display:flex !important;}
-  .panel.panel-tile.mobile-visible:not([data-panel="notes"]) .panel-tile-summary{display:none !important;}
-  .panel.panel-tile.mobile-visible:not([data-panel="notes"]) .panel-header{cursor:default;}
-  .panel.panel-tile.mobile-visible:not([data-panel="notes"]) .panel-header:hover{opacity:1;}
-  .panel.panel-tile.mobile-visible:not([data-panel="notes"]) .panel-content-extra{display:block !important;}
-  .panel.panel-tile.mobile-visible:not([data-panel="notes"]) .completed-projects-section{display:block !important;}
-  .panel.panel-tile.mobile-visible:not([data-panel="notes"]) .note-filter-row{display:flex !important;}
+  /* EXCEPT notes, projects, tasklist — those stay collapsed and open via overlay */
+  .panel.panel-tile.mobile-visible:not([data-panel="notes"]):not([data-panel="projects"]):not([data-panel="tasklist"]) .panel-content{display:block !important;max-height:none !important;}
+  .panel.panel-tile.mobile-visible:not([data-panel="notes"]):not([data-panel="projects"]):not([data-panel="tasklist"]) .tasklist-controls{display:flex !important;}
+  .panel.panel-tile.mobile-visible:not([data-panel="notes"]):not([data-panel="projects"]):not([data-panel="tasklist"]) .panel-tile-summary{display:none !important;}
+  .panel.panel-tile.mobile-visible:not([data-panel="notes"]):not([data-panel="projects"]):not([data-panel="tasklist"]) .panel-header{cursor:default;}
+  .panel.panel-tile.mobile-visible:not([data-panel="notes"]):not([data-panel="projects"]):not([data-panel="tasklist"]) .panel-header:hover{opacity:1;}
+  .panel.panel-tile.mobile-visible:not([data-panel="notes"]):not([data-panel="projects"]):not([data-panel="tasklist"]) .panel-content-extra{display:block !important;}
+  .panel.panel-tile.mobile-visible:not([data-panel="notes"]):not([data-panel="projects"]):not([data-panel="tasklist"]) .completed-projects-section{display:block !important;}
+  .panel.panel-tile.mobile-visible:not([data-panel="notes"]):not([data-panel="projects"]):not([data-panel="tasklist"]) .note-filter-row{display:flex !important;}
   .panel.panel-tile.mobile-visible:not([data-panel="notes"]):not([data-panel="projects"]):not([data-panel="tasklist"]) .panel-header .expand-btn{display:none;}
-  /* Remove max-height constraint so panels expand fully (not notes) */
-  .panel.mobile-visible:not([data-panel="notes"]) .panel-content{max-height:none !important;}
-  /* Notes panel on mobile: keep tile mode, header clickable to open overlay */
-  .panel.panel-tile.mobile-visible[data-panel="notes"] .panel-header{cursor:pointer;}
+  /* Remove max-height constraint so panels expand fully (not notes/projects/tasklist) */
+  .panel.mobile-visible:not([data-panel="notes"]):not([data-panel="projects"]):not([data-panel="tasklist"]) .panel-content{max-height:none !important;}
+  /* notes, projects, tasklist on mobile: keep tile mode, header clickable to open overlay */
+  .panel.panel-tile.mobile-visible[data-panel="notes"] .panel-header,
+  .panel.panel-tile.mobile-visible[data-panel="projects"] .panel-header,
+  .panel.panel-tile.mobile-visible[data-panel="tasklist"] .panel-header{cursor:pointer;}
   /* Vertical spacing between panels */
   .dashboard{gap:14px !important;padding-bottom:calc(80px + env(safe-area-inset-bottom)) !important;}
   /* Remove panel-tile min-height on mobile — let content define height */
-  .panel.panel-tile.mobile-visible:not([data-panel="notes"]){min-height:auto !important;}
+  .panel.panel-tile.mobile-visible:not([data-panel="notes"]):not([data-panel="projects"]):not([data-panel="tasklist"]){min-height:auto !important;}
   .panel.hidden-panel{display:none!important;}
   .panel.user-hidden{display:none!important;}
   .drag-handle{display:none!important;}
