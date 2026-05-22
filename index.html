@@ -1554,6 +1554,26 @@ body.unlocked .date-editable{border-bottom-color:var(--border);}
 .spin-result-actions a,.spin-result-actions button{font-size:12px;padding:6px 14px;border-radius:var(--radius-sm);border:1px solid var(--border);background:var(--surface);color:var(--text-dim);text-decoration:none;cursor:pointer;font-family:inherit;transition:all 0.15s;}
 .spin-result-actions a:hover,.spin-result-actions button:hover{border-color:var(--accent-dim);color:var(--accent);}
 .spin-again-btn{background:var(--accent-glow);border-color:var(--accent)!important;color:var(--accent)!important;font-weight:600;}
+
+/* ─── TIER GATING ──────────────────────────────────────────────────────────── */
+.tier-locked-panel{position:relative;pointer-events:none;opacity:0.45;filter:blur(1.5px);}
+.tier-locked-panel .tier-lock-badge{position:absolute;inset:0;display:flex;flex-direction:column;align-items:center;justify-content:center;background:rgba(26,25,23,0.82);border-radius:var(--radius);pointer-events:all;opacity:1;filter:none;font-size:13px;color:var(--text-dim);text-align:center;gap:10px;padding:20px;}
+.tier-locked-panel .tier-lock-badge strong{color:var(--text);}
+.tier-upgrade-btn{padding:6px 16px;border-radius:var(--radius-sm);background:var(--accent);color:#1a1917;font-weight:700;font-size:12px;border:none;cursor:pointer;font-family:inherit;pointer-events:all;}
+.tier-upgrade-btn:hover{background:var(--accent-dim);}
+.tier-locked-btn{position:relative;opacity:0.45;cursor:not-allowed !important;}
+.tier-locked-btn::after{content:'🔒';position:absolute;top:4px;right:4px;font-size:10px;}
+
+/* ─── DEV TIER SWITCHER ─────────────────────────────────────────────────────── */
+#devTierSwitcher{position:fixed;bottom:80px;right:14px;z-index:9999;font-family:inherit;}
+.dev-tier-badge{background:rgba(30,28,26,0.95);border:1.5px solid var(--border);border-radius:20px;padding:5px 12px;font-size:11px;font-weight:700;color:var(--text-dim);cursor:pointer;user-select:none;letter-spacing:0.5px;backdrop-filter:blur(8px);box-shadow:0 2px 12px rgba(0,0,0,0.4);}
+.dev-tier-badge:hover{border-color:var(--accent-dim);}
+.dev-tier-menu{display:none;position:absolute;bottom:calc(100% + 6px);right:0;background:var(--surface-raised);border:1px solid var(--border);border-radius:var(--radius-sm);min-width:150px;padding:6px;box-shadow:0 4px 20px rgba(0,0,0,0.5);}
+.dev-tier-menu.open{display:block;}
+.dev-tier-menu-title{font-size:10px;color:var(--text-faint);text-transform:uppercase;letter-spacing:0.8px;padding:2px 8px 6px;}
+.dev-tier-opt{display:flex;align-items:center;gap:8px;width:100%;padding:7px 10px;background:none;border:none;color:var(--text-dim);font-size:13px;font-family:inherit;cursor:pointer;border-radius:var(--radius-sm);text-align:left;}
+.dev-tier-opt:hover{background:var(--surface-hover);color:var(--text);}
+.dev-tier-opt.active{color:var(--text);font-weight:600;background:var(--surface-hover);}
 </style>
 </head>
 <body>
@@ -2213,6 +2233,191 @@ body.unlocked .date-editable{border-bottom-color:var(--border);}
 var currentUser=null;
 var isAdmin=false;
 var userProfile=null;
+
+// ─── TIER SYSTEM ─────────────────────────────────────────────────────────────
+// DEV_UID: your Firebase UID — the switcher badge only renders for this account
+var DEV_UID='REPLACE_WITH_YOUR_UID';
+
+// Tier config — move features between tiers freely; this is the single source of truth
+var TIER_CONFIG={
+  free:{
+    label:'Free',
+    color:'#6b7280',
+    // Panels visible on free (all others hidden + shown as locked upgrade prompts)
+    panels:['projects','reminders','notes','tasklist','timeline'],
+    // Projects: max active projects (null = unlimited)
+    maxProjects:3,
+    // Tasks: max standalone tasks
+    maxTasks:20,
+    // Notes: max notes
+    maxNotes:10,
+    // Reminders: max reminders
+    maxReminders:10,
+    // Tool Kit buttons visible on free (others show lock)
+    toolkitAllowed:['timer'],
+    // Voice input enabled
+    voiceInput:false,
+    // Radar panel visible
+    radar:false,
+    // Export allowed
+    dataExport:false,
+    // Completed history visible
+    completedHistory:false,
+    // Brain dump panel
+    brainDump:false,
+    // Routines panel
+    routines:false,
+    // Decision support panel
+    decision:false,
+  },
+  pro:{
+    label:'Pro',
+    color:'#d4a853',
+    panels:['projects','reminders','notes','tasklist','timeline','brain','time','routines','decision'],
+    maxProjects:null,
+    maxTasks:null,
+    maxNotes:null,
+    maxReminders:null,
+    toolkitAllowed:['music','breath','timer','mood','journal','workout','halt','wellness'],
+    voiceInput:true,
+    radar:true,
+    dataExport:true,
+    completedHistory:true,
+    brainDump:true,
+    routines:true,
+    decision:true,
+  },
+  owner:{
+    label:'Owner',
+    color:'#7c3aed',
+    panels:['projects','reminders','notes','tasklist','timeline','brain','time','routines','decision','wellness','admin'],
+    maxProjects:null,maxTasks:null,maxNotes:null,maxReminders:null,
+    toolkitAllowed:['music','breath','timer','mood','journal','workout','halt','wellness'],
+    voiceInput:true,radar:true,dataExport:true,completedHistory:true,
+    brainDump:true,routines:true,decision:true,
+  }
+};
+
+// Toolkit button → CSS class mapping
+var TOOLKIT_CLASS_MAP={
+  music:'toolkit-music',breath:'toolkit-breath',timer:'toolkit-timer',
+  mood:'toolkit-mood',journal:'toolkit-journal',workout:'toolkit-workout',
+  halt:'toolkit-halt',wellness:'toolkit-wellness'
+};
+
+function getActiveTier(){
+  return localStorage.getItem('devTierOverride')||'owner';
+}
+
+function getTierConfig(){
+  return TIER_CONFIG[getActiveTier()]||TIER_CONFIG.owner;
+}
+
+function applyTierGating(){
+  var cfg=getTierConfig();
+
+  // ── Panels ──────────────────────────────────────────────────────────────────
+  document.querySelectorAll('.panel[data-panel]').forEach(function(panel){
+    var key=panel.getAttribute('data-panel');
+    if(key==='wellness'||key==='admin')return; // managed elsewhere
+    var allowed=cfg.panels.indexOf(key)>=0;
+    if(!allowed){
+      panel.classList.add('tier-locked-panel');
+      panel.classList.remove('hidden-panel');
+      _injectPanelLockBadge(panel,key);
+    }else{
+      panel.classList.remove('tier-locked-panel');
+      _removePanelLockBadge(panel);
+    }
+  });
+
+  // ── Toolkit buttons ─────────────────────────────────────────────────────────
+  Object.keys(TOOLKIT_CLASS_MAP).forEach(function(key){
+    var cls=TOOLKIT_CLASS_MAP[key];
+    // music and timer are wrappers, find the button inside
+    var el=document.querySelector('.toolkit-'+key+'-wrap .toolkit-btn')||document.querySelector('.'+cls);
+    if(!el)return;
+    var allowed=cfg.toolkitAllowed.indexOf(key)>=0;
+    el.classList.toggle('tier-locked-btn',!allowed);
+    // swap onclick so locked buttons show upgrade toast instead
+    if(!allowed){
+      el.setAttribute('data-original-onclick',el.getAttribute('onclick')||'');
+      el.setAttribute('onclick','_tierUpgradeToast()');
+    }else{
+      var orig=el.getAttribute('data-original-onclick');
+      if(orig){el.setAttribute('onclick',orig);el.removeAttribute('data-original-onclick');}
+    }
+  });
+
+  // ── Voice input buttons ──────────────────────────────────────────────────────
+  document.querySelectorAll('.mic-btn').forEach(function(btn){
+    btn.classList.toggle('tier-locked-btn',!cfg.voiceInput);
+    btn.disabled=!cfg.voiceInput;
+    btn.title=cfg.voiceInput?'Voice input':'Voice input (Pro)';
+  });
+
+  // ── Completed history ────────────────────────────────────────────────────────
+  document.querySelectorAll('.completed-projects-section,.completed-tasks-section,#taskListCompleted').forEach(function(el){
+    el.style.display=cfg.completedHistory?'':'none';
+  });
+
+  // ── Dev switcher badge ───────────────────────────────────────────────────────
+  _renderDevSwitcher();
+}
+
+function _injectPanelLockBadge(panel,key){
+  if(panel.querySelector('.tier-lock-badge'))return;
+  var names={brain:'Brain Dump',time:'Tool Kit',routines:'Routines',decision:'Decision Support',timeline:'Timeline'};
+  var name=names[key]||key;
+  var badge=document.createElement('div');
+  badge.className='tier-lock-badge';
+  badge.innerHTML='🔒 <strong>'+name+'</strong> is a Pro feature. <button onclick="_tierUpgradeToast()" class="tier-upgrade-btn">Upgrade to Pro</button>';
+  panel.appendChild(badge);
+}
+
+function _removePanelLockBadge(panel){
+  var b=panel.querySelector('.tier-lock-badge');
+  if(b)b.parentNode.removeChild(b);
+}
+
+function _tierUpgradeToast(){
+  // Replace with real upgrade flow when billing is wired
+  if(typeof toast==='function')toast('⚡ Upgrade to Pro to unlock this feature');
+}
+
+function _renderDevSwitcher(){
+  // Only render for the owner UID
+  if(!currentUser||currentUser.uid!==DEV_UID)return;
+  var existing=document.getElementById('devTierSwitcher');
+  if(existing)existing.parentNode.removeChild(existing);
+
+  var active=getActiveTier();
+  var cfg=getTierConfig();
+  var wrap=document.createElement('div');
+  wrap.id='devTierSwitcher';
+  wrap.innerHTML=
+    '<div class="dev-tier-badge" onclick="this.parentNode.querySelector(\'.dev-tier-menu\').classList.toggle(\'open\')">'+
+      '<span style="color:'+cfg.color+'">⬡</span> '+cfg.label+' <span style="font-size:9px;opacity:0.6;">DEV</span>'+
+    '</div>'+
+    '<div class="dev-tier-menu">'+
+      '<div class="dev-tier-menu-title">Simulate Tier</div>'+
+      Object.keys(TIER_CONFIG).map(function(k){
+        var t=TIER_CONFIG[k];
+        return '<button class="dev-tier-opt'+(k===active?' active':'')+'" onclick="_setDevTier(\''+k+'\')">'+
+          '<span style="color:'+t.color+'">⬡</span> '+t.label+'</button>';
+      }).join('')+
+    '</div>';
+  document.body.appendChild(wrap);
+}
+
+function _setDevTier(tier){
+  localStorage.setItem('devTierOverride',tier);
+  applyTierGating();
+  var m=document.querySelector('.dev-tier-menu');
+  if(m)m.classList.remove('open');
+  if(typeof toast==='function')toast('Tier → '+TIER_CONFIG[tier].label);
+}
+// ─────────────────────────────────────────────────────────────────────────────
 
 function showSetupForm(){
   document.getElementById('loginForm').style.display='none';
@@ -8405,7 +8610,7 @@ setInterval(checkDailyRoutineReset,60000);
 
 document.addEventListener('visibilitychange',function(){if(!document.hidden){checkDailyRoutineReset();awardDailyLogin();renderTimeline();}});
 
-renderProjects();renderReminders();renderThoughts();renderNotes();renderRoutines();renderTaskList();renderTimeline();checkDailyRoutineReset();newDecisionPrompt();initDragDrop();updateAllTileSummaries();_applySavedTheme();renderThemeSelector();
+renderProjects();renderReminders();renderThoughts();renderNotes();renderRoutines();renderTaskList();renderTimeline();checkDailyRoutineReset();newDecisionPrompt();initDragDrop();updateAllTileSummaries();_applySavedTheme();renderThemeSelector();applyTierGating();
 if(_isMobile()){showMobileHome();}else{document.querySelector('.header')&&document.querySelector('.header').classList.add('mobile-visible');}
 if(state.energy){const c=document.querySelectorAll('#energyPills .em-pill');const m=['high','good','low','crashed'];const i=m.indexOf(state.energy);if(i>=0)c[i].classList.add('selected');}
 if(state.mood){const c=document.querySelectorAll('#moodPills .em-pill');const m=['focused','scattered','anxious','calm'];const i=m.indexOf(state.mood);if(i>=0)c[i].classList.add('selected');}
