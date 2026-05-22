@@ -4335,6 +4335,10 @@ function closePanelOverlay(){
   
   // Refresh tile summaries
   updateAllTileSummaries();
+  
+  // Re-render tile panels so blank/upcoming state is restored (not left showing overlay content)
+  if(panelKey==='projects'&&typeof renderProjects==='function')renderProjects();
+  else if(panelKey==='tasklist'&&typeof renderTaskList==='function')renderTaskList();
 }
 
 // ESC key closes overlay
