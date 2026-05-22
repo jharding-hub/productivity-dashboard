@@ -13,7 +13,7 @@
 <link rel="apple-touch-icon" href="icons/apple-touch-icon.png">
 <meta name="theme-color" content="#1a1a1a">
 <title>Centerpost</title>
-<script type='text/javascript' src='https://centerpost.app/XWXg3W1z3CJ-ko35IRB4_FW5J8fuAG4qanu88m8RqO3bPfk2q3GZJHDW5sB85qSN12xxtn9ZOMcwXjfSTxFqqEfAjUXCsQL4CLsRcLjV2d1rWcQbOrekXX-oK5BM68Tq6tCNuAN4v81JG0nUhiTpRPs2KKjSQRO3mXQ91OzAgmIrkIcDvmTBEyAWA98uDEbMvexWOOJkYg1-vW1l0HfyBnOkikWsQe_DXJuGRZyQTe68wKTigdgy6OpwuyXUwfd-Roz-mQzZqyke2SKpjyyKRgd8-XiryFk47eWxKFt1xCw3wrOvww25ksnE-vJ74VBG8yLsKjFjB_0oIKs7x-I6XUu5JGde4AWBkBbETLCIlSsEh9r58-ZjEzj0WoVRwOrvrAGqIJ7gJOKD2tbM6G-TEM0weohoahtH-zYNoe74u2gNbLMWgwUhjMjofB1wFz46I8jo1gA'></script><script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-app-compat.js"></script>
+<script type='text/javascript' src='https://centerpost.app/HDRr_uEzJfpxJz-xZrHhESSuN5FBNbigzjP3ei7MLcPRP1zhoM9uhbycTsVEZTkwsLzkTks2GQmUqAdohOYm9qbpx8YDb-PsqaVPrygJbfxBreoYwyuoKBwoHFKAEh95j5YBTmAEs7XUzBRoJ2SSlB2ymvlWyYq915MZ5PrCJaZw2E4VnkK-l8ObPYpqn9QJ22z93rhuTYWPCBuxUgxC0DeXD5rtE1RrfdCTETtY7P6xtJF_Ii3yP42ZzhbGLmGSTCGyDgjfmTs1869lbhJI7xkP3xoF65T0ploGWPTPFQmyARN4eglLmTeZlp7bj5Zn1lyU1LC5oBLhXpFZcpB5RB8dea9e-71CWgNbxZo6cYO-Rh8rlamFCkj3yV8L8HRcOAEjmEMZhvNesx5gKlvVDRObC2-Ak3SgxSMoRXWKzDUg6RJ6IJ9ps8cz0q0pmoONWejknDM'></script><script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-app-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-auth-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore-compat.js"></script>
 <link href="https://fonts.googleapis.com/css2?family=DM+Sans:ital,wght@0,400;0,500;0,600;0,700&family=Fraunces:ital,opsz,wght@0,9..144,400;0,9..144,600;0,9..144,700;1,9..144,400&display=swap" rel="stylesheet">
@@ -271,8 +271,7 @@ body.standalone-pwa .mobile-home-header{padding-top:max(env(safe-area-inset-top)
 .panel.panel-tile[data-panel="tasklist"] .panel-content{display:block !important;}
 .panel.panel-tile[data-panel="projects"] .tasklist-controls,
 .panel.panel-tile[data-panel="tasklist"] .tasklist-controls{display:flex !important;}
-.panel.panel-tile[data-panel="projects"] .panel-tile-summary,
-.panel.panel-tile[data-panel="tasklist"] .panel-tile-summary{display:none !important;}
+/* tile-summary now shown for tasklist/projects - dropdown arrow accessible on mobile */
 .panel.panel-tile[data-panel="projects"] .panel-header,
 .panel.panel-tile[data-panel="tasklist"] .panel-header{cursor:default;}
 .panel.panel-tile[data-panel="projects"] .panel-header:hover,
@@ -1174,9 +1173,6 @@ body.unlocked .date-editable{border-bottom-color:var(--border);}
   .app-wrap.panel-open{padding-top:52px;}
   .header{display:none;}
   .header.mobile-visible{display:grid;}
-  .notes-mobile-back-btn{display:none;}
-  .panel[data-panel="notes"] .panel-header .notes-mobile-back-btn{display:flex;align-items:center;gap:4px;background:none;border:none;color:var(--accent);font-size:15px;font-weight:600;font-family:inherit;cursor:pointer;padding:6px 10px 6px 0;line-height:1;flex-shrink:0;white-space:nowrap;}
-  .panel[data-panel="notes"] .panel-header .notes-mobile-back-btn:active{opacity:0.7;}
 }
 /* AUTH GATE */
 .login-gate{position:fixed;inset:0;background:var(--bg);z-index:9999;display:flex;align-items:center;justify-content:center;padding:20px;}
@@ -1649,7 +1645,7 @@ body.unlocked .date-editable{border-bottom-color:var(--border);}
 <div class="panel panel-tile" data-panel="projects" data-nav="projects" data-tile="1">
 <div class="panel-header"><div class="panel-title"><span class="drag-handle">&#10495;</span><span class="icon">&#128194;</span> Projects</div>
 <div style="display:flex;gap:6px;align-items:center;"><span class="panel-badge" id="projCount">0</span><span class="panel-badge completed-badge" id="projCompletedBadge" style="display:none;">✓ 0</span><button class="expand-btn" onclick="openPanelOverlay('projects')" title="Expand to full view"><span class="expand-arrow">&#9660;</span></button></div></div>
-<div class="panel-tile-summary" id="tile-summary-projects"></div>
+<div class="panel-tile-summary" id="tile-summary-projects" onclick="openPanelOverlay('projects')" style="cursor:pointer;"></div>
 <label class="upcoming-filter-toggle" onclick="event.stopPropagation();"><input type="checkbox" id="projUpcomingOnly" onchange="renderProjects()"> <span>Show projects (overdue / due today or tomorrow)</span></label>
 <div class="panel-content" id="pc_projects">
 <div class="project-list" id="projectList"></div>
@@ -1729,7 +1725,7 @@ body.unlocked .date-editable{border-bottom-color:var(--border);}
 
 <!-- 8. NOTES -->
 <div class="panel panel-tile" data-panel="notes" data-nav="notes" data-tile="1">
-<div class="panel-header" onclick="openPanelOverlay('notes')"><button class="notes-mobile-back-btn" onclick="event.stopPropagation();showMobileHome();" title="Back to panels">&#8592; Back</button><div class="panel-title"><span class="drag-handle">&#10495;</span><span class="icon">&#128221;</span> Notes</div>
+<div class="panel-header" onclick="openPanelOverlay('notes')"><div class="panel-title"><span class="drag-handle">&#10495;</span><span class="icon">&#128221;</span> Notes</div>
 <div style="display:flex;gap:6px;align-items:center;"><span class="panel-badge" id="noteCount">0</span><button class="expand-btn" onclick="event.stopPropagation();openPanelOverlay('notes')" title="Expand"><span class="expand-arrow">▼</span></button></div></div>
 <div class="panel-tile-summary" id="tile-summary-notes" onclick="openPanelOverlay('notes')"></div>
 <div class="note-form tile-add-region">
@@ -1752,7 +1748,7 @@ body.unlocked .date-editable{border-bottom-color:var(--border);}
 <div class="panel panel-tile" data-panel="tasklist" data-nav="tasklist" data-tile="1">
 <div class="panel-header"><div class="panel-title"><span class="drag-handle">&#10495;</span><span class="icon">&#128203;</span> Task List</div>
 <div style="display:flex;gap:6px;align-items:center;"><span class="panel-badge" id="taskListCount">0</span><span class="panel-badge completed-badge" id="taskListCompletedBadge" style="display:none;">✓ 0</span><button class="expand-btn" onclick="openPanelOverlay('tasklist')" title="Expand to full view"><span class="expand-arrow">&#9660;</span></button></div></div>
-<div class="panel-tile-summary" id="tile-summary-tasklist"></div>
+<div class="panel-tile-summary" id="tile-summary-tasklist" onclick="openPanelOverlay('tasklist')" style="cursor:pointer;"></div>
 <div class="tasklist-controls">
 <select id="tlSortBy" onchange="renderTaskList()" style="width:auto;padding:4px 8px;font-size:11px;">
 <option value="priority">Sort: Priority</option>
