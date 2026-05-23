@@ -1241,6 +1241,7 @@ body.unlocked .date-editable{border-bottom-color:var(--border);}
 .login-link:hover{color:var(--accent);}
 .login-success{color:var(--green);font-size:12px;margin-top:8px;min-height:18px;}
 .customize-btn{background:none;border:1px solid var(--border);color:var(--text-faint);padding:3px 8px;border-radius:var(--radius-sm);cursor:pointer;font-size:11px;font-family:inherit;transition:all 0.15s;}
+.kids-launcher:hover{background:linear-gradient(135deg,rgba(255,204,0,0.28),rgba(255,51,153,0.18)) !important;border-color:#ffcc00 !important;color:#ffcc00 !important;box-shadow:0 0 12px rgba(255,204,0,0.3);}
 .customize-btn:hover{border-color:var(--accent-dim);color:var(--accent);}
 .customize-overlay{position:fixed;inset:0;background:rgba(0,0,0,0.6);z-index:300;display:none;align-items:center;justify-content:center;padding:20px;}
 .customize-overlay.show{display:flex;}
@@ -8708,6 +8709,7 @@ setTimeout(checkShareTarget, 400); // slight delay so panels render first
   <span class="sync-status offline" id="syncStatus"><span class="sync-dot"></span> Local</span>
   <div class="status-bar-spacer"></div>
   <button class="customize-btn" onclick="openCustomize()" title="Show/hide panels">&#9881; Panels</button>
+  <button class="customize-btn kids-launcher" onclick="window.open('kids.html','_blank')" title="Open Centerpost Kids (4th tier — kid-friendly arcade mode)" style="background:linear-gradient(135deg,rgba(255,204,0,0.18),rgba(255,51,153,0.12));border-color:rgba(255,204,0,0.5);color:#ffcc00;font-weight:600;letter-spacing:0.5px;">&#127918; Kids Mode</button>
   <button class="lock-btn" id="lockBtn" onclick="toggleLock()" title="Lock/unlock layout and editing">&#128274; Locked</button>
   <button class="logout-btn" onclick="doLogout()" title="Sign out">Sign out</button>
 </div>
@@ -9797,7 +9799,7 @@ setTimeout(_initJarvisVoice,1500);
 // ── CONFIG ─────────────────────────────────────────────────────────────────
 // PASTE YOUR OAUTH CLIENT ID HERE (from Google Cloud Console → Credentials)
 // It will look like: '123456789-abc.apps.googleusercontent.com'
-var GOOGLE_CLIENT_ID = '1065593793454-57q4unojejuafv4rihajmoas77ucr6q8.apps.googleusercontent.com';
+var GOOGLE_CLIENT_ID = '';
 
 var GOOGLE_SCOPES = 'https://www.googleapis.com/auth/calendar https://www.googleapis.com/auth/userinfo.email';
 var GCAL_CALENDAR_NAME = 'Centerpost';
