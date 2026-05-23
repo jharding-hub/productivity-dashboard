@@ -706,6 +706,46 @@ body.unlocked .date-editable{border-bottom-color:var(--border);}
 /* When Jarvis is in Breakdown mode, color-shift the title */
 .jarvis-panel.breakdown-mode .jarvis-panel-title{color:#a4f3ff;text-shadow:0 0 10px rgba(164,243,255,0.6);}
 .jarvis-panel.breakdown-mode .jarvis-panel-header{background:linear-gradient(135deg,rgba(91,232,255,0.18),rgba(91,232,255,0.06));}
+/* ── CALENDAR SYNC modal + status chip ── */
+.gcal-status-chip{display:inline-flex;align-items:center;gap:5px;font-size:10px;padding:2px 7px;border-radius:10px;border:1px solid var(--border);color:var(--text-dim);background:var(--surface);cursor:pointer;transition:all 0.15s;line-height:1.5;}
+.gcal-status-chip:hover{border-color:#4a90e2;color:#4a90e2;}
+.gcal-status-chip.connected{border-color:rgba(74,222,128,0.5);color:#4ade80;background:rgba(74,222,128,0.08);}
+.gcal-status-chip .gcal-dot{width:6px;height:6px;border-radius:50%;background:var(--text-faint);flex-shrink:0;}
+.gcal-status-chip.connected .gcal-dot{background:#4ade80;box-shadow:0 0 6px rgba(74,222,128,0.6);}
+.gcal-status-chip.syncing .gcal-dot{background:#fbbf24;animation:gcal-pulse 1s ease-in-out infinite;}
+@keyframes gcal-pulse{0%,100%{opacity:1;}50%{opacity:0.3;}}
+.gcal-modal-overlay{position:fixed;inset:0;background:rgba(0,0,0,0.6);backdrop-filter:blur(4px);z-index:2000;display:none;align-items:center;justify-content:center;padding:16px;}
+.gcal-modal-overlay.open{display:flex;}
+.gcal-modal{background:var(--surface);border:1px solid var(--border);border-radius:14px;max-width:460px;width:100%;max-height:90vh;overflow-y:auto;box-shadow:0 20px 60px rgba(0,0,0,0.5);}
+.gcal-modal-header{display:flex;align-items:center;gap:10px;padding:16px 20px;border-bottom:1px solid var(--border);}
+.gcal-modal-title{flex:1;font-family:'Fraunces',serif;font-size:18px;font-weight:600;color:var(--text);}
+.gcal-modal-close{background:none;border:none;color:var(--text-faint);font-size:20px;cursor:pointer;padding:4px 8px;border-radius:6px;line-height:1;}
+.gcal-modal-close:hover{color:var(--text);background:var(--surface-raised);}
+.gcal-modal-body{padding:18px 20px;}
+.gcal-status-row{display:flex;align-items:center;gap:10px;padding:12px 14px;background:var(--surface-raised);border-radius:8px;margin-bottom:14px;font-size:13px;}
+.gcal-status-row .gcal-dot{width:9px;height:9px;border-radius:50%;background:var(--text-faint);}
+.gcal-status-row.connected .gcal-dot{background:#4ade80;box-shadow:0 0 8px rgba(74,222,128,0.6);}
+.gcal-info-grid{display:grid;grid-template-columns:auto 1fr;gap:6px 12px;font-size:12px;margin-bottom:14px;padding:10px 12px;background:var(--surface-raised);border-radius:8px;}
+.gcal-info-grid dt{color:var(--text-dim);font-weight:500;}
+.gcal-info-grid dd{color:var(--text);margin:0;word-break:break-word;}
+.gcal-actions{display:flex;flex-direction:column;gap:8px;margin-bottom:14px;}
+.gcal-btn{padding:10px 14px;border-radius:8px;border:1px solid var(--border);background:var(--surface-raised);color:var(--text);font-size:13px;cursor:pointer;text-align:center;transition:all 0.15s;font-family:inherit;}
+.gcal-btn:hover{border-color:#4a90e2;color:#4a90e2;background:rgba(74,144,226,0.08);}
+.gcal-btn.primary{background:#4a90e2;color:white;border-color:#4a90e2;font-weight:600;}
+.gcal-btn.primary:hover{background:#5ba3ff;border-color:#5ba3ff;color:white;}
+.gcal-btn.danger{color:#ef4444;border-color:rgba(239,68,68,0.4);}
+.gcal-btn.danger:hover{background:rgba(239,68,68,0.1);border-color:#ef4444;color:#ef4444;}
+.gcal-btn:disabled{opacity:0.5;cursor:not-allowed;}
+.gcal-toggle-row{display:flex;align-items:center;gap:10px;padding:10px 12px;background:var(--surface-raised);border-radius:8px;font-size:12px;margin-bottom:8px;cursor:pointer;}
+.gcal-toggle-row input{margin:0;}
+.gcal-toggle-row .gcal-toggle-label{flex:1;color:var(--text);}
+.gcal-toggle-row .gcal-toggle-hint{font-size:11px;color:var(--text-dim);}
+.gcal-help{font-size:11px;color:var(--text-dim);line-height:1.5;padding:10px 12px;background:var(--surface-raised);border-radius:8px;border-left:3px solid #4a90e2;margin-top:12px;}
+.gcal-help code{background:var(--surface);padding:1px 5px;border-radius:3px;font-size:10px;}
+/* External event in timeline (pulled from Google) */
+.tl-block.external-gcal{border-left-color:#4a90e2 !important;background:linear-gradient(90deg,rgba(74,144,226,0.18),rgba(74,144,226,0.06)) !important;}
+.tl-block.external-gcal::after{content:'G';position:absolute;top:3px;right:5px;font-size:9px;font-weight:700;color:#4a90e2;background:rgba(74,144,226,0.15);padding:1px 5px;border-radius:3px;}
+.tl-block-synced-badge{display:inline-block;font-size:9px;color:#4ade80;margin-left:4px;}
 
 /* Wellness Wheel modal */
 .well-intro{font-size:13px;color:var(--text-dim);margin-bottom:16px;line-height:1.5;}
@@ -1856,10 +1896,11 @@ body.unlocked .date-editable{border-bottom-color:var(--border);}
     <input type="hidden" id="tlBlockProj" value="">
     <button class="btn btn-accent btn-sm" onclick="addTimelineBlock()">+ Add</button>
   </div>
-  <div style="display:flex;gap:6px;margin-top:6px;flex-wrap:wrap;">
+  <div style="display:flex;gap:6px;margin-top:6px;flex-wrap:wrap;align-items:center;">
     <button class="btn btn-sm" onclick="exportTimelineICS()" style="font-size:11px;">&#128197; Download .ics</button>
-    <button class="btn btn-sm" onclick="pushToGoogleCalendar()" style="font-size:11px;" title="Open each block as a pre-filled Google Calendar event">&#128197; Push to Google</button>
+    <button class="btn btn-sm" onclick="pushToGoogleCalendar()" style="font-size:11px;" title="Quick: open each block as a pre-filled Google Calendar event (no auth needed)">&#128197; Push to Google</button>
     <button class="btn btn-sm" onclick="clearTimelineBlocks()" style="font-size:11px;color:var(--text-dim);">Clear manual blocks</button>
+    <span class="gcal-status-chip" id="gcalStatusChip" onclick="openGcalModal()" title="Calendar sync settings"><span class="gcal-dot"></span><span id="gcalStatusLabel">Sync: off</span></span>
   </div>
 </div>
 </div>
@@ -2650,6 +2691,7 @@ async function load(){
   if(state.points.lifetimeTotal===undefined)state.points.lifetimeTotal=0;
   if(!state.wellnessNotes)state.wellnessNotes={};
   if(!state.completedProjects)state.completedProjects=[];
+  if(!state.gcal)state.gcal={connected:false,email:null,calendarId:null,autoPush:false,showExternal:true,lastPush:null,lastPull:null,pulledEvents:[]};
   if(!state.panelOrder)state.panelOrder=['projects','reminders','time','tasklist','notes','brain','routines','wellness','decision','admin'];
   // Remove legacy 'energy' panel id from any saved order
   state.panelOrder=state.panelOrder.filter(id=>id!=='energy');
@@ -8691,6 +8733,19 @@ setTimeout(checkShareTarget, 400); // slight delay so panels render first
   </div>
 </div>
 
+<!-- CALENDAR SYNC MODAL -->
+<div class="gcal-modal-overlay" id="gcalModal" onclick="if(event.target===this)closeGcalModal()">
+  <div class="gcal-modal">
+    <div class="gcal-modal-header">
+      <div class="gcal-modal-title">&#128197; Calendar Sync</div>
+      <button class="gcal-modal-close" onclick="closeGcalModal()">&#10005;</button>
+    </div>
+    <div class="gcal-modal-body" id="gcalModalBody">
+      <!-- Filled by _gcalRenderModal() -->
+    </div>
+  </div>
+</div>
+
 <!-- WORK TODAY MODAL -->
 <div class="modal-blur-overlay" id="workTodayModal">
 <div class="modal-blur-backdrop" onclick="closeWorkTodayModal()"></div>
@@ -9734,5 +9789,601 @@ function _initJarvisVoice(){
   _updateVoiceUI();
 }
 setTimeout(_initJarvisVoice,1500);
+
+// ═══════════════════════════════════════════════════════════════════════════
+// CALENDAR SYNC — Google Calendar (two-way) | Outlook pattern in OUTLOOK_NEXT.md
+// ═══════════════════════════════════════════════════════════════════════════
+
+// ── CONFIG ─────────────────────────────────────────────────────────────────
+// PASTE YOUR OAUTH CLIENT ID HERE (from Google Cloud Console → Credentials)
+// It will look like: '123456789-abc.apps.googleusercontent.com'
+var GOOGLE_CLIENT_ID = '';
+
+var GOOGLE_SCOPES = 'https://www.googleapis.com/auth/calendar https://www.googleapis.com/auth/userinfo.email';
+var GCAL_CALENDAR_NAME = 'Centerpost';
+var GCAL_API_BASE = 'https://www.googleapis.com/calendar/v3';
+
+// ── INTERNAL STATE ─────────────────────────────────────────────────────────
+var _gcalTokenClient = null;
+var _gcalAccessToken = null;
+var _gcalTokenExpiry = 0;
+var _gcalGisLoaded = false;
+var _gcalSyncing = false;
+
+// ── GIS BOOTSTRAP ──────────────────────────────────────────────────────────
+function _gcalLoadGis(){
+  return new Promise(function(resolve, reject){
+    if(window.google && window.google.accounts && window.google.accounts.oauth2){
+      _gcalGisLoaded = true;
+      resolve();
+      return;
+    }
+    var s = document.createElement('script');
+    s.src = 'https://accounts.google.com/gsi/client';
+    s.async = true;
+    s.defer = true;
+    s.onload = function(){ _gcalGisLoaded = true; resolve(); };
+    s.onerror = function(){ reject(new Error('Failed to load Google Identity Services')); };
+    document.head.appendChild(s);
+  });
+}
+
+function _gcalInitTokenClient(){
+  if(!GOOGLE_CLIENT_ID){
+    toast('Set GOOGLE_CLIENT_ID in index.html first (see SETUP_GUIDE.md)');
+    return false;
+  }
+  if(_gcalTokenClient) return true;
+  _gcalTokenClient = google.accounts.oauth2.initTokenClient({
+    client_id: GOOGLE_CLIENT_ID,
+    scope: GOOGLE_SCOPES,
+    callback: function(resp){
+      if(resp.error){
+        toast('Google auth: '+(resp.error_description||resp.error));
+        _gcalSetSyncingUI(false);
+        return;
+      }
+      _gcalAccessToken = resp.access_token;
+      _gcalTokenExpiry = Date.now() + ((resp.expires_in||3600) * 1000) - 60000;
+      _gcalOnAuthSuccess();
+    }
+  });
+  return true;
+}
+
+// ── PUBLIC: CONNECT / DISCONNECT ───────────────────────────────────────────
+async function gcalConnect(){
+  try {
+    _gcalSetSyncingUI(true);
+    await _gcalLoadGis();
+    if(!_gcalInitTokenClient()){ _gcalSetSyncingUI(false); return; }
+    // Interactive — prompts the user to pick account & grant consent
+    _gcalTokenClient.requestAccessToken({ prompt: 'consent' });
+  } catch(e){
+    toast('Connect failed: '+e.message);
+    _gcalSetSyncingUI(false);
+  }
+}
+
+async function _gcalOnAuthSuccess(){
+  // Fetch user email
+  try {
+    var r = await fetch('https://www.googleapis.com/oauth2/v2/userinfo', {
+      headers: { Authorization: 'Bearer '+_gcalAccessToken }
+    });
+    if(r.ok){
+      var info = await r.json();
+      state.gcal.email = info.email || null;
+    }
+  } catch(e){ console.warn('[gcal] userinfo failed', e); }
+  // Ensure dedicated calendar exists
+  await _gcalEnsureCalendar();
+  state.gcal.connected = true;
+  save();
+  _gcalSetSyncingUI(false);
+  _gcalUpdateUI();
+  if(document.getElementById('gcalModal').classList.contains('open')) _gcalRenderModal();
+  toast('Connected to Google Calendar'+(state.gcal.email?' as '+state.gcal.email:''));
+}
+
+function gcalDisconnect(){
+  if(_gcalAccessToken && window.google && google.accounts && google.accounts.oauth2){
+    try { google.accounts.oauth2.revoke(_gcalAccessToken, function(){}); } catch(e){}
+  }
+  _gcalAccessToken = null;
+  _gcalTokenExpiry = 0;
+  _gcalTokenClient = null;
+  state.gcal = {connected:false,email:null,calendarId:null,autoPush:false,showExternal:true,lastPush:null,lastPull:null,pulledEvents:[]};
+  // Clear gcalEventId markers from all items (they reference a calendar we no longer track)
+  (state.tasks||[]).forEach(function(t){ delete t.gcalEventId; });
+  (state.projects||[]).forEach(function(p){
+    delete p.gcalEventId;
+    (p.subtasks||[]).forEach(function(s){ delete s.gcalEventId; });
+  });
+  (state.reminders||[]).forEach(function(r){ delete r.gcalEventId; });
+  save();
+  _gcalUpdateUI();
+  if(typeof renderTimeline === 'function') renderTimeline();
+  if(document.getElementById('gcalModal').classList.contains('open')) _gcalRenderModal();
+  toast('Disconnected from Google Calendar');
+}
+
+// ── TOKEN HANDLING ─────────────────────────────────────────────────────────
+async function _gcalEnsureToken(){
+  if(_gcalAccessToken && Date.now() < _gcalTokenExpiry) return true;
+  if(!GOOGLE_CLIENT_ID) return false;
+  try {
+    await _gcalLoadGis();
+    if(!_gcalInitTokenClient()) return false;
+  } catch(e){ return false; }
+  // Silent re-auth attempt
+  return new Promise(function(resolve){
+    var origCb = _gcalTokenClient.callback;
+    _gcalTokenClient.callback = function(resp){
+      _gcalTokenClient.callback = origCb;
+      if(resp.error){ resolve(false); return; }
+      _gcalAccessToken = resp.access_token;
+      _gcalTokenExpiry = Date.now() + ((resp.expires_in||3600) * 1000) - 60000;
+      resolve(true);
+    };
+    _gcalTokenClient.requestAccessToken({ prompt: '' });
+  });
+}
+
+// ── HTTP HELPER ────────────────────────────────────────────────────────────
+async function _gcalFetch(method, path, body){
+  var ok = await _gcalEnsureToken();
+  if(!ok){
+    console.warn('[gcal] no valid token for '+method+' '+path);
+    return null;
+  }
+  var opts = {
+    method: method,
+    headers: { Authorization: 'Bearer '+_gcalAccessToken, 'Content-Type': 'application/json' }
+  };
+  if(body) opts.body = JSON.stringify(body);
+  try {
+    var r = await fetch(GCAL_API_BASE+path, opts);
+    if(r.status === 204) return {_deleted:true};
+    var data = await r.json();
+    if(data.error){ console.warn('[gcal] '+method+' '+path, data.error); }
+    return data;
+  } catch(e){
+    console.error('[gcal] fetch error', method, path, e);
+    return null;
+  }
+}
+
+// ── CALENDAR MANAGEMENT ────────────────────────────────────────────────────
+async function _gcalEnsureCalendar(){
+  // Check existing
+  if(state.gcal.calendarId){
+    var verify = await _gcalFetch('GET', '/calendars/'+encodeURIComponent(state.gcal.calendarId));
+    if(verify && !verify.error && verify.id) return state.gcal.calendarId;
+  }
+  // Look in calendar list
+  var list = await _gcalFetch('GET', '/users/me/calendarList');
+  if(list && list.items){
+    var found = list.items.find(function(c){ return c.summary === GCAL_CALENDAR_NAME; });
+    if(found){ state.gcal.calendarId = found.id; save(); return found.id; }
+  }
+  // Create new
+  var tz = 'UTC';
+  try { tz = Intl.DateTimeFormat().resolvedOptions().timeZone || 'UTC'; } catch(e){}
+  var created = await _gcalFetch('POST', '/calendars', {
+    summary: GCAL_CALENDAR_NAME,
+    description: 'Auto-synced from Centerpost productivity dashboard',
+    timeZone: tz
+  });
+  if(created && created.id){ state.gcal.calendarId = created.id; save(); return created.id; }
+  return null;
+}
+
+// ── EVENT BUILDER ──────────────────────────────────────────────────────────
+function _gcalPad2(n){ return n<10?'0'+n:''+n; }
+function _gcalBuildEvent(item){
+  // item: {id, name, date, time?, durMin?, priority?, projectName?, kind, sourceId}
+  var summary = item.name;
+  if(item.projectName) summary = '['+item.projectName+'] '+summary;
+  if(item.priority === 'high' && summary.indexOf('[HIGH]')===-1) summary = '🔴 '+summary;
+  var description = 'Centerpost ' + (item.kind || 'item');
+  if(item.projectName) description += ' — project: '+item.projectName;
+  if(item.priority) description += '\nPriority: '+item.priority;
+  if(item.durMin) description += '\nTime estimate: '+item.durMin+' min';
+  description += '\n\n(Synced from Centerpost)';
+  // Time handling
+  var start, end;
+  if(item.time){
+    var startDate = new Date(item.date+'T'+item.time+':00');
+    var dur = parseInt(item.durMin||60);
+    var endDate = new Date(startDate.getTime() + dur*60000);
+    start = { dateTime: startDate.toISOString() };
+    end   = { dateTime: endDate.toISOString() };
+  } else {
+    // All-day
+    var d = new Date(item.date+'T00:00:00');
+    var d2 = new Date(d.getTime()); d2.setDate(d2.getDate()+1);
+    start = { date: item.date };
+    end   = { date: d2.getFullYear()+'-'+_gcalPad2(d2.getMonth()+1)+'-'+_gcalPad2(d2.getDate()) };
+  }
+  // Color (Google IDs: 11=red, 5=yellow, 9=blue, 10=green)
+  var colorMap = { high:'11', med:'5', low:'9' };
+  var ev = {
+    summary: summary,
+    description: description,
+    start: start,
+    end: end,
+    extendedProperties: {
+      private: {
+        centerpostId: item.sourceId || item.id,
+        centerpostKind: item.kind || 'item'
+      }
+    }
+  };
+  if(item.priority && colorMap[item.priority]) ev.colorId = colorMap[item.priority];
+  return ev;
+}
+
+// ── PUSH ───────────────────────────────────────────────────────────────────
+async function _gcalPushItem(item){
+  if(!state.gcal.connected || !item.date) return null;
+  var calId = state.gcal.calendarId || await _gcalEnsureCalendar();
+  if(!calId) return null;
+  var payload = _gcalBuildEvent(item);
+  var existing = item.existingEventId;
+  var result;
+  if(existing){
+    result = await _gcalFetch('PUT',
+      '/calendars/'+encodeURIComponent(calId)+'/events/'+existing, payload);
+  } else {
+    result = await _gcalFetch('POST',
+      '/calendars/'+encodeURIComponent(calId)+'/events', payload);
+  }
+  return (result && result.id) ? result.id : null;
+}
+
+async function gcalPushAll(){
+  if(!state.gcal.connected){ openGcalModal(); return; }
+  if(_gcalSyncing) return;
+  _gcalSyncing = true;
+  _gcalSetSyncingUI(true);
+  var pushed = 0, failed = 0;
+
+  // 1. Standalone tasks with due date (not done)
+  for(var i=0;i<(state.tasks||[]).length;i++){
+    var t = state.tasks[i];
+    if(!t.due || t.done) continue;
+    var eid = await _gcalPushItem({
+      name: t.name, date: t.due, time: t.time, durMin: parseInt(t.timeEst)||60,
+      priority: t.priority||'med', kind: 'task', sourceId: t.id, existingEventId: t.gcalEventId
+    });
+    if(eid){ t.gcalEventId = eid; pushed++; } else { failed++; }
+  }
+
+  // 2. Project subtasks with due date (not done)
+  for(var p=0;p<(state.projects||[]).length;p++){
+    var proj = state.projects[p];
+    for(var s=0;s<(proj.subtasks||[]).length;s++){
+      var st = proj.subtasks[s];
+      if(!st.due || st.done) continue;
+      var seid = await _gcalPushItem({
+        name: st.name, date: st.due, time: st.time, durMin: parseInt(st.timeEst)||60,
+        priority: st.priority||'med', kind: 'subtask', projectName: proj.name,
+        sourceId: st.id, existingEventId: st.gcalEventId
+      });
+      if(seid){ st.gcalEventId = seid; pushed++; } else { failed++; }
+    }
+  }
+
+  // 3. Reminders with a date
+  for(var r=0;r<(state.reminders||[]).length;r++){
+    var rem = state.reminders[r];
+    if(!rem.date) continue;
+    var reid = await _gcalPushItem({
+      name: rem.text, date: rem.date, time: rem.time, durMin: 30,
+      priority: 'med', kind: 'reminder', sourceId: rem.id, existingEventId: rem.gcalEventId
+    });
+    if(reid){ rem.gcalEventId = reid; pushed++; } else { failed++; }
+  }
+
+  // 4. Manual timeline blocks
+  for(var b=0;b<(state.tlBlocks||[]).length;b++){
+    var blk = state.tlBlocks[b];
+    if(!blk.date || !blk.time) continue;
+    var projName = '';
+    if(blk.projectId){
+      var bp = (state.projects||[]).find(function(p){return p.id===blk.projectId;});
+      if(bp) projName = bp.name;
+    }
+    var beid = await _gcalPushItem({
+      name: blk.name, date: blk.date, time: blk.time, durMin: parseInt(blk.duration)||60,
+      priority: blk.priority||'med', kind: 'block', projectName: projName,
+      sourceId: blk.id, existingEventId: blk.gcalEventId
+    });
+    if(beid){ blk.gcalEventId = beid; pushed++; } else { failed++; }
+  }
+
+  state.gcal.lastPush = new Date().toISOString();
+  save();
+  _gcalSyncing = false;
+  _gcalSetSyncingUI(false);
+  _gcalUpdateUI();
+  if(document.getElementById('gcalModal').classList.contains('open')) _gcalRenderModal();
+  toast('Pushed '+pushed+' item'+(pushed===1?'':'s')+' to Google Calendar'+(failed?' ('+failed+' failed)':''));
+}
+
+// ── DELETE PROPAGATION ─────────────────────────────────────────────────────
+async function _gcalDeleteEvent(eventId){
+  if(!state.gcal.connected || !eventId || !state.gcal.calendarId) return;
+  await _gcalFetch('DELETE',
+    '/calendars/'+encodeURIComponent(state.gcal.calendarId)+'/events/'+eventId);
+}
+
+// ── PULL ───────────────────────────────────────────────────────────────────
+async function gcalPullEvents(){
+  if(!state.gcal.connected){ openGcalModal(); return; }
+  if(_gcalSyncing) return;
+  _gcalSyncing = true;
+  _gcalSetSyncingUI(true);
+
+  var now = new Date();
+  var min = new Date(now); min.setDate(min.getDate() - 1); min.setHours(0,0,0,0);
+  var max = new Date(now); max.setDate(max.getDate() + 14); max.setHours(23,59,59,999);
+  var qs = '?timeMin='+encodeURIComponent(min.toISOString())+
+           '&timeMax='+encodeURIComponent(max.toISOString())+
+           '&singleEvents=true&orderBy=startTime&maxResults=100';
+
+  var external = [];
+  // Pull from primary calendar
+  var primary = await _gcalFetch('GET', '/calendars/primary/events'+qs);
+  if(primary && primary.items){
+    primary.items.forEach(function(e){
+      var ep = e.extendedProperties && e.extendedProperties.private;
+      if(ep && ep.centerpostId) return; // skip our own
+      var startDt = e.start && (e.start.dateTime || e.start.date);
+      var endDt   = e.end   && (e.end.dateTime   || e.end.date);
+      if(!startDt) return;
+      external.push({
+        id: 'gcal-'+e.id,
+        eventId: e.id,
+        title: e.summary || '(no title)',
+        start: startDt,
+        end: endDt,
+        location: e.location || '',
+        allDay: !(e.start && e.start.dateTime),
+        source: 'google',
+        htmlLink: e.htmlLink || ''
+      });
+    });
+  }
+  state.gcal.pulledEvents = external;
+  state.gcal.lastPull = new Date().toISOString();
+  save();
+
+  _gcalSyncing = false;
+  _gcalSetSyncingUI(false);
+  _gcalUpdateUI();
+  if(typeof renderTimeline === 'function') renderTimeline();
+  if(document.getElementById('gcalModal').classList.contains('open')) _gcalRenderModal();
+  toast('Pulled '+external.length+' external event'+(external.length===1?'':'s')+' from Google Calendar');
+}
+
+// Helper for timeline integration: returns external GCal events for a given YYYY-MM-DD
+function gcalEventsForDate(dateStr){
+  if(!state.gcal || !state.gcal.connected || !state.gcal.showExternal) return [];
+  return (state.gcal.pulledEvents||[]).filter(function(e){
+    if(e.allDay){ return e.start === dateStr; }
+    // Timed: compare YYYY-MM-DD portion
+    return (e.start||'').slice(0,10) === dateStr;
+  }).map(function(e){
+    var startMin = 0;
+    if(!e.allDay && e.start){
+      var d = new Date(e.start);
+      startMin = d.getHours()*60 + d.getMinutes();
+    }
+    var durMin = 60;
+    if(!e.allDay && e.start && e.end){
+      durMin = Math.max(15, Math.round((new Date(e.end) - new Date(e.start))/60000));
+    }
+    return {
+      id: e.id, name: e.title, startMin: startMin, durMin: durMin,
+      projectId: '', priority: 'med', source: 'gcal-external',
+      external: true, htmlLink: e.htmlLink
+    };
+  });
+}
+
+// ── UI HELPERS ─────────────────────────────────────────────────────────────
+function _gcalSetSyncingUI(on){
+  var chip = document.getElementById('gcalStatusChip');
+  if(chip) chip.classList.toggle('syncing', !!on);
+}
+
+function _gcalUpdateUI(){
+  var chip = document.getElementById('gcalStatusChip');
+  var lbl  = document.getElementById('gcalStatusLabel');
+  if(!chip || !lbl) return;
+  if(state.gcal && state.gcal.connected){
+    chip.classList.add('connected');
+    lbl.textContent = 'Sync: on';
+  } else {
+    chip.classList.remove('connected');
+    lbl.textContent = 'Sync: off';
+  }
+}
+
+function _gcalRelTime(iso){
+  if(!iso) return 'never';
+  var diff = (Date.now() - new Date(iso).getTime())/1000;
+  if(diff < 60) return Math.floor(diff)+'s ago';
+  if(diff < 3600) return Math.floor(diff/60)+' min ago';
+  if(diff < 86400) return Math.floor(diff/3600)+' hr ago';
+  return Math.floor(diff/86400)+' day'+(diff>=172800?'s':'')+' ago';
+}
+
+function openGcalModal(){
+  _gcalRenderModal();
+  var m = document.getElementById('gcalModal');
+  if(m) m.classList.add('open');
+}
+
+function closeGcalModal(){
+  var m = document.getElementById('gcalModal');
+  if(m) m.classList.remove('open');
+}
+
+function _gcalRenderModal(){
+  var body = document.getElementById('gcalModalBody');
+  if(!body) return;
+  var html = '';
+
+  if(!GOOGLE_CLIENT_ID){
+    html += '<div class="gcal-status-row"><span class="gcal-dot"></span><div><strong>Not configured.</strong><br><span style="font-size:12px;color:var(--text-dim);">Open index.html, find <code>GOOGLE_CLIENT_ID</code> near the bottom of the script, and paste your OAuth client ID from Google Cloud Console.</span></div></div>';
+    html += '<div class="gcal-help"><strong>One-time setup:</strong><br>1. Go to <code>console.cloud.google.com</code><br>2. Create a project &amp; enable Google Calendar API<br>3. Create OAuth client ID (Web app)<br>4. Add <code>https://centerpost.app</code> as Authorized JavaScript origin<br>5. Paste the Client ID into <code>GOOGLE_CLIENT_ID</code> and redeploy<br><br>Full guide: see <code>GOOGLE_CALENDAR_SETUP.md</code>.</div>';
+    body.innerHTML = html;
+    return;
+  }
+
+  if(state.gcal && state.gcal.connected){
+    html += '<div class="gcal-status-row connected"><span class="gcal-dot"></span><div><strong>Connected.</strong> Your Centerpost items can now sync with Google Calendar.</div></div>';
+    html += '<dl class="gcal-info-grid">';
+    html += '<dt>Account</dt><dd>'+(state.gcal.email||'(unknown)')+'</dd>';
+    html += '<dt>Calendar</dt><dd>'+GCAL_CALENDAR_NAME+'</dd>';
+    html += '<dt>Last push</dt><dd>'+_gcalRelTime(state.gcal.lastPush)+'</dd>';
+    html += '<dt>Last pull</dt><dd>'+_gcalRelTime(state.gcal.lastPull)+'</dd>';
+    if(state.gcal.pulledEvents) html += '<dt>External events</dt><dd>'+state.gcal.pulledEvents.length+' cached</dd>';
+    html += '</dl>';
+
+    html += '<div class="gcal-actions">';
+    html += '<button class="gcal-btn primary" onclick="gcalPushAll()" '+(_gcalSyncing?'disabled':'')+'>&#11014; Push All to Google</button>';
+    html += '<button class="gcal-btn" onclick="gcalPullEvents()" '+(_gcalSyncing?'disabled':'')+'>&#11015; Pull Events from Google</button>';
+    html += '</div>';
+
+    html += '<label class="gcal-toggle-row"><input type="checkbox" '+(state.gcal.showExternal?'checked':'')+' onchange="state.gcal.showExternal=this.checked;save();_gcalUpdateUI();if(typeof renderTimeline===\'function\')renderTimeline();"><div class="gcal-toggle-label">Show external events in Timeline<div class="gcal-toggle-hint">Events from your primary Google Calendar that didn\'t originate in Centerpost.</div></div></label>';
+
+    html += '<label class="gcal-toggle-row"><input type="checkbox" '+(state.gcal.autoPush?'checked':'')+' onchange="state.gcal.autoPush=this.checked;save();"><div class="gcal-toggle-label">Auto-push new items (experimental)<div class="gcal-toggle-hint">When ON, new tasks/subtasks/reminders with a date push automatically. Off by default — use the manual button until you trust it.</div></div></label>';
+
+    html += '<div class="gcal-actions" style="margin-top:14px;">';
+    html += '<button class="gcal-btn danger" onclick="if(confirm(\'Disconnect Google Calendar? Synced events stay in Google but Centerpost will forget which ones it created.\'))gcalDisconnect()">Disconnect</button>';
+    html += '</div>';
+
+    html += '<div class="gcal-help">&#9881; <strong>What syncs:</strong> tasks, project subtasks, reminders, and timeline blocks with a date. Items without a date stay local. <br><br>&#128274; <strong>What doesn\'t sync:</strong> Brain Dump thoughts, notes, journal entries, mood/energy logs, wellness reflections, points/streaks.</div>';
+  } else {
+    html += '<div class="gcal-status-row"><span class="gcal-dot"></span><div><strong>Not connected.</strong><br><span style="font-size:12px;color:var(--text-dim);">Connect to push tasks, subtasks, and reminders to a "'+GCAL_CALENDAR_NAME+'" calendar in your Google account, and pull events back into the Timeline panel.</span></div></div>';
+    html += '<div class="gcal-actions">';
+    html += '<button class="gcal-btn primary" onclick="gcalConnect()" '+(_gcalSyncing?'disabled':'')+'>&#128279; Connect Google Calendar</button>';
+    html += '</div>';
+    html += '<div class="gcal-help"><strong>Privacy:</strong> auth happens in a Google popup. Centerpost never sees your password. The access token lives only in this browser tab and expires in 1 hour. You can disconnect anytime.</div>';
+  }
+  body.innerHTML = html;
+}
+
+// Initialize chip on load
+setTimeout(function(){
+  if(state && state.gcal) _gcalUpdateUI();
+}, 1500);
+
+// ═══════════════════════════════════════════════════════════════════════════
+// OPTIONAL: Auto-sync hooks. Disabled by default (state.gcal.autoPush=false).
+// When user enables autoPush, these wrappers push individual items on create.
+// Deletes always propagate when connected (independent of autoPush).
+// ═══════════════════════════════════════════════════════════════════════════
+
+// Wrap addStandaloneTask: auto-push the newly added task if enabled
+(function(){
+  if(typeof addStandaloneTask !== 'function') return;
+  var _orig = addStandaloneTask;
+  addStandaloneTask = function(){
+    var beforeLen = (state.tasks||[]).length;
+    var ret = _orig.apply(this, arguments);
+    try {
+      if(state.gcal && state.gcal.connected && state.gcal.autoPush){
+        // The new task is the last appended to state.tasks
+        var t = state.tasks[state.tasks.length-1];
+        if(t && t.due && !t.done){
+          _gcalPushItem({
+            name: t.name, date: t.due, time: t.time, durMin: parseInt(t.timeEst)||60,
+            priority: t.priority||'med', kind: 'task', sourceId: t.id
+          }).then(function(eid){
+            if(eid){ t.gcalEventId = eid; save(); }
+          });
+        }
+      }
+    } catch(e){ console.warn('[gcal] auto-push task failed', e); }
+    return ret;
+  };
+})();
+
+// Wrap deleteStandaloneTask: propagate delete to Google
+(function(){
+  if(typeof deleteStandaloneTask !== 'function') return;
+  var _orig = deleteStandaloneTask;
+  deleteStandaloneTask = function(id){
+    try {
+      if(state.gcal && state.gcal.connected){
+        var t = (state.tasks||[]).find(function(x){return x.id===id;});
+        if(t && t.gcalEventId) _gcalDeleteEvent(t.gcalEventId);
+      }
+    } catch(e){ console.warn('[gcal] delete propagation failed', e); }
+    return _orig.apply(this, arguments);
+  };
+})();
+
+// Wrap deleteSubtask: propagate delete
+(function(){
+  if(typeof deleteSubtask !== 'function') return;
+  var _orig = deleteSubtask;
+  deleteSubtask = function(pid, sid){
+    try {
+      if(state.gcal && state.gcal.connected){
+        var p = (state.projects||[]).find(function(x){return x.id===pid;});
+        var s = p && p.subtasks.find(function(x){return x.id===sid;});
+        if(s && s.gcalEventId) _gcalDeleteEvent(s.gcalEventId);
+      }
+    } catch(e){ console.warn('[gcal] delete subtask propagation failed', e); }
+    return _orig.apply(this, arguments);
+  };
+})();
+
+// Wrap deleteProject: propagate deletes for all its subtasks
+(function(){
+  if(typeof deleteProject !== 'function') return;
+  var _orig = deleteProject;
+  deleteProject = function(id){
+    try {
+      if(state.gcal && state.gcal.connected){
+        var p = (state.projects||[]).find(function(x){return x.id===id;});
+        if(p){
+          (p.subtasks||[]).forEach(function(s){
+            if(s.gcalEventId) _gcalDeleteEvent(s.gcalEventId);
+          });
+        }
+      }
+    } catch(e){ console.warn('[gcal] delete project propagation failed', e); }
+    return _orig.apply(this, arguments);
+  };
+})();
+
+// ═══════════════════════════════════════════════════════════════════════════
+// TIMELINE HOOK: inject external Google events into _tlCollectBlocks output.
+// We monkey-patch by wrapping the original and appending external events.
+// ═══════════════════════════════════════════════════════════════════════════
+(function(){
+  if(typeof _tlCollectBlocks !== 'function') return;
+  var _origCollect = _tlCollectBlocks;
+  _tlCollectBlocks = function(targetDate){
+    var blocks = _origCollect.apply(this, arguments) || [];
+    try {
+      var date = targetDate || (typeof todayStr==='function'?todayStr():null);
+      if(date){
+        var ext = gcalEventsForDate(date);
+        // Avoid duplicating external events that somehow got pushed back
+        blocks = blocks.concat(ext);
+      }
+    } catch(e){ console.warn('[gcal] timeline merge failed', e); }
+    return blocks;
+  };
+})();
+
 </script>
 </html>
