@@ -698,6 +698,14 @@ body.unlocked .date-editable{border-bottom-color:var(--border);}
 .jarvis-send:hover{background:#a4f3ff;transform:scale(1.05);box-shadow:0 0 16px rgba(91,232,255,0.5);}
 .jarvis-send:disabled{background:var(--border);color:var(--text-faint);cursor:not-allowed;transform:none;}
 .jarvis-greeting{text-align:center;padding:16px 8px 8px;font-size:12px;color:var(--text-dim);font-style:italic;}
+/* ── BREAKDOWN button (lives in Projects + Tasks panel headers) ── */
+.breakdown-btn{background:linear-gradient(135deg,rgba(91,232,255,0.18),rgba(91,232,255,0.06));color:#5be8ff;border:1px solid rgba(91,232,255,0.45);border-radius:10px;padding:2px 8px;font-size:10px;font-weight:600;letter-spacing:0.3px;cursor:pointer;display:inline-flex;align-items:center;gap:3px;transition:all 0.15s;line-height:1.5;text-shadow:0 0 6px rgba(91,232,255,0.4);}
+.breakdown-btn:hover{background:linear-gradient(135deg,rgba(91,232,255,0.28),rgba(91,232,255,0.12));border-color:#5be8ff;transform:translateY(-1px);box-shadow:0 2px 8px rgba(91,232,255,0.25);}
+.breakdown-btn:active{transform:translateY(0);}
+.breakdown-btn .bd-spark{font-size:11px;line-height:1;}
+/* When Jarvis is in Breakdown mode, color-shift the title */
+.jarvis-panel.breakdown-mode .jarvis-panel-title{color:#a4f3ff;text-shadow:0 0 10px rgba(164,243,255,0.6);}
+.jarvis-panel.breakdown-mode .jarvis-panel-header{background:linear-gradient(135deg,rgba(91,232,255,0.18),rgba(91,232,255,0.06));}
 
 /* Wellness Wheel modal */
 .well-intro{font-size:13px;color:var(--text-dim);margin-bottom:16px;line-height:1.5;}
@@ -1672,7 +1680,7 @@ body.unlocked .date-editable{border-bottom-color:var(--border);}
 <!-- 1. PROJECTS -->
 <div class="panel panel-tile" data-panel="projects" data-nav="projects" data-tile="1">
 <div class="panel-header"><div class="panel-title"><span class="drag-handle">&#10495;</span><span class="icon">&#128194;</span> Projects</div>
-<div style="display:flex;gap:6px;align-items:center;"><span class="panel-badge" id="projCount">0</span><span class="panel-badge completed-badge" id="projCompletedBadge" style="display:none;">✓ 0</span><button class="expand-btn" onclick="openPanelOverlay('projects')" title="Expand to full view"><span class="expand-arrow">&#9660;</span></button></div></div>
+<div style="display:flex;gap:6px;align-items:center;"><button class="breakdown-btn" onclick="openJarvisBreakdown('projects')" title="AI Breakdown — pick a project to break into micro-steps"><span class="bd-spark">&#10022;</span> Breakdown</button><span class="panel-badge" id="projCount">0</span><span class="panel-badge completed-badge" id="projCompletedBadge" style="display:none;">✓ 0</span><button class="expand-btn" onclick="openPanelOverlay('projects')" title="Expand to full view"><span class="expand-arrow">&#9660;</span></button></div></div>
 <div class="panel-tile-summary" id="tile-summary-projects" onclick="openPanelOverlay('projects')" style="cursor:pointer;"></div>
 <label class="upcoming-filter-toggle" onclick="event.stopPropagation();"><input type="checkbox" id="projUpcomingOnly" onchange="renderProjects()"> <span>Show projects (overdue / due today or tomorrow)</span></label>
 <div class="panel-content" id="pc_projects">
@@ -1775,7 +1783,7 @@ body.unlocked .date-editable{border-bottom-color:var(--border);}
 <!-- 12. TASK LIST -->
 <div class="panel panel-tile" data-panel="tasklist" data-nav="tasklist" data-tile="1">
 <div class="panel-header"><div class="panel-title"><span class="drag-handle">&#10495;</span><span class="icon">&#128203;</span> Task List</div>
-<div style="display:flex;gap:6px;align-items:center;"><span class="panel-badge" id="taskListCount">0</span><span class="panel-badge completed-badge" id="taskListCompletedBadge" style="display:none;">✓ 0</span><button class="expand-btn" onclick="openPanelOverlay('tasklist')" title="Expand to full view"><span class="expand-arrow">&#9660;</span></button></div></div>
+<div style="display:flex;gap:6px;align-items:center;"><button class="breakdown-btn" onclick="openJarvisBreakdown('tasks')" title="AI Breakdown — pick a task to break into micro-steps"><span class="bd-spark">&#10022;</span> Breakdown</button><span class="panel-badge" id="taskListCount">0</span><span class="panel-badge completed-badge" id="taskListCompletedBadge" style="display:none;">✓ 0</span><button class="expand-btn" onclick="openPanelOverlay('tasklist')" title="Expand to full view"><span class="expand-arrow">&#9660;</span></button></div></div>
 <div class="panel-tile-summary" id="tile-summary-tasklist" onclick="openPanelOverlay('tasklist')" style="cursor:pointer;"></div>
 <div class="tasklist-controls">
 <select id="tlSortBy" onchange="renderTaskList()" style="width:auto;padding:4px 8px;font-size:11px;">
@@ -8666,7 +8674,7 @@ setTimeout(checkShareTarget, 400); // slight delay so panels render first
 <div class="jarvis-panel" id="jarvisPanel">
   <div class="jarvis-panel-header">
     <div class="jarvis-status-dot" id="jarvisStatusDot"></div>
-    <div class="jarvis-panel-title">Jarvis</div>
+    <div class="jarvis-panel-title" id="jarvisPanelTitle">Jarvis</div>
     <button class="jarvis-wake-btn enabled" id="jarvisWakeBtn" onclick="toggleWakeWord()" title='Wake word ON ("Hey Jarvis")'>&#127908;</button>
     <button class="jarvis-voice-btn enabled" id="jarvisVoiceBtn" onclick="toggleJarvisVoice()" title="Voice readback ON — tap to mute">&#128266;</button>
     <button class="jarvis-close" onclick="toggleJarvis()">&#10005;</button>
@@ -8743,6 +8751,7 @@ var _jarvisHistory=[]; // {role:'user'|'assistant', content:'...'}
 var _jarvisThinking=false;
 var _jarvisSpeech=null;
 var _jarvisListening=false;
+var _jarvisMode='chat'; // 'chat' | 'breakdown:projects' | 'breakdown:tasks'
 
 var JARVIS_SYSTEM=function(){
   var today=new Date();
@@ -8882,6 +8891,25 @@ var JARVIS_SYSTEM=function(){
     points:pointsInfo
   };
 
+  // ── BREAKDOWN MODE: focused system prompt for AI task-breakdown ──
+  if(_jarvisMode==='breakdown:projects'||_jarvisMode==='breakdown:tasks'){
+    var ordered=_jarvisBuildBreakdownContext(_jarvisMode==='breakdown:projects'?'projects':'tasks');
+    var scopeLabel=_jarvisMode==='breakdown:projects'?'project':'task';
+    return 'You are Jarvis in BREAKDOWN MODE inside Centerpost — a productivity dashboard built and used by Joe, a firefighter/paramedic with 30+ years experience and ADHD. It is now '+dateStr+', '+timeStr+'.\n\n'
+      +'Your single job: break a chosen '+scopeLabel+' into actionable micro-steps for an ADHD brain.\n\n'
+      +'The user\'s items are listed below in suggested completion order: not-done before done; within not-done: overdue → today → tomorrow → later → undated; tiebreak by priority (high → med → low), then shorter time-estimate first to reduce initiation friction.\n\n'
+      +'=== ITEMS IN COMPLETION ORDER ===\n'+ordered+'\n=== END ITEMS ===\n\n'
+      +'CRITICAL OUTPUT FORMAT: respond with ONLY a raw JSON object — no markdown fences. Format: {"reply":"...","actions":[]}. In breakdown mode you NEVER use actions — leave the array empty and put the breakdown inside reply.\n\n'
+      +'When the user names or numbers an item, do this:\n'
+      +'1. Acknowledge which one in ONE short line.\n'
+      +'2. Produce 3–8 micro-steps in the order they should be done. Each step must be small enough to start in under 2 minutes.\n'
+      +'3. Mark the very first step with "🚀 START HERE".\n'
+      +'4. If any step would take more than 30 minutes, split it further.\n'
+      +'5. End with one line beginning "First physical action:" — what the user\'s hands should literally do right now (open a tab, pick up a phone, walk to a room, etc.).\n\n'
+      +'Style: no preambles, no "great choice," no over-explaining. Joe dislikes filler. Use \\n inside the reply string for line breaks. Number the steps 1. 2. 3. For subtasks of a step, indent with two spaces.\n\n'
+      +'If the user types something that does not match any listed item, ask once for clarification and re-show the top 5 items by completion order.';
+  }
+
   return 'You are Jarvis, an AI assistant embedded in Centerpost — a personal ADHD-aware productivity dashboard built and used by Joe, a firefighter/paramedic with 30+ years experience, EMS leadership role at Fishers Public Safety, and college instructor in cognitive psychology / sensation & perception. He is ADHD with an ENFP profile.\n\nIt is now '+dateStr+', '+timeStr+'.\n\nYou have FULL access to the dashboard state below. Reference it precisely to answer questions about due dates, subtasks, projects, completed work, wellness reflections, routines, energy/mood, or anything else.\n\n=== DASHBOARD STATE ===\n'+JSON.stringify(context,null,2)+'\n=== END STATE ===\n\nCRITICAL OUTPUT FORMAT: Respond with ONLY a raw JSON object. No markdown, no code fences, no explanation before or after. Format: {"reply":"...","actions":[]}\n\n=== RESPONSE STYLE RULES (STRICT — ADHD-OPTIMIZED) ===\n\n1. **Count questions get count-first replies.** When asked "how many" or for any count: give the NUMBER first, then a single short urgency flag if applicable, then offer to expand. Maximum 2 short sentences.\n   - Example query: "How many tasks do I have?"\n   - GOOD reply: "You have 14 open tasks. 3 are high priority and 2 are overdue. Want me to list them?"\n   - GOOD reply: "8 active projects. All on track. Want me to list them by due date?"\n   - BAD reply: "You currently have 14 open tasks across 5 projects. The high priority ones are [lists everything]..." — TOO MUCH UPFRONT.\n\n2. **List questions still default to a summary.** Even for "show me" or "what are", lead with a count + urgency summary, then offer to expand UNLESS the user explicitly said "list them all" or "show me each."\n   - "What\'s due this week?" → "6 items due this week, 2 today. Want the full list or just today\'s?"\n\n3. **Always end open-ended summary replies with an expansion offer** ("Want me to list them?", "Want details?", "Want today\'s breakdown?"). Phrase it naturally, not robotically.\n\n4. **If urgency flagging would clutter the reply, omit it.** No flag needed when nothing is high-priority and nothing is overdue.\n\n5. **Definitions of urgency flags:**\n   - "Overdue" = due date is BEFORE today\'s date '+todayKey+'.\n   - "High priority" = priority field === "high".\n   - "Due today" = due date === '+todayKey+'.\n\n6. **For action confirmations after add/complete/etc**: One short sentence. "Added \'Call dispatch\' as high priority, due tomorrow." No follow-up question needed.\n\n7. **For specific data lookups** (e.g. "when is X due", "what\'s the priority of Y"): Direct answer, no expansion offer.\n\n8. **Once the user confirms they want details**, THEN provide the full list — but still use compact formatting: each item on one line with priority/due in parentheses. Group by project or urgency if list >8 items.\n\n=== ACTION TYPES ===\n{"type":"add_task","name":"string","priority":"low|med|high","due":"YYYY-MM-DD or null"}\n{"type":"add_project","name":"string","due":"YYYY-MM-DD or null"}\n{"type":"add_subtask","projectName":"string","name":"string","priority":"low|med|high","due":"YYYY-MM-DD or null"}\n{"type":"add_note","label":"string","body":"string"}\n{"type":"add_reminder","text":"string","date":"YYYY-MM-DD or null","time":"HH:MM or null"}\n{"type":"complete_task","name":"string"}\n\nFor pure questions with no state changes, use actions:[]. Parse relative dates using today\'s date.';
 };
 
@@ -8894,6 +8922,196 @@ function _jarvisCurrentTier(){
   return 'Bronze';
 }
 
+// ═══ BREAKDOWN MODE ═══
+// Order items by suggested completion sequence:
+//   1. Not-done first (done items sink to bottom)
+//   2. Due bucket: overdue → today → tomorrow → later → undated
+//   3. Priority: high → med → low
+//   4. Shorter time-estimate first (lowest initiation friction)
+function _jarvisOrderByCompletion(items){
+  var PRI={high:0,med:1,medium:1,low:2};
+  var t=new Date();t.setHours(0,0,0,0);
+  function bucket(dateStr){
+    if(!dateStr)return 4;
+    var d=new Date(dateStr+'T00:00:00');
+    if(isNaN(d.getTime()))return 4;
+    var diffDays=Math.round((d-t)/86400000);
+    if(diffDays<0)return 0;        // overdue
+    if(diffDays===0)return 1;      // today
+    if(diffDays===1)return 2;      // tomorrow
+    return 3;                      // later
+  }
+  function timeMin(v){
+    if(v===null||v===undefined||v==='')return 999;
+    var n=parseInt(v,10);
+    return isNaN(n)?999:n;
+  }
+  return items.slice().sort(function(a,b){
+    if(!!a.done!==!!b.done)return a.done?1:-1;
+    var db=bucket(a.due)-bucket(b.due);
+    if(db)return db;
+    var pr=(PRI[(a.priority||'med').toLowerCase()]??3)-(PRI[(b.priority||'med').toLowerCase()]??3);
+    if(pr)return pr;
+    return timeMin(a.timeEst)-timeMin(b.timeEst);
+  });
+}
+
+function _jarvisFmtDate(d){
+  if(!d)return '';
+  var dt=new Date(d+'T00:00:00');
+  if(isNaN(dt.getTime()))return d;
+  var today=new Date();today.setHours(0,0,0,0);
+  var diff=Math.round((dt-today)/86400000);
+  if(diff<0)return 'OVERDUE '+dt.toLocaleDateString('en-US',{month:'short',day:'numeric'});
+  if(diff===0)return 'today';
+  if(diff===1)return 'tomorrow';
+  return dt.toLocaleDateString('en-US',{month:'short',day:'numeric'});
+}
+
+// Build the markdown-style context the AI sees in breakdown mode
+function _jarvisBuildBreakdownContext(scope){
+  var out='';
+  var mark=function(x){return x.done?'✓':'○';};
+
+  if(scope==='projects'){
+    // Project objects need a 'due' alias for the sort helper (they use p.due directly — already matches)
+    var projOrdered=_jarvisOrderByCompletion((state.projects||[]).map(function(p){
+      // Project is "done" if all subtasks are done AND it has subtasks
+      var allDone=(p.subtasks||[]).length>0&&(p.subtasks||[]).every(function(s){return s.done;});
+      // Highest-priority subtask floats project up (use 'high' if any subtask is high)
+      var hasHigh=(p.subtasks||[]).some(function(s){return s.priority==='high';});
+      var hasMed=(p.subtasks||[]).some(function(s){return s.priority==='med';});
+      return {_orig:p,id:p.id,name:p.name,due:p.due,done:allDone,priority:hasHigh?'high':(hasMed?'med':'low'),timeEst:''};
+    }));
+    out+='Projects (in suggested completion order):\n\n';
+    projOrdered.forEach(function(po,i){
+      var p=po._orig;
+      var dueTxt=p.due?' — due '+_jarvisFmtDate(p.due):'';
+      out+=(i+1)+'. '+mark(po)+' '+p.name+dueTxt+'\n';
+      // Subtasks for this project, also ordered
+      var subs=_jarvisOrderByCompletion(p.subtasks||[]);
+      subs.forEach(function(s){
+        var bits=[];
+        if(s.timeEst)bits.push(s.timeEst+'m');
+        if(s.priority&&s.priority!=='med')bits.push(s.priority);
+        if(s.due)bits.push('due '+_jarvisFmtDate(s.due));
+        var meta=bits.length?' ['+bits.join(' · ')+']':'';
+        out+='   - '+mark(s)+' '+s.name+meta+'\n';
+      });
+      // Standalone tasks linked to this project
+      var linked=(state.tasks||[]).filter(function(t){
+        return t.projectId===p.id||(t.projectIds&&t.projectIds.indexOf(p.id)>=0);
+      });
+      _jarvisOrderByCompletion(linked).forEach(function(t){
+        var bits=[];
+        if(t.timeEst)bits.push(t.timeEst+'m');
+        if(t.priority&&t.priority!=='med')bits.push(t.priority);
+        if(t.due)bits.push('due '+_jarvisFmtDate(t.due));
+        var meta=bits.length?' ['+bits.join(' · ')+']':'';
+        out+='   - '+mark(t)+' '+t.name+meta+' (task)\n';
+      });
+      out+='\n';
+    });
+  } else if(scope==='tasks'){
+    // All tasks: standalone tasks + every project subtask, flattened and ordered
+    var all=[];
+    (state.tasks||[]).forEach(function(t){
+      var pName='';
+      if(t.projectId){var p=(state.projects||[]).find(function(p){return p.id===t.projectId;});if(p)pName=p.name;}
+      if(!pName&&t.projectIds&&t.projectIds.length){
+        pName=t.projectIds.map(function(pid){var p=(state.projects||[]).find(function(p){return p.id===pid;});return p?p.name:null;}).filter(Boolean).join(', ');
+      }
+      all.push({_kind:'task',_proj:pName,name:t.name,due:t.due,priority:t.priority||'med',timeEst:t.timeEst,done:!!t.done});
+    });
+    (state.projects||[]).forEach(function(p){
+      (p.subtasks||[]).forEach(function(s){
+        all.push({_kind:'subtask',_proj:p.name,name:s.name,due:s.due,priority:s.priority||'med',timeEst:s.timeEst,done:!!s.done});
+      });
+    });
+    var ordered=_jarvisOrderByCompletion(all);
+    out+='Tasks (in suggested completion order):\n\n';
+    ordered.forEach(function(t,i){
+      var bits=[];
+      if(t.timeEst)bits.push(t.timeEst+'m');
+      if(t.priority&&t.priority!=='med')bits.push(t.priority);
+      if(t.due)bits.push('due '+_jarvisFmtDate(t.due));
+      var meta=bits.length?' ['+bits.join(' · ')+']':'';
+      var projTag=t._proj?' — '+t._proj:'';
+      out+=(i+1)+'. '+mark(t)+' '+t.name+projTag+meta+'\n';
+    });
+  }
+  return out||'(no items found)';
+}
+
+// Open the Jarvis panel directly into Breakdown mode
+function openJarvisBreakdown(scope){
+  // scope: 'projects' | 'tasks'
+  _jarvisMode='breakdown:'+scope;
+  _jarvisHistory=[]; // start fresh — don't pollute breakdown with prior chat
+
+  // Update panel chrome
+  var panel=document.getElementById('jarvisPanel');
+  var titleEl=document.getElementById('jarvisPanelTitle');
+  var fab=document.getElementById('jarvisFab');
+  if(panel)panel.classList.add('breakdown-mode');
+  if(titleEl)titleEl.textContent='Breakdown';
+
+  // Rebuild the messages area with the ordered preview as a seed assistant message
+  var preview=_jarvisBuildBreakdownContext(scope);
+  var greeting=scope==='projects'
+    ? 'Which project should we break down? Type a number or name from the list below.'
+    : 'Which task should we break down? Type a number or name from the list below.';
+  var container=document.getElementById('jarvisMessages');
+  if(container){
+    container.innerHTML=''; // wipe greeting + any prior chat
+    var seedMsg=document.createElement('div');
+    seedMsg.className='jarvis-msg assistant';
+    var bubble=document.createElement('div');
+    bubble.className='jarvis-msg-bubble';
+    bubble.style.whiteSpace='pre-wrap';
+    bubble.style.fontFamily='ui-monospace, SFMono-Regular, Menlo, monospace';
+    bubble.style.fontSize='12px';
+    bubble.style.lineHeight='1.5';
+    bubble.textContent=greeting+'\n\n'+preview;
+    seedMsg.appendChild(bubble);
+    container.appendChild(seedMsg);
+    container.scrollTop=0;
+    // Seed history so the AI sees what the user sees (they share the same list)
+    _jarvisHistory.push({role:'assistant',content:greeting+'\n\n'+preview});
+  }
+
+  // Open panel if not already open
+  if(!_jarvisOpen){
+    _jarvisOpen=true;
+    if(panel)panel.classList.add('open');
+    if(fab)fab.classList.add('active');
+  }
+
+  // Update input placeholder
+  var inp=document.getElementById('jarvisInput');
+  if(inp){
+    inp.placeholder=scope==='projects'?'Type a project number or name...':'Type a task number or name...';
+    setTimeout(function(){inp.focus();},280);
+  }
+}
+
+// Reset Breakdown mode back to chat (called when panel closes)
+function _jarvisExitBreakdownMode(){
+  if(_jarvisMode==='chat')return;
+  _jarvisMode='chat';
+  var panel=document.getElementById('jarvisPanel');
+  var titleEl=document.getElementById('jarvisPanelTitle');
+  if(panel)panel.classList.remove('breakdown-mode');
+  if(titleEl)titleEl.textContent='Jarvis';
+  var inp=document.getElementById('jarvisInput');
+  if(inp)inp.placeholder='Ask anything or give a command...';
+  var container=document.getElementById('jarvisMessages');
+  if(container){
+    container.innerHTML='<div class="jarvis-greeting">How can I help you today?</div>';
+  }
+  _jarvisHistory=[];
+}
+
 function toggleJarvis(){
   _jarvisOpen=!_jarvisOpen;
   var panel=document.getElementById('jarvisPanel');
@@ -8902,6 +9120,10 @@ function toggleJarvis(){
   panel.classList.toggle('open',_jarvisOpen);
   if(fab)fab.classList.toggle('active',_jarvisOpen);
   if(tkBtn)tkBtn.classList.toggle('active',_jarvisOpen);
+  if(!_jarvisOpen){
+    // Closing — reset breakdown mode so next open is clean chat
+    _jarvisExitBreakdownMode();
+  }
   if(_jarvisOpen){
     setTimeout(function(){
       var inp=document.getElementById('jarvisInput');
