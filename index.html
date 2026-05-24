@@ -1253,6 +1253,20 @@ body.unlocked .date-editable{border-bottom-color:var(--border);}
 .landing-nav-link:hover{color:var(--text);background:var(--surface-raised);}
 .landing-signin-btn{background:rgba(91,232,255,0.12);color:#5be8ff;border:1px solid rgba(91,232,255,0.45);padding:8px 18px;border-radius:var(--radius-sm);font-size:13px;font-weight:600;cursor:pointer;font-family:inherit;transition:all 0.15s;}
 .landing-signin-btn:hover{background:rgba(91,232,255,0.22);border-color:#5be8ff;box-shadow:0 0 16px rgba(91,232,255,0.25);}
+.landing-signup-btn{background:#5be8ff;color:#0a1218;border:1px solid #5be8ff;padding:8px 18px;border-radius:var(--radius-sm);font-size:13px;font-weight:700;cursor:pointer;font-family:inherit;transition:all 0.15s;}
+.landing-signup-btn:hover{background:#a4f3ff;border-color:#a4f3ff;box-shadow:0 0 16px rgba(91,232,255,0.45);}
+/* Beta banner — sits above hero */
+.landing-beta-banner{display:flex;align-items:center;justify-content:center;gap:10px;padding:10px 20px;background:linear-gradient(90deg,rgba(255,204,0,0.12) 0%,rgba(91,232,255,0.12) 100%);border-bottom:1px solid rgba(255,204,0,0.25);font-size:13px;color:var(--text);text-align:center;flex-wrap:wrap;}
+.landing-beta-banner .beta-tag{background:#ffcc00;color:#0a1218;padding:2px 10px;border-radius:999px;font-size:11px;font-weight:700;letter-spacing:0.5px;}
+.landing-beta-banner .beta-text{color:var(--text-dim);}
+.landing-beta-banner .beta-text strong{color:var(--text);font-weight:600;}
+/* Switch link between signin / signup modals */
+.signin-switch{margin-top:14px;padding-top:14px;border-top:1px solid var(--border);font-size:12px;color:var(--text-dim);}
+.signin-switch a{color:#5be8ff;cursor:pointer;font-weight:600;text-decoration:none;}
+.signin-switch a:hover{text-decoration:underline;}
+/* Sign-up secondary CTA in hero */
+.landing-cta-tertiary{background:rgba(255,204,0,0.12);color:#ffcc00;border:1px solid rgba(255,204,0,0.4);padding:14px 24px;border-radius:var(--radius-sm);font-size:15px;font-weight:600;cursor:pointer;font-family:inherit;transition:all 0.15s;display:inline-flex;align-items:center;gap:6px;}
+.landing-cta-tertiary:hover{background:rgba(255,204,0,0.22);border-color:#ffcc00;box-shadow:0 0 16px rgba(255,204,0,0.3);}
 /* Hero */
 .landing-hero{display:grid;grid-template-columns:1fr 1fr;gap:48px;padding:64px 64px 80px;max-width:1280px;margin:0 auto;width:100%;align-items:center;}
 .landing-hero-text{display:flex;flex-direction:column;gap:20px;}
@@ -1749,12 +1763,19 @@ body.unlocked .date-editable{border-bottom-color:var(--border);}
 <div class="login-gate landing-mode" id="loginGate">
 <div class="landing">
 
+  <!-- BETA BANNER -->
+  <div class="landing-beta-banner">
+    <span class="beta-tag">BETA</span>
+    <span class="beta-text">Centerpost is in active beta testing — <strong>all features are free</strong> while the developer is testing and iterating. Sign up and help shape it.</span>
+  </div>
+
   <!-- NAV -->
   <nav class="landing-nav">
     <div class="landing-logo"><span class="logo-dot"></span> Centerpost</div>
     <div class="landing-nav-right">
       <a href="kids.html" class="landing-nav-link">Kids Mode</a>
       <button class="landing-signin-btn" onclick="showSigninPanel()">Sign In</button>
+      <button class="landing-signup-btn" onclick="showSignupPanel()">Sign Up</button>
     </div>
   </nav>
 
@@ -1763,12 +1784,14 @@ body.unlocked .date-editable{border-bottom-color:var(--border);}
     <div class="landing-hero-text">
       <div class="landing-badge"><span class="badge-dot"></span> Built by a paramedic with ADHD</div>
       <h1 class="landing-h1">A workspace for brains that <span class="accent">don't quit.</span></h1>
-      <p class="landing-sub">One dashboard that gets shift work, ADHD, executive dysfunction, and the chaos of caring for people. Built by a 30-year firefighter / paramedic who lives in it every day.</p>
+      <p class="landing-sub">One dashboard designed to sharpen focus and strengthen executive function — built for ADHD brains and anyone who wants a system that bends with the day. Made by a 30-year firefighter / paramedic who lives in it every day.</p>
       <div class="landing-cta-row">
-        <button class="landing-cta-primary" onclick="showSigninPanel()">Sign In <span aria-hidden="true">→</span></button>
+        <button class="landing-cta-primary" onclick="showSignupPanel()">Get Started — Free <span aria-hidden="true">→</span></button>
+        <button class="landing-cta-tertiary" onclick="showSigninPanel()">I have an account</button>
         <a href="kids.html" class="landing-cta-secondary" style="text-decoration:none;display:inline-flex;align-items:center;">&#127918; Try Kids Mode</a>
       </div>
       <div class="landing-meta">
+        <div class="landing-meta-item">Free during beta</div>
         <div class="landing-meta-item">No ads. No tracking.</div>
         <div class="landing-meta-item">Your data, your account.</div>
         <div class="landing-meta-item">Works offline.</div>
@@ -1915,7 +1938,7 @@ body.unlocked .date-editable{border-bottom-color:var(--border);}
   <!-- STORY -->
   <section class="landing-story">
     <div class="landing-story-inner">
-      <p class="landing-story-quote">"Most productivity apps assume your brain works one way — linear, focused, predictable. <span class="accent">Centerpost was built for the rest of us.</span> The shift workers, the ADHD brains, the people who run toward chaos for a living."</p>
+      <p class="landing-story-quote">"Most productivity apps assume your brain works one way — linear, focused, predictable. <span class="accent">Centerpost was built for the rest of us.</span> The ADHD brains, the people doing demanding work, the ones who need a system that flexes with the day."</p>
       <p class="landing-story-attr"><strong>Joe Harding</strong> &mdash; firefighter / paramedic, 30+ years; builder of Centerpost</p>
     </div>
   </section>
@@ -1923,8 +1946,11 @@ body.unlocked .date-editable{border-bottom-color:var(--border);}
   <!-- FINAL CTA -->
   <section class="landing-final-cta">
     <h2>Ready to get organized?</h2>
-    <p>One account. Works on any device. Your data stays yours.</p>
-    <button class="landing-cta-primary" onclick="showSigninPanel()">Sign In <span aria-hidden="true">→</span></button>
+    <p>Free during beta. One account works on any device. Your data stays yours.</p>
+    <div style="display:flex;gap:12px;justify-content:center;flex-wrap:wrap;">
+      <button class="landing-cta-primary" onclick="showSignupPanel()">Create Free Account <span aria-hidden="true">→</span></button>
+      <button class="landing-cta-tertiary" onclick="showSigninPanel()">I have an account</button>
+    </div>
   </section>
 
   <!-- FOOTER -->
@@ -1933,6 +1959,7 @@ body.unlocked .date-editable{border-bottom-color:var(--border);}
     <div class="landing-footer-links">
       <a href="kids.html" class="landing-footer-link">Kids Mode</a>
       <a class="landing-footer-link" onclick="showSigninPanel()">Sign In</a>
+      <a class="landing-footer-link" onclick="showSignupPanel()">Sign Up</a>
     </div>
   </footer>
 
@@ -1954,6 +1981,7 @@ body.unlocked .date-editable{border-bottom-color:var(--border);}
 <span class="login-link" onclick="doForgotPassword()">Forgot password?</span>
 <span style="margin:0 6px;color:var(--text-faint);">|</span>
 <span class="login-link" onclick="showSetupForm()">First-time setup</span>
+<div class="signin-switch">Don't have an account? <a onclick="hideSigninPanel();showSignupPanel();">Sign up free</a></div>
 </div>
 <div id="setupForm" style="display:none;">
 <p style="font-size:12px;color:var(--text-dim);margin-bottom:12px;">Create the admin account. This only needs to be done once.</p>
@@ -1962,6 +1990,26 @@ body.unlocked .date-editable{border-bottom-color:var(--border);}
 <button class="login-btn" onclick="doSetup()">Create Admin Account</button>
 <div class="login-error" id="setupError"></div>
 <span class="login-link" onclick="showLoginForm()">&#8592; Back to sign in</span>
+</div>
+</div>
+</div>
+
+<!-- SIGN-UP OVERLAY (new user registration) -->
+<div class="signin-overlay" id="signupOverlay" onclick="if(event.target===this)hideSignupPanel()">
+<div class="signin-card">
+<button class="signin-close" onclick="hideSignupPanel()" aria-label="Close">&#10005;</button>
+<h2>&#128640; Create Account</h2>
+<p class="login-sub">Free during beta — invite code required</p>
+<div id="signupForm">
+<input type="text" id="signupInvite" placeholder="Beta invite code..." autocomplete="off" autocapitalize="characters" style="text-transform:uppercase;letter-spacing:1.5px;font-weight:600;" onkeydown="if(event.key==='Enter')document.getElementById('signupEmail').focus()">
+<input type="email" id="signupEmail" placeholder="Email address..." autocomplete="email" onkeydown="if(event.key==='Enter')document.getElementById('signupPass').focus()">
+<input type="password" id="signupPass" placeholder="Password (min 6 characters)..." autocomplete="new-password" onkeydown="if(event.key==='Enter')document.getElementById('signupPassConfirm').focus()">
+<input type="password" id="signupPassConfirm" placeholder="Confirm password..." autocomplete="new-password" onkeydown="if(event.key==='Enter')doSignup()">
+<button class="login-btn" onclick="doSignup()" id="signupBtn">Create Account</button>
+<div class="login-error" id="signupError"></div>
+<div class="login-success" id="signupSuccess"></div>
+<p style="font-size:11px;color:var(--text-faint);margin-top:12px;line-height:1.5;">Beta access is invite-only right now. Ask the developer (or a current beta user) for a code. By creating an account you agree to use Centerpost for personal productivity — the app is in beta, features may change, and you can export your data anytime.</p>
+<div class="signin-switch">Already have an account? <a onclick="hideSignupPanel();showSigninPanel();">Sign in</a></div>
 </div>
 </div>
 </div>
@@ -2248,6 +2296,21 @@ body.unlocked .date-editable{border-bottom-color:var(--border);}
 </div>
 <div class="login-error" id="adminAddError" style="text-align:left;"></div>
 </div>
+
+<!-- INVITE CODES SECTION -->
+<div class="admin-add-form" style="margin-top:18px;">
+<div class="section-label">&#127919; Beta Invite Codes</div>
+<p style="font-size:11px;color:var(--text-dim);margin:4px 0 10px;line-height:1.5;">Share these codes with people you want in the beta. Each code can be single-use or multi-use. Codes appear under the "Beta invite code" field on the public sign-up form.</p>
+<div class="admin-add-row" style="flex-wrap:wrap;">
+<input type="text" id="newInviteCode" placeholder="Code (or leave blank to auto-generate)" style="text-transform:uppercase;flex:1;min-width:160px;">
+<input type="number" id="newInviteMaxUses" placeholder="Max uses" value="1" min="1" max="999" style="width:90px;">
+<input type="text" id="newInviteNote" placeholder="Note (who is this for?)" style="flex:1;min-width:140px;">
+<button class="btn btn-accent btn-sm" onclick="adminCreateInviteCode()">Create</button>
+</div>
+<div class="login-error" id="inviteCreateError" style="text-align:left;"></div>
+<table class="admin-table" style="margin-top:12px;"><thead><tr><th>Code</th><th>Uses</th><th>Status</th><th>Note</th><th>Actions</th></tr></thead><tbody id="inviteCodeList"><tr><td colspan="5" style="text-align:center;color:var(--text-faint);padding:14px;">Loading codes...</td></tr></tbody></table>
+</div>
+
 </div>
 </div>
 
@@ -2857,9 +2920,11 @@ function showApp(){
   document.getElementById('loginGate').classList.add('hidden');
   document.getElementById('appWrap').classList.add('visible');
   document.getElementById('userEmail').textContent=currentUser.email;
-  // Close the sign-in overlay if it was open
+  // Close any open auth overlays
   var ov=document.getElementById('signinOverlay');
   if(ov)ov.classList.remove('open');
+  var ov2=document.getElementById('signupOverlay');
+  if(ov2)ov2.classList.remove('open');
 }
 function hideApp(){
   document.getElementById('loginGate').classList.remove('hidden');
@@ -2868,9 +2933,11 @@ function hideApp(){
   document.getElementById('loginSuccess').textContent='';
   document.getElementById('loginEmail').value='';
   document.getElementById('loginPass').value='';
-  // Close sign-in overlay so the landing page is visible again after logout
+  // Close auth overlays so the landing page is visible after logout
   var ov=document.getElementById('signinOverlay');
   if(ov)ov.classList.remove('open');
+  var ov2=document.getElementById('signupOverlay');
+  if(ov2)ov2.classList.remove('open');
   showLoginForm();
   // Scroll landing back to top
   var gate=document.getElementById('loginGate');
@@ -2895,11 +2962,123 @@ function hideSigninPanel(){
   var ov=document.getElementById('signinOverlay');
   if(ov)ov.classList.remove('open');
 }
-// Close sign-in modal on Escape
+
+// ═══ Sign-up panel ═══
+function showSignupPanel(){
+  var ov=document.getElementById('signupOverlay');
+  if(!ov)return;
+  ov.classList.add('open');
+  document.getElementById('signupError').textContent='';
+  document.getElementById('signupSuccess').textContent='';
+  setTimeout(function(){
+    var em=document.getElementById('signupEmail');
+    if(em)em.focus();
+  },120);
+}
+function hideSignupPanel(){
+  var ov=document.getElementById('signupOverlay');
+  if(ov)ov.classList.remove('open');
+}
+
+async function doSignup(){
+  var inviteEl=document.getElementById('signupInvite');
+  var emailEl=document.getElementById('signupEmail');
+  var passEl=document.getElementById('signupPass');
+  var passConfirmEl=document.getElementById('signupPassConfirm');
+  var errEl=document.getElementById('signupError');
+  var successEl=document.getElementById('signupSuccess');
+  var btn=document.getElementById('signupBtn');
+  errEl.textContent='';
+  successEl.textContent='';
+  var inviteCode=(inviteEl.value||'').trim().toUpperCase();
+  var email=(emailEl.value||'').trim();
+  var pass=passEl.value||'';
+  var passConfirm=passConfirmEl.value||'';
+
+  // ── Client-side validation ──
+  if(!inviteCode){errEl.textContent='Beta invite code is required.';return;}
+  if(!email||email.indexOf('@')===-1){errEl.textContent='Please enter a valid email address.';return;}
+  if(pass.length<6){errEl.textContent='Password must be at least 6 characters.';return;}
+  if(pass!==passConfirm){errEl.textContent='Passwords do not match.';return;}
+  if(!firebaseReady){errEl.textContent='Service unavailable. Please try again.';return;}
+
+  btn.disabled=true;
+  btn.textContent='Checking invite code...';
+
+  try {
+    // ── Step 1: Validate invite code BEFORE creating account ──
+    var codeRef=db.collection('inviteCodes').doc(inviteCode);
+    var codeSnap=await codeRef.get();
+    if(!codeSnap.exists){
+      errEl.textContent='That invite code isn\'t valid. Double-check the spelling.';
+      btn.disabled=false;btn.textContent='Create Account';return;
+    }
+    var codeData=codeSnap.data();
+    if(codeData.disabled){
+      errEl.textContent='That invite code has been disabled. Ask the developer for a new one.';
+      btn.disabled=false;btn.textContent='Create Account';return;
+    }
+    if(codeData.expiresAt){
+      var exp=codeData.expiresAt.toDate?codeData.expiresAt.toDate():new Date(codeData.expiresAt);
+      if(exp.getTime()<Date.now()){
+        errEl.textContent='That invite code has expired. Ask the developer for a new one.';
+        btn.disabled=false;btn.textContent='Create Account';return;
+      }
+    }
+    var usedSoFar=codeData.used||0;
+    if(codeData.maxUses && usedSoFar>=codeData.maxUses){
+      errEl.textContent='That invite code has reached its usage limit. Ask the developer for a new one.';
+      btn.disabled=false;btn.textContent='Create Account';return;
+    }
+
+    // ── Step 2: Create user account ──
+    btn.textContent='Creating account...';
+    var cred=await firebase.auth().createUserWithEmailAndPassword(email,pass);
+
+    // ── Step 3: Record code usage (best-effort; doesn't block account if it fails) ──
+    try {
+      await codeRef.update({
+        used:firebase.firestore.FieldValue.increment(1),
+        lastUsedAt:firebase.firestore.FieldValue.serverTimestamp(),
+        lastUsedBy:cred.user.uid,
+        lastUsedEmail:email
+      });
+    } catch(e){console.warn('[signup] code increment failed (non-fatal)',e);}
+
+    // ── Step 4: Tag profile with the code used (helps admin audit) ──
+    try {
+      await db.collection('users').doc(cred.user.uid).set({
+        invitedWith:inviteCode
+      },{merge:true});
+    } catch(e){console.warn('[signup] profile tag failed (non-fatal)',e);}
+
+    // onAuthStateChanged fires next, takes user to dashboard
+    successEl.textContent='Account created! Loading your workspace...';
+    passEl.value='';
+    passConfirmEl.value='';
+    inviteEl.value='';
+  } catch(e) {
+    var msg=e.message||'Sign-up failed. Please try again.';
+    var code=e.code||'';
+    if(code==='auth/email-already-in-use')msg='That email is already registered. Try signing in instead.';
+    else if(code==='auth/invalid-email')msg='Please enter a valid email address.';
+    else if(code==='auth/weak-password')msg='Password is too weak. Use at least 6 characters.';
+    else if(code==='auth/operation-not-allowed')msg='Account creation is currently disabled. Contact the developer.';
+    else if(code==='auth/network-request-failed')msg='Network error. Check your connection and try again.';
+    else if(code==='permission-denied')msg='Couldn\'t verify the invite code. Make sure Firestore rules allow reading inviteCodes (see admin panel).';
+    errEl.textContent=msg;
+  } finally {
+    btn.disabled=false;
+    btn.textContent='Create Account';
+  }
+}
+// Close sign-in/sign-up modal on Escape
 document.addEventListener('keydown',function(e){
   if(e.key==='Escape'){
     var ov=document.getElementById('signinOverlay');
     if(ov && ov.classList.contains('open'))hideSigninPanel();
+    var ov2=document.getElementById('signupOverlay');
+    if(ov2 && ov2.classList.contains('open'))hideSignupPanel();
   }
 });
 
@@ -4230,6 +4409,7 @@ function showAdminPanel(){
     ap.classList.remove('hidden-panel');
     if(_isMobile())buildMobileHome(); // rebuild tiles in case admin tile visibility changed
     renderAdminPanel();
+    _bootstrapInviteCodesIfEmpty().then(function(){renderInviteCodes();});
   }else{
     ap.classList.add('hidden-panel');
     if(_isMobile())buildMobileHome();
@@ -4297,6 +4477,152 @@ async function adminAddUser(){
     toast('User '+email+' created');
     renderAdminPanel();
   }catch(e){err.textContent=e.message;}
+}
+
+// ═══════════════════════════════════════════════════════════════════════════
+// INVITE CODE MANAGEMENT (admin-only)
+// Codes live at /inviteCodes/{CODE} with fields: used, maxUses, note,
+// disabled, createdAt, createdBy, lastUsedAt, lastUsedBy, lastUsedEmail.
+// ═══════════════════════════════════════════════════════════════════════════
+function _generateRandomCode(len){
+  // Avoid ambiguous chars: no 0/O, no 1/I/L
+  var chars='ABCDEFGHJKMNPQRSTUVWXYZ23456789';
+  var out='';
+  for(var i=0;i<(len||8);i++)out+=chars[Math.floor(Math.random()*chars.length)];
+  return out;
+}
+
+async function adminCreateInviteCode(){
+  if(!isAdmin||!db)return;
+  var codeEl=document.getElementById('newInviteCode');
+  var maxUsesEl=document.getElementById('newInviteMaxUses');
+  var noteEl=document.getElementById('newInviteNote');
+  var err=document.getElementById('inviteCreateError');
+  err.textContent='';
+  var code=(codeEl.value||'').trim().toUpperCase().replace(/[^A-Z0-9-]/g,'');
+  if(!code)code=_generateRandomCode(8);
+  if(code.length<4){err.textContent='Code must be at least 4 characters.';return;}
+  if(code.length>32){err.textContent='Code must be 32 characters or fewer.';return;}
+  var maxUses=parseInt(maxUsesEl.value,10);
+  if(isNaN(maxUses)||maxUses<1)maxUses=1;
+  if(maxUses>999)maxUses=999;
+  try {
+    var ref=db.collection('inviteCodes').doc(code);
+    var existing=await ref.get();
+    if(existing.exists){err.textContent='That code already exists. Pick a different one.';return;}
+    await ref.set({
+      code:code,
+      used:0,
+      maxUses:maxUses,
+      note:(noteEl.value||'').trim(),
+      disabled:false,
+      createdAt:firebase.firestore.FieldValue.serverTimestamp(),
+      createdBy:currentUser.uid,
+      createdByEmail:currentUser.email
+    });
+    codeEl.value='';
+    maxUsesEl.value='1';
+    noteEl.value='';
+    toast('Invite code '+code+' created');
+    renderInviteCodes();
+  } catch(e){err.textContent=e.message||'Failed to create code.';}
+}
+
+async function adminToggleInviteCode(code,disable){
+  if(!isAdmin||!db)return;
+  try {
+    await db.collection('inviteCodes').doc(code).update({disabled:!!disable});
+    toast(disable?'Code disabled':'Code enabled');
+    renderInviteCodes();
+  } catch(e){toast('Failed: '+e.message);}
+}
+
+async function adminDeleteInviteCode(code){
+  if(!isAdmin||!db)return;
+  if(!confirm('Delete invite code "'+code+'"? Anyone who already used it keeps their account, but the code itself is removed.'))return;
+  try {
+    await db.collection('inviteCodes').doc(code).delete();
+    toast('Code '+code+' deleted');
+    renderInviteCodes();
+  } catch(e){toast('Failed: '+e.message);}
+}
+
+async function adminCopyInviteCode(code){
+  try {
+    await navigator.clipboard.writeText(code);
+    toast('Copied: '+code);
+  } catch(e){
+    // Fallback for old browsers / non-secure contexts
+    var tmp=document.createElement('input');
+    tmp.value=code;document.body.appendChild(tmp);tmp.select();
+    try{document.execCommand('copy');toast('Copied: '+code);}catch(e2){toast('Copy failed');}
+    tmp.remove();
+  }
+}
+
+async function renderInviteCodes(){
+  if(!isAdmin||!db)return;
+  var tbody=document.getElementById('inviteCodeList');
+  if(!tbody)return;
+  try {
+    var snap=await db.collection('inviteCodes').orderBy('createdAt','desc').get();
+    if(snap.empty){
+      tbody.innerHTML='<tr><td colspan="5" style="text-align:center;color:var(--text-faint);padding:14px;">No codes yet. Create one above to start inviting beta users.</td></tr>';
+      return;
+    }
+    var rows=[];
+    snap.forEach(function(doc){
+      var d=doc.data();
+      var used=d.used||0;
+      var max=d.maxUses||0;
+      var usesTxt=max?used+' / '+max:used+' (unlimited)';
+      var statusBadge;
+      if(d.disabled){
+        statusBadge='<span class="admin-badge disabled">Disabled</span>';
+      } else if(max && used>=max){
+        statusBadge='<span class="admin-badge disabled">Used up</span>';
+      } else {
+        statusBadge='<span class="admin-badge active">Active</span>';
+      }
+      var note=d.note?esc(d.note):'<span style="color:var(--text-faint);">—</span>';
+      rows.push(
+        '<tr><td><code style="background:rgba(91,232,255,0.1);color:#5be8ff;padding:2px 8px;border-radius:4px;font-family:ui-monospace,monospace;font-size:12px;letter-spacing:1px;">'+esc(d.code||doc.id)+'</code></td>'+
+        '<td>'+usesTxt+'</td>'+
+        '<td>'+statusBadge+'</td>'+
+        '<td>'+note+'</td>'+
+        '<td><div class="admin-actions">'+
+          '<button class="admin-action" onclick="adminCopyInviteCode(\''+(d.code||doc.id)+'\')">Copy</button>'+
+          (d.disabled
+            ? '<button class="admin-action" onclick="adminToggleInviteCode(\''+(d.code||doc.id)+'\',false)">Enable</button>'
+            : '<button class="admin-action" onclick="adminToggleInviteCode(\''+(d.code||doc.id)+'\',true)">Disable</button>')+
+          '<button class="admin-action danger" onclick="adminDeleteInviteCode(\''+(d.code||doc.id)+'\')">Delete</button>'+
+        '</div></td></tr>'
+      );
+    });
+    tbody.innerHTML=rows.join('');
+  } catch(e){
+    console.warn('[admin] renderInviteCodes failed',e);
+    tbody.innerHTML='<tr><td colspan="5" style="text-align:center;color:var(--red);padding:14px;">Failed to load codes: '+esc(e.message||'unknown error')+'. Make sure Firestore rules allow admin read/write on /inviteCodes.</td></tr>';
+  }
+}
+
+// Bootstrap: if no codes exist on first admin load, create a starter code
+// so the admin has something to hand out immediately.
+async function _bootstrapInviteCodesIfEmpty(){
+  if(!isAdmin||!db)return;
+  try {
+    var snap=await db.collection('inviteCodes').limit(1).get();
+    if(snap.empty){
+      var starter='BETA-'+_generateRandomCode(5);
+      await db.collection('inviteCodes').doc(starter).set({
+        code:starter,used:0,maxUses:10,
+        note:'Auto-generated starter code (10 uses)',disabled:false,
+        createdAt:firebase.firestore.FieldValue.serverTimestamp(),
+        createdBy:currentUser.uid,createdByEmail:currentUser.email
+      });
+      toast('Created starter invite code: '+starter);
+    }
+  } catch(e){console.warn('[admin] bootstrap codes failed',e);}
 }
 
 async function adminDisableUser(uid){
@@ -9837,7 +10163,7 @@ function _jarvisStopMic(){
 // ═══════════════════════════════════════
 var _wakeWordSR=null;
 var _wakeWordActive=false;       // currently armed and listening for wake word
-var _wakeWordEnabled=true;       // user-toggleable preference (persists)
+var _wakeWordEnabled=false;      // user-toggleable preference (persists); default OFF — continuous mic listening can cause issues on iOS/Safari
 var _wakeWordRetryTimer=null;
 var _wakeWordSupported=!!(window.SpeechRecognition||window.webkitSpeechRecognition);
 var WAKE_PHRASES=['hey jarvis','hi jarvis','hey, jarvis','okay jarvis','ok jarvis','jarvis'];
@@ -9989,7 +10315,7 @@ setTimeout(_initWakeWord,1500);
 // ═══════════════════════════════════════
 // VOICE READBACK — TTS for Jarvis replies
 // ═══════════════════════════════════════
-var _jarvisVoiceEnabled=true;            // user-toggleable preference (persists)
+var _jarvisVoiceEnabled=false;           // user-toggleable preference (persists); default OFF to prevent device issues
 var _jarvisVoiceSupported=!!window.speechSynthesis;
 var _jarvisCurrentUtterance=null;
 var _jarvisPreferredVoice=null;
