@@ -1,42 +1,161 @@
-const CACHE_NAME = 'productivity-dashboard-v3';
-const ASSETS = [
+// ═══════════════════════════════════════════════════════════════════════
+// Centerpost Service Worker — v4 (network-first HTML)
+// ═══════════════════════════════════════════════════════════════════════
+//
+// STRATEGY
+//   - HTML pages (index.html, kids.html, /):  NETWORK-FIRST
+//       Browser tries the network first (4s timeout). On success, the
+//       fresh response is served AND cached. On failure or offline,
+//       falls back to the cached copy. This means deploys take effect
+//       on the next page load — no more stale HTML.
+//   - Static assets (fonts, Firebase SDK, icons, manifests):
+//       STALE-WHILE-REVALIDATE
+//       Cached copy served instantly for speed; cache is refreshed in
+//       the background for next time.
+//   - API calls (Firebase, Anthropic, Google OAuth):  PASS-THROUGH
+//       Never cached. Always go straight to network.
+//
+// DEPLOY NOTE
+//   When you ship a new version of this file, bump CACHE_VERSION so
+//   old caches are wiped. The current value also doubles as a cache-bust
+//   marker — old clients will see the version change and force-update.
+// ═══════════════════════════════════════════════════════════════════════
+
+const CACHE_VERSION = 'centerpost-v4';
+
+// Assets to pre-cache on install (offline-ready essentials).
+// Failures are tolerated individually — one missing icon won't break install.
+const PRECACHE_ASSETS = [
   './',
   './index.html',
+  './kids.html',
   './manifest.json',
+  './kids-manifest.json',
+  './kids-icon.svg',
+  './kids-icon.png',
+  './kids-icon-192.png',
+  './kids-icon-512.png',
   'https://fonts.googleapis.com/css2?family=DM+Sans:ital,wght@0,400;0,500;0,600;0,700&family=Fraunces:ital,opsz,wght@0,9..144,400;0,9..144,600;0,9..144,700;1,9..144,400&display=swap',
+  'https://fonts.googleapis.com/css2?family=Press+Start+2P&family=VT323&display=swap',
   'https://www.gstatic.com/firebasejs/10.12.0/firebase-app-compat.js',
   'https://www.gstatic.com/firebasejs/10.12.0/firebase-auth-compat.js',
   'https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore-compat.js'
 ];
 
+// Hosts that should always go straight to the network (no caching).
+// Firebase + auth endpoints must be live, never cached.
+const PASS_THROUGH_HOSTS = [
+  'firebaseio.com',
+  'firestore.googleapis.com',
+  'identitytoolkit.googleapis.com',
+  'securetoken.googleapis.com',
+  'cloudfunctions.net',
+  'api.anthropic.com',
+  'oauth2.googleapis.com',
+  'www.googleapis.com',
+  'accounts.google.com',
+  'apis.google.com'
+];
+
+// Regex matching HTML/navigation request URLs
+const HTML_PATH = /\.html?$|\/$/;
+
+// ─── Install ────────────────────────────────────────────────────────────
 self.addEventListener('install', e => {
   e.waitUntil(
-    caches.open(CACHE_NAME).then(cache => cache.addAll(ASSETS)).then(() => self.skipWaiting())
+    caches.open(CACHE_VERSION).then(cache =>
+      // Promise.allSettled so one 404 doesn't fail the whole install
+      Promise.allSettled(
+        PRECACHE_ASSETS.map(url =>
+          fetch(url, { cache: 'reload' })
+            .then(r => r.ok ? cache.put(url, r) : null)
+            .catch(() => null)
+        )
+      )
+    ).then(() => self.skipWaiting()) // activate immediately, don't wait for old SW
   );
 });
 
+// ─── Activate ───────────────────────────────────────────────────────────
 self.addEventListener('activate', e => {
   e.waitUntil(
-    caches.keys().then(keys =>
-      Promise.all(keys.filter(k => k !== CACHE_NAME).map(k => caches.delete(k)))
-    ).then(() => self.clients.claim())
+    caches.keys()
+      .then(keys => Promise.all(
+        keys.filter(k => k !== CACHE_VERSION).map(k => caches.delete(k))
+      ))
+      .then(() => self.clients.claim()) // take control of open pages right away
   );
 });
 
+// ─── Fetch dispatcher ───────────────────────────────────────────────────
 self.addEventListener('fetch', e => {
-  const url = new URL(e.request.url);
+  const req = e.request;
 
-  // Share Target: redirect GET ?share_text=... to the app with params intact
-  // The browser will open index.html with query params — we just let it fall through
-  // to the cache-first handler so the app loads and JS can read the params.
-  e.respondWith(
-    caches.match(e.request).then(cached => {
-      const fetched = fetch(e.request).then(response => {
-        const clone = response.clone();
-        caches.open(CACHE_NAME).then(cache => cache.put(e.request, clone));
-        return response;
-      }).catch(() => cached);
-      return cached || fetched;
-    })
-  );
+  // Only GETs — POSTs (auth, Firestore writes) always pass through
+  if (req.method !== 'GET') return;
+
+  const url = new URL(req.url);
+
+  // Pass-through hosts: don't intercept at all
+  if (PASS_THROUGH_HOSTS.some(h => url.hostname.includes(h))) return;
+
+  // HTML / navigation requests → network-first
+  if (req.mode === 'navigate' ||
+      req.destination === 'document' ||
+      HTML_PATH.test(url.pathname)) {
+    e.respondWith(networkFirst(req));
+    return;
+  }
+
+  // Everything else → stale-while-revalidate
+  e.respondWith(staleWhileRevalidate(req));
+});
+
+// ─── Strategies ─────────────────────────────────────────────────────────
+
+async function networkFirst(req) {
+  const cache = await caches.open(CACHE_VERSION);
+  try {
+    // Race the network against a 4s timeout
+    const fresh = await Promise.race([
+      fetch(req),
+      new Promise((_, rej) => setTimeout(() => rej(new Error('sw-timeout')), 4000))
+    ]);
+    if (fresh && fresh.ok) {
+      // Cache the fresh response for offline fallback
+      cache.put(req, fresh.clone()).catch(() => {});
+      return fresh;
+    }
+    throw new Error('sw-bad-response');
+  } catch (err) {
+    // Network failed or timed out — try cache
+    const cached = await cache.match(req);
+    if (cached) return cached;
+    // Last resort for navigations: serve the cached root
+    if (req.mode === 'navigate' || req.destination === 'document') {
+      const root = await cache.match('./') || await cache.match('./index.html');
+      if (root) return root;
+    }
+    // Genuinely offline with nothing cached
+    return new Response(
+      '<!DOCTYPE html><html><head><title>Offline</title><meta name="viewport" content="width=device-width,initial-scale=1"><style>body{font-family:-apple-system,sans-serif;display:flex;align-items:center;justify-content:center;min-height:100vh;margin:0;background:#0a1218;color:#e2e8f0;text-align:center;padding:20px;}h1{color:#5be8ff;}</style></head><body><div><h1>Offline</h1><p>This page is not available offline yet.<br>Try reconnecting and reload.</p></div></body></html>',
+      { headers: { 'Content-Type': 'text/html' }, status: 503 }
+    );
+  }
+}
+
+async function staleWhileRevalidate(req) {
+  const cache = await caches.open(CACHE_VERSION);
+  const cached = await cache.match(req);
+  const fetchPromise = fetch(req).then(response => {
+    if (response && response.ok) cache.put(req, response.clone()).catch(() => {});
+    return response;
+  }).catch(() => cached);
+  // Serve from cache instantly; fetchPromise updates cache for next time
+  return cached || fetchPromise;
+}
+
+// ─── Allow page to trigger immediate update on demand ───────────────────
+self.addEventListener('message', e => {
+  if (e.data && e.data.type === 'SKIP_WAITING') self.skipWaiting();
 });
