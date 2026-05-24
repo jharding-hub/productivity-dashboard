@@ -437,6 +437,14 @@ body.theme-lava{
   flex-shrink:0;
 }
 .routine-item.done .routine-check{background:var(--success);color:var(--bg);}
+.routine-earned{
+  font-size:14px;
+  margin-left:6px;
+  display:inline-block;
+  filter:drop-shadow(0 0 4px var(--accent));
+  vertical-align:middle;
+  opacity:0.85;
+}
 .routine-progress{
   margin-top:14px;
   background:var(--bg);
@@ -584,6 +592,72 @@ body.theme-lava{
   font-family:var(--header-font);
   font-size:13px;
   box-shadow:4px 4px 0 var(--shadow);
+}
+
+/* ═══ READING LIST PANEL ═══ */
+.book-list{display:flex;flex-direction:column;gap:10px;margin-bottom:12px;}
+.book-item{
+  display:flex;
+  align-items:center;
+  gap:12px;
+  background:var(--surface-light);
+  border:3px solid var(--book-color,var(--secondary));
+  padding:12px 14px;
+  box-shadow:4px 4px 0 var(--shadow);
+  font-size:22px;
+  font-family:var(--body-font);
+}
+.book-emoji{font-size:30px;line-height:1;flex-shrink:0;}
+.book-title{flex:1;line-height:1.2;word-break:break-word;}
+.book-done-btn{
+  background:var(--success);
+  color:var(--bg);
+  border:3px solid var(--shadow);
+  padding:8px 14px;
+  font-family:var(--header-font);
+  font-size:11px;
+  box-shadow:3px 3px 0 var(--shadow);
+  cursor:pointer;
+  flex-shrink:0;
+  transition:transform 0.08s;
+}
+.book-done-btn:hover{transform:translate(-1px,-1px);box-shadow:4px 4px 0 var(--shadow);}
+.book-done-btn:active{transform:translate(2px,2px);box-shadow:1px 1px 0 var(--shadow);}
+.book-empty{
+  text-align:center;
+  padding:20px 8px;
+  font-size:20px;
+  color:var(--text-dim);
+  font-style:italic;
+}
+.book-stats{
+  background:var(--bg);
+  border:3px solid var(--border);
+  padding:10px 14px;
+  text-align:center;
+  font-family:var(--header-font);
+  font-size:11px;
+  color:var(--accent);
+  margin-bottom:12px;
+  text-shadow:1px 1px 0 var(--shadow);
+}
+.book-stats .book-stat-icon{font-size:14px;}
+.book-stats .completed-titles{
+  display:block;
+  margin-top:6px;
+  font-family:var(--body-font);
+  font-size:16px;
+  color:var(--text-dim);
+  text-shadow:none;
+  font-style:italic;
+  line-height:1.3;
+}
+.book-points-hint{
+  font-size:14px;
+  color:var(--text-dim);
+  text-align:center;
+  margin-bottom:8px;
+  font-style:italic;
 }
 
 /* ═══ THOUGHT BUBBLES PANEL ═══ */
@@ -1030,8 +1104,32 @@ body.theme-critter::before,body.theme-candy::before{
       </div>
     </div>
 
+    <!-- READING LIST -->
+    <div class="panel span-6">
+      <div class="panel-title"><span class="panel-icon">📚</span> READING LIST <span class="panel-count" id="bookCount">0</span></div>
+      <div class="book-stats" id="bookStats">
+        <span class="book-stat-icon">🏅</span> 0 BOOKS FINISHED
+      </div>
+      <div class="book-points-hint">Finish a book to earn <strong>+25 stars</strong>!</div>
+      <div class="book-list" id="bookList"></div>
+      <div class="add-row">
+        <input type="text" id="newBookInput" placeholder="What book are you reading?" onkeydown="if(event.key==='Enter')addBook()" maxlength="80">
+        <button class="add-btn" onclick="addBook()">+ ADD</button>
+      </div>
+    </div>
+
+    <!-- THOUGHT BUBBLES (renamed from Brain Dump) -->
+    <div class="panel span-6">
+      <div class="panel-title"><span class="panel-icon">💭</span> THOUGHT BUBBLES</div>
+      <div class="bubble-area" id="bubbleArea"></div>
+      <div class="add-row">
+        <input type="text" id="newBubbleInput" placeholder="What are you thinking?" onkeydown="if(event.key==='Enter')addBubble()" maxlength="80">
+        <button class="add-btn" onclick="addBubble()">POP!</button>
+      </div>
+    </div>
+
     <!-- MUSIC -->
-    <div class="panel span-4">
+    <div class="panel span-6">
       <div class="panel-title"><span class="panel-icon">🎵</span> SOUNDS</div>
       <div class="music-grid">
         <button class="music-btn" data-sound="calm" onclick="toggleSound('calm')">
@@ -1055,7 +1153,7 @@ body.theme-critter::before,body.theme-candy::before{
     </div>
 
     <!-- BREATHWORK -->
-    <div class="panel span-4">
+    <div class="panel span-6">
       <div class="panel-title"><span class="panel-icon">💨</span> BREATHING</div>
       <div class="breath-grid">
         <button class="breath-btn" onclick="startBreath('calm')">
@@ -1066,16 +1164,6 @@ body.theme-critter::before,body.theme-candy::before{
           <span class="breath-icon">💪</span>
           <span>GET READY</span>
         </button>
-      </div>
-    </div>
-
-    <!-- THOUGHT BUBBLES (renamed from Brain Dump) -->
-    <div class="panel span-4">
-      <div class="panel-title"><span class="panel-icon">💭</span> THOUGHT BUBBLES</div>
-      <div class="bubble-area" id="bubbleArea"></div>
-      <div class="add-row">
-        <input type="text" id="newBubbleInput" placeholder="What are you thinking?" onkeydown="if(event.key==='Enter')addBubble()" maxlength="80">
-        <button class="add-btn" onclick="addBubble()">POP!</button>
       </div>
     </div>
 
@@ -1193,6 +1281,8 @@ var DEFAULT_STATE={
   routines:JSON.parse(JSON.stringify(DEFAULT_ROUTINES)),
   routineDate:null,
   thoughts:[],
+  reading:{current:[],completed:[]},
+  breathLastDate:{calm:null,ready:null},
   streak:0,
   longestStreak:0,
   lastStreakDate:null,
@@ -1228,7 +1318,9 @@ function loadState(){
       // Merge with defaults for new keys
       return Object.assign({},DEFAULT_STATE,loaded,{
         rewards:Object.assign({},DEFAULT_STATE.rewards,loaded.rewards||{}),
-        routines:loaded.routines||JSON.parse(JSON.stringify(DEFAULT_ROUTINES))
+        routines:loaded.routines||JSON.parse(JSON.stringify(DEFAULT_ROUTINES)),
+        reading:Object.assign({current:[],completed:[]},loaded.reading||{}),
+        breathLastDate:Object.assign({calm:null,ready:null},loaded.breathLastDate||{})
       });
     }
   }catch(e){console.warn('state load failed',e);}
@@ -1302,20 +1394,27 @@ function addTask(){
     id:uid('t'),
     name:name,
     color:pick(TASK_COLORS),
-    done:false
+    done:false,
+    pointsAwarded:false
   });
   inp.value='';
   save();
   renderTasks();
-  awardPoints(2);
+  // No points for adding — prevents farming by add/delete cycling.
+  // Points are awarded once when the task is first completed.
 }
 function toggleTask(id){
   var t=state.tasks.find(function(x){return x.id===id;});
   if(!t)return;
   t.done=!t.done;
+  if(t.done && !t.pointsAwarded){
+    // First-time completion only — flag stays true even if unchecked later
+    t.pointsAwarded=true;
+    awardPoints(5);
+    confetti(8);
+  }
   save();
   renderTasks();
-  if(t.done){awardPoints(5);confetti(8);}
 }
 function deleteTask(id,ev){
   if(ev)ev.stopPropagation();
@@ -1365,18 +1464,31 @@ function toggleRoutine(id){
   var r=list.find(function(x){return x.id===id;});
   if(!r)return;
   r.done=!r.done;
+  if(r.done){
+    var today=todayStr();
+    // One point award per routine item per day. lastPointDate persists across
+    // checkmark toggles, so unchecking and rechecking does NOT re-award.
+    if(r.lastPointDate!==today){
+      r.lastPointDate=today;
+      awardPoints(3);
+      confetti(6);
+    }
+    checkStreakProgress();
+  }
   save();
   renderRoutines();
-  if(r.done){awardPoints(3);confetti(6);checkStreakProgress();}
 }
 function renderRoutines(){
   checkRoutineDate();
+  var today=todayStr();
   var list=state.routines[state.activeRoutineTab]||[];
   var el=document.getElementById('routineList');
   el.innerHTML=list.map(function(r){
+    var earnedToday=r.lastPointDate===today;
+    var starBadge=earnedToday?'<span class="routine-earned" title="Earned today">⭐</span>':'';
     return '<div class="routine-item '+(r.done?'done':'')+'" onclick="toggleRoutine(\''+r.id+'\')">'
       +'<div class="routine-emoji">'+r.emoji+'</div>'
-      +'<div class="routine-name">'+escapeHtml(r.name)+'</div>'
+      +'<div class="routine-name">'+escapeHtml(r.name)+starBadge+'</div>'
       +'<div class="routine-check">'+(r.done?'✓':'')+'</div>'
       +'</div>';
   }).join('');
@@ -1698,9 +1810,11 @@ var BREATH_PATTERNS={
   calm:[{phase:'BREATHE IN',dur:4,scale:'expanded'},{phase:'HOLD',dur:7,scale:'expanded'},{phase:'BREATHE OUT',dur:8,scale:'normal'}],
   ready:[{phase:'BREATHE IN',dur:4,scale:'expanded'},{phase:'HOLD',dur:4,scale:'expanded'},{phase:'BREATHE OUT',dur:4,scale:'normal'},{phase:'HOLD',dur:4,scale:'normal'}]
 };
+var _activeBreathPattern=null;
 function startBreath(kind){
   var pattern=BREATH_PATTERNS[kind];
   if(!pattern)return;
+  _activeBreathPattern=kind;
   document.getElementById('breathModal').classList.add('open');
   var idx=0,count=pattern[0].dur,phase=0;
   var circle=document.getElementById('breathCircle');
@@ -1733,8 +1847,17 @@ function stopBreath(){
   clearInterval(_breathInterval);
   _breathInterval=null;
   document.getElementById('breathModal').classList.remove('open');
-  awardPoints(3);
-  toast('Nice breathing! +3 points');
+  // One award per day per pattern — prevents farming by repeated start/stop
+  var today=todayStr();
+  if(_activeBreathPattern && state.breathLastDate[_activeBreathPattern]!==today){
+    state.breathLastDate[_activeBreathPattern]=today;
+    save();
+    awardPoints(3);
+    toast('Nice breathing! +3 stars');
+  } else {
+    toast('Nice breathing!');
+  }
+  _activeBreathPattern=null;
 }
 
 // ═══ THOUGHT BUBBLES ═══
@@ -1753,7 +1876,7 @@ function addBubble(){
   inp.value='';
   save();
   renderBubbles();
-  awardPoints(1);
+  // No points — thoughts are for unloading the brain, not a scoring activity.
 }
 function deleteBubble(id){
   state.thoughts=state.thoughts.filter(function(b){return b.id!==id;});
@@ -1766,6 +1889,81 @@ function renderBubbles(){
     return '<div class="thought-bubble" style="--bubble-color:'+b.color+';background:'+b.color+';">'
       +escapeHtml(b.text)
       +'<button onclick="deleteBubble(\''+b.id+'\')">×</button>'
+      +'</div>';
+  }).join('');
+}
+
+// ═══ READING LIST ═══
+var BOOK_COLORS=['#ff3399','#00ffcc','#ffcc00','#66ff33','#9966ff','#ff6633','#33ccff','#ff66cc'];
+
+function addBook(){
+  var inp=document.getElementById('newBookInput');
+  var title=inp.value.trim();
+  if(!title)return;
+  state.reading.current.unshift({
+    id:uid('bk'),
+    title:title,
+    color:pick(BOOK_COLORS),
+    addedDate:todayStr()
+  });
+  inp.value='';
+  save();
+  renderReading();
+  // No points for adding — points are awarded on completion only.
+}
+
+function completeBook(id){
+  var idx=state.reading.current.findIndex(function(b){return b.id===id;});
+  if(idx<0)return;
+  var book=state.reading.current[idx];
+  // Move to completed list
+  state.reading.completed.unshift({
+    id:book.id,
+    title:book.title,
+    addedDate:book.addedDate,
+    completedDate:todayStr()
+  });
+  // Keep last 50 completed in history (UI shows a count regardless)
+  if(state.reading.completed.length>50)state.reading.completed=state.reading.completed.slice(0,50);
+  state.reading.current.splice(idx,1);
+  save();
+  awardPoints(25);
+  confetti(70);
+  toast('🎉 You finished "'+book.title+'"! +25 stars',3500);
+  renderReading();
+}
+
+function removeBook(id){
+  // Quiet remove without celebration (e.g. typo, wrong title)
+  state.reading.current=state.reading.current.filter(function(b){return b.id!==id;});
+  save();
+  renderReading();
+}
+
+function renderReading(){
+  var listEl=document.getElementById('bookList');
+  var current=state.reading.current||[];
+  var completed=state.reading.completed||[];
+  document.getElementById('bookCount').textContent=current.length;
+
+  // Stats line — "N BOOKS FINISHED" + last few titles for motivation
+  var statsEl=document.getElementById('bookStats');
+  var lastTitles=completed.slice(0,3).map(function(b){return b.title;}).join(' • ');
+  var statsHTML='<span class="book-stat-icon">🏅</span> '+completed.length+' BOOK'+(completed.length===1?'':'S')+' FINISHED';
+  if(lastTitles){
+    statsHTML+='<span class="completed-titles">recently: '+escapeHtml(lastTitles)+'</span>';
+  }
+  statsEl.innerHTML=statsHTML;
+
+  if(current.length===0){
+    listEl.innerHTML='<div class="book-empty">add a book you\'re reading below!</div>';
+    return;
+  }
+  listEl.innerHTML=current.map(function(b){
+    return '<div class="book-item" style="--book-color:'+b.color+';border-color:'+b.color+';">'
+      +'<span class="book-emoji">📖</span>'
+      +'<span class="book-title">'+escapeHtml(b.title)+'</span>'
+      +'<button class="book-done-btn" onclick="completeBook(\''+b.id+'\')">DONE!</button>'
       +'</div>';
   }).join('');
 }
@@ -1802,7 +2000,7 @@ function renderParentSettings(){
     +'<div class="parent-reward-list" id="sevenDayList"></div>'
     +'<button class="parent-btn" onclick="addReward(\'7day\')">+ Add 7-day reward</button>'
     +'<h3>STREAK</h3>'
-    +'<div style="font-size:20px;margin-bottom:10px;">Current: '+state.streak+' days<br>Longest: '+state.longestStreak+' days</div>'
+    +'<div style="font-size:20px;margin-bottom:10px;">Current: '+state.streak+' days<br>Longest: '+state.longestStreak+' days<br>Books finished: '+((state.reading&&state.reading.completed)?state.reading.completed.length:0)+'<br>Lifetime stars: '+state.lifetimePoints+'</div>'
     +'<button class="parent-btn" onclick="resetStreak()">Reset streak to 0</button>'
     +'<h3>PIN</h3>'
     +'<input class="parent-input" type="text" id="newPin" placeholder="New PIN (numbers)" inputmode="numeric" maxlength="6" value="'+state.parentPin+'">'
@@ -1860,11 +2058,32 @@ function resetAllData(){
 function closeParentModal(){document.getElementById('parentModal').classList.remove('open');}
 
 // ═══ INITIALIZATION ═══
+function migrateLegacyState(){
+  // Existing tasks pre-anti-farm fix: mark done tasks as already awarded so
+  // they can't farm by unchecking and rechecking
+  (state.tasks||[]).forEach(function(t){
+    if(t.pointsAwarded===undefined)t.pointsAwarded=!!t.done;
+  });
+  // Existing routine items: if currently done AND today is the routine date,
+  // assume they already earned today's point — prevents re-award by toggling
+  var today=todayStr();
+  ['morning','evening'].forEach(function(slot){
+    (state.routines[slot]||[]).forEach(function(r){
+      if(r.lastPointDate===undefined && r.done && state.routineDate===today){
+        r.lastPointDate=today;
+      }
+    });
+  });
+  save();
+}
+
 function init(){
+  migrateLegacyState();
   applyTheme(state.theme||'rainbow');
   switchRoutine(state.activeRoutineTab||'morning');
   renderTasks();
   renderBubbles();
+  renderReading();
   renderRewards();
   updateHeader();
   setDuration(state.timerDuration||15);
