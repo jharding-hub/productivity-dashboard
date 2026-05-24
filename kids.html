@@ -2,8 +2,16 @@
 <html lang="en">
 <head>
 <meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0">
-<meta name="theme-color" content="#1a0033">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover, interactive-widget=resizes-content">
+<meta name="theme-color" content="#7dd3fc">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="Centerpost Kids">
+<meta name="mobile-web-app-capable" content="yes">
+<link rel="apple-touch-icon" href="kids-icon.png">
+<link rel="icon" type="image/svg+xml" href="kids-icon.svg">
+<link rel="icon" type="image/png" sizes="180x180" href="kids-icon.png">
+<link rel="manifest" href="kids-manifest.json">
 <title>Centerpost Kids</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -594,6 +602,164 @@ body.theme-lava{
   box-shadow:4px 4px 0 var(--shadow);
 }
 
+/* ═══ FEELINGS WHEEL PANEL ═══ */
+.wheel-container{
+  display:flex;
+  justify-content:center;
+  margin:8px auto 12px;
+  max-width:380px;
+}
+.wheel-container svg{
+  width:100%;
+  height:auto;
+  filter:drop-shadow(4px 4px 0 var(--shadow));
+}
+.wheel-segment{
+  cursor:pointer;
+  transition:opacity 0.15s, transform 0.12s;
+  transform-origin:center;
+}
+.wheel-segment:hover{opacity:0.82;}
+.wheel-segment:active{opacity:0.65;}
+.feelings-recent{
+  background:var(--bg);
+  border:3px solid var(--border);
+  padding:10px;
+  font-family:var(--header-font);
+  font-size:10px;
+  text-align:center;
+  color:var(--text-dim);
+  min-height:42px;
+  display:flex;
+  align-items:center;
+  justify-content:center;
+  gap:8px;
+  flex-wrap:wrap;
+}
+.feelings-recent .recent-chip{
+  background:var(--surface-light);
+  border:2px solid var(--bubble-color,var(--primary));
+  padding:4px 8px;
+  display:inline-flex;
+  align-items:center;
+  gap:4px;
+  font-size:14px;
+  font-family:var(--body-font);
+  color:var(--text);
+}
+.feelings-points-hint{
+  font-size:14px;
+  color:var(--text-dim);
+  text-align:center;
+  margin-bottom:6px;
+  font-style:italic;
+}
+
+/* Floating feeling-logged animation */
+.feeling-pop{
+  position:fixed;
+  z-index:600;
+  font-family:var(--header-font);
+  font-size:18px;
+  color:var(--text);
+  text-shadow:3px 3px 0 var(--shadow);
+  pointer-events:none;
+  animation:feeling-pop-anim 1.6s ease-out forwards;
+  background:var(--feeling-color,var(--primary));
+  padding:8px 14px;
+  border:3px solid var(--shadow);
+  box-shadow:4px 4px 0 var(--shadow);
+}
+@keyframes feeling-pop-anim{
+  0%{transform:translate(-50%,0) scale(0.5);opacity:0;}
+  20%{transform:translate(-50%,-30px) scale(1.1);opacity:1;}
+  100%{transform:translate(-50%,-120px) scale(1);opacity:0;}
+}
+
+/* Parent chart styles */
+.feeling-chart{
+  display:flex;
+  flex-direction:column;
+  gap:6px;
+  margin-bottom:14px;
+}
+.feeling-bar-row{
+  display:flex;
+  align-items:center;
+  gap:8px;
+  font-family:var(--body-font);
+}
+.feeling-bar-row .feeling-bar-emoji{
+  width:32px;
+  font-size:24px;
+  text-align:center;
+  flex-shrink:0;
+}
+.feeling-bar-row .feeling-bar-label{
+  width:80px;
+  font-size:16px;
+  color:var(--text);
+  text-transform:uppercase;
+  letter-spacing:1px;
+  flex-shrink:0;
+}
+.feeling-bar-track{
+  flex:1;
+  background:var(--bg);
+  border:2px solid var(--border);
+  height:22px;
+  position:relative;
+}
+.feeling-bar-fill{
+  height:100%;
+  transition:width 0.5s ease;
+  background-image:repeating-linear-gradient(45deg,transparent,transparent 4px,rgba(255,255,255,0.18) 4px,rgba(255,255,255,0.18) 8px);
+}
+.feeling-bar-count{
+  width:36px;
+  text-align:right;
+  font-size:18px;
+  color:var(--text);
+  flex-shrink:0;
+}
+.feeling-heatmap{
+  display:grid;
+  grid-template-columns:repeat(15,1fr);
+  gap:3px;
+  margin-bottom:8px;
+}
+.heatmap-cell{
+  aspect-ratio:1;
+  background:var(--bg);
+  border:1px solid var(--border-dark);
+  position:relative;
+}
+.heatmap-cell.has-data{box-shadow:inset 0 0 0 1px var(--accent);}
+.heatmap-cell[data-count="1"]{background:rgba(255,204,0,0.35);}
+.heatmap-cell[data-count="2"]{background:rgba(255,204,0,0.55);}
+.heatmap-cell[data-count="3"]{background:rgba(255,204,0,0.75);}
+.heatmap-cell[data-count="4"]{background:var(--accent);}
+.heatmap-cell[data-count="5"]{background:var(--accent);box-shadow:inset 0 0 0 2px var(--success);}
+.feelings-recent-log{
+  background:var(--bg);
+  border:3px solid var(--border);
+  padding:8px;
+  max-height:120px;
+  overflow-y:auto;
+  font-family:var(--body-font);
+  font-size:14px;
+}
+.feelings-recent-log .log-row{
+  display:flex;
+  align-items:center;
+  gap:6px;
+  padding:4px 0;
+  border-bottom:1px dashed var(--border-dark);
+}
+.feelings-recent-log .log-row:last-child{border-bottom:none;}
+.feelings-recent-log .log-row .log-emoji{font-size:18px;}
+.feelings-recent-log .log-row .log-when{margin-left:auto;color:var(--text-dim);font-size:12px;}
+
 /* ═══ READING LIST PANEL ═══ */
 .book-list{display:flex;flex-direction:column;gap:10px;margin-bottom:12px;}
 .book-item{
@@ -1118,6 +1284,14 @@ body.theme-critter::before,body.theme-candy::before{
       </div>
     </div>
 
+    <!-- FEELINGS WHEEL -->
+    <div class="panel span-6">
+      <div class="panel-title"><span class="panel-icon">🎡</span> HOW I FEEL</div>
+      <div class="feelings-points-hint">Tap any time — first tap each day = <strong>+1 star</strong></div>
+      <div class="wheel-container" id="wheelContainer"></div>
+      <div class="feelings-recent" id="feelingsRecent">no feelings yet today</div>
+    </div>
+
     <!-- THOUGHT BUBBLES (renamed from Brain Dump) -->
     <div class="panel span-6">
       <div class="panel-title"><span class="panel-icon">💭</span> THOUGHT BUBBLES</div>
@@ -1153,7 +1327,7 @@ body.theme-critter::before,body.theme-candy::before{
     </div>
 
     <!-- BREATHWORK -->
-    <div class="panel span-6">
+    <div class="panel span-12">
       <div class="panel-title"><span class="panel-icon">💨</span> BREATHING</div>
       <div class="breath-grid">
         <button class="breath-btn" onclick="startBreath('calm')">
@@ -1282,6 +1456,8 @@ var DEFAULT_STATE={
   routineDate:null,
   thoughts:[],
   reading:{current:[],completed:[]},
+  feelings:[],
+  feelingsLastPointDate:null,
   breathLastDate:{calm:null,ready:null},
   streak:0,
   longestStreak:0,
@@ -1320,7 +1496,8 @@ function loadState(){
         rewards:Object.assign({},DEFAULT_STATE.rewards,loaded.rewards||{}),
         routines:loaded.routines||JSON.parse(JSON.stringify(DEFAULT_ROUTINES)),
         reading:Object.assign({current:[],completed:[]},loaded.reading||{}),
-        breathLastDate:Object.assign({calm:null,ready:null},loaded.breathLastDate||{})
+        breathLastDate:Object.assign({calm:null,ready:null},loaded.breathLastDate||{}),
+        feelings:loaded.feelings||[]
       });
     }
   }catch(e){console.warn('state load failed',e);}
@@ -1893,6 +2070,126 @@ function renderBubbles(){
   }).join('');
 }
 
+// ═══ FEELINGS WHEEL ═══
+var FEELINGS=[
+  {id:'happy',   emoji:'😊', label:'HAPPY',   color:'#ffcc00'},
+  {id:'excited', emoji:'🤩', label:'EXCITED', color:'#ff6633'},
+  {id:'silly',   emoji:'🤪', label:'SILLY',   color:'#ff66cc'},
+  {id:'calm',    emoji:'😌', label:'CALM',    color:'#66ff33'},
+  {id:'tired',   emoji:'😴', label:'TIRED',   color:'#33ccff'},
+  {id:'sad',     emoji:'😢', label:'SAD',     color:'#66ddff'},
+  {id:'scared',  emoji:'😨', label:'SCARED',  color:'#9966ff'},
+  {id:'mad',     emoji:'😡', label:'MAD',     color:'#ff3333'}
+];
+
+function _feelingDef(id){return FEELINGS.find(function(f){return f.id===id;});}
+
+function logFeeling(id){
+  var def=_feelingDef(id);
+  if(!def)return;
+  var now=Date.now();
+  state.feelings=state.feelings||[];
+  state.feelings.push({
+    id:uid('fl'),
+    feeling:id,
+    date:todayStr(),
+    timestamp:now
+  });
+  // Cap stored entries at last 500 (plenty for trend graph)
+  if(state.feelings.length>500)state.feelings=state.feelings.slice(-500);
+
+  // One point award per day no matter how many feelings logged
+  var today=todayStr();
+  var earnedPoint=false;
+  if(state.feelingsLastPointDate!==today){
+    state.feelingsLastPointDate=today;
+    awardPoints(1);
+    earnedPoint=true;
+  }
+  save();
+
+  // Visual feedback: floating "I FEEL X" pop near top of screen
+  showFeelingPop(def,earnedPoint);
+  renderFeelingsWheel();
+}
+
+function showFeelingPop(def,gotPoint){
+  var pop=document.createElement('div');
+  pop.className='feeling-pop';
+  pop.style.setProperty('--feeling-color',def.color);
+  pop.style.left='50%';
+  pop.style.top='80px';
+  pop.style.color=isLightColor(def.color)?'#1a0033':'#fff';
+  pop.innerHTML=def.emoji+' '+def.label+(gotPoint?' ⭐':'');
+  document.body.appendChild(pop);
+  setTimeout(function(){pop.remove();},1700);
+}
+
+function isLightColor(hex){
+  // simple luminance check for choosing readable text
+  var c=hex.replace('#','');
+  var r=parseInt(c.substr(0,2),16),g=parseInt(c.substr(2,2),16),b=parseInt(c.substr(4,2),16);
+  return (r*0.299+g*0.587+b*0.114)>165;
+}
+
+function renderFeelingsWheel(){
+  var size=360;
+  var cx=size/2,cy=size/2;
+  var rOuter=170,rInner=58;
+  var n=FEELINGS.length;
+  var segAngle=(Math.PI*2)/n;
+  var svg='<svg viewBox="0 0 '+size+' '+size+'" xmlns="http://www.w3.org/2000/svg">';
+
+  FEELINGS.forEach(function(f,i){
+    var a1=-Math.PI/2+i*segAngle;
+    var a2=a1+segAngle;
+    var x1=cx+rInner*Math.cos(a1),y1=cy+rInner*Math.sin(a1);
+    var x2=cx+rOuter*Math.cos(a1),y2=cy+rOuter*Math.sin(a1);
+    var x3=cx+rOuter*Math.cos(a2),y3=cy+rOuter*Math.sin(a2);
+    var x4=cx+rInner*Math.cos(a2),y4=cy+rInner*Math.sin(a2);
+    var d='M '+x1.toFixed(1)+' '+y1.toFixed(1)+
+          ' L '+x2.toFixed(1)+' '+y2.toFixed(1)+
+          ' A '+rOuter+' '+rOuter+' 0 0 1 '+x3.toFixed(1)+' '+y3.toFixed(1)+
+          ' L '+x4.toFixed(1)+' '+y4.toFixed(1)+
+          ' A '+rInner+' '+rInner+' 0 0 0 '+x1.toFixed(1)+' '+y1.toFixed(1)+' Z';
+    svg+='<path d="'+d+'" fill="'+f.color+'" stroke="#1a0033" stroke-width="3" class="wheel-segment" onclick="logFeeling(\''+f.id+'\')"></path>';
+    // Emoji + label at segment midpoint
+    var rMid=(rInner+rOuter)/2;
+    var aMid=(a1+a2)/2;
+    var ex=cx+rMid*Math.cos(aMid);
+    var ey=cy+rMid*Math.sin(aMid);
+    svg+='<text x="'+ex.toFixed(1)+'" y="'+(ey-6).toFixed(1)+'" text-anchor="middle" dominant-baseline="middle" font-size="30" pointer-events="none">'+f.emoji+'</text>';
+    svg+='<text x="'+ex.toFixed(1)+'" y="'+(ey+22).toFixed(1)+'" text-anchor="middle" dominant-baseline="middle" font-size="9" font-family="Press Start 2P, monospace" fill="#1a0033" font-weight="700" pointer-events="none">'+f.label+'</text>';
+  });
+
+  // Center hub
+  svg+='<circle cx="'+cx+'" cy="'+cy+'" r="'+(rInner-2)+'" fill="#1a0033" stroke="#000" stroke-width="3"></circle>';
+  var today=todayStr();
+  var todayCount=(state.feelings||[]).filter(function(f){return f.date===today;}).length;
+  if(todayCount===0){
+    svg+='<text x="'+cx+'" y="'+(cy-6)+'" text-anchor="middle" dominant-baseline="middle" font-size="9" font-family="Press Start 2P, monospace" fill="#ffcc00">TAP A</text>';
+    svg+='<text x="'+cx+'" y="'+(cy+10)+'" text-anchor="middle" dominant-baseline="middle" font-size="9" font-family="Press Start 2P, monospace" fill="#ffcc00">FEELING</text>';
+  } else {
+    svg+='<text x="'+cx+'" y="'+(cy-4)+'" text-anchor="middle" dominant-baseline="middle" font-size="22" font-family="Press Start 2P, monospace" fill="#ffcc00">'+todayCount+'</text>';
+    svg+='<text x="'+cx+'" y="'+(cy+18)+'" text-anchor="middle" dominant-baseline="middle" font-size="8" font-family="Press Start 2P, monospace" fill="#ffcc00">TODAY</text>';
+  }
+  svg+='</svg>';
+  document.getElementById('wheelContainer').innerHTML=svg;
+
+  // Recent strip — today's logged feelings (most recent 5)
+  var todayFeelings=(state.feelings||[]).filter(function(f){return f.date===today;}).slice(-5).reverse();
+  var recentEl=document.getElementById('feelingsRecent');
+  if(todayFeelings.length===0){
+    recentEl.innerHTML='no feelings yet today';
+  } else {
+    recentEl.innerHTML='TODAY: '+todayFeelings.map(function(f){
+      var def=_feelingDef(f.feeling);
+      if(!def)return '';
+      return '<span class="recent-chip" style="--bubble-color:'+def.color+';border-color:'+def.color+';">'+def.emoji+' '+def.label+'</span>';
+    }).join('');
+  }
+}
+
 // ═══ READING LIST ═══
 var BOOK_COLORS=['#ff3399','#00ffcc','#ffcc00','#66ff33','#9966ff','#ff6633','#33ccff','#ff66cc'];
 
@@ -1993,7 +2290,9 @@ function renderParentSettings(){
   document.getElementById('parentModalTitle').textContent='PARENT SETTINGS';
   var body=document.getElementById('parentModalBody');
   body.innerHTML=
-    '<h3>3-DAY REWARDS</h3>'
+    '<h3>FEELINGS LOG</h3>'
+    +'<div id="parentFeelingsSection"></div>'
+    +'<h3>3-DAY REWARDS</h3>'
     +'<div class="parent-reward-list" id="threeDayList"></div>'
     +'<button class="parent-btn" onclick="addReward(\'3day\')">+ Add 3-day reward</button>'
     +'<h3>7-DAY REWARDS</h3>'
@@ -2008,6 +2307,94 @@ function renderParentSettings(){
     +'<h3>DANGER ZONE</h3>'
     +'<button class="parent-btn danger" onclick="resetAllData()">Reset all kid data</button>';
   renderParentRewards();
+  renderParentFeelings();
+}
+
+function renderParentFeelings(){
+  var el=document.getElementById('parentFeelingsSection');
+  if(!el)return;
+  var all=state.feelings||[];
+  if(all.length===0){
+    el.innerHTML='<div style="font-size:16px;color:var(--text-dim);font-style:italic;padding:10px 0;">No feelings logged yet. Once your kid taps the feelings wheel, charts and trends will appear here.</div>';
+    return;
+  }
+
+  // Last 14 days frequency by feeling
+  var fourteenDaysAgo=Date.now()-14*86400000;
+  var recent=all.filter(function(f){return f.timestamp>=fourteenDaysAgo;});
+  var counts={};
+  FEELINGS.forEach(function(f){counts[f.id]=0;});
+  recent.forEach(function(f){if(counts[f.feeling]!==undefined)counts[f.feeling]++;});
+  var maxCount=Math.max.apply(null,FEELINGS.map(function(f){return counts[f.id];}));
+  if(maxCount<1)maxCount=1;
+
+  var html='';
+  // Summary stats
+  html+='<div style="font-size:16px;margin-bottom:10px;">Total entries (last 14 days): <strong>'+recent.length+'</strong><br>All-time entries: <strong>'+all.length+'</strong></div>';
+
+  // Sort feelings most-frequent first for the bars
+  var sortedFeelings=FEELINGS.slice().sort(function(a,b){return counts[b.id]-counts[a.id];});
+  html+='<div style="font-family:var(--header-font);font-size:11px;color:var(--accent);margin:14px 0 8px;">FREQUENCY (LAST 14 DAYS)</div>';
+  html+='<div class="feeling-chart">';
+  sortedFeelings.forEach(function(f){
+    var c=counts[f.id];
+    var pct=Math.round((c/maxCount)*100);
+    html+='<div class="feeling-bar-row">'
+      +'<span class="feeling-bar-emoji">'+f.emoji+'</span>'
+      +'<span class="feeling-bar-label">'+f.label+'</span>'
+      +'<div class="feeling-bar-track"><div class="feeling-bar-fill" style="width:'+pct+'%;background:'+f.color+';"></div></div>'
+      +'<span class="feeling-bar-count">'+c+'</span>'
+      +'</div>';
+  });
+  html+='</div>';
+
+  // 30-day daily heatmap
+  html+='<div style="font-family:var(--header-font);font-size:11px;color:var(--accent);margin:14px 0 8px;">ACTIVITY (LAST 30 DAYS)</div>';
+  var heatmapCounts={};
+  all.forEach(function(f){heatmapCounts[f.date]=(heatmapCounts[f.date]||0)+1;});
+  html+='<div class="feeling-heatmap">';
+  var today=new Date();today.setHours(0,0,0,0);
+  for(var i=29;i>=0;i--){
+    var d=new Date(today.getTime()-i*86400000);
+    var ds=d.getFullYear()+'-'+pad(d.getMonth()+1)+'-'+pad(d.getDate());
+    var c=heatmapCounts[ds]||0;
+    var bucket=c===0?'':(c>=5?'5':String(Math.min(c,4)));
+    var hasData=c>0?'has-data':'';
+    var label=d.toLocaleDateString('en-US',{month:'short',day:'numeric'})+': '+c+' entr'+(c===1?'y':'ies');
+    html+='<div class="heatmap-cell '+hasData+'" data-count="'+bucket+'" title="'+label+'"></div>';
+  }
+  html+='</div>';
+  html+='<div style="font-size:12px;color:var(--text-dim);text-align:center;margin-bottom:14px;">← 30 days ago    today →</div>';
+
+  // Recent entries log (last 12)
+  html+='<div style="font-family:var(--header-font);font-size:11px;color:var(--accent);margin:14px 0 8px;">RECENT ENTRIES</div>';
+  html+='<div class="feelings-recent-log">';
+  var recentLog=all.slice(-12).reverse();
+  recentLog.forEach(function(f){
+    var def=_feelingDef(f.feeling);
+    if(!def)return;
+    var when=new Date(f.timestamp);
+    var whenStr=when.toLocaleDateString('en-US',{month:'short',day:'numeric'})+' '+when.toLocaleTimeString('en-US',{hour:'numeric',minute:'2-digit'});
+    html+='<div class="log-row" style="color:'+def.color+';">'
+      +'<span class="log-emoji">'+def.emoji+'</span>'
+      +'<span>'+def.label+'</span>'
+      +'<span class="log-when">'+whenStr+'</span>'
+      +'</div>';
+  });
+  html+='</div>';
+  html+='<button class="parent-btn" onclick="clearFeelingsLog()" style="margin-top:10px;">Clear feelings log</button>';
+
+  el.innerHTML=html;
+}
+
+function clearFeelingsLog(){
+  if(!confirm('Clear all logged feelings? This cannot be undone.'))return;
+  state.feelings=[];
+  state.feelingsLastPointDate=null;
+  save();
+  renderFeelingsWheel();
+  renderParentFeelings();
+  toast('Feelings log cleared');
 }
 function renderParentRewards(){
   var list3=document.getElementById('threeDayList');
@@ -2084,6 +2471,7 @@ function init(){
   renderTasks();
   renderBubbles();
   renderReading();
+  renderFeelingsWheel();
   renderRewards();
   updateHeader();
   setDuration(state.timerDuration||15);
@@ -2091,6 +2479,42 @@ function init(){
   updateTimerDisplay();
 }
 init();
+
+// ═══ iOS KEYBOARD FIX ═══
+// On iPad/iPhone, when an input gets focus and the keyboard slides up,
+// Safari sometimes scrolls the page so the input ends up out of view.
+// We catch focus events and explicitly scroll the input into view AFTER
+// the keyboard animation (~300ms). Also use visualViewport when available
+// for newer iOS that supports interactive-widget=resizes-content.
+(function setupIosKeyboardFix(){
+  function scrollInputIntoView(el){
+    if(!el)return;
+    // Wait for keyboard to slide in before scrolling (animation ~250-350ms)
+    setTimeout(function(){
+      try{
+        el.scrollIntoView({block:'center',behavior:'smooth'});
+      }catch(e){
+        // Older browsers may not support smooth; fall back
+        el.scrollIntoView();
+      }
+    },320);
+  }
+  document.addEventListener('focusin',function(e){
+    var t=e.target;
+    if(t && (t.tagName==='INPUT' || t.tagName==='TEXTAREA')){
+      scrollInputIntoView(t);
+    }
+  });
+  // Also handle the visual viewport change (iPad split-keyboard, undock)
+  if(window.visualViewport){
+    window.visualViewport.addEventListener('resize',function(){
+      var focused=document.activeElement;
+      if(focused && (focused.tagName==='INPUT' || focused.tagName==='TEXTAREA')){
+        scrollInputIntoView(focused);
+      }
+    });
+  }
+})();
 
 // Save state on unload (defensive)
 window.addEventListener('beforeunload',save);
