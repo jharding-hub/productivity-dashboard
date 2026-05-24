@@ -2157,7 +2157,7 @@ body.unlocked .date-editable{border-bottom-color:var(--border);}
 <div class="panel-header"><div class="panel-title"><span class="drag-handle">&#10495;</span><span class="icon">&#128194;</span> Projects</div>
 <div style="display:flex;gap:6px;align-items:center;"><button class="breakdown-btn" onclick="openJarvisBreakdown('projects')" title="AI Breakdown — pick a project to break into micro-steps"><span class="bd-spark">&#10022;</span> Breakdown</button><span class="panel-badge" id="projCount">0</span><span class="panel-badge completed-badge" id="projCompletedBadge" style="display:none;">✓ 0</span><button class="expand-btn" onclick="openPanelOverlay('projects')" title="Expand to full view"><span class="expand-arrow">&#9660;</span></button></div></div>
 <div class="panel-tile-summary" id="tile-summary-projects" onclick="openPanelOverlay('projects')" style="cursor:pointer;"></div>
-<label class="upcoming-filter-toggle" onclick="event.stopPropagation();"><input type="checkbox" id="projUpcomingOnly" onchange="renderProjects()"> <span>Show projects (overdue / due today or tomorrow)</span></label>
+<label class="upcoming-filter-toggle" onclick="event.stopPropagation();"><input type="checkbox" id="projUpcomingOnly" onchange="renderProjects()"> <span>Show all projects (by priority)</span></label>
 <div class="panel-content" id="pc_projects">
 <div class="project-list" id="projectList"></div>
 </div>
@@ -2271,7 +2271,7 @@ body.unlocked .date-editable{border-bottom-color:var(--border);}
 <option value="all">All Projects</option>
 </select>
 </div>
-<label class="upcoming-filter-toggle" onclick="event.stopPropagation();"><input type="checkbox" id="taskUpcomingOnly" onchange="renderTaskList()"> <span>Show tasks (overdue / due today or tomorrow)</span></label>
+<label class="upcoming-filter-toggle" onclick="event.stopPropagation();"><input type="checkbox" id="taskUpcomingOnly" onchange="renderTaskList()"> <span>Show all tasks (sorted by priority)</span></label>
 <div class="panel-content" id="pc_tasklist">
 <div class="tl-list" id="taskListItems"></div>
 <div id="taskListCompleted"></div>
@@ -3874,32 +3874,29 @@ function renderProjects(){const el=document.getElementById('projectList');const 
 var projPanel=document.querySelector('.panel[data-panel="projects"]');
 var inOverlay=projPanel&&!projPanel.classList.contains('panel-tile');
 
-// Apply upcoming-only filter — only on the tile, never in overlay
+// "Show all" toggle — only applies on the dashboard tile, never in overlay
 var upcomingEl=document.getElementById('projUpcomingOnly');
-var upcomingOnly=!inOverlay&&upcomingEl&&upcomingEl.checked;
+var showAll=!inOverlay&&upcomingEl&&upcomingEl.checked;
 var visibleProjects=state.projects;
-if(upcomingOnly){
-  var tomorrow=tomorrowStr();
-  // 7-day lookback window for "overdue" — don't surface ancient stale items
-  var lookback=new Date();lookback.setDate(lookback.getDate()-7);
-  var pad=function(n){return n<10?'0'+n:''+n;};
-  var lookbackStr=lookback.getFullYear()+'-'+pad(lookback.getMonth()+1)+'-'+pad(lookback.getDate());
-  
-  visibleProjects=state.projects.filter(function(p){
-    // Project-level due: overdue within 7 days, today, or tomorrow
-    if(p.due&&p.due>=lookbackStr&&(p.due<today||p.due===today||p.due===tomorrow))return true;
-    // Any open subtask due within 7-day overdue window, today, or tomorrow
-    return (p.subtasks||[]).some(function(st){
-      if(st.done)return false;
-      if(!st.due)return false;
-      return st.due>=lookbackStr&&(st.due<today||st.due===today||st.due===tomorrow);
-    });
+if(showAll){
+  // Sort all projects by priority of their highest-priority open subtask,
+  // then by closest due date as a tiebreaker. Projects with no subtasks
+  // or due dates sort to the bottom.
+  var PRI_RANK={high:0,med:1,medium:1,low:2};
+  visibleProjects=state.projects.slice().sort(function(a,b){
+    var aPri=Math.min.apply(null,(a.subtasks||[]).filter(function(s){return !s.done;}).map(function(s){return PRI_RANK[(s.priority||'med').toLowerCase()];}).concat([3]));
+    var bPri=Math.min.apply(null,(b.subtasks||[]).filter(function(s){return !s.done;}).map(function(s){return PRI_RANK[(s.priority||'med').toLowerCase()];}).concat([3]));
+    if(aPri!==bPri)return aPri-bPri;
+    // Tiebreak by project due date (earliest first; undated last)
+    var aDue=a.due||'9999-12-31';
+    var bDue=b.due||'9999-12-31';
+    return aDue.localeCompare(bDue);
   });
 }
 if(state.projects.length===0){el.innerHTML='<div class="empty-state">No projects yet.</div>'+_renderCompletedProjectsSection();document.getElementById('projCount').textContent='0';var emptyProjCompCount=(state.completedTasks||[]).filter(function(t){return t.source==='project';}).length;var emptyProjCompBadge=document.getElementById('projCompletedBadge');if(emptyProjCompBadge){emptyProjCompBadge.textContent='✓ '+emptyProjCompCount;emptyProjCompBadge.style.display=emptyProjCompCount>0?'inline-flex':'none';}updateNoteSelectors();if(typeof _updateTileSummaryProjects==='function')_updateTileSummaryProjects();return;}
 var pcpEl=document.getElementById('pc_projects');
 // Tile mode, unchecked — blank panel so add-form anchors to bottom
-if(!inOverlay&&!upcomingOnly){
+if(!inOverlay&&!showAll){
   el.innerHTML='';
   if(pcpEl){pcpEl.style.flex='none';pcpEl.style.minHeight='0';}
   document.getElementById('projCount').textContent=state.projects.length;
@@ -3907,8 +3904,8 @@ if(!inOverlay&&!upcomingOnly){
   if(typeof _updateTileSummaryProjects==='function')_updateTileSummaryProjects();
   return;
 }
-// Checked but nothing matches — also blank
-if(upcomingOnly&&visibleProjects.length===0){el.innerHTML='';if(pcpEl){pcpEl.style.flex='none';pcpEl.style.minHeight='0';}document.getElementById('projCount').textContent=state.projects.length;updateNoteSelectors();if(typeof _updateTileSummaryProjects==='function')_updateTileSummaryProjects();return;}
+// Checked but no projects exist — also blank (safety)
+if(showAll&&visibleProjects.length===0){el.innerHTML='';if(pcpEl){pcpEl.style.flex='none';pcpEl.style.minHeight='0';}document.getElementById('projCount').textContent=state.projects.length;updateNoteSelectors();if(typeof _updateTileSummaryProjects==='function')_updateTileSummaryProjects();return;}
 if(pcpEl){pcpEl.style.flex='';pcpEl.style.minHeight='';}
 el.innerHTML=visibleProjects.map(p=>{const total=p.subtasks.length;const sorted=[...p.subtasks].sort((a,b)=>{if(a.due&&b.due)return a.due.localeCompare(b.due);if(a.due)return -1;if(b.due)return 1;return 0;});
 
@@ -5053,27 +5050,15 @@ function renderTaskList(){
   // Detect overlay mode — skip blank-when-unchecked if expanded
   var taskPanel=document.querySelector('.panel[data-panel="tasklist"]');
   var inOverlay=taskPanel&&!taskPanel.classList.contains('panel-tile');
-  var upcomingOnly=!inOverlay&&upcomingEl&&upcomingEl.checked;
+  // "Show all" toggle: when checked on the tile, render every task using
+  // the current sort (priority is the default). Date-window filter removed.
+  var showAll=!inOverlay&&upcomingEl&&upcomingEl.checked;
 
   // Filter by project
   if(filt!=='all')all=all.filter(function(t){return t.projectId===filt||(t.projectIds&&t.projectIds.indexOf(filt)>=0);});
-  
-  // Save total count (for badge) BEFORE applying upcoming filter
+
+  // Save total count (for badge) before any further filtering
   var totalCount=all.filter(function(t){return !t.done;}).length;
-  
-  // Upcoming-only filter: overdue within 7 days, due today, or due tomorrow
-  if(upcomingOnly){
-    var today=todayStr();
-    var tomorrow=tomorrowStr();
-    var lookback=new Date();lookback.setDate(lookback.getDate()-7);
-    var pad=function(n){return n<10?'0'+n:''+n;};
-    var lookbackStr=lookback.getFullYear()+'-'+pad(lookback.getMonth()+1)+'-'+pad(lookback.getDate());
-    all=all.filter(function(t){
-      if(t.done)return false;
-      if(!t.due)return false;
-      return t.due>=lookbackStr&&(t.due<today||t.due===today||t.due===tomorrow);
-    });
-  }
 
   // Sort
   if(sort==='priority'){
@@ -5090,7 +5075,7 @@ function renderTaskList(){
   var pcEl=document.getElementById('pc_tasklist');
   
   // If unchecked and in tile mode — blank so add-form anchors at bottom
-  if(!inOverlay&&!upcomingOnly){
+  if(!inOverlay&&!showAll){
     el.innerHTML='';
     if(pcEl){pcEl.style.flex='none';pcEl.style.minHeight='0';}
     document.getElementById('taskListCount').textContent=totalCount;
