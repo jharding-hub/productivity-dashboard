@@ -1241,6 +1241,81 @@ body.unlocked .date-editable{border-bottom-color:var(--border);}
 .login-link:hover{color:var(--accent);}
 .login-success{color:var(--green);font-size:12px;margin-top:8px;min-height:18px;}
 /* ═══════════════════════════════════════════════════════════════════════
+   LANDING PAGE — LIGHT MODE OVERRIDE
+   These vars apply ONLY when .login-gate has .landing-mode. The dashboard
+   keeps the user's chosen theme; only the unauthenticated landing page
+   is forced light for a professional, welcoming first impression.
+   ═══════════════════════════════════════════════════════════════════════ */
+.login-gate.landing-mode{
+  --bg:#fafbfc;
+  --surface:#ffffff;
+  --surface-raised:#f5f7fa;
+  --surface-hover:#eef2f6;
+  --text:#1a2332;
+  --text-dim:#4a5568;
+  --text-faint:#8895a8;
+  --border:#e2e8f0;
+  --border-focus:#cbd5e0;
+  --accent:#2563eb;
+  --accent-dim:#1e4fc4;
+  --accent-glow:rgba(37,99,235,0.08);
+  --red:#dc2626;
+  --green:#16a34a;
+  color:var(--text);
+}
+/* Landing-only color tweaks so accents read well on light surfaces */
+.login-gate.landing-mode .landing-logo .logo-dot{background:#2563eb;box-shadow:0 0 12px rgba(37,99,235,0.45);}
+.login-gate.landing-mode .landing-badge{background:rgba(37,99,235,0.08);border-color:rgba(37,99,235,0.25);color:#1e4fc4;}
+.login-gate.landing-mode .landing-badge .badge-dot{background:#2563eb;box-shadow:0 0 6px #2563eb;}
+.login-gate.landing-mode .landing-h1 .accent{background:linear-gradient(135deg,#2563eb 0%,#0ea5e9 100%);-webkit-background-clip:text;background-clip:text;color:transparent;}
+.login-gate.landing-mode .landing-story-quote .accent{color:#2563eb;}
+.login-gate.landing-mode .landing-meta-item::before{color:#16a34a;}
+/* Buttons */
+.login-gate.landing-mode .landing-signin-btn{background:rgba(37,99,235,0.06);color:#1e4fc4;border-color:rgba(37,99,235,0.35);}
+.login-gate.landing-mode .landing-signin-btn:hover{background:rgba(37,99,235,0.12);border-color:#2563eb;box-shadow:0 0 16px rgba(37,99,235,0.18);}
+.login-gate.landing-mode .landing-signup-btn{background:#2563eb;color:#ffffff;border-color:#2563eb;}
+.login-gate.landing-mode .landing-signup-btn:hover{background:#1e4fc4;border-color:#1e4fc4;box-shadow:0 4px 16px rgba(37,99,235,0.35);}
+.login-gate.landing-mode .landing-cta-primary{background:#2563eb;color:#ffffff;box-shadow:0 4px 24px rgba(37,99,235,0.25);}
+.login-gate.landing-mode .landing-cta-primary:hover{background:#1e4fc4;box-shadow:0 6px 32px rgba(37,99,235,0.35);}
+.login-gate.landing-mode .landing-cta-tertiary{background:rgba(234,179,8,0.1);color:#a16207;border-color:rgba(234,179,8,0.4);}
+.login-gate.landing-mode .landing-cta-tertiary:hover{background:rgba(234,179,8,0.18);border-color:#eab308;box-shadow:0 0 16px rgba(234,179,8,0.22);}
+.login-gate.landing-mode .landing-cta-secondary{color:#4a5568;}
+.login-gate.landing-mode .landing-cta-secondary:hover{color:#1a2332;border-color:#cbd5e0;}
+/* Nav */
+.login-gate.landing-mode .landing-nav{background:rgba(255,255,255,0.85);border-bottom-color:#e2e8f0;}
+.login-gate.landing-mode .landing-nav-link:hover{background:#f1f5f9;color:#1a2332;}
+/* Beta banner */
+.login-gate.landing-mode .landing-beta-banner{background:linear-gradient(90deg,rgba(234,179,8,0.10) 0%,rgba(37,99,235,0.06) 100%);border-bottom-color:rgba(234,179,8,0.30);}
+.login-gate.landing-mode .landing-beta-banner .beta-tag{background:#eab308;color:#1a2332;}
+/* Background pattern */
+.login-gate.landing-mode{background:radial-gradient(ellipse at top right,rgba(37,99,235,0.05) 0%,transparent 60%),radial-gradient(ellipse at bottom left,rgba(14,165,233,0.04) 0%,transparent 60%),#fafbfc;}
+/* Mockup — flip to a clean light browser preview */
+.login-gate.landing-mode .mockup-frame{background:#ffffff;border-color:#e2e8f0;box-shadow:0 30px 80px rgba(15,23,42,0.12),0 0 0 1px rgba(37,99,235,0.04);}
+.login-gate.landing-mode .mockup-titlebar{background:#f1f5f9;border-bottom-color:#e2e8f0;}
+.login-gate.landing-mode .mockup-url{color:#64748b;}
+.login-gate.landing-mode .mockup-content{background:linear-gradient(180deg,#ffffff 0%,#f8fafc 100%);}
+.login-gate.landing-mode .mockup-header{background:rgba(37,99,235,0.05);border-color:rgba(37,99,235,0.15);}
+.login-gate.landing-mode .mockup-points{color:#2563eb;}
+.login-gate.landing-mode .mockup-streak{color:#64748b;}
+.login-gate.landing-mode .mockup-panel{background:#ffffff;border-color:#e2e8f0;}
+.login-gate.landing-mode .mockup-panel-title{color:#2563eb;}
+.login-gate.landing-mode .mockup-item{background:#f8fafc;color:#1a2332;border-color:transparent;}
+.login-gate.landing-mode .mockup-item .mi-check{border-color:#94a3b8;}
+.login-gate.landing-mode .mockup-item.done .mi-check{background:#16a34a;border-color:#16a34a;}
+.login-gate.landing-mode .mockup-item.done .mi-text{color:#94a3b8;}
+.login-gate.landing-mode .mockup-item.priority-high{background:rgba(220,38,38,0.06);border-color:rgba(220,38,38,0.3);}
+.login-gate.landing-mode .mockup-item .mi-time{color:#94a3b8;}
+.login-gate.landing-mode .mockup-mood-chip{background:#f1f5f9;border-color:#e2e8f0;color:#1a2332;}
+.login-gate.landing-mode .mockup-mood-chip.active{background:rgba(37,99,235,0.12);border-color:#2563eb;color:#1e4fc4;}
+.login-gate.landing-mode .mockup-timeline{background:#ffffff;border-color:#e2e8f0;}
+/* Features section */
+.login-gate.landing-mode .landing-features{background:linear-gradient(180deg,transparent 0%,rgba(37,99,235,0.025) 50%,transparent 100%);}
+.login-gate.landing-mode .feature-card{background:#ffffff;border-color:#e2e8f0;}
+.login-gate.landing-mode .feature-card:hover{border-color:rgba(37,99,235,0.4);box-shadow:0 12px 32px rgba(15,23,42,0.08);}
+.login-gate.landing-mode .feature-icon{background:rgba(37,99,235,0.08);border-color:rgba(37,99,235,0.2);}
+/* Footer */
+.login-gate.landing-mode .landing-footer{border-top-color:#e2e8f0;}
+/* ═══════════════════════════════════════════════════════════════════════
    LANDING PAGE — shown to unauthenticated visitors
    ═══════════════════════════════════════════════════════════════════════ */
 .login-gate.landing-mode{padding:0;align-items:stretch;justify-content:flex-start;overflow-y:auto;background:radial-gradient(ellipse at top right,rgba(91,232,255,0.06) 0%,transparent 60%),radial-gradient(ellipse at bottom left,rgba(91,232,255,0.04) 0%,transparent 60%),var(--bg);}
@@ -1929,7 +2004,7 @@ body.unlocked .date-editable{border-bottom-color:var(--border);}
         <div class="feature-card">
           <div class="feature-icon">&#127918;</div>
           <div class="feature-name">Kids Mode</div>
-          <div class="feature-desc">Sister app for kids with ADHD. Tasks, routines, feelings wheel, reading list, rewards. Pixel-art themed. Optional cross-device sync with your account.</div>
+          <div class="feature-desc">Help your child build routines, create tasks, track reading and feelings, and learn productivity through small micro-habits each day. Pixel-art themed and easy to use. Optional cross-device sync with your account.</div>
         </div>
       </div>
     </div>
