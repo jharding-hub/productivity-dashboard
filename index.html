@@ -9450,7 +9450,24 @@ if(state.mood){const c=document.querySelectorAll('#moodPills .em-pill');const m=
 showStateAdvice();updateWellnessVisibility();
 startRealtimeSync();
 showAdminPanel();
-if('serviceWorker' in navigator){navigator.serviceWorker.register('sw.js').catch(e=>console.log('SW:',e));}
+// ─── Service Worker registration + one-time auto-reload on update ───
+// When the SW updates (e.g. you ship a new sw.js or bump CACHE_VERSION),
+// `controllerchange` fires once a new SW takes control. We reload the
+// page so it picks up the latest index.html. Guarded by sessionStorage
+// so it can't loop within a session.
+if('serviceWorker' in navigator){
+  navigator.serviceWorker.register('sw.js')
+    .then(function(reg){
+      // Force a check for updates on every page load (cheap, no-op if nothing changed)
+      try { reg.update(); } catch(e) {}
+    })
+    .catch(function(e){console.log('SW:',e);});
+  navigator.serviceWorker.addEventListener('controllerchange', function(){
+    if (sessionStorage.getItem('_swReloaded')) return;
+    sessionStorage.setItem('_swReloaded', '1');
+    window.location.reload();
+  });
+}
 // Handle Web Share Target inbound data
 setTimeout(checkShareTarget, 400); // slight delay so panels render first
 }
