@@ -13,6 +13,10 @@
 <link rel="icon" type="image/png" sizes="180x180" href="kids-icon.png">
 <link rel="manifest" href="kids-manifest.json">
 <title>Centerpost Kids</title>
+<!-- Firebase (loaded for OPTIONAL cross-device sync; app works fully offline if these fail) -->
+<script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-auth-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore-compat.js"></script>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Press+Start+2P&family=VT323&display=swap" rel="stylesheet">
@@ -558,25 +562,27 @@ body.theme-lava{
   width:100%;
   max-width:500px;
 }
-.breath-circle{
-  width:240px;
-  height:240px;
+.breath-emoji{
+  width:280px;
+  height:280px;
   margin:0 auto 28px;
-  background:radial-gradient(circle,var(--accent) 0%,var(--primary) 100%);
-  border:5px solid var(--shadow);
   border-radius:50%;
-  transform:scale(0.5);
-  transition:transform var(--breath-dur,4s) ease-in-out;
-  box-shadow:0 0 80px var(--primary);
+  background:radial-gradient(circle,rgba(255,204,0,0.18) 0%,rgba(255,51,153,0.08) 60%,transparent 100%);
   display:flex;
   align-items:center;
   justify-content:center;
-  font-family:var(--header-font);
-  font-size:18px;
-  color:var(--bg);
-  text-shadow:2px 2px 0 var(--accent);
+  font-size:180px;
+  line-height:1;
+  transform:scale(0.7);
+  transition:transform var(--breath-dur,4s) ease-in-out, filter var(--breath-dur,4s) ease-in-out;
+  filter:drop-shadow(0 0 30px rgba(255,204,0,0.3));
+  user-select:none;
+  -webkit-user-select:none;
 }
-.breath-circle.expanded{transform:scale(1.05);}
+.breath-emoji.expanded{
+  transform:scale(1.15);
+  filter:drop-shadow(0 0 60px rgba(255,204,0,0.5));
+}
 .breath-instr{
   font-family:var(--header-font);
   font-size:18px;
@@ -1348,7 +1354,7 @@ body.theme-critter::before,body.theme-candy::before{
 <div class="breath-modal" id="breathModal">
   <div class="breath-stage">
     <div class="breath-instr" id="breathInstr">BREATHE IN</div>
-    <div class="breath-circle" id="breathCircle"></div>
+    <div class="breath-emoji" id="breathEmoji">🤩</div>
     <div class="breath-count" id="breathCount">4</div>
     <button class="breath-stop" onclick="stopBreath()">STOP</button>
   </div>
@@ -1474,7 +1480,8 @@ var DEFAULT_STATE={
   theme:'rainbow',
   activeRoutineTab:'morning',
   timerDuration:15,
-  parentPin:'1234'
+  parentPin:'1234',
+  sync:{enabled:false,email:null,lastSync:null}
 };
 
 var state=loadState();
@@ -1486,26 +1493,81 @@ var _activeSounds={};
 var _breathInterval=null;
 
 // ═══ STATE PERSISTENCE ═══
+// Core "sacred" fields that must NEVER be overwritten by defaults during
+// migration. If you add/rename/restructure other fields in future code
+// versions, these specific keys are preserved verbatim from the user's
+// saved state. Points, streak, rewards earned, and reading history stay safe.
+var SACRED_KEYS = [
+  'points', 'lifetimePoints',
+  'streak', 'longestStreak', 'lastStreakDate',
+  'rewards',
+  'reading',
+  'feelings', 'feelingsLastPointDate',
+  'breathLastDate',
+  'tasks',
+  'parentPin',
+  'sync'  // Firebase sync settings
+];
+
 function loadState(){
   try{
     var raw=localStorage.getItem('centerpost_kids_state');
     if(raw){
       var loaded=JSON.parse(raw);
-      // Merge with defaults for new keys
-      return Object.assign({},DEFAULT_STATE,loaded,{
-        rewards:Object.assign({},DEFAULT_STATE.rewards,loaded.rewards||{}),
-        routines:loaded.routines||JSON.parse(JSON.stringify(DEFAULT_ROUTINES)),
-        reading:Object.assign({current:[],completed:[]},loaded.reading||{}),
-        breathLastDate:Object.assign({calm:null,ready:null},loaded.breathLastDate||{}),
-        feelings:loaded.feelings||[]
+      // Start from defaults, then layer the user's saved state on top.
+      // For every key in DEFAULT_STATE that exists in `loaded`, prefer loaded.
+      // Sacred fields are NEVER touched even if missing from current DEFAULT_STATE.
+      var merged = Object.assign({}, DEFAULT_STATE, loaded);
+      // Carefully merge nested objects so we don't lose sub-keys on schema change
+      merged.rewards = Object.assign({}, DEFAULT_STATE.rewards, loaded.rewards || {});
+      merged.reading = Object.assign({current:[], completed:[]}, loaded.reading || {});
+      merged.breathLastDate = Object.assign({calm:null, ready:null}, loaded.breathLastDate || {});
+      merged.routines = loaded.routines || JSON.parse(JSON.stringify(DEFAULT_ROUTINES));
+      merged.feelings = loaded.feelings || [];
+      merged.sync = Object.assign({enabled:false, email:null, lastSync:null}, loaded.sync || {});
+      // Defensive: make sure sacred numeric fields are actually numbers
+      ['points','lifetimePoints','streak','longestStreak'].forEach(function(k){
+        if(typeof merged[k] !== 'number') merged[k] = loaded[k] || 0;
       });
+      return merged;
     }
   }catch(e){console.warn('state load failed',e);}
   return JSON.parse(JSON.stringify(DEFAULT_STATE));
 }
 
+// Automatic local backup — snapshot state once per day under a separate key.
+// If a future code bug ever corrupted main state, restoring from this is
+// a one-liner: localStorage.setItem('centerpost_kids_state',localStorage.getItem('centerpost_kids_state_backup_YYYY-MM-DD'))
+function _dailyBackup(){
+  try {
+    var today = todayStr();
+    var lastBackup = localStorage.getItem('centerpost_kids_state_last_backup');
+    if(lastBackup === today) return;
+    var current = localStorage.getItem('centerpost_kids_state');
+    if(current){
+      localStorage.setItem('centerpost_kids_state_backup_'+today, current);
+      localStorage.setItem('centerpost_kids_state_last_backup', today);
+      // Keep only last 14 days of backups
+      var keys = Object.keys(localStorage).filter(function(k){return k.indexOf('centerpost_kids_state_backup_')===0;});
+      if(keys.length > 14){
+        keys.sort();
+        keys.slice(0, keys.length-14).forEach(function(k){localStorage.removeItem(k);});
+      }
+    }
+  } catch(e){console.warn('backup failed',e);}
+}
+
+var _syncDebounceTimer=null;
 function save(){
-  try{localStorage.setItem('centerpost_kids_state',JSON.stringify(state));}
+  try{
+    localStorage.setItem('centerpost_kids_state',JSON.stringify(state));
+    _dailyBackup();
+    // If sync is enabled and Firebase is connected, debounce-push to cloud
+    if(state.sync && state.sync.enabled && _kidsFirebaseUser){
+      clearTimeout(_syncDebounceTimer);
+      _syncDebounceTimer = setTimeout(_pushToFirebase, 1500);
+    }
+  }
   catch(e){console.warn('save failed',e);}
 }
 
@@ -1983,9 +2045,23 @@ function stopAllSounds(silent){
 }
 
 // ═══ BREATHWORK ═══
+// Using face emojis from the feelings wheel for each phase:
+//  🤩 IN (excited, eyes wide, taking it in)
+//  😊 HOLD top (full, content, savoring)
+//  😌 OUT (calm, releasing tension)
+//  😴 HOLD bottom (resting, paused, restorative)
 var BREATH_PATTERNS={
-  calm:[{phase:'BREATHE IN',dur:4,scale:'expanded'},{phase:'HOLD',dur:7,scale:'expanded'},{phase:'BREATHE OUT',dur:8,scale:'normal'}],
-  ready:[{phase:'BREATHE IN',dur:4,scale:'expanded'},{phase:'HOLD',dur:4,scale:'expanded'},{phase:'BREATHE OUT',dur:4,scale:'normal'},{phase:'HOLD',dur:4,scale:'normal'}]
+  calm:[
+    {phase:'BREATHE IN',dur:4,scale:'expanded',emoji:'🤩'},
+    {phase:'HOLD',dur:7,scale:'expanded',emoji:'😊'},
+    {phase:'BREATHE OUT',dur:8,scale:'normal',emoji:'😌'}
+  ],
+  ready:[
+    {phase:'BREATHE IN',dur:4,scale:'expanded',emoji:'🤩'},
+    {phase:'HOLD',dur:4,scale:'expanded',emoji:'😊'},
+    {phase:'BREATHE OUT',dur:4,scale:'normal',emoji:'😌'},
+    {phase:'HOLD',dur:4,scale:'normal',emoji:'😴'}
+  ]
 };
 var _activeBreathPattern=null;
 function startBreath(kind){
@@ -1994,25 +2070,34 @@ function startBreath(kind){
   _activeBreathPattern=kind;
   document.getElementById('breathModal').classList.add('open');
   var idx=0,count=pattern[0].dur,phase=0;
-  var circle=document.getElementById('breathCircle');
+  var emojiEl=document.getElementById('breathEmoji');
   var instr=document.getElementById('breathInstr');
   var countEl=document.getElementById('breathCount');
+  // Initial render
+  emojiEl.textContent=pattern[0].emoji;
+  emojiEl.style.setProperty('--breath-dur',pattern[0].dur+'s');
+  emojiEl.classList.toggle('expanded',pattern[0].scale==='expanded');
   function tick(){
     var step=pattern[phase];
     instr.textContent=step.phase;
     countEl.textContent=count;
-    circle.style.setProperty('--breath-dur',step.dur+'s');
     if(count===step.dur){
-      // start of phase — transition circle
-      circle.classList.toggle('expanded',step.scale==='expanded');
+      // start of phase — swap emoji + trigger scale transition
+      emojiEl.textContent=step.emoji;
+      emojiEl.style.setProperty('--breath-dur',step.dur+'s');
+      // Force reflow so the new transition duration applies before scale change
+      void emojiEl.offsetWidth;
+      emojiEl.classList.toggle('expanded',step.scale==='expanded');
     }
     count--;
     if(count<0){
       phase=(phase+1)%pattern.length;
       count=pattern[phase].dur-1;
       var step2=pattern[phase];
-      circle.style.setProperty('--breath-dur',step2.dur+'s');
-      circle.classList.toggle('expanded',step2.scale==='expanded');
+      emojiEl.textContent=step2.emoji;
+      emojiEl.style.setProperty('--breath-dur',step2.dur+'s');
+      void emojiEl.offsetWidth;
+      emojiEl.classList.toggle('expanded',step2.scale==='expanded');
       instr.textContent=step2.phase;
       countEl.textContent=step2.dur;
     }
@@ -2290,7 +2375,9 @@ function renderParentSettings(){
   document.getElementById('parentModalTitle').textContent='PARENT SETTINGS';
   var body=document.getElementById('parentModalBody');
   body.innerHTML=
-    '<h3>FEELINGS LOG</h3>'
+    '<h3>SYNC &amp; BACKUP</h3>'
+    +'<div id="parentSyncSection"></div>'
+    +'<h3>FEELINGS LOG</h3>'
     +'<div id="parentFeelingsSection"></div>'
     +'<h3>3-DAY REWARDS</h3>'
     +'<div class="parent-reward-list" id="threeDayList"></div>'
@@ -2308,6 +2395,43 @@ function renderParentSettings(){
     +'<button class="parent-btn danger" onclick="resetAllData()">Reset all kid data</button>';
   renderParentRewards();
   renderParentFeelings();
+  renderParentSync();
+}
+
+function renderParentSync(){
+  var el=document.getElementById('parentSyncSection');
+  if(!el)return;
+  var html='';
+  if(!_kidsFirebaseReady){
+    html+='<div style="font-size:16px;color:var(--text-dim);font-style:italic;padding:8px 0;">Cloud sync unavailable (Firebase didn\'t load). Local data is still safe — use the backup buttons below to export a copy you can restore later.</div>';
+  } else if(_kidsFirebaseUser && state.sync.enabled){
+    var lastSyncTxt=state.sync.lastSync ? new Date(state.sync.lastSync).toLocaleString() : 'pending';
+    html+='<div style="background:var(--bg);border:3px solid var(--success);padding:10px;font-size:15px;margin-bottom:10px;">'
+      +'<div style="font-family:var(--header-font);font-size:11px;color:var(--success);margin-bottom:6px;">✓ SYNCED</div>'
+      +'Signed in as <strong>'+(state.sync.email||_kidsFirebaseUser.email)+'</strong><br>'
+      +'Last sync: '+lastSyncTxt+'<br>'
+      +'Lifetime stars: <strong>'+(state.lifetimePoints||0)+'</strong>'
+      +'</div>';
+    html+='<button class="parent-btn" onclick="_pullFromFirebase()">⬇ Sync from cloud now</button>';
+    html+='<button class="parent-btn" onclick="_pushToFirebase().then(function(){toast(\'Pushed to cloud\');})">⬆ Push to cloud now</button>';
+    html+='<button class="parent-btn danger" onclick="syncSignOut()">Sign out of sync</button>';
+  } else {
+    html+='<div style="font-size:15px;color:var(--text);margin-bottom:10px;line-height:1.5;">'
+      +'Sync points across devices using your <strong>Centerpost parent account</strong> (same email/password you use on the main app).'
+      +'<br><br><span style="font-size:13px;color:var(--text-dim);">Without sync, data stays on this device only. Local backups still auto-save daily.</span>'
+      +'</div>';
+    html+='<input class="parent-input" type="email" id="syncEmail" placeholder="Parent email" inputmode="email" autocomplete="email">';
+    html+='<input class="parent-input" type="password" id="syncPass" placeholder="Password" autocomplete="current-password">';
+    html+='<button class="parent-btn primary" onclick="(function(){var e=document.getElementById(\'syncEmail\').value.trim();var p=document.getElementById(\'syncPass\').value;if(e&&p)syncSignIn(e,p).then(function(ok){if(ok)setTimeout(_pullFromFirebase,500);});})()">Connect parent account</button>';
+  }
+  // Manual backup always available
+  html+='<div style="margin-top:18px;padding-top:14px;border-top:2px dashed var(--border-dark);">';
+  html+='<div style="font-family:var(--header-font);font-size:11px;color:var(--accent);margin-bottom:8px;">MANUAL BACKUP</div>';
+  html+='<div style="font-size:13px;color:var(--text-dim);margin-bottom:10px;line-height:1.5;">Save a copy of all kid data (points, streaks, books, feelings, rewards) to a file. Useful before major device changes or as a safety net.</div>';
+  html+='<button class="parent-btn" onclick="exportKidsData()">⬇ Download backup file</button>';
+  html+='<button class="parent-btn" onclick="importKidsData()">⬆ Restore from backup file</button>';
+  html+='</div>';
+  el.innerHTML=html;
 }
 
 function renderParentFeelings(){
@@ -2479,6 +2603,200 @@ function init(){
   updateTimerDisplay();
 }
 init();
+
+// ═══════════════════════════════════════════════════════════════════════
+// FIREBASE SYNC — OPTIONAL cross-device sync via parent account
+//
+// How it works:
+//  - The kids app uses the SAME Firebase project as the main Centerpost.
+//  - Parent signs in with the SAME email/password they use on the main app.
+//  - Kid state is saved to: users/{parent-uid}/data/kids
+//  - Sync is OPT-IN. Without it, app works 100% offline (localStorage only).
+//  - On reconnect after device switch, cloud state is merged with local,
+//    preferring whichever has the higher lifetimePoints (anti-rollback).
+// ═══════════════════════════════════════════════════════════════════════
+
+var KIDS_FIREBASE_CONFIG = {
+  apiKey: "AIzaSyCgNToGWHbZI8s8OnhF1Z9l2BMXXtfHuC0",
+  authDomain: "productivity-dashboard-f8488.firebaseapp.com",
+  projectId: "productivity-dashboard-f8488",
+  storageBucket: "productivity-dashboard-f8488.firebasestorage.app",
+  messagingSenderId: "921593287670",
+  appId: "1:921593287670:web:eda2ab0cb829ca850f6dd7"
+};
+var _kidsFirebaseReady=false;
+var _kidsFirebaseUser=null;
+var _kidsFirebaseDb=null;
+
+(function _initKidsFirebase(){
+  try {
+    if(typeof firebase==='undefined'){console.warn('[sync] Firebase SDK not loaded');return;}
+    // Use a named app so we don't collide if main app is in same browser context
+    var existingApps=firebase.apps?firebase.apps.filter(function(a){return a.name==='kids';}):[];
+    var app=existingApps.length?existingApps[0]:firebase.initializeApp(KIDS_FIREBASE_CONFIG,'kids');
+    _kidsFirebaseDb=firebase.firestore(app);
+    _kidsFirebaseReady=true;
+    // Restore auth state if previously signed in
+    firebase.auth(app).onAuthStateChanged(function(user){
+      _kidsFirebaseUser=user;
+      if(user && state.sync && state.sync.enabled){
+        state.sync.email=user.email;
+        save();
+        _pullFromFirebase();
+      }
+      _renderParentSettingsIfOpen();
+    });
+  } catch(e){console.warn('[sync] init failed',e);}
+})();
+
+function _renderParentSettingsIfOpen(){
+  var modal=document.getElementById('parentModal');
+  if(modal && modal.classList.contains('open') && document.getElementById('parentFeelingsSection')){
+    // Re-render to refresh sync section status
+    renderParentSettings();
+  }
+}
+
+async function syncSignIn(email,password){
+  if(!_kidsFirebaseReady){toast('Sync not available');return false;}
+  try {
+    var app=firebase.app('kids');
+    await firebase.auth(app).signInWithEmailAndPassword(email,password);
+    state.sync.enabled=true;
+    state.sync.email=email;
+    save();
+    toast('Signed in! Syncing...');
+    return true;
+  } catch(e){
+    toast('Sign-in failed: '+(e.code||'try again'));
+    return false;
+  }
+}
+
+async function syncSignOut(){
+  try {
+    if(_kidsFirebaseReady){
+      await firebase.auth(firebase.app('kids')).signOut();
+    }
+  } catch(e){}
+  state.sync.enabled=false;
+  state.sync.email=null;
+  save();
+  toast('Signed out — sync paused. Local data is safe.');
+  _renderParentSettingsIfOpen();
+}
+
+async function _pushToFirebase(){
+  if(!_kidsFirebaseReady || !_kidsFirebaseUser || !state.sync.enabled) return;
+  try {
+    var snapshot={
+      state: JSON.stringify(state),
+      lifetimePoints: state.lifetimePoints || 0,
+      streak: state.streak || 0,
+      updated: firebase.firestore.FieldValue.serverTimestamp(),
+      updatedClient: new Date().toISOString()
+    };
+    await _kidsFirebaseDb.collection('users').doc(_kidsFirebaseUser.uid)
+      .collection('data').doc('kids').set(snapshot);
+    state.sync.lastSync=new Date().toISOString();
+    // Save WITHOUT re-triggering sync (silent save)
+    localStorage.setItem('centerpost_kids_state',JSON.stringify(state));
+    _renderParentSettingsIfOpen();
+  } catch(e){console.warn('[sync] push failed',e);}
+}
+
+async function _pullFromFirebase(){
+  if(!_kidsFirebaseReady || !_kidsFirebaseUser) return;
+  try {
+    var doc=await _kidsFirebaseDb.collection('users').doc(_kidsFirebaseUser.uid)
+      .collection('data').doc('kids').get();
+    if(!doc.exists){
+      // First sync from this device — push current local state up
+      await _pushToFirebase();
+      return;
+    }
+    var cloudData=doc.data();
+    if(!cloudData.state)return;
+    var cloudState=JSON.parse(cloudData.state);
+    // ANTI-ROLLBACK MERGE: whichever side has more lifetime points wins for
+    // the sacred fields. Other fields (theme, tasks, current routines) take
+    // the most-recently-updated source.
+    var cloudLifetime=cloudState.lifetimePoints||0;
+    var localLifetime=state.lifetimePoints||0;
+    if(cloudLifetime >= localLifetime){
+      // Cloud is ahead or equal — adopt cloud version of sacred fields
+      SACRED_KEYS.forEach(function(k){
+        if(cloudState[k]!==undefined) state[k]=cloudState[k];
+      });
+      // Also adopt routines + tasks + theme from cloud since it's authoritative
+      if(cloudState.routines)state.routines=cloudState.routines;
+      if(cloudState.routineDate)state.routineDate=cloudState.routineDate;
+      if(cloudState.theme)state.theme=cloudState.theme;
+      if(cloudState.timerDuration)state.timerDuration=cloudState.timerDuration;
+      if(cloudState.thoughts)state.thoughts=cloudState.thoughts;
+      state.sync.lastSync=new Date().toISOString();
+      localStorage.setItem('centerpost_kids_state',JSON.stringify(state));
+      // Refresh UI
+      applyTheme(state.theme||'rainbow');
+      renderTasks();renderRoutines();renderBubbles();renderReading();renderFeelingsWheel();renderRewards();updateHeader();
+      toast('Synced from cloud ('+cloudLifetime+' lifetime stars)');
+    } else {
+      // Local is ahead — push our state up
+      await _pushToFirebase();
+      toast('Pushed local data to cloud');
+    }
+    _renderParentSettingsIfOpen();
+  } catch(e){console.warn('[sync] pull failed',e);}
+}
+
+// ═══ MANUAL EXPORT / IMPORT (backup safety net) ═══
+function exportKidsData(){
+  var data=JSON.stringify(state,null,2);
+  var blob=new Blob([data],{type:'application/json'});
+  var url=URL.createObjectURL(blob);
+  var a=document.createElement('a');
+  a.href=url;
+  a.download='centerpost-kids-backup-'+todayStr()+'.json';
+  document.body.appendChild(a);a.click();a.remove();
+  URL.revokeObjectURL(url);
+  toast('Backup downloaded');
+}
+
+function importKidsData(){
+  var inp=document.createElement('input');
+  inp.type='file';
+  inp.accept='application/json,.json';
+  inp.onchange=function(e){
+    var file=e.target.files[0];
+    if(!file)return;
+    var reader=new FileReader();
+    reader.onload=function(){
+      try {
+        var imported=JSON.parse(reader.result);
+        if(typeof imported!=='object' || imported===null)throw new Error('Not a valid backup');
+        // Use the same anti-rollback rule as cloud sync
+        var importedLifetime=imported.lifetimePoints||0;
+        var currentLifetime=state.lifetimePoints||0;
+        if(importedLifetime < currentLifetime){
+          if(!confirm('Imported backup has FEWER lifetime stars ('+importedLifetime+') than current ('+currentLifetime+'). Restore anyway? This may lose progress.'))return;
+        }
+        state=Object.assign({},DEFAULT_STATE,imported);
+        // Defensive nested merges
+        state.rewards=Object.assign({},DEFAULT_STATE.rewards,imported.rewards||{});
+        state.reading=Object.assign({current:[],completed:[]},imported.reading||{});
+        state.breathLastDate=Object.assign({calm:null,ready:null},imported.breathLastDate||{});
+        state.sync=Object.assign({enabled:false,email:null,lastSync:null},imported.sync||{});
+        save();
+        toast('Backup restored — '+state.lifetimePoints+' lifetime stars');
+        location.reload();
+      } catch(err){
+        toast('Import failed: '+err.message);
+      }
+    };
+    reader.readAsText(file);
+  };
+  inp.click();
+}
 
 // ═══ iOS KEYBOARD FIX ═══
 // On iPad/iPhone, when an input gets focus and the keyboard slides up,
