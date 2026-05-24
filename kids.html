@@ -1354,7 +1354,7 @@ body.theme-critter::before,body.theme-candy::before{
 <div class="breath-modal" id="breathModal">
   <div class="breath-stage">
     <div class="breath-instr" id="breathInstr">BREATHE IN</div>
-    <div class="breath-emoji" id="breathEmoji">🤩</div>
+    <div class="breath-emoji" id="breathEmoji">😮</div>
     <div class="breath-count" id="breathCount">4</div>
     <button class="breath-stop" onclick="stopBreath()">STOP</button>
   </div>
@@ -2045,22 +2045,21 @@ function stopAllSounds(silent){
 }
 
 // ═══ BREATHWORK ═══
-// Using face emojis from the feelings wheel for each phase:
-//  🤩 IN (excited, eyes wide, taking it in)
-//  😊 HOLD top (full, content, savoring)
-//  😌 OUT (calm, releasing tension)
-//  😴 HOLD bottom (resting, paused, restorative)
+// Face emojis chosen to match each breath phase visually:
+//  😮 IN  — open round mouth, taking the breath in
+//  😊 HOLD — smiling, holding gently (used for both top and bottom holds)
+//  😮‍💨 OUT — face actively exhaling
 var BREATH_PATTERNS={
   calm:[
-    {phase:'BREATHE IN',dur:4,scale:'expanded',emoji:'🤩'},
+    {phase:'BREATHE IN',dur:4,scale:'expanded',emoji:'😮'},
     {phase:'HOLD',dur:7,scale:'expanded',emoji:'😊'},
-    {phase:'BREATHE OUT',dur:8,scale:'normal',emoji:'😌'}
+    {phase:'BREATHE OUT',dur:8,scale:'normal',emoji:'😮‍💨'}
   ],
   ready:[
-    {phase:'BREATHE IN',dur:4,scale:'expanded',emoji:'🤩'},
+    {phase:'BREATHE IN',dur:4,scale:'expanded',emoji:'😮'},
     {phase:'HOLD',dur:4,scale:'expanded',emoji:'😊'},
-    {phase:'BREATHE OUT',dur:4,scale:'normal',emoji:'😌'},
-    {phase:'HOLD',dur:4,scale:'normal',emoji:'😴'}
+    {phase:'BREATHE OUT',dur:4,scale:'normal',emoji:'😮‍💨'},
+    {phase:'HOLD',dur:4,scale:'normal',emoji:'😊'}
   ]
 };
 var _activeBreathPattern=null;
