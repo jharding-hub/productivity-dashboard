@@ -1,0 +1,723 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta name="theme-color" content="#fafbfc">
+<title>How To — Centerpost</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700&family=Fraunces:opsz,wght@9..144,500;9..144,600;9..144,700&display=swap" rel="stylesheet">
+<style>
+/* ═══════════════════════════════════════════════════════════════════════
+   CENTERPOST — HOW TO GUIDE
+   ═══════════════════════════════════════════════════════════════════════ */
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0;}
+:root{
+  --bg:#fafbfc;
+  --surface:#ffffff;
+  --surface-soft:#f5f7fa;
+  --text:#1a2332;
+  --text-dim:#4a5568;
+  --text-faint:#8895a8;
+  --border:#e2e8f0;
+  --accent:#2563eb;
+  --accent-soft:rgba(37,99,235,0.08);
+  --accent-glow:rgba(37,99,235,0.18);
+  --gold:#eab308;
+  --gold-soft:rgba(234,179,8,0.12);
+  --gold-text:#a16207;
+  --green:#16a34a;
+  --red:#dc2626;
+  --shadow-card:0 1px 3px rgba(15,23,42,0.05),0 4px 12px rgba(15,23,42,0.04);
+  --shadow-deep:0 12px 32px rgba(15,23,42,0.08);
+}
+body{
+  font-family:'DM Sans','SF Pro Text',-apple-system,sans-serif;
+  background:var(--bg);
+  color:var(--text);
+  font-size:16px;
+  line-height:1.55;
+  -webkit-font-smoothing:antialiased;
+  background-image:radial-gradient(ellipse at top right,rgba(37,99,235,0.04) 0%,transparent 60%),radial-gradient(ellipse at bottom left,rgba(14,165,233,0.03) 0%,transparent 60%);
+  min-height:100vh;
+}
+a{color:var(--accent);text-decoration:none;}
+a:hover{text-decoration:underline;}
+
+/* ── NAV ── */
+.howto-nav{
+  position:sticky;
+  top:0;
+  z-index:50;
+  background:rgba(255,255,255,0.92);
+  backdrop-filter:blur(12px);
+  -webkit-backdrop-filter:blur(12px);
+  border-bottom:1px solid var(--border);
+  padding:14px 28px;
+  display:flex;
+  align-items:center;
+  justify-content:space-between;
+  gap:14px;
+}
+.howto-logo{
+  display:flex;align-items:center;gap:10px;
+  font-family:'Fraunces',serif;font-size:18px;font-weight:600;
+  letter-spacing:-0.3px;color:var(--text);text-decoration:none;
+}
+.howto-logo .dot{width:10px;height:10px;border-radius:50%;background:var(--accent);box-shadow:0 0 12px rgba(37,99,235,0.45);}
+.howto-logo small{font-weight:400;color:var(--text-faint);margin-left:6px;font-family:'DM Sans',sans-serif;}
+.howto-back{
+  background:rgba(37,99,235,0.06);
+  color:#1e4fc4;
+  border:1px solid rgba(37,99,235,0.35);
+  padding:8px 16px;
+  border-radius:8px;
+  font-size:13px;
+  font-weight:600;
+  cursor:pointer;
+  font-family:inherit;
+  transition:all 0.15s;
+  text-decoration:none;
+  display:inline-flex;align-items:center;gap:6px;
+}
+.howto-back:hover{background:rgba(37,99,235,0.12);border-color:var(--accent);text-decoration:none;box-shadow:0 0 16px rgba(37,99,235,0.18);}
+
+/* ── HERO ── */
+.howto-hero{
+  max-width:920px;margin:0 auto;padding:60px 28px 40px;text-align:center;
+}
+.howto-hero .badge{
+  display:inline-flex;align-items:center;gap:8px;
+  background:var(--accent-soft);border:1px solid rgba(37,99,235,0.3);
+  color:#1e4fc4;padding:6px 14px;border-radius:999px;
+  font-size:12px;font-weight:500;margin-bottom:18px;
+}
+.howto-hero h1{
+  font-family:'Fraunces',serif;font-size:48px;font-weight:600;
+  line-height:1.05;letter-spacing:-1.2px;margin-bottom:14px;
+}
+.howto-hero h1 .accent{
+  background:linear-gradient(135deg,#2563eb 0%,#0ea5e9 100%);
+  -webkit-background-clip:text;background-clip:text;color:transparent;
+}
+.howto-hero p{
+  font-size:18px;color:var(--text-dim);max-width:640px;margin:0 auto;
+}
+
+/* ── TOC ── */
+.howto-toc{
+  max-width:920px;margin:0 auto 40px;padding:0 28px;
+}
+.howto-toc-inner{
+  background:var(--surface);
+  border:1px solid var(--border);
+  border-radius:14px;
+  padding:24px 28px;
+  box-shadow:var(--shadow-card);
+}
+.howto-toc-title{
+  font-family:'Fraunces',serif;font-size:14px;font-weight:600;
+  text-transform:uppercase;letter-spacing:1.5px;color:var(--accent);
+  margin-bottom:14px;
+}
+.howto-toc-list{
+  display:grid;
+  grid-template-columns:repeat(2,1fr);
+  gap:6px 24px;
+  list-style:none;
+}
+.howto-toc-list li{
+  font-size:14px;line-height:1.4;
+}
+.howto-toc-list a{
+  display:flex;align-items:baseline;gap:10px;
+  padding:6px 0;color:var(--text-dim);
+}
+.howto-toc-list a:hover{color:var(--accent);text-decoration:none;}
+.howto-toc-list .num{
+  color:var(--accent);font-weight:600;
+  font-variant-numeric:tabular-nums;
+  font-size:13px;min-width:22px;
+}
+
+/* ── SLIDES ── */
+.howto-slides{max-width:920px;margin:0 auto;padding:0 28px 80px;}
+.slide{
+  background:var(--surface);
+  border:1px solid var(--border);
+  border-radius:18px;
+  padding:48px 44px;
+  margin-bottom:28px;
+  box-shadow:var(--shadow-card);
+  scroll-margin-top:90px;
+  position:relative;
+  overflow:hidden;
+}
+.slide::before{
+  content:'';
+  position:absolute;
+  top:0;left:0;right:0;height:4px;
+  background:linear-gradient(90deg,var(--accent) 0%,#0ea5e9 100%);
+  opacity:0.7;
+}
+.slide-num{
+  display:inline-flex;
+  align-items:center;justify-content:center;
+  width:42px;height:42px;border-radius:50%;
+  background:var(--accent-soft);
+  color:var(--accent);
+  font-family:'Fraunces',serif;
+  font-weight:700;font-size:18px;
+  margin-bottom:18px;
+  border:1px solid rgba(37,99,235,0.25);
+}
+.slide h2{
+  font-family:'Fraunces',serif;
+  font-size:32px;font-weight:600;
+  line-height:1.15;letter-spacing:-0.6px;
+  margin-bottom:10px;color:var(--text);
+}
+.slide .slide-sub{
+  font-size:16px;color:var(--text-dim);
+  margin-bottom:24px;line-height:1.5;
+}
+.slide p{
+  font-size:15px;color:var(--text);
+  line-height:1.65;margin-bottom:14px;
+}
+.slide ul, .slide ol{
+  margin:14px 0 18px 22px;
+}
+.slide li{
+  font-size:15px;color:var(--text);
+  margin-bottom:8px;line-height:1.6;
+}
+.slide strong{color:var(--text);font-weight:600;}
+.slide em{color:var(--accent);font-style:normal;font-weight:500;}
+.slide code{
+  background:var(--surface-soft);
+  border:1px solid var(--border);
+  padding:1px 7px;
+  border-radius:5px;
+  font-family:ui-monospace,SF Mono,Consolas,monospace;
+  font-size:13px;
+  color:var(--text);
+}
+
+/* Cards inside slides */
+.callout{
+  background:var(--accent-soft);
+  border-left:4px solid var(--accent);
+  padding:14px 18px;
+  border-radius:0 8px 8px 0;
+  margin:18px 0;
+  font-size:14px;
+  color:var(--text);
+}
+.callout strong{color:var(--accent);}
+.callout.gold{background:var(--gold-soft);border-left-color:var(--gold);}
+.callout.gold strong{color:var(--gold-text);}
+.callout.green{background:rgba(22,163,74,0.08);border-left-color:var(--green);}
+.callout.green strong{color:var(--green);}
+
+.feature-row{
+  display:grid;grid-template-columns:auto 1fr;
+  gap:14px;align-items:flex-start;
+  padding:14px 0;
+  border-bottom:1px dashed var(--border);
+}
+.feature-row:last-child{border-bottom:none;}
+.feature-row .feature-emoji{
+  font-size:28px;line-height:1;width:44px;text-align:center;
+}
+.feature-row .feature-content h4{
+  font-family:'Fraunces',serif;font-weight:600;
+  font-size:16px;margin-bottom:4px;
+}
+.feature-row .feature-content p{
+  font-size:14px;color:var(--text-dim);margin:0;line-height:1.5;
+}
+
+.steps{counter-reset:step;padding:0;}
+.step{
+  display:grid;grid-template-columns:auto 1fr;
+  gap:14px;align-items:flex-start;
+  padding:12px 0;counter-increment:step;
+}
+.step::before{
+  content:counter(step);
+  display:flex;align-items:center;justify-content:center;
+  width:30px;height:30px;border-radius:50%;
+  background:var(--accent);color:white;
+  font-weight:700;font-size:14px;
+  flex-shrink:0;
+}
+.step-content h4{
+  font-family:'Fraunces',serif;font-weight:600;
+  font-size:15px;margin-bottom:4px;
+}
+.step-content p{font-size:14px;color:var(--text-dim);margin:0;line-height:1.5;}
+
+/* Mockup preview boxes */
+.mockup-preview{
+  background:var(--surface-soft);
+  border:1px solid var(--border);
+  border-radius:10px;
+  padding:18px;
+  margin:18px 0;
+  font-family:ui-monospace,SF Mono,Consolas,monospace;
+  font-size:13px;
+  color:var(--text-dim);
+}
+.mockup-task{
+  display:flex;align-items:center;gap:10px;
+  padding:8px 12px;background:var(--surface);
+  border-radius:6px;margin-bottom:6px;
+  font-family:'DM Sans',sans-serif;font-size:13px;
+  border:1px solid var(--border);
+}
+.mockup-task .check{
+  width:16px;height:16px;border-radius:3px;
+  border:1.5px solid var(--text-faint);flex-shrink:0;
+}
+.mockup-task.done .check{background:var(--green);border-color:var(--green);}
+.mockup-task.done .text{color:var(--text-faint);text-decoration:line-through;}
+.mockup-task .priority-dot{
+  width:8px;height:8px;border-radius:50%;flex-shrink:0;
+}
+.mockup-task .meta{margin-left:auto;font-size:11px;color:var(--text-faint);}
+
+.kbd{
+  display:inline-block;background:var(--surface);
+  border:1px solid var(--border);border-bottom-width:2px;
+  border-radius:5px;padding:2px 7px;
+  font-family:ui-monospace,SF Mono,monospace;font-size:12px;
+  color:var(--text);
+}
+
+/* Final CTA */
+.howto-cta{
+  max-width:680px;margin:0 auto;padding:40px 28px 80px;text-align:center;
+}
+.howto-cta h2{
+  font-family:'Fraunces',serif;font-size:32px;font-weight:600;
+  margin-bottom:14px;letter-spacing:-0.6px;
+}
+.howto-cta p{color:var(--text-dim);font-size:16px;margin-bottom:24px;}
+.cta-btn{
+  background:var(--accent);color:white;border:none;
+  padding:14px 28px;border-radius:8px;font-size:15px;font-weight:700;
+  cursor:pointer;font-family:inherit;
+  box-shadow:0 4px 20px rgba(37,99,235,0.3);
+  transition:all 0.15s;text-decoration:none;display:inline-flex;
+  align-items:center;gap:8px;
+}
+.cta-btn:hover{background:#1e4fc4;transform:translateY(-1px);box-shadow:0 6px 28px rgba(37,99,235,0.4);text-decoration:none;}
+
+/* Progress bar */
+.howto-progress{
+  position:fixed;top:0;left:0;height:3px;
+  background:linear-gradient(90deg,var(--accent),#0ea5e9);
+  z-index:100;
+  width:0%;
+  transition:width 0.15s linear;
+}
+
+/* Footer */
+.howto-footer{
+  border-top:1px solid var(--border);
+  padding:30px 28px;
+  text-align:center;color:var(--text-faint);
+  font-size:13px;
+}
+
+/* Responsive */
+@media (max-width:680px){
+  .howto-nav{padding:12px 18px;}
+  .howto-hero{padding:40px 18px 28px;}
+  .howto-hero h1{font-size:34px;}
+  .howto-hero p{font-size:16px;}
+  .howto-toc, .howto-slides{padding-left:18px;padding-right:18px;}
+  .howto-toc-list{grid-template-columns:1fr;}
+  .slide{padding:32px 24px;border-radius:14px;}
+  .slide h2{font-size:24px;}
+  .howto-cta{padding:30px 18px 60px;}
+  .howto-cta h2{font-size:26px;}
+}
+</style>
+</head>
+<body>
+
+<div class="howto-progress" id="progressBar"></div>
+
+<!-- NAV -->
+<nav class="howto-nav">
+  <a href="index.html" class="howto-logo">
+    <span class="dot"></span>
+    Centerpost
+    <small>How To</small>
+  </a>
+  <a href="index.html" class="howto-back">← Back to dashboard</a>
+</nav>
+
+<!-- HERO -->
+<section class="howto-hero">
+  <div class="badge">📘 The guide</div>
+  <h1>Get the most out of <span class="accent">Centerpost.</span></h1>
+  <p>A walkthrough of every panel and feature, with the why behind each design choice. Built for ADHD brains and anyone who wants their dashboard to actually work for them.</p>
+</section>
+
+<!-- TABLE OF CONTENTS -->
+<section class="howto-toc">
+  <div class="howto-toc-inner">
+    <div class="howto-toc-title">In this guide</div>
+    <ul class="howto-toc-list">
+      <li><a href="#s1"><span class="num">01</span> The big idea</a></li>
+      <li><a href="#s2"><span class="num">02</span> Projects panel</a></li>
+      <li><a href="#s3"><span class="num">03</span> Task List</a></li>
+      <li><a href="#s4"><span class="num">04</span> Brain Dump</a></li>
+      <li><a href="#s5"><span class="num">05</span> Reminders</a></li>
+      <li><a href="#s6"><span class="num">06</span> Notes</a></li>
+      <li><a href="#s7"><span class="num">07</span> Routines</a></li>
+      <li><a href="#s8"><span class="num">08</span> Timeline</a></li>
+      <li><a href="#s9"><span class="num">09</span> Energy &amp; Mood</a></li>
+      <li><a href="#s10"><span class="num">10</span> HALT+ check</a></li>
+      <li><a href="#s11"><span class="num">11</span> Grounding Toolkit</a></li>
+      <li><a href="#s12"><span class="num">12</span> Jarvis AI</a></li>
+      <li><a href="#s13"><span class="num">13</span> AI Breakdown</a></li>
+      <li><a href="#s14"><span class="num">14</span> Calendar Sync</a></li>
+      <li><a href="#s15"><span class="num">15</span> Kids Mode</a></li>
+      <li><a href="#s16"><span class="num">16</span> Settings &amp; themes</a></li>
+      <li><a href="#s17"><span class="num">17</span> Tips for ADHD brains</a></li>
+    </ul>
+  </div>
+</section>
+
+<!-- SLIDES -->
+<section class="howto-slides">
+
+  <!-- 1 -->
+  <div class="slide" id="s1">
+    <div class="slide-num">01</div>
+    <h2>The big idea</h2>
+    <p class="slide-sub">Replace your stack, not add to it.</p>
+    <p>Most productivity apps make you pick: planner or journal, calendar or tasks, focus timer or habit tracker. You end up with five apps that don't talk to each other and a brain that wastes energy switching between them.</p>
+    <p>Centerpost is one workspace that holds everything: tasks, projects, timeline, brain dump, routines, mood tracking, grounding tools, AI assistant, and journal. They share data so the AI knows what you're working on, the timeline knows what's due, and the mood tracker sits next to the focus timer where it belongs.</p>
+    <div class="callout">
+      <strong>Design rule:</strong> if a feature exists on the dashboard, it's because it earned its place — not because it filled a feature checklist. Hide what you don't need from <em>Settings</em>.
+    </div>
+  </div>
+
+  <!-- 2 -->
+  <div class="slide" id="s2">
+    <div class="slide-num">02</div>
+    <h2>Projects panel</h2>
+    <p class="slide-sub">For anything bigger than a single task.</p>
+    <p>A project is a container with a name, a due date, and a list of subtasks. Each subtask has its own priority, time estimate, and due date — so you can break "Plan vacation" into "Book flights", "Reserve hotel", "Arrange pet care" and let each piece live with its own metadata.</p>
+    <p><strong>To create one:</strong> type the project name at the bottom of the panel and hit <span class="kbd">Add</span>. Then click the project to expand it and add subtasks.</p>
+    <p><strong>Show all toggle.</strong> The checkbox below the panel header is hidden by default for a clean view. Check it to show every project sorted by the highest priority of its open subtasks.</p>
+    <div class="callout gold">
+      <strong>Why subtasks have priorities, not just projects:</strong> when you're picking what to work on next, you don't pick a whole project — you pick a single 30-minute action. Subtask-level metadata is what makes Jarvis able to suggest a real next step.
+    </div>
+  </div>
+
+  <!-- 3 -->
+  <div class="slide" id="s3">
+    <div class="slide-num">03</div>
+    <h2>Task List</h2>
+    <p class="slide-sub">Sort by what your brain can actually do right now.</p>
+    <p>The Task List shows every standalone task and every open project subtask in one place. The <strong>Sort</strong> dropdown is the secret weapon:</p>
+    <ul>
+      <li><strong>Priority</strong> — High → Med → Low. The default.</li>
+      <li><strong>Time Needed</strong> — Shortest first. Pick this when you have 20 minutes between meetings and want a task that actually fits.</li>
+      <li><strong>Project</strong> — Groups everything by parent project.</li>
+      <li><strong>Due Date</strong> — Most urgent first.</li>
+    </ul>
+    <div class="mockup-preview">
+      <div class="mockup-task"><span class="check"></span><span class="priority-dot" style="background:#ef4444;"></span><span class="text">Pull Q2 run report stats</span><span class="meta">30m · high · today</span></div>
+      <div class="mockup-task"><span class="check"></span><span class="priority-dot" style="background:#f59e0b;"></span><span class="text">Call back Dr. Patel</span><span class="meta">1hr · med</span></div>
+      <div class="mockup-task done"><span class="check"></span><span class="priority-dot" style="background:#22c55e;"></span><span class="text">Workout — upper body</span><span class="meta">45m</span></div>
+    </div>
+    <p>Like Projects, there's a <em>Show all (sorted by priority)</em> checkbox. Off = clean panel. On = everything visible in current sort order.</p>
+  </div>
+
+  <!-- 4 -->
+  <div class="slide" id="s4">
+    <div class="slide-num">04</div>
+    <h2>Brain Dump</h2>
+    <p class="slide-sub">Capture first, organize later.</p>
+    <p>The most ADHD-friendly feature in the app. When a thought lands — an idea, a worry, something you don't want to forget — you don't have to decide if it's a task, a note, a reminder, or just a thought. Drop it into Brain Dump first. Sort it later.</p>
+    <p><strong>Two modes:</strong></p>
+    <ul>
+      <li><strong>Capture mode:</strong> tap to add quickly. No metadata, no friction.</li>
+      <li><strong>Organize mode:</strong> later, click each thought to promote it to a project subtask, a task, a reminder, a note, or delete it.</li>
+    </ul>
+    <div class="callout green">
+      <strong>The rule:</strong> if it took less than 5 seconds to capture, the friction was right. Add anything that crosses your mind during the day. Sort weekly or whenever the list gets long.
+    </div>
+  </div>
+
+  <!-- 5 -->
+  <div class="slide" id="s5">
+    <div class="slide-num">05</div>
+    <h2>Reminders</h2>
+    <p class="slide-sub">For time-bound nudges that aren't tasks.</p>
+    <p>Use Reminders for things you need to be told about, not things you need to do. "Call dentist Monday at 2 PM" is a reminder. "Build the dentist follow-up plan" is a task.</p>
+    <p>Reminders can optionally be linked to one or more projects so they show up in context when you're looking at that project. They also push to Google Calendar when sync is enabled.</p>
+  </div>
+
+  <!-- 6 -->
+  <div class="slide" id="s6">
+    <div class="slide-num">06</div>
+    <h2>Notes</h2>
+    <p class="slide-sub">Reference material with a label.</p>
+    <p>Notes are for things you might need to look up — meeting notes, reading material, decisions made, login info you wrote down (please, please don't put passwords here). Each note has a label, a body, and an optional project link.</p>
+    <p>Like reminders, notes can be linked to multiple projects so they surface in the right context.</p>
+  </div>
+
+  <!-- 7 -->
+  <div class="slide" id="s7">
+    <div class="slide-num">07</div>
+    <h2>Routines</h2>
+    <p class="slide-sub">For the things you should be doing every day or week.</p>
+    <p>Routines are checklists that reset on a schedule — daily, weekly, or custom. Use them for morning routines, end-of-shift wind-downs, weekly review rituals, weekend chores.</p>
+    <p>Each routine item completes independently and resets at the right interval. The panel shows your current day's items front and center.</p>
+    <div class="callout">
+      <strong>For shift workers:</strong> set up separate morning and evening routines that handle both ends of a shift. Your end-of-shift routine can include hydrate, eat, decompress, log overtime — the things your brain forgets when you're tired.
+    </div>
+  </div>
+
+  <!-- 8 -->
+  <div class="slide" id="s8">
+    <div class="slide-num">08</div>
+    <h2>Timeline</h2>
+    <p class="slide-sub">Visual day-block view of what's actually planned.</p>
+    <p>The Timeline shows a horizontal strip of your day with color-coded blocks for each scheduled task or event. Drag tasks from the Task List to schedule them. Drag the block edges to resize. Click a block to edit.</p>
+    <p><strong>Two-way Google Calendar sync</strong> means events you create in Google show up here, and blocks you create here push to Google. Set it up in the calendar sync modal (gear icon in the top-right of Timeline).</p>
+    <ul>
+      <li><strong>Push to Google</strong> — sends timeline blocks to your calendar</li>
+      <li><strong>Download .ics</strong> — exports as a calendar file for any app</li>
+      <li><strong>Clear day</strong> — wipes today's blocks (doesn't affect Google)</li>
+    </ul>
+  </div>
+
+  <!-- 9 -->
+  <div class="slide" id="s9">
+    <div class="slide-num">09</div>
+    <h2>Energy &amp; Mood</h2>
+    <p class="slide-sub">Track what your brain is actually doing.</p>
+    <p>Quick taps that capture your current state without forcing you to journal. The data flows back to Jarvis so the AI can suggest tasks that match your current capacity.</p>
+    <div class="feature-row">
+      <div class="feature-emoji">⚡</div>
+      <div class="feature-content">
+        <h4>Energy: High / Good / Low / Crash</h4>
+        <p>Pick the closest match. "Crash" means you should probably eat, hydrate, or rest before doing anything important.</p>
+      </div>
+    </div>
+    <div class="feature-row">
+      <div class="feature-emoji">🌙</div>
+      <div class="feature-content">
+        <h4>Mood: Focus / Scatter / Anxious / Calm</h4>
+        <p>Scatter ≠ bad — sometimes scatter is exactly when to do quick low-stakes tasks. Don't try to grind through Focus tasks when you're in Scatter mode.</p>
+      </div>
+    </div>
+    <div class="callout green">
+      <strong>Pattern over time:</strong> if you log energy/mood for a few weeks, you'll start to see your real daily rhythm. Schedule deep work during your reliable Focus windows.
+    </div>
+  </div>
+
+  <!-- 10 -->
+  <div class="slide" id="s10">
+    <div class="slide-num">10</div>
+    <h2>HALT+ check</h2>
+    <p class="slide-sub">The recovery-community classic, adapted for ADHD.</p>
+    <p>HALT stands for <strong>H</strong>ungry, <strong>A</strong>ngry, <strong>L</strong>onely, <strong>T</strong>ired. The "+" we add is sensory overload and emotional flooding. When something feels off — irritable, can't focus, snappy, paralyzed — run HALT+ before assuming you have a willpower problem.</p>
+    <p>Use it as a quick gut check: tap the panel, scan the four (six) prompts, see which ones light up. Usually the answer to "why can't I get anything done" is hiding in there.</p>
+    <div class="callout gold">
+      <strong>Why it matters for ADHD:</strong> our nervous systems are dysregulation-prone. You can't think your way out of low blood sugar or 4 hours of sleep. Address the body first.
+    </div>
+  </div>
+
+  <!-- 11 -->
+  <div class="slide" id="s11">
+    <div class="slide-num">11</div>
+    <h2>Grounding Toolkit</h2>
+    <p class="slide-sub">Six evidence-based regulation techniques in one place.</p>
+    <ul>
+      <li><strong>5-4-3-2-1 sensory grounding</strong> — bring yourself back to the room</li>
+      <li><strong>Box breathing</strong> — 4-4-4-4, the Navy SEAL standby</li>
+      <li><strong>4-7-8 breathing</strong> — Dr. Andrew Weil's downshift technique</li>
+      <li><strong>Physiological sigh</strong> — Huberman's two-inhale exhale reset</li>
+      <li><strong>Alternate nostril breathing</strong> — slows heart rate fast</li>
+      <li><strong>Body scan</strong> — 90 seconds, head to toes</li>
+    </ul>
+    <p>Each one has guided pacing. No music or background noise — just the technique. Use when you feel activated, before a hard conversation, between calls, or any time you want to reset.</p>
+  </div>
+
+  <!-- 12 -->
+  <div class="slide" id="s12">
+    <div class="slide-num">12</div>
+    <h2>Jarvis — your AI assistant</h2>
+    <p class="slide-sub">Ask the dashboard what you should do next.</p>
+    <p>Jarvis is the floating <em>✦</em> button in the bottom right. Click to open the chat. Jarvis can see your full dashboard state — every task, every project, every routine, your mood, your energy — and uses that context to give real answers.</p>
+    <p><strong>Examples of what to ask:</strong></p>
+    <ul>
+      <li>"What should I work on next?"</li>
+      <li>"What's overdue?"</li>
+      <li>"Summarize my day."</li>
+      <li>"I have 30 minutes and low energy — give me something doable."</li>
+      <li>"Add a task to call my mom Sunday at 4pm." <em>(yes, it can modify your dashboard)</em></li>
+    </ul>
+    <div class="callout">
+      <strong>Voice options.</strong> Jarvis can listen for "Hey Jarvis" wake word and read responses back out loud. Both default to <em>off</em> to avoid mic permission issues — toggle on from the Jarvis panel header when you want them.
+    </div>
+  </div>
+
+  <!-- 13 -->
+  <div class="slide" id="s13">
+    <div class="slide-num">13</div>
+    <h2>AI Breakdown</h2>
+    <p class="slide-sub">Turn "plan the trip" into 8 actionable micro-steps.</p>
+    <p>Look for the small <strong>✦ Breakdown</strong> button in the header of the Projects and Tasks panels. Click it, then tell Jarvis which project or task you want to break down. You'll get a numbered list of micro-steps, each small enough to start in under 2 minutes.</p>
+    <ol class="steps">
+      <li class="step"><div class="step-content"><h4>Open the Projects or Tasks panel</h4><p>Whichever has the item you're stuck on.</p></div></li>
+      <li class="step"><div class="step-content"><h4>Click ✦ Breakdown</h4><p>Jarvis opens in Breakdown mode with your items already loaded in completion order.</p></div></li>
+      <li class="step"><div class="step-content"><h4>Type a number or name</h4><p>"3" or "Plan birthday party" — Jarvis figures out which item you mean.</p></div></li>
+      <li class="step"><div class="step-content"><h4>Get your micro-steps</h4><p>3-8 actions, first one tagged "🚀 START HERE" so you know exactly where to begin.</p></div></li>
+    </ol>
+    <div class="callout green">
+      <strong>Why this works:</strong> task initiation paralysis is one of the most common ADHD frictions. The breakdown removes the cognitive load of figuring out the first step — Jarvis tells you what to do <em>right now</em>, and the rest follows.
+    </div>
+  </div>
+
+  <!-- 14 -->
+  <div class="slide" id="s14">
+    <div class="slide-num">14</div>
+    <h2>Calendar Sync</h2>
+    <p class="slide-sub">Two-way sync with Google Calendar.</p>
+    <p>One-time setup, then the Timeline and your calendar talk to each other automatically. Events created in Google appear in Centerpost's timeline. Blocks created in Centerpost push to a dedicated "Centerpost" calendar in your Google account.</p>
+    <p><strong>To set up:</strong> click the gear icon in the Timeline header, then "Connect Google Calendar." Sign in once and you're done. Full setup instructions are in <code>GOOGLE_CALENDAR_SETUP.md</code> if you need them.</p>
+    <p>Outlook sync is on the roadmap. The architecture is in place — it's just the next OAuth provider to wire in.</p>
+  </div>
+
+  <!-- 15 -->
+  <div class="slide" id="s15">
+    <div class="slide-num">15</div>
+    <h2>Kids Mode</h2>
+    <p class="slide-sub">A productivity dashboard for children.</p>
+    <p>Click <em>🎮 Kids Mode</em> in the bottom status bar to open the child-friendly version in a new tab. It's a pixel-art arcade-themed app with:</p>
+    <ul>
+      <li>Tasks with bright color-coded cards</li>
+      <li>Morning and evening routines</li>
+      <li>Reading list with celebration when a book is finished (+25 stars)</li>
+      <li>Feelings wheel — tap any time, +1 star per day</li>
+      <li>Breathing exercises with face emoji cues</li>
+      <li>Sounds (calm, focus, fun, rain)</li>
+      <li>3-day and 7-day reward systems parents can customize</li>
+      <li>Six theme options (Rainbow, Maze Quest, Speed Hero, Critter Quest, Candy Pop, Lava World)</li>
+    </ul>
+    <p><strong>Parent controls</strong> are gated by PIN. Track your child's mood trends, set custom rewards, sync data across devices using your Centerpost parent account.</p>
+  </div>
+
+  <!-- 16 -->
+  <div class="slide" id="s16">
+    <div class="slide-num">16</div>
+    <h2>Settings &amp; themes</h2>
+    <p class="slide-sub">Hide what you don't need. Theme to your taste.</p>
+    <p>Click <em>⚙️ Settings</em> in the bottom status bar to open the customization panel. Toggle individual panels on or off — every panel you turn off disappears completely until you re-enable it. Useful for keeping the dashboard focused on what you actually use.</p>
+    <p><strong>Themes</strong> can be changed from inside Settings too. The dashboard has multiple options including dark mode (default), light mode, and high-contrast variants for accessibility.</p>
+    <div class="callout">
+      <strong>The Lock button</strong> on the bottom bar toggles between "edit mode" (drag panels around to reorder them) and "locked mode" (everything stays put). Start in edit mode, get your layout how you want it, then lock it down.
+    </div>
+  </div>
+
+  <!-- 17 -->
+  <div class="slide" id="s17">
+    <div class="slide-num">17</div>
+    <h2>Tips for ADHD brains</h2>
+    <p class="slide-sub">From someone who lives in it daily.</p>
+    <div class="feature-row">
+      <div class="feature-emoji">🎯</div>
+      <div class="feature-content">
+        <h4>Capture everything, sort later</h4>
+        <p>Brain Dump is your first stop for any thought. Don't overthink it. Sort when the energy is right.</p>
+      </div>
+    </div>
+    <div class="feature-row">
+      <div class="feature-emoji">⏱️</div>
+      <div class="feature-content">
+        <h4>Match tasks to your current state</h4>
+        <p>Use the Sort by Time and Sort by Priority dropdowns to find a task that fits your current 20 minutes or current low energy.</p>
+      </div>
+    </div>
+    <div class="feature-row">
+      <div class="feature-emoji">✦</div>
+      <div class="feature-content">
+        <h4>When stuck, hit Breakdown</h4>
+        <p>The single biggest unlock. If you've been avoiding a task for days, that means it's too big. Break it down.</p>
+      </div>
+    </div>
+    <div class="feature-row">
+      <div class="feature-emoji">🌙</div>
+      <div class="feature-content">
+        <h4>Check HALT+ before you push through</h4>
+        <p>Most "I can't focus" moments are actually "I'm hungry/tired/dehydrated." Body first, then brain.</p>
+      </div>
+    </div>
+    <div class="feature-row">
+      <div class="feature-emoji">🔁</div>
+      <div class="feature-content">
+        <h4>Build routines for the boring stuff</h4>
+        <p>Anything you do every day should be a routine, not a task. Frees up willpower for the things that actually need decisions.</p>
+      </div>
+    </div>
+    <div class="feature-row">
+      <div class="feature-emoji">🌿</div>
+      <div class="feature-content">
+        <h4>The dashboard isn't a museum</h4>
+        <p>Hide panels you don't use. Re-show them later if you change your mind. Yours, not a template.</p>
+      </div>
+    </div>
+  </div>
+
+</section>
+
+<!-- CTA -->
+<section class="howto-cta">
+  <h2>That's the tour.</h2>
+  <p>You'll find a hundred small details as you use it. Hit Jarvis if you forget how something works.</p>
+  <a href="index.html" class="cta-btn">Back to dashboard →</a>
+</section>
+
+<!-- FOOTER -->
+<footer class="howto-footer">
+  &copy; 2026 Centerpost. Built for first responders, by a first responder.
+</footer>
+
+<script>
+// Scroll progress bar
+(function(){
+  var bar=document.getElementById('progressBar');
+  function update(){
+    var h=document.documentElement;
+    var max=h.scrollHeight-h.clientHeight;
+    var pct=max>0?(window.scrollY/max)*100:0;
+    bar.style.width=pct+'%';
+  }
+  window.addEventListener('scroll',update,{passive:true});
+  window.addEventListener('resize',update);
+  update();
+})();
+
+// Smooth scroll for in-page anchors
+document.querySelectorAll('a[href^="#"]').forEach(function(a){
+  a.addEventListener('click',function(e){
+    var t=document.querySelector(this.getAttribute('href'));
+    if(t){e.preventDefault();t.scrollIntoView({behavior:'smooth'});history.pushState(null,'',this.getAttribute('href'));}
+  });
+});
+</script>
+
+</body>
+</html>
