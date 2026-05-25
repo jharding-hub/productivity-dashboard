@@ -2604,6 +2604,34 @@ function init(){
 init();
 
 // ═══════════════════════════════════════════════════════════════════════
+// DAILY ROUTINE RESET — runs on load, on every visibility return, and
+// once a minute. Without this, if the kid leaves the tab/PWA open
+// overnight, yesterday's checked items stay checked the next morning.
+// ═══════════════════════════════════════════════════════════════════════
+function _refreshOnDayChange(){
+  try {
+    var prevDate=state.routineDate;
+    checkRoutineDate();
+    // If the date changed, also refresh the UI immediately
+    if(prevDate!==state.routineDate){
+      renderRoutines();
+      renderTasks();
+      renderFeelingsWheel();
+      renderRewards();
+      updateHeader();
+    }
+  } catch(e){console.warn('day-change refresh failed',e);}
+}
+setInterval(_refreshOnDayChange,60000);
+document.addEventListener('visibilitychange',function(){
+  if(!document.hidden) _refreshOnDayChange();
+  if(document.hidden && _timerRunning) pauseTimer();
+});
+window.addEventListener('focus',_refreshOnDayChange);
+// Also: kick a refresh right after init in case state.routineDate is stale on first paint
+_refreshOnDayChange();
+
+// ═══════════════════════════════════════════════════════════════════════
 // FIREBASE SYNC — OPTIONAL cross-device sync via parent account
 //
 // How it works:
@@ -2835,13 +2863,6 @@ function importKidsData(){
 
 // Save state on unload (defensive)
 window.addEventListener('beforeunload',save);
-
-// Pause sounds + timer if tab hidden (be kind to battery)
-document.addEventListener('visibilitychange',function(){
-  if(document.hidden){
-    if(_timerRunning)pauseTimer();
-  }
-});
 </script>
 </body>
 </html>
