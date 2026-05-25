@@ -1857,9 +1857,9 @@ body.unlocked .date-editable{border-bottom-color:var(--border);}
   <!-- HERO -->
   <section class="landing-hero">
     <div class="landing-hero-text">
-      <div class="landing-badge"><span class="badge-dot"></span> Built by a paramedic with ADHD</div>
+      <div class="landing-badge"><span class="badge-dot"></span> Built by a first responder, for getting things done</div>
       <h1 class="landing-h1">A workspace for brains that <span class="accent">don't quit.</span></h1>
-      <p class="landing-sub">One dashboard designed to sharpen focus and strengthen executive function — built for ADHD brains and anyone who wants a system that bends with the day. Made by a 30-year firefighter / paramedic who lives in it every day.</p>
+      <p class="landing-sub">One dashboard designed to sharpen focus and strengthen executive function — built for anyone who wants a system that bends with the day. Made by a 30-year firefighter / paramedic who lives in it every day.</p>
       <div class="landing-cta-row">
         <button class="landing-cta-primary" onclick="showSignupPanel()">Get Started — Free <span aria-hidden="true">→</span></button>
         <button class="landing-cta-tertiary" onclick="showSigninPanel()">I have an account</button>
@@ -1998,7 +1998,7 @@ body.unlocked .date-editable{border-bottom-color:var(--border);}
         </div>
         <div class="feature-card">
           <div class="feature-icon">&#10022;</div>
-          <div class="feature-name">Jarvis — AI Assistant</div>
+          <div class="feature-name">Axis — AI Assistant</div>
           <div class="feature-desc">Built-in AI that knows your dashboard. Ask "what should I work on next?" Tap Breakdown on any task or project to get a micro-step plan.</div>
         </div>
         <div class="feature-card">
@@ -2013,7 +2013,7 @@ body.unlocked .date-editable{border-bottom-color:var(--border);}
   <!-- STORY -->
   <section class="landing-story">
     <div class="landing-story-inner">
-      <p class="landing-story-quote">"Most productivity apps assume your brain works one way — linear, focused, predictable. <span class="accent">Centerpost was built for the rest of us.</span> The ADHD brains, the people doing demanding work, the ones who need a system that flexes with the day."</p>
+      <p class="landing-story-quote">"Most productivity apps assume your brain works one way — linear, focused, predictable. <span class="accent">Centerpost was built for the rest of us.</span> The people doing demanding work, the ones whose energy and focus change through the day, the ones who need a system that flexes."</p>
       <p class="landing-story-attr"><strong>Joe Harding</strong> &mdash; firefighter / paramedic, 30+ years; builder of Centerpost</p>
     </div>
   </section>
@@ -9280,8 +9280,19 @@ function _applySavedTheme(){
 async function initApp(){
 await load();
 initPanelVisibility();applyPanelOrder();applyPanelVisibility();updateLockUI();updateClock();updateTimeLeft();setInterval(updateClock,1000);setInterval(updateTimeLeft,30000);updateTimerDisplay();renderPointsBadge();awardDailyLogin();
-// Check for routine daily reset every minute (handles dashboards left open overnight)
+// ── DAILY ROUTINE RESET — robust against tabs left open overnight ──
+// 1. Run once immediately after load so stale checks clear before the user sees them.
+// 2. Poll every 60s for the date change.
+// 3. Also re-check whenever the tab becomes visible again (handles iOS/PWA where
+//    a backgrounded app may not fire intervals for hours but will fire visibilitychange).
+try { checkDailyRoutineReset(); } catch(e){}
 setInterval(checkDailyRoutineReset,60000);
+document.addEventListener('visibilitychange',function(){
+  if(!document.hidden){
+    try { checkDailyRoutineReset(); } catch(e){}
+  }
+});
+window.addEventListener('focus',function(){ try { checkDailyRoutineReset(); } catch(e){} });
 
 // ═══════════════════════════════════════
 // PULL-TO-REFRESH (mobile)
