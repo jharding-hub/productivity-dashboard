@@ -335,16 +335,33 @@ a:hover{text-decoration:underline;}
 
 /* ── ANNOTATED VISUALS ── */
 .howto-visual{
-  margin:22px 0;
-  background:#0a1218;
+  margin:28px 0;
+  background:#000000;
   border-radius:14px;
   overflow:hidden;
-  border:1px solid var(--border);
-  box-shadow:0 8px 24px rgba(15,23,42,0.10);
+  border:1px solid #000000;
+  box-shadow:0 0 0 1px rgba(15,23,42,0.08), 0 4px 12px rgba(15,23,42,0.08), 0 16px 40px rgba(15,23,42,0.18);
+  position:relative;
 }
-.howto-visual svg{display:block;width:100%;height:auto;}
+/* Faux browser titlebar at the top of each visual so it reads clearly as a "snapshot" */
+.howto-visual::before{
+  content:'';
+  display:block;
+  height:26px;
+  background:#1a1f2a;
+  border-bottom:1px solid #000;
+}
+.howto-visual::after{
+  content:'';
+  position:absolute;
+  top:9px;left:14px;
+  width:8px;height:8px;border-radius:50%;
+  background:#ff5f56;
+  box-shadow:14px 0 0 #ffbd2e, 28px 0 0 #27c93f;
+}
+.howto-visual svg{display:block;width:100%;height:auto;background:#0a1218;}
 .howto-visual-caption{
-  background:#0a1218;
+  background:#000000;
   color:#94a3b8;
   font-size:12px;
   padding:10px 16px;
@@ -387,7 +404,7 @@ a:hover{text-decoration:underline;}
 <section class="howto-hero">
   <div class="badge">📘 The guide</div>
   <h1>Get the most out of <span class="accent">Centerpost.</span></h1>
-  <p>A walkthrough of every panel and feature, with the why behind each design choice. Built for ADHD brains and anyone who wants their dashboard to actually work for them.</p>
+  <p>A walkthrough of every panel and feature, with the why behind each design choice. Built for anyone who wants their dashboard to actually work for them.</p>
 </section>
 
 <!-- TABLE OF CONTENTS -->
@@ -406,12 +423,12 @@ a:hover{text-decoration:underline;}
       <li><a href="#s9"><span class="num">09</span> Energy &amp; Mood</a></li>
       <li><a href="#s10"><span class="num">10</span> HALT+ check</a></li>
       <li><a href="#s11"><span class="num">11</span> Grounding Toolkit</a></li>
-      <li><a href="#s12"><span class="num">12</span> Jarvis AI</a></li>
+      <li><a href="#s12"><span class="num">12</span> Axis AI</a></li>
       <li><a href="#s13"><span class="num">13</span> AI Breakdown</a></li>
       <li><a href="#s14"><span class="num">14</span> Calendar Sync</a></li>
       <li><a href="#s15"><span class="num">15</span> Kids Mode</a></li>
       <li><a href="#s16"><span class="num">16</span> Settings &amp; themes</a></li>
-      <li><a href="#s17"><span class="num">17</span> Tips for ADHD brains</a></li>
+      <li><a href="#s17"><span class="num">17</span> Tips for busy brains</a></li>
     </ul>
   </div>
 </section>
@@ -509,7 +526,7 @@ a:hover{text-decoration:underline;}
     <p><strong>To create one:</strong> type the project name at the bottom of the panel and hit <span class="kbd">Add</span>. Then click the project to expand it and add subtasks.</p>
     <p><strong>Show all toggle.</strong> The checkbox below the panel header is hidden by default for a clean view. Check it to show every project sorted by the highest priority of its open subtasks.</p>
     <div class="callout gold">
-      <strong>Why subtasks have priorities, not just projects:</strong> when you're picking what to work on next, you don't pick a whole project — you pick a single 30-minute action. Subtask-level metadata is what makes Jarvis able to suggest a real next step.
+      <strong>Why subtasks have priorities, not just projects:</strong> when you're picking what to work on next, you don't pick a whole project — you pick a single 30-minute action. Subtask-level metadata is what makes Axis able to suggest a real next step.
     </div>
   </div>
 
@@ -681,7 +698,7 @@ a:hover{text-decoration:underline;}
    
     <h2>Brain Dump</h2>
     <p class="slide-sub">Capture first, organize later.</p>
-    <p>The most ADHD-friendly feature in the app. When a thought lands — an idea, a worry, something you don't want to forget — you don't have to decide if it's a task, a note, a reminder, or just a thought. Drop it into Brain Dump first. Sort it later.</p>
+    <p>The capture-first feature of the app. When a thought lands — an idea, a worry, something you don't want to forget — you don't have to decide if it's a task, a note, a reminder, or just a thought. Drop it into Brain Dump first. Sort it later.</p>
     <p><strong>Two modes:</strong></p>
     <ul>
       <li><strong>Capture mode:</strong> tap to add quickly. No metadata, no friction.</li>
@@ -924,14 +941,14 @@ a:hover{text-decoration:underline;}
   <g>
     <path d="M 480 290 Q 380 270 306 154" stroke="#fbbf24" stroke-width="2.5" fill="none" stroke-linecap="round" stroke-dasharray="0" opacity="0.95"/>
     <rect x="340" y="282" width="300" height="44" rx="8" fill="#fbbf24" stroke="#92400e" stroke-width="1"/>
-    <text x="490.0" y="308.0" text-anchor="middle" font-size="12" font-weight="700" fill="#0a1218" font-family="DM Sans, sans-serif">Tap to log — Jarvis uses this to suggest tasks</text>
+    <text x="490.0" y="308.0" text-anchor="middle" font-size="12" font-weight="700" fill="#0a1218" font-family="DM Sans, sans-serif">Tap to log — Axis uses this to suggest tasks</text>
   </g>
   <polygon points="308,150 310.5,162.0 299.8,159.2" fill="#fbbf24"/>
 </svg><div class="howto-visual-caption">Energy and Mood quick-tap selectors</div></div>
    
     <h2>Energy &amp; Mood</h2>
     <p class="slide-sub">Track what your brain is actually doing.</p>
-    <p>Quick taps that capture your current state without forcing you to journal. The data flows back to Jarvis so the AI can suggest tasks that match your current capacity.</p>
+    <p>Quick taps that capture your current state without forcing you to journal. The data flows back to Axis so the AI can suggest tasks that match your current capacity.</p>
     <div class="feature-row">
       <div class="feature-emoji">⚡</div>
       <div class="feature-content">
@@ -1009,11 +1026,11 @@ a:hover{text-decoration:underline;}
 </svg><div class="howto-visual-caption">HALT+ check — six prompts for nervous system regulation</div></div>
    
     <h2>HALT+ check</h2>
-    <p class="slide-sub">The recovery-community classic, adapted for ADHD.</p>
+    <p class="slide-sub">The recovery-community classic, adapted for everyday use.</p>
     <p>HALT stands for <strong>H</strong>ungry, <strong>A</strong>ngry, <strong>L</strong>onely, <strong>T</strong>ired. The "+" we add is sensory overload and emotional flooding. When something feels off — irritable, can't focus, snappy, paralyzed — run HALT+ before assuming you have a willpower problem.</p>
     <p>Use it as a quick gut check: tap the panel, scan the four (six) prompts, see which ones light up. Usually the answer to "why can't I get anything done" is hiding in there.</p>
     <div class="callout gold">
-      <strong>Why it matters for ADHD:</strong> our nervous systems are dysregulation-prone. You can't think your way out of low blood sugar or 4 hours of sleep. Address the body first.
+      <strong>Why it matters:</strong> nervous systems are dysregulation-prone, especially under stress, fatigue, or long shifts. You can't think your way out of low blood sugar or 4 hours of sleep. Address the body first.
     </div>
   </div>
 
@@ -1105,7 +1122,7 @@ a:hover{text-decoration:underline;}
     <rect x="276" y="116" width="248" height="200" rx="10" fill="#1a2532" stroke="#1f2937"/>
     <rect x="24" y="328" width="500" height="100" rx="10" fill="#1a2532" stroke="#1f2937"/>
   </g>
-  <!-- Jarvis floating button -->
+  <!-- Axis floating button -->
   <g transform="translate(720, 380)">
     <circle cx="32" cy="32" r="32" fill="#5be8ff" filter="url(#glow)"/>
     <circle cx="32" cy="32" r="32" fill="rgba(91,232,255,0.4)" opacity="0.6">
@@ -1114,13 +1131,13 @@ a:hover{text-decoration:underline;}
     </circle>
     <text x="32" y="40" text-anchor="middle" font-size="26" fill="#0e1620" font-weight="700">✦</text>
   </g>
-  <!-- Open Jarvis panel -->
+  <!-- Open Axis panel -->
   <g transform="translate(540, 24)">
     <rect width="256" height="420" rx="14" fill="#121b25" stroke="#5be8ff" stroke-width="1.5" filter="url(#sh2)"/>
     <!-- Header -->
     <rect width="256" height="46" rx="14" fill="rgba(91,232,255,0.08)"/>
     <circle cx="18" cy="23" r="5" fill="#22c55e"/>
-    <text x="32" y="28" font-size="14" font-weight="600" fill="#5be8ff">Jarvis</text>
+    <text x="32" y="28" font-size="14" font-weight="600" fill="#5be8ff">Axis</text>
     <text x="220" y="28" font-size="14" fill="#64748b">×</text>
     <!-- Messages -->
     <g transform="translate(12, 60)">
@@ -1128,7 +1145,7 @@ a:hover{text-decoration:underline;}
       <rect x="40" y="0" width="192" height="40" rx="10" fill="rgba(91,232,255,0.1)" stroke="rgba(91,232,255,0.3)"/>
       <text x="50" y="18" font-size="11" fill="#e2e8f0">What should I work on</text>
       <text x="50" y="32" font-size="11" fill="#e2e8f0">next?</text>
-      <!-- jarvis reply -->
+      <!-- axis reply -->
       <rect x="0" y="56" width="232" height="120" rx="10" fill="#1a2532" stroke="#1f2937"/>
       <text x="10" y="74" font-size="11" fill="#e2e8f0">You've got Q2 QA Report due</text>
       <text x="10" y="88" font-size="11" fill="#e2e8f0">in 2 days &amp; you're in Focus</text>
@@ -1166,11 +1183,11 @@ a:hover{text-decoration:underline;}
     <text x="570.0" y="396.0" text-anchor="middle" font-size="12" font-weight="700" fill="#0a1218" font-family="DM Sans, sans-serif">Floating button — always available</text>
   </g>
   <polygon points="742,388 729.7,387.3 735.2,377.7" fill="#fbbf24"/>
-</svg><div class="howto-visual-caption">Jarvis floating button and open chat panel</div></div>
+</svg><div class="howto-visual-caption">Axis floating button and open chat panel</div></div>
    
-    <h2>Jarvis — your AI assistant</h2>
+    <h2>Axis — your AI assistant</h2>
     <p class="slide-sub">Ask the dashboard what you should do next.</p>
-    <p>Jarvis is the floating <em>✦</em> button in the bottom right. Click to open the chat. Jarvis can see your full dashboard state — every task, every project, every routine, your mood, your energy — and uses that context to give real answers.</p>
+    <p>Axis is the floating <em>✦</em> button in the bottom right. Click to open the chat. Axis can see your full dashboard state — every task, every project, every routine, your mood, your energy — and uses that context to give real answers.</p>
     <p><strong>Examples of what to ask:</strong></p>
     <ul>
       <li>"What should I work on next?"</li>
@@ -1180,7 +1197,7 @@ a:hover{text-decoration:underline;}
       <li>"Add a task to call my mom Sunday at 4pm." <em>(yes, it can modify your dashboard)</em></li>
     </ul>
     <div class="callout">
-      <strong>Voice options.</strong> Jarvis can listen for "Hey Jarvis" wake word and read responses back out loud. Both default to <em>off</em> to avoid mic permission issues — toggle on from the Jarvis panel header when you want them.
+      <strong>Voice options.</strong> Axis can listen for wake-word wake word and read responses back out loud. Both default to <em>off</em> to avoid mic permission issues — toggle on from the Axis panel header when you want them.
     </div>
   </div>
 
@@ -1200,7 +1217,7 @@ a:hover{text-decoration:underline;}
     </rect>
     <text x="668" y="13" text-anchor="middle" font-size="11" font-weight="700" fill="#5be8ff">✦ Breakdown</text>
   </g>
-  <!-- Jarvis breakdown mode panel -->
+  <!-- Axis breakdown mode panel -->
   <g transform="translate(80, 76)">
     <rect width="660" height="356" rx="14" fill="#121b25" stroke="#5be8ff" stroke-width="1.5"/>
     <rect width="660" height="46" rx="14" fill="rgba(91,232,255,0.12)"/>
@@ -1258,15 +1275,15 @@ a:hover{text-decoration:underline;}
    
     <h2>AI Breakdown</h2>
     <p class="slide-sub">Turn "plan the trip" into 8 actionable micro-steps.</p>
-    <p>Look for the small <strong>✦ Breakdown</strong> button in the header of the Projects and Tasks panels. Click it, then tell Jarvis which project or task you want to break down. You'll get a numbered list of micro-steps, each small enough to start in under 2 minutes.</p>
+    <p>Look for the small <strong>✦ Breakdown</strong> button in the header of the Projects and Tasks panels. Click it, then tell Axis which project or task you want to break down. You'll get a numbered list of micro-steps, each small enough to start in under 2 minutes.</p>
     <ol class="steps">
       <li class="step"><div class="step-content"><h4>Open the Projects or Tasks panel</h4><p>Whichever has the item you're stuck on.</p></div></li>
-      <li class="step"><div class="step-content"><h4>Click ✦ Breakdown</h4><p>Jarvis opens in Breakdown mode with your items already loaded in completion order.</p></div></li>
-      <li class="step"><div class="step-content"><h4>Type a number or name</h4><p>"3" or "Plan birthday party" — Jarvis figures out which item you mean.</p></div></li>
+      <li class="step"><div class="step-content"><h4>Click ✦ Breakdown</h4><p>Axis opens in Breakdown mode with your items already loaded in completion order.</p></div></li>
+      <li class="step"><div class="step-content"><h4>Type a number or name</h4><p>"3" or "Plan birthday party" — Axis figures out which item you mean.</p></div></li>
       <li class="step"><div class="step-content"><h4>Get your micro-steps</h4><p>3-8 actions, first one tagged "🚀 START HERE" so you know exactly where to begin.</p></div></li>
     </ol>
     <div class="callout green">
-      <strong>Why this works:</strong> task initiation paralysis is one of the most common ADHD frictions. The breakdown removes the cognitive load of figuring out the first step — Jarvis tells you what to do <em>right now</em>, and the rest follows.
+      <strong>Why this works:</strong> task initiation paralysis is one of the most common frictions when energy or focus runs low. The breakdown removes the cognitive load of figuring out the first step — Axis tells you what to do <em>right now</em>, and the rest follows.
     </div>
   </div>
 
@@ -1453,7 +1470,7 @@ a:hover{text-decoration:underline;}
   <!-- 17 -->
   <div class="slide" id="s17">
     <div class="slide-num">17</div>
-    <h2>Tips for ADHD brains</h2>
+    <h2>Tips for busy brains</h2>
     <p class="slide-sub">From someone who lives in it daily.</p>
     <div class="feature-row">
       <div class="feature-emoji">🎯</div>
@@ -1504,7 +1521,7 @@ a:hover{text-decoration:underline;}
 <!-- CTA -->
 <section class="howto-cta">
   <h2>That's the tour.</h2>
-  <p>You'll find a hundred small details as you use it. Hit Jarvis if you forget how something works.</p>
+  <p>You'll find a hundred small details as you use it. Hit Axis if you forget how something works.</p>
   <a href="index.html" class="cta-btn">Back to dashboard →</a>
 </section>
 
