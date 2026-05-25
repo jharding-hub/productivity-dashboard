@@ -332,6 +332,28 @@ a:hover{text-decoration:underline;}
   font-size:13px;
 }
 
+
+/* ── ANNOTATED VISUALS ── */
+.howto-visual{
+  margin:22px 0;
+  background:#0a1218;
+  border-radius:14px;
+  overflow:hidden;
+  border:1px solid var(--border);
+  box-shadow:0 8px 24px rgba(15,23,42,0.10);
+}
+.howto-visual svg{display:block;width:100%;height:auto;}
+.howto-visual-caption{
+  background:#0a1218;
+  color:#94a3b8;
+  font-size:12px;
+  padding:10px 16px;
+  text-align:center;
+  border-top:1px solid #1f2937;
+  font-style:italic;
+  font-family:'DM Sans',sans-serif;
+}
+
 /* Responsive */
 @media (max-width:680px){
   .howto-nav{padding:12px 18px;}
@@ -412,6 +434,75 @@ a:hover{text-decoration:underline;}
   <!-- 2 -->
   <div class="slide" id="s2">
     <div class="slide-num">02</div>
+    <div class="howto-visual"><svg viewBox="0 0 820 460" xmlns="http://www.w3.org/2000/svg">
+  <rect width="820" height="460" rx="14" fill="#0e1620"/>
+  <!-- panel header -->
+  <g transform="translate(24, 22)">
+    <text x="0" y="14" font-size="15" font-weight="600" fill="#5be8ff" font-family="DM Sans, sans-serif">📂 Projects</text>
+    <!-- count badge -->
+    <rect x="560" y="-2" width="32" height="22" rx="6" fill="#1a2532" stroke="#1f2937"/>
+    <text x="576" y="13" text-anchor="middle" font-size="11" fill="#94a3b8">3</text>
+    <!-- breakdown button -->
+    <rect x="606" y="-2" width="124" height="22" rx="6" fill="rgba(91,232,255,0.12)" stroke="rgba(91,232,255,0.45)"/>
+    <text x="668" y="13" text-anchor="middle" font-size="11" font-weight="600" fill="#5be8ff">✦ Breakdown</text>
+    <!-- expand arrow -->
+    <text x="746" y="14" font-size="14" fill="#64748b">▼</text>
+  </g>
+  <!-- show all checkbox -->
+  <g transform="translate(24, 60)">
+    <rect width="14" height="14" rx="3" fill="#1a2532" stroke="#1f2937"/>
+    <text x="22" y="11" font-size="12" fill="#94a3b8">Show all projects (by priority)</text>
+  </g>
+  <!-- project card 1 -->
+  <g transform="translate(24, 92)">
+    <rect width="772" height="180" rx="10" fill="#1a2532" stroke="#1f2937"/>
+    <text x="16" y="24" font-size="14" font-weight="600" fill="#e2e8f0">Q2 EMS QA Report</text>
+    <text x="16" y="42" font-size="11" fill="#94a3b8">Due May 28 · 4 subtasks (1 done)</text>
+    <!-- subtasks -->
+    <g transform="translate(16, 56)">
+      <rect width="14" height="14" rx="3" fill="#22c55e"/>
+      <text x="7" y="11" text-anchor="middle" font-size="11" font-weight="700" fill="#0e1620">✓</text>
+      <text x="24" y="11" font-size="12" fill="#64748b" text-decoration="line-through">Pull last quarter stats</text>
+      <text x="690" y="11" font-size="10" fill="#64748b">30m</text>
+    </g>
+    <g transform="translate(16, 82)">
+      <rect width="14" height="14" rx="3" fill="none" stroke="#64748b" stroke-width="1.5"/>
+      <circle cx="32" cy="7" r="4" fill="#ef4444"/>
+      <text x="46" y="11" font-size="12" fill="#e2e8f0">Draft narrative section</text>
+      <text x="690" y="11" font-size="10" fill="#64748b">3hr · high</text>
+    </g>
+    <g transform="translate(16, 108)">
+      <rect width="14" height="14" rx="3" fill="none" stroke="#64748b" stroke-width="1.5"/>
+      <circle cx="32" cy="7" r="4" fill="#fbbf24"/>
+      <text x="46" y="11" font-size="12" fill="#e2e8f0">Review with EDO</text>
+      <text x="690" y="11" font-size="10" fill="#64748b">1hr · med</text>
+    </g>
+    <g transform="translate(16, 134)">
+      <rect width="14" height="14" rx="3" fill="none" stroke="#64748b" stroke-width="1.5"/>
+      <circle cx="32" cy="7" r="4" fill="#22c55e"/>
+      <text x="46" y="11" font-size="12" fill="#e2e8f0">Submit final to medical director</text>
+      <text x="690" y="11" font-size="10" fill="#64748b">30m · low</text>
+    </g>
+  </g>
+  <!-- project card 2 (collapsed) -->
+  <g transform="translate(24, 292)">
+    <rect width="772" height="44" rx="10" fill="#1a2532" stroke="#1f2937"/>
+    <text x="16" y="20" font-size="14" font-weight="600" fill="#e2e8f0">CIT Training Deck Update</text>
+    <text x="16" y="36" font-size="11" fill="#94a3b8">Due Jun 3 · 2 subtasks</text>
+    <text x="744" y="28" font-size="14" fill="#64748b">▸</text>
+  </g>
+
+  <rect x="604" y="66" width="128" height="28" rx="8" fill="none" stroke="#fbbf24" stroke-width="3" stroke-dasharray="4,3" opacity="0.9"/>
+  
+  <!-- annotation -->
+  <g>
+    <path d="M 540 380 Q 600 320 658 88" stroke="#fbbf24" stroke-width="2.5" fill="none" stroke-linecap="round" stroke-dasharray="0" opacity="0.95"/>
+    <rect x="300" y="360" width="280" height="44" rx="8" fill="#fbbf24" stroke="#92400e" stroke-width="1"/>
+    <text x="440.0" y="386.0" text-anchor="middle" font-size="12" font-weight="700" fill="#0a1218" font-family="DM Sans, sans-serif">AI Breakdown — splits any project into micro-steps</text>
+  </g>
+  <polygon points="660,92 661.0,104.3 650.8,100.1" fill="#fbbf24"/>
+</svg><div class="howto-visual-caption">Projects panel — showing the new ✦ Breakdown button and Show-all toggle</div></div>
+   
     <h2>Projects panel</h2>
     <p class="slide-sub">For anything bigger than a single task.</p>
     <p>A project is a container with a name, a due date, and a list of subtasks. Each subtask has its own priority, time estimate, and due date — so you can break "Plan vacation" into "Book flights", "Reserve hotel", "Arrange pet care" and let each piece live with its own metadata.</p>
@@ -425,6 +516,93 @@ a:hover{text-decoration:underline;}
   <!-- 3 -->
   <div class="slide" id="s3">
     <div class="slide-num">03</div>
+    <div class="howto-visual"><svg viewBox="0 0 820 460" xmlns="http://www.w3.org/2000/svg">
+  <rect width="820" height="460" rx="14" fill="#0e1620"/>
+  <!-- header -->
+  <g transform="translate(24, 22)">
+    <text x="0" y="14" font-size="15" font-weight="600" fill="#5be8ff" font-family="DM Sans, sans-serif">📋 Task List</text>
+    <rect x="560" y="-2" width="32" height="22" rx="6" fill="#1a2532" stroke="#1f2937"/>
+    <text x="576" y="13" text-anchor="middle" font-size="11" fill="#94a3b8">7</text>
+    <rect x="606" y="-2" width="124" height="22" rx="6" fill="rgba(91,232,255,0.12)" stroke="rgba(91,232,255,0.45)"/>
+    <text x="668" y="13" text-anchor="middle" font-size="11" font-weight="600" fill="#5be8ff">✦ Breakdown</text>
+  </g>
+  <!-- sort controls -->
+  <g transform="translate(24, 56)">
+    <rect width="140" height="28" rx="6" fill="#1a2532" stroke="#fbbf24" stroke-width="2"/>
+    <text x="10" y="18" font-size="11" fill="#e2e8f0" font-family="DM Sans, sans-serif">Sort: Priority</text>
+    <text x="124" y="18" font-size="11" fill="#64748b">▾</text>
+    <rect x="150" y="0" width="140" height="28" rx="6" fill="#1a2532" stroke="#1f2937"/>
+    <text x="160" y="18" font-size="11" fill="#e2e8f0" font-family="DM Sans, sans-serif">All Projects</text>
+    <text x="274" y="18" font-size="11" fill="#64748b">▾</text>
+  </g>
+  <!-- sort dropdown (open) -->
+  <g transform="translate(24, 88)">
+    <rect width="160" height="120" rx="6" fill="#121b25" stroke="#1f2937" filter="url(#sh1)"/>
+    <rect x="0" y="0" width="160" height="28" fill="rgba(91,232,255,0.08)"/>
+    <text x="10" y="18" font-size="11" font-weight="600" fill="#5be8ff">Priority</text>
+    <text x="146" y="18" font-size="11" fill="#5be8ff">✓</text>
+    <text x="10" y="46" font-size="11" fill="#e2e8f0">Time Needed</text>
+    <text x="10" y="68" font-size="11" fill="#e2e8f0">Project</text>
+    <text x="10" y="90" font-size="11" fill="#e2e8f0">Due Date</text>
+  </g>
+  <!-- tasks list (behind dropdown) -->
+  <g transform="translate(204, 96)" opacity="0.7">
+    <rect width="592" height="280" rx="8" fill="#1a2532" stroke="#1f2937"/>
+  </g>
+  <!-- tasks visible to the right of dropdown -->
+  <g transform="translate(204, 100)">
+    <rect width="592" height="32" rx="6" fill="#121b25" stroke="#1f2937"/>
+    <rect width="14" height="14" rx="3" x="10" y="9" fill="none" stroke="#64748b" stroke-width="1.5"/>
+    <circle cx="38" cy="16" r="4" fill="#ef4444"/>
+    <text x="52" y="20" font-size="12" fill="#e2e8f0">Submit overtime report</text>
+    <text x="500" y="20" font-size="10" fill="#64748b">30m · today</text>
+  </g>
+  <g transform="translate(204, 140)">
+    <rect width="592" height="32" rx="6" fill="#121b25" stroke="#1f2937"/>
+    <rect width="14" height="14" rx="3" x="10" y="9" fill="none" stroke="#64748b" stroke-width="1.5"/>
+    <circle cx="38" cy="16" r="4" fill="#ef4444"/>
+    <text x="52" y="20" font-size="12" fill="#e2e8f0">Draft Q2 narrative</text>
+    <text x="490" y="20" font-size="10" fill="#64748b">3hr · QA Report</text>
+  </g>
+  <g transform="translate(204, 180)">
+    <rect width="592" height="32" rx="6" fill="#121b25" stroke="#1f2937"/>
+    <rect width="14" height="14" rx="3" x="10" y="9" fill="none" stroke="#64748b" stroke-width="1.5"/>
+    <circle cx="38" cy="16" r="4" fill="#fbbf24"/>
+    <text x="52" y="20" font-size="12" fill="#e2e8f0">Call back Dr. Patel</text>
+    <text x="528" y="20" font-size="10" fill="#64748b">1hr · med</text>
+  </g>
+  <g transform="translate(204, 220)">
+    <rect width="592" height="32" rx="6" fill="#121b25" stroke="#1f2937"/>
+    <rect width="14" height="14" rx="3" x="10" y="9" fill="none" stroke="#64748b" stroke-width="1.5"/>
+    <circle cx="38" cy="16" r="4" fill="#fbbf24"/>
+    <text x="52" y="20" font-size="12" fill="#e2e8f0">Review CIT slides</text>
+    <text x="528" y="20" font-size="10" fill="#64748b">45m · med</text>
+  </g>
+  <g transform="translate(204, 260)">
+    <rect width="592" height="32" rx="6" fill="#121b25" stroke="#1f2937"/>
+    <rect width="14" height="14" rx="3" x="10" y="9" fill="none" stroke="#64748b" stroke-width="1.5"/>
+    <circle cx="38" cy="16" r="4" fill="#22c55e"/>
+    <text x="52" y="20" font-size="12" fill="#e2e8f0">Order creatine refill</text>
+    <text x="538" y="20" font-size="10" fill="#64748b">15m · low</text>
+  </g>
+  <g transform="translate(204, 300)">
+    <rect width="592" height="32" rx="6" fill="#121b25" stroke="#1f2937"/>
+    <rect width="14" height="14" rx="3" x="10" y="9" fill="#22c55e"/>
+    <text x="17" y="20" text-anchor="middle" font-size="11" font-weight="700" fill="#0e1620">✓</text>
+    <circle cx="38" cy="16" r="4" fill="#22c55e"/>
+    <text x="52" y="20" font-size="12" fill="#64748b" text-decoration="line-through">Workout — upper body</text>
+  </g>
+
+  
+  <!-- annotation -->
+  <g>
+    <path d="M 380 410 Q 280 380 160 100" stroke="#fbbf24" stroke-width="2.5" fill="none" stroke-linecap="round" stroke-dasharray="0" opacity="0.95"/>
+    <rect x="200" y="400" width="380" height="44" rx="8" fill="#fbbf24" stroke="#92400e" stroke-width="1"/>
+    <text x="390.0" y="426.0" text-anchor="middle" font-size="12" font-weight="700" fill="#0a1218" font-family="DM Sans, sans-serif">Switch sort modes — match the list to your current state</text>
+  </g>
+  <polygon points="160,100 165.5,111.0 154.5,111.0" fill="#fbbf24"/>
+</svg><div class="howto-visual-caption">Task List with Sort dropdown open</div></div>
+   
     <h2>Task List</h2>
     <p class="slide-sub">Sort by what your brain can actually do right now.</p>
     <p>The Task List shows every standalone task and every open project subtask in one place. The <strong>Sort</strong> dropdown is the secret weapon:</p>
@@ -445,6 +623,62 @@ a:hover{text-decoration:underline;}
   <!-- 4 -->
   <div class="slide" id="s4">
     <div class="slide-num">04</div>
+    <div class="howto-visual"><svg viewBox="0 0 820 440" xmlns="http://www.w3.org/2000/svg">
+  <rect width="820" height="440" rx="14" fill="#0e1620"/>
+  <g transform="translate(24, 22)">
+    <text x="0" y="14" font-size="15" font-weight="600" fill="#5be8ff" font-family="DM Sans, sans-serif">🧠 Brain Dump</text>
+    <rect x="560" y="-2" width="32" height="22" rx="6" fill="#1a2532" stroke="#1f2937"/>
+    <text x="576" y="13" text-anchor="middle" font-size="11" fill="#94a3b8">5</text>
+  </g>
+  <!-- input box highlighted -->
+  <g transform="translate(24, 60)">
+    <rect width="660" height="38" rx="8" fill="#1a2532" stroke="#fbbf24" stroke-width="2"/>
+    <text x="14" y="24" font-size="13" fill="#64748b" font-style="italic">Capture a thought, idea, or worry...</text>
+    <rect x="676" y="0" width="100" height="38" rx="8" fill="rgba(91,232,255,0.12)" stroke="rgba(91,232,255,0.45)"/>
+    <text x="726" y="24" text-anchor="middle" font-size="12" font-weight="600" fill="#5be8ff">+ Capture</text>
+  </g>
+  <!-- captured thoughts -->
+  <g transform="translate(24, 116)">
+    <rect width="772" height="38" rx="6" fill="#121b25" stroke="#1f2937"/>
+    <circle cx="14" cy="19" r="4" fill="#a78bfa"/>
+    <text x="26" y="23" font-size="13" fill="#e2e8f0">Remember to ask boss about July training schedule</text>
+    <text x="700" y="23" font-size="10" fill="#64748b">2 hr ago</text>
+  </g>
+  <g transform="translate(24, 162)">
+    <rect width="772" height="38" rx="6" fill="#121b25" stroke="#1f2937"/>
+    <circle cx="14" cy="19" r="4" fill="#3b82f6"/>
+    <text x="26" y="23" font-size="13" fill="#e2e8f0">Idea: build a quick-reference card for cardiac med doses</text>
+    <text x="700" y="23" font-size="10" fill="#64748b">today</text>
+  </g>
+  <g transform="translate(24, 208)">
+    <rect width="772" height="38" rx="6" fill="#121b25" stroke="#1f2937"/>
+    <circle cx="14" cy="19" r="4" fill="#22c55e"/>
+    <text x="26" y="23" font-size="13" fill="#e2e8f0">Need to research more on TXA protocols</text>
+    <text x="700" y="23" font-size="10" fill="#64748b">today</text>
+  </g>
+  <g transform="translate(24, 254)">
+    <rect width="772" height="38" rx="6" fill="#121b25" stroke="#1f2937"/>
+    <circle cx="14" cy="19" r="4" fill="#fbbf24"/>
+    <text x="26" y="23" font-size="13" fill="#e2e8f0">That guy at the call today — check if his wife got our card</text>
+    <text x="700" y="23" font-size="10" fill="#64748b">today</text>
+  </g>
+  <g transform="translate(24, 300)">
+    <rect width="772" height="38" rx="6" fill="#121b25" stroke="#1f2937"/>
+    <circle cx="14" cy="19" r="4" fill="#ef4444"/>
+    <text x="26" y="23" font-size="13" fill="#e2e8f0">Anxious about Tuesday's hearing — make a list of things to bring</text>
+    <text x="700" y="23" font-size="10" fill="#64748b">yesterday</text>
+  </g>
+
+  
+  <!-- annotation -->
+  <g>
+    <path d="M 100 380 Q 200 320 340 84" stroke="#fbbf24" stroke-width="2.5" fill="none" stroke-linecap="round" stroke-dasharray="0" opacity="0.95"/>
+    <rect x="40" y="380" width="360" height="44" rx="8" fill="#fbbf24" stroke="#92400e" stroke-width="1"/>
+    <text x="220.0" y="406.0" text-anchor="middle" font-size="12" font-weight="700" fill="#0a1218" font-family="DM Sans, sans-serif">Drop anything in. Sort it into tasks / notes / reminders later</text>
+  </g>
+  <polygon points="340,80 342.5,92.0 331.8,89.2" fill="#fbbf24"/>
+</svg><div class="howto-visual-caption">Brain Dump capture flow</div></div>
+   
     <h2>Brain Dump</h2>
     <p class="slide-sub">Capture first, organize later.</p>
     <p>The most ADHD-friendly feature in the app. When a thought lands — an idea, a worry, something you don't want to forget — you don't have to decide if it's a task, a note, a reminder, or just a thought. Drop it into Brain Dump first. Sort it later.</p>
@@ -479,6 +713,74 @@ a:hover{text-decoration:underline;}
   <!-- 7 -->
   <div class="slide" id="s7">
     <div class="slide-num">07</div>
+    <div class="howto-visual"><svg viewBox="0 0 820 440" xmlns="http://www.w3.org/2000/svg">
+  <rect width="820" height="440" rx="14" fill="#0e1620"/>
+  <g transform="translate(24, 22)">
+    <text x="0" y="14" font-size="15" font-weight="600" fill="#5be8ff" font-family="DM Sans, sans-serif">🔁 Routines</text>
+  </g>
+  <!-- tabs -->
+  <g transform="translate(24, 56)">
+    <rect width="140" height="32" rx="6" fill="rgba(91,232,255,0.12)" stroke="rgba(91,232,255,0.45)"/>
+    <text x="70" y="20" text-anchor="middle" font-size="12" font-weight="600" fill="#5be8ff">☀️ Morning</text>
+    <rect x="148" width="140" height="32" rx="6" fill="#1a2532" stroke="#1f2937"/>
+    <text x="218" y="20" text-anchor="middle" font-size="12" fill="#94a3b8">🌙 Evening</text>
+    <rect x="296" width="140" height="32" rx="6" fill="#1a2532" stroke="#1f2937"/>
+    <text x="366" y="20" text-anchor="middle" font-size="12" fill="#94a3b8">📅 Weekly</text>
+  </g>
+  <!-- progress -->
+  <g transform="translate(24, 102)">
+    <text x="0" y="14" font-size="11" fill="#94a3b8">3 / 5 complete today</text>
+    <rect x="120" y="2" width="200" height="12" rx="6" fill="#1a2532" stroke="#1f2937"/>
+    <rect x="120" y="2" width="120" height="12" rx="6" fill="#5be8ff"/>
+  </g>
+  <!-- routine items -->
+  <g transform="translate(24, 132)">
+    <rect width="772" height="42" rx="8" fill="#1a2532" stroke="#22c55e" stroke-width="2"/>
+    <rect x="14" y="13" width="16" height="16" rx="3" fill="#22c55e"/>
+    <text x="22" y="25" text-anchor="middle" font-size="12" font-weight="700" fill="#0e1620">✓</text>
+    <text x="38" y="20" font-size="14" fill="#64748b" text-decoration="line-through">Make bed</text>
+    <text x="38" y="35" font-size="11" fill="#64748b">✓ earned today</text>
+    <text x="744" y="27" font-size="14">🛏️</text>
+  </g>
+  <g transform="translate(24, 184)">
+    <rect width="772" height="42" rx="8" fill="#1a2532" stroke="#22c55e" stroke-width="2"/>
+    <rect x="14" y="13" width="16" height="16" rx="3" fill="#22c55e"/>
+    <text x="22" y="25" text-anchor="middle" font-size="12" font-weight="700" fill="#0e1620">✓</text>
+    <text x="38" y="20" font-size="14" fill="#64748b" text-decoration="line-through">Brush teeth</text>
+    <text x="38" y="35" font-size="11" fill="#64748b">✓ earned today</text>
+    <text x="744" y="27" font-size="14">🪥</text>
+  </g>
+  <g transform="translate(24, 236)">
+    <rect width="772" height="42" rx="8" fill="#1a2532" stroke="#22c55e" stroke-width="2"/>
+    <rect x="14" y="13" width="16" height="16" rx="3" fill="#22c55e"/>
+    <text x="22" y="25" text-anchor="middle" font-size="12" font-weight="700" fill="#0e1620">✓</text>
+    <text x="38" y="20" font-size="14" fill="#64748b" text-decoration="line-through">Take meds</text>
+    <text x="38" y="35" font-size="11" fill="#64748b">✓ earned today</text>
+    <text x="744" y="27" font-size="14">💊</text>
+  </g>
+  <g transform="translate(24, 288)">
+    <rect width="772" height="42" rx="8" fill="#1a2532" stroke="#1f2937"/>
+    <rect x="14" y="13" width="16" height="16" rx="3" fill="none" stroke="#64748b" stroke-width="1.5"/>
+    <text x="38" y="27" font-size="14" fill="#e2e8f0">Workout</text>
+    <text x="744" y="27" font-size="14">💪</text>
+  </g>
+  <g transform="translate(24, 340)">
+    <rect width="772" height="42" rx="8" fill="#1a2532" stroke="#1f2937"/>
+    <rect x="14" y="13" width="16" height="16" rx="3" fill="none" stroke="#64748b" stroke-width="1.5"/>
+    <text x="38" y="27" font-size="14" fill="#e2e8f0">Review today's calendar</text>
+    <text x="744" y="27" font-size="14">📅</text>
+  </g>
+
+  
+  <!-- annotation -->
+  <g>
+    <path d="M 540 410 Q 500 380 60 160" stroke="#fbbf24" stroke-width="2.5" fill="none" stroke-linecap="round" stroke-dasharray="0" opacity="0.95"/>
+    <rect x="380" y="400" width="240" height="44" rx="8" fill="#fbbf24" stroke="#92400e" stroke-width="1"/>
+    <text x="500.0" y="426.0" text-anchor="middle" font-size="12" font-weight="700" fill="#0a1218" font-family="DM Sans, sans-serif">Tap to complete. Resets daily.</text>
+  </g>
+  <polygon points="60,156 63.5,167.8 52.7,165.9" fill="#fbbf24"/>
+</svg><div class="howto-visual-caption">Morning routine with three items complete</div></div>
+   
     <h2>Routines</h2>
     <p class="slide-sub">For the things you should be doing every day or week.</p>
     <p>Routines are checklists that reset on a schedule — daily, weekly, or custom. Use them for morning routines, end-of-shift wind-downs, weekly review rituals, weekend chores.</p>
@@ -491,6 +793,75 @@ a:hover{text-decoration:underline;}
   <!-- 8 -->
   <div class="slide" id="s8">
     <div class="slide-num">08</div>
+    <div class="howto-visual"><svg viewBox="0 0 820 360" xmlns="http://www.w3.org/2000/svg">
+  <rect width="820" height="360" rx="14" fill="#0e1620"/>
+  <g transform="translate(24, 22)">
+    <text x="0" y="14" font-size="15" font-weight="600" fill="#5be8ff" font-family="DM Sans, sans-serif">📆 Timeline — Tue, May 26</text>
+    <!-- sync chip -->
+    <rect x="586" y="-4" width="144" height="26" rx="8" fill="rgba(74,222,128,0.1)" stroke="rgba(74,222,128,0.5)"/>
+    <circle cx="600" cy="9" r="4" fill="#22c55e"/>
+    <text x="666" y="13" text-anchor="middle" font-size="11" font-weight="600" fill="#22c55e">Synced with Google</text>
+    <!-- gear -->
+    <text x="744" y="14" font-size="16" fill="#64748b">⚙️</text>
+  </g>
+  <!-- hour scale -->
+  <g transform="translate(24, 64)">
+    <text x="0" y="0" font-size="10" fill="#64748b">6 AM</text>
+    <text x="105" y="0" font-size="10" fill="#64748b">8</text>
+    <text x="200" y="0" font-size="10" fill="#64748b">10</text>
+    <text x="295" y="0" font-size="10" fill="#64748b">12</text>
+    <text x="395" y="0" font-size="10" fill="#64748b">2 PM</text>
+    <text x="490" y="0" font-size="10" fill="#64748b">4</text>
+    <text x="590" y="0" font-size="10" fill="#64748b">6</text>
+    <text x="685" y="0" font-size="10" fill="#64748b">8</text>
+    <line x1="0" y1="6" x2="772" y2="6" stroke="#1f2937" stroke-width="1"/>
+  </g>
+  <!-- blocks -->
+  <g transform="translate(24, 84)">
+    <rect x="0" y="0" width="105" height="32" rx="5" fill="#3b82f6"/>
+    <text x="52" y="20" text-anchor="middle" font-size="11" font-weight="600" fill="white">Morning routine</text>
+    <rect x="113" y="0" width="180" height="32" rx="5" fill="#22c55e"/>
+    <text x="203" y="20" text-anchor="middle" font-size="11" font-weight="600" fill="white">Q2 QA Report (deep work)</text>
+    <rect x="301" y="0" width="60" height="32" rx="5" fill="#fbbf24"/>
+    <text x="331" y="20" text-anchor="middle" font-size="11" font-weight="600" fill="#0e1620">Lunch</text>
+    <rect x="369" y="0" width="120" height="32" rx="5" fill="#a78bfa"/>
+    <text x="429" y="20" text-anchor="middle" font-size="11" font-weight="600" fill="white">Cog Psych reading</text>
+    <rect x="497" y="0" width="90" height="32" rx="5" fill="#ef4444"/>
+    <text x="542" y="20" text-anchor="middle" font-size="11" font-weight="600" fill="white">Workout</text>
+    <rect x="595" y="0" width="120" height="32" rx="5" fill="#5be8ff"/>
+    <text x="655" y="20" text-anchor="middle" font-size="11" font-weight="600" fill="#0e1620">Family time</text>
+  </g>
+  <!-- 2nd row of context -->
+  <g transform="translate(24, 140)">
+    <text x="0" y="0" font-size="11" font-weight="600" fill="#94a3b8">PULLED FROM GOOGLE CALENDAR</text>
+    <rect x="113" y="14" width="180" height="32" rx="5" fill="rgba(74,144,226,0.18)" stroke="#3b82f6"/>
+    <text x="203" y="34" text-anchor="middle" font-size="11" font-weight="600" fill="#e2e8f0">📅 Team standup</text>
+    <text x="278" y="32" font-size="9" font-weight="700" fill="#3b82f6">G</text>
+    <rect x="497" y="14" width="90" height="32" rx="5" fill="rgba(74,144,226,0.18)" stroke="#3b82f6"/>
+    <text x="542" y="34" text-anchor="middle" font-size="11" font-weight="600" fill="#e2e8f0">📅 Drs. appt</text>
+    <text x="572" y="32" font-size="9" font-weight="700" fill="#3b82f6">G</text>
+  </g>
+  <!-- buttons -->
+  <g transform="translate(24, 220)">
+    <rect width="128" height="32" rx="6" fill="#1a2532" stroke="#1f2937"/>
+    <text x="64" y="20" text-anchor="middle" font-size="11" fill="#e2e8f0">📥 Download .ics</text>
+    <rect x="138" width="148" height="32" rx="6" fill="rgba(91,232,255,0.12)" stroke="rgba(91,232,255,0.45)"/>
+    <text x="212" y="20" text-anchor="middle" font-size="11" font-weight="600" fill="#5be8ff">📤 Push to Google</text>
+    <rect x="296" width="120" height="32" rx="6" fill="#1a2532" stroke="#1f2937"/>
+    <text x="356" y="20" text-anchor="middle" font-size="11" fill="#e2e8f0">🧹 Clear day</text>
+  </g>
+
+  <rect x="728" y="22" width="32" height="28" rx="8" fill="none" stroke="#fbbf24" stroke-width="3" stroke-dasharray="4,3" opacity="0.9"/>
+  
+  <!-- annotation -->
+  <g>
+    <path d="M 540 290 Q 600 240 738 50" stroke="#fbbf24" stroke-width="2.5" fill="none" stroke-linecap="round" stroke-dasharray="0" opacity="0.95"/>
+    <rect x="400" y="280" width="280" height="44" rx="8" fill="#fbbf24" stroke="#92400e" stroke-width="1"/>
+    <text x="540.0" y="306.0" text-anchor="middle" font-size="12" font-weight="700" fill="#0a1218" font-family="DM Sans, sans-serif">Click gear to open Calendar Sync settings</text>
+  </g>
+  <polygon points="738,46 738.3,58.3 728.4,53.6" fill="#fbbf24"/>
+</svg><div class="howto-visual-caption">Timeline showing Centerpost blocks + pulled Google events</div></div>
+   
     <h2>Timeline</h2>
     <p class="slide-sub">Visual day-block view of what's actually planned.</p>
     <p>The Timeline shows a horizontal strip of your day with color-coded blocks for each scheduled task or event. Drag tasks from the Task List to schedule them. Drag the block edges to resize. Click a block to edit.</p>
@@ -505,6 +876,59 @@ a:hover{text-decoration:underline;}
   <!-- 9 -->
   <div class="slide" id="s9">
     <div class="slide-num">09</div>
+    <div class="howto-visual"><svg viewBox="0 0 820 320" xmlns="http://www.w3.org/2000/svg">
+  <rect width="820" height="320" rx="14" fill="#0e1620"/>
+  <g transform="translate(24, 22)">
+    <text x="0" y="14" font-size="15" font-weight="600" fill="#5be8ff" font-family="DM Sans, sans-serif">⚡ Energy &amp; Mood</text>
+    <text x="0" y="32" font-size="11" fill="#94a3b8">Today, 9:42 AM</text>
+  </g>
+  <!-- Energy row -->
+  <g transform="translate(24, 78)">
+    <text x="0" y="0" font-size="11" font-weight="600" fill="#94a3b8">ENERGY</text>
+  </g>
+  <g transform="translate(24, 90)">
+    <rect width="180" height="56" rx="10" fill="#1a2532" stroke="#1f2937"/>
+    <text x="90" y="24" text-anchor="middle" font-size="22">⚡</text>
+    <text x="90" y="46" text-anchor="middle" font-size="12" fill="#e2e8f0">High</text>
+    <rect x="196" y="0" width="180" height="56" rx="10" fill="rgba(74,222,128,0.15)" stroke="#22c55e" stroke-width="2"/>
+    <text x="286" y="24" text-anchor="middle" font-size="22">🌿</text>
+    <text x="286" y="46" text-anchor="middle" font-size="12" font-weight="700" fill="#22c55e">Good</text>
+    <rect x="392" y="0" width="180" height="56" rx="10" fill="#1a2532" stroke="#1f2937"/>
+    <text x="482" y="24" text-anchor="middle" font-size="22">🪫</text>
+    <text x="482" y="46" text-anchor="middle" font-size="12" fill="#e2e8f0">Low</text>
+    <rect x="588" y="0" width="184" height="56" rx="10" fill="#1a2532" stroke="#1f2937"/>
+    <text x="680" y="24" text-anchor="middle" font-size="22">💥</text>
+    <text x="680" y="46" text-anchor="middle" font-size="12" fill="#e2e8f0">Crash</text>
+  </g>
+  <!-- Mood row -->
+  <g transform="translate(24, 178)">
+    <text x="0" y="0" font-size="11" font-weight="600" fill="#94a3b8">MOOD</text>
+  </g>
+  <g transform="translate(24, 190)">
+    <rect width="180" height="56" rx="10" fill="rgba(91,232,255,0.12)" stroke="#5be8ff" stroke-width="2"/>
+    <text x="90" y="24" text-anchor="middle" font-size="22">🎯</text>
+    <text x="90" y="46" text-anchor="middle" font-size="12" font-weight="700" fill="#5be8ff">Focus</text>
+    <rect x="196" y="0" width="180" height="56" rx="10" fill="#1a2532" stroke="#1f2937"/>
+    <text x="286" y="24" text-anchor="middle" font-size="22">🌪️</text>
+    <text x="286" y="46" text-anchor="middle" font-size="12" fill="#e2e8f0">Scatter</text>
+    <rect x="392" y="0" width="180" height="56" rx="10" fill="#1a2532" stroke="#1f2937"/>
+    <text x="482" y="24" text-anchor="middle" font-size="22">😰</text>
+    <text x="482" y="46" text-anchor="middle" font-size="12" fill="#e2e8f0">Anxious</text>
+    <rect x="588" y="0" width="184" height="56" rx="10" fill="#1a2532" stroke="#1f2937"/>
+    <text x="680" y="24" text-anchor="middle" font-size="22">🌊</text>
+    <text x="680" y="46" text-anchor="middle" font-size="12" fill="#e2e8f0">Calm</text>
+  </g>
+
+  
+  <!-- annotation -->
+  <g>
+    <path d="M 480 290 Q 380 270 306 154" stroke="#fbbf24" stroke-width="2.5" fill="none" stroke-linecap="round" stroke-dasharray="0" opacity="0.95"/>
+    <rect x="340" y="282" width="300" height="44" rx="8" fill="#fbbf24" stroke="#92400e" stroke-width="1"/>
+    <text x="490.0" y="308.0" text-anchor="middle" font-size="12" font-weight="700" fill="#0a1218" font-family="DM Sans, sans-serif">Tap to log — Jarvis uses this to suggest tasks</text>
+  </g>
+  <polygon points="308,150 310.5,162.0 299.8,159.2" fill="#fbbf24"/>
+</svg><div class="howto-visual-caption">Energy and Mood quick-tap selectors</div></div>
+   
     <h2>Energy &amp; Mood</h2>
     <p class="slide-sub">Track what your brain is actually doing.</p>
     <p>Quick taps that capture your current state without forcing you to journal. The data flows back to Jarvis so the AI can suggest tasks that match your current capacity.</p>
@@ -530,6 +954,60 @@ a:hover{text-decoration:underline;}
   <!-- 10 -->
   <div class="slide" id="s10">
     <div class="slide-num">10</div>
+    <div class="howto-visual"><svg viewBox="0 0 820 380" xmlns="http://www.w3.org/2000/svg">
+  <rect width="820" height="380" rx="14" fill="#0e1620"/>
+  <g transform="translate(24, 22)">
+    <text x="0" y="14" font-size="15" font-weight="600" fill="#5be8ff" font-family="DM Sans, sans-serif">🚦 HALT+ Check</text>
+    <text x="0" y="32" font-size="11" fill="#94a3b8">If something feels off, run this first.</text>
+  </g>
+  <!-- 2x3 grid -->
+  <g transform="translate(24, 76)">
+    <rect width="248" height="86" rx="10" fill="rgba(239,68,68,0.08)" stroke="#ef4444" stroke-width="2"/>
+    <text x="14" y="24" font-size="26">🍔</text>
+    <text x="14" y="48" font-size="13" font-weight="700" fill="#ef4444">Hungry?</text>
+    <text x="14" y="68" font-size="11" fill="#94a3b8">When did you last eat?</text>
+  </g>
+  <g transform="translate(286, 76)">
+    <rect width="248" height="86" rx="10" fill="#1a2532" stroke="#1f2937"/>
+    <text x="14" y="24" font-size="26">😡</text>
+    <text x="14" y="48" font-size="13" font-weight="700" fill="#e2e8f0">Angry?</text>
+    <text x="14" y="68" font-size="11" fill="#94a3b8">What's the source?</text>
+  </g>
+  <g transform="translate(548, 76)">
+    <rect width="248" height="86" rx="10" fill="#1a2532" stroke="#1f2937"/>
+    <text x="14" y="24" font-size="26">💔</text>
+    <text x="14" y="48" font-size="13" font-weight="700" fill="#e2e8f0">Lonely?</text>
+    <text x="14" y="68" font-size="11" fill="#94a3b8">Who can you reach out to?</text>
+  </g>
+  <g transform="translate(24, 174)">
+    <rect width="248" height="86" rx="10" fill="#1a2532" stroke="#1f2937"/>
+    <text x="14" y="24" font-size="26">😴</text>
+    <text x="14" y="48" font-size="13" font-weight="700" fill="#e2e8f0">Tired?</text>
+    <text x="14" y="68" font-size="11" fill="#94a3b8">How was last night's sleep?</text>
+  </g>
+  <g transform="translate(286, 174)">
+    <rect width="248" height="86" rx="10" fill="#1a2532" stroke="#1f2937"/>
+    <text x="14" y="24" font-size="26">🔊</text>
+    <text x="14" y="48" font-size="13" font-weight="700" fill="#e2e8f0">Overloaded?</text>
+    <text x="14" y="68" font-size="11" fill="#94a3b8">Too much sensory input?</text>
+  </g>
+  <g transform="translate(548, 174)">
+    <rect width="248" height="86" rx="10" fill="#1a2532" stroke="#1f2937"/>
+    <text x="14" y="24" font-size="26">🌊</text>
+    <text x="14" y="48" font-size="13" font-weight="700" fill="#e2e8f0">Flooded?</text>
+    <text x="14" y="68" font-size="11" fill="#94a3b8">Emotion bigger than the moment?</text>
+  </g>
+
+  
+  <!-- annotation -->
+  <g>
+    <path d="M 80 330 Q 100 300 140 170" stroke="#fbbf24" stroke-width="2.5" fill="none" stroke-linecap="round" stroke-dasharray="0" opacity="0.95"/>
+    <rect x="24" y="320" width="300" height="44" rx="8" fill="#fbbf24" stroke="#92400e" stroke-width="1"/>
+    <text x="174.0" y="346.0" text-anchor="middle" font-size="12" font-weight="700" fill="#0a1218" font-family="DM Sans, sans-serif">Body first — most 'can't focus' = hungry or tired</text>
+  </g>
+  <polygon points="140,166 142.5,178.0 131.8,175.2" fill="#fbbf24"/>
+</svg><div class="howto-visual-caption">HALT+ check — six prompts for nervous system regulation</div></div>
+   
     <h2>HALT+ check</h2>
     <p class="slide-sub">The recovery-community classic, adapted for ADHD.</p>
     <p>HALT stands for <strong>H</strong>ungry, <strong>A</strong>ngry, <strong>L</strong>onely, <strong>T</strong>ired. The "+" we add is sensory overload and emotional flooding. When something feels off — irritable, can't focus, snappy, paralyzed — run HALT+ before assuming you have a willpower problem.</p>
@@ -542,6 +1020,66 @@ a:hover{text-decoration:underline;}
   <!-- 11 -->
   <div class="slide" id="s11">
     <div class="slide-num">11</div>
+    <div class="howto-visual"><svg viewBox="0 0 820 360" xmlns="http://www.w3.org/2000/svg">
+  <rect width="820" height="360" rx="14" fill="#0e1620"/>
+  <g transform="translate(24, 22)">
+    <text x="0" y="14" font-size="15" font-weight="600" fill="#5be8ff" font-family="DM Sans, sans-serif">🌿 Grounding Toolkit</text>
+    <text x="0" y="32" font-size="11" fill="#94a3b8">Six evidence-based techniques for regulating your nervous system.</text>
+  </g>
+  <!-- 3x2 grid -->
+  <g transform="translate(24, 76)">
+    <rect width="248" height="120" rx="10" fill="rgba(91,232,255,0.08)" stroke="#5be8ff" stroke-width="2"/>
+    <text x="14" y="32" font-size="28">👀</text>
+    <text x="14" y="64" font-size="14" font-weight="700" fill="#5be8ff">5-4-3-2-1</text>
+    <text x="14" y="84" font-size="11" fill="#94a3b8">Sensory grounding</text>
+    <text x="14" y="102" font-size="10" fill="#64748b">~90 seconds</text>
+  </g>
+  <g transform="translate(286, 76)">
+    <rect width="248" height="120" rx="10" fill="#1a2532" stroke="#1f2937"/>
+    <text x="14" y="32" font-size="28">📦</text>
+    <text x="14" y="64" font-size="14" font-weight="700" fill="#e2e8f0">Box breathing</text>
+    <text x="14" y="84" font-size="11" fill="#94a3b8">4-4-4-4 pattern</text>
+    <text x="14" y="102" font-size="10" fill="#64748b">3 minutes</text>
+  </g>
+  <g transform="translate(548, 76)">
+    <rect width="248" height="120" rx="10" fill="#1a2532" stroke="#1f2937"/>
+    <text x="14" y="32" font-size="28">🌬️</text>
+    <text x="14" y="64" font-size="14" font-weight="700" fill="#e2e8f0">4-7-8 breathing</text>
+    <text x="14" y="84" font-size="11" fill="#94a3b8">Downshift fast</text>
+    <text x="14" y="102" font-size="10" fill="#64748b">2 minutes</text>
+  </g>
+  <g transform="translate(24, 208)">
+    <rect width="248" height="120" rx="10" fill="#1a2532" stroke="#1f2937"/>
+    <text x="14" y="32" font-size="28">😤</text>
+    <text x="14" y="64" font-size="14" font-weight="700" fill="#e2e8f0">Physiological sigh</text>
+    <text x="14" y="84" font-size="11" fill="#94a3b8">Double inhale, long exhale</text>
+    <text x="14" y="102" font-size="10" fill="#64748b">1 minute</text>
+  </g>
+  <g transform="translate(286, 208)">
+    <rect width="248" height="120" rx="10" fill="#1a2532" stroke="#1f2937"/>
+    <text x="14" y="32" font-size="28">👃</text>
+    <text x="14" y="64" font-size="14" font-weight="700" fill="#e2e8f0">Alternate nostril</text>
+    <text x="14" y="84" font-size="11" fill="#94a3b8">Slow the heart rate</text>
+    <text x="14" y="102" font-size="10" fill="#64748b">3 minutes</text>
+  </g>
+  <g transform="translate(548, 208)">
+    <rect width="248" height="120" rx="10" fill="#1a2532" stroke="#1f2937"/>
+    <text x="14" y="32" font-size="28">🧘</text>
+    <text x="14" y="64" font-size="14" font-weight="700" fill="#e2e8f0">Body scan</text>
+    <text x="14" y="84" font-size="11" fill="#94a3b8">Head to toes attention</text>
+    <text x="14" y="102" font-size="10" fill="#64748b">90 seconds</text>
+  </g>
+
+  
+  <!-- annotation -->
+  <g>
+    <path d="M 360 332 Q 220 280 144 200" stroke="#fbbf24" stroke-width="2.5" fill="none" stroke-linecap="round" stroke-dasharray="0" opacity="0.95"/>
+    <rect x="200" y="320" width="320" height="44" rx="8" fill="#fbbf24" stroke="#92400e" stroke-width="1"/>
+    <text x="360.0" y="346.0" text-anchor="middle" font-size="12" font-weight="700" fill="#0a1218" font-family="DM Sans, sans-serif">Tap any technique — guided pacing, no music</text>
+  </g>
+  <polygon points="144,198 146.5,210.0 135.8,207.2" fill="#fbbf24"/>
+</svg><div class="howto-visual-caption">Grounding Toolkit — six evidence-based techniques</div></div>
+   
     <h2>Grounding Toolkit</h2>
     <p class="slide-sub">Six evidence-based regulation techniques in one place.</p>
     <ul>
@@ -558,6 +1096,78 @@ a:hover{text-decoration:underline;}
   <!-- 12 -->
   <div class="slide" id="s12">
     <div class="slide-num">12</div>
+    <div class="howto-visual"><svg viewBox="0 0 820 460" xmlns="http://www.w3.org/2000/svg">
+  <rect width="820" height="460" rx="14" fill="#0e1620"/>
+  <!-- partial dashboard preview behind -->
+  <g opacity="0.35">
+    <rect x="24" y="24" width="500" height="80" rx="10" fill="#1a2532" stroke="#1f2937"/>
+    <rect x="24" y="116" width="240" height="200" rx="10" fill="#1a2532" stroke="#1f2937"/>
+    <rect x="276" y="116" width="248" height="200" rx="10" fill="#1a2532" stroke="#1f2937"/>
+    <rect x="24" y="328" width="500" height="100" rx="10" fill="#1a2532" stroke="#1f2937"/>
+  </g>
+  <!-- Jarvis floating button -->
+  <g transform="translate(720, 380)">
+    <circle cx="32" cy="32" r="32" fill="#5be8ff" filter="url(#glow)"/>
+    <circle cx="32" cy="32" r="32" fill="rgba(91,232,255,0.4)" opacity="0.6">
+      <animate attributeName="r" values="32;42;32" dur="2s" repeatCount="indefinite"/>
+      <animate attributeName="opacity" values="0.6;0;0.6" dur="2s" repeatCount="indefinite"/>
+    </circle>
+    <text x="32" y="40" text-anchor="middle" font-size="26" fill="#0e1620" font-weight="700">✦</text>
+  </g>
+  <!-- Open Jarvis panel -->
+  <g transform="translate(540, 24)">
+    <rect width="256" height="420" rx="14" fill="#121b25" stroke="#5be8ff" stroke-width="1.5" filter="url(#sh2)"/>
+    <!-- Header -->
+    <rect width="256" height="46" rx="14" fill="rgba(91,232,255,0.08)"/>
+    <circle cx="18" cy="23" r="5" fill="#22c55e"/>
+    <text x="32" y="28" font-size="14" font-weight="600" fill="#5be8ff">Jarvis</text>
+    <text x="220" y="28" font-size="14" fill="#64748b">×</text>
+    <!-- Messages -->
+    <g transform="translate(12, 60)">
+      <!-- user message -->
+      <rect x="40" y="0" width="192" height="40" rx="10" fill="rgba(91,232,255,0.1)" stroke="rgba(91,232,255,0.3)"/>
+      <text x="50" y="18" font-size="11" fill="#e2e8f0">What should I work on</text>
+      <text x="50" y="32" font-size="11" fill="#e2e8f0">next?</text>
+      <!-- jarvis reply -->
+      <rect x="0" y="56" width="232" height="120" rx="10" fill="#1a2532" stroke="#1f2937"/>
+      <text x="10" y="74" font-size="11" fill="#e2e8f0">You've got Q2 QA Report due</text>
+      <text x="10" y="88" font-size="11" fill="#e2e8f0">in 2 days &amp; you're in Focus</text>
+      <text x="10" y="102" font-size="11" fill="#e2e8f0">mode. Pull stats first (30m).</text>
+      <text x="10" y="120" font-size="11" font-weight="600" fill="#5be8ff">Want me to break it down?</text>
+      <rect x="10" y="130" width="100" height="26" rx="6" fill="#5be8ff"/>
+      <text x="60" y="147" text-anchor="middle" font-size="11" font-weight="700" fill="#0e1620">Yes, break it</text>
+      <rect x="118" y="130" width="80" height="26" rx="6" fill="#1a2532" stroke="#1f2937"/>
+      <text x="158" y="147" text-anchor="middle" font-size="11" fill="#e2e8f0">Skip</text>
+    </g>
+    <!-- input -->
+    <g transform="translate(12, 360)">
+      <rect width="232" height="44" rx="10" fill="#1a2532" stroke="#1f2937"/>
+      <text x="12" y="28" font-size="11" fill="#64748b">Ask anything...</text>
+      <circle cx="206" cy="22" r="14" fill="#5be8ff"/>
+      <text x="206" y="27" text-anchor="middle" font-size="14" font-weight="700" fill="#0e1620">→</text>
+    </g>
+  </g>
+  <!-- glow filter -->
+  <defs>
+    <filter id="glow" x="-50%" y="-50%" width="200%" height="200%">
+      <feGaussianBlur stdDeviation="6" result="blur"/>
+      <feMerge>
+        <feMergeNode in="blur"/>
+        <feMergeNode in="SourceGraphic"/>
+      </feMerge>
+    </filter>
+  </defs>
+
+  
+  <!-- annotation -->
+  <g>
+    <path d="M 600 380 Q 700 360 740 388" stroke="#fbbf24" stroke-width="2.5" fill="none" stroke-linecap="round" stroke-dasharray="0" opacity="0.95"/>
+    <rect x="450" y="370" width="240" height="44" rx="8" fill="#fbbf24" stroke="#92400e" stroke-width="1"/>
+    <text x="570.0" y="396.0" text-anchor="middle" font-size="12" font-weight="700" fill="#0a1218" font-family="DM Sans, sans-serif">Floating button — always available</text>
+  </g>
+  <polygon points="742,388 729.7,387.3 735.2,377.7" fill="#fbbf24"/>
+</svg><div class="howto-visual-caption">Jarvis floating button and open chat panel</div></div>
+   
     <h2>Jarvis — your AI assistant</h2>
     <p class="slide-sub">Ask the dashboard what you should do next.</p>
     <p>Jarvis is the floating <em>✦</em> button in the bottom right. Click to open the chat. Jarvis can see your full dashboard state — every task, every project, every routine, your mood, your energy — and uses that context to give real answers.</p>
@@ -577,6 +1187,75 @@ a:hover{text-decoration:underline;}
   <!-- 13 -->
   <div class="slide" id="s13">
     <div class="slide-num">13</div>
+    <div class="howto-visual"><svg viewBox="0 0 820 460" xmlns="http://www.w3.org/2000/svg">
+  <rect width="820" height="460" rx="14" fill="#0e1620"/>
+  <!-- panel header zoomed -->
+  <g transform="translate(24, 30)">
+    <text x="0" y="14" font-size="15" font-weight="600" fill="#5be8ff" font-family="DM Sans, sans-serif">📂 Projects</text>
+    <rect x="560" y="-6" width="32" height="26" rx="6" fill="#1a2532" stroke="#1f2937"/>
+    <text x="576" y="13" text-anchor="middle" font-size="11" fill="#94a3b8">3</text>
+    <!-- HIGHLIGHTED Breakdown button -->
+    <rect x="606" y="-6" width="124" height="26" rx="6" fill="rgba(91,232,255,0.25)" stroke="#5be8ff" stroke-width="2.5">
+      <animate attributeName="opacity" values="1;0.6;1" dur="1.6s" repeatCount="indefinite"/>
+    </rect>
+    <text x="668" y="13" text-anchor="middle" font-size="11" font-weight="700" fill="#5be8ff">✦ Breakdown</text>
+  </g>
+  <!-- Jarvis breakdown mode panel -->
+  <g transform="translate(80, 76)">
+    <rect width="660" height="356" rx="14" fill="#121b25" stroke="#5be8ff" stroke-width="1.5"/>
+    <rect width="660" height="46" rx="14" fill="rgba(91,232,255,0.12)"/>
+    <text x="18" y="28" font-size="14" font-weight="600" fill="#5be8ff">✦ Breakdown</text>
+    <text x="120" y="28" font-size="11" fill="#94a3b8">— Q2 EMS QA Report</text>
+    <text x="630" y="28" font-size="14" fill="#64748b">×</text>
+    <!-- steps -->
+    <g transform="translate(20, 64)">
+      <rect width="620" height="38" rx="8" fill="rgba(91,232,255,0.1)" stroke="#5be8ff"/>
+      <circle cx="16" cy="19" r="10" fill="#5be8ff"/>
+      <text x="16" y="23" text-anchor="middle" font-size="11" font-weight="700" fill="#0e1620">1</text>
+      <text x="36" y="17" font-size="12" font-weight="700" fill="#5be8ff">🚀 START HERE</text>
+      <text x="36" y="32" font-size="11" fill="#e2e8f0">Open run report folder in OneDrive (2 min)</text>
+    </g>
+    <g transform="translate(20, 110)">
+      <rect width="620" height="38" rx="8" fill="#1a2532" stroke="#1f2937"/>
+      <circle cx="16" cy="19" r="10" fill="#1a2532" stroke="#64748b"/>
+      <text x="16" y="23" text-anchor="middle" font-size="11" font-weight="700" fill="#e2e8f0">2</text>
+      <text x="36" y="24" font-size="11" fill="#e2e8f0">Filter Q2 dates (April–June 2026)</text>
+    </g>
+    <g transform="translate(20, 156)">
+      <rect width="620" height="38" rx="8" fill="#1a2532" stroke="#1f2937"/>
+      <circle cx="16" cy="19" r="10" fill="#1a2532" stroke="#64748b"/>
+      <text x="16" y="23" text-anchor="middle" font-size="11" font-weight="700" fill="#e2e8f0">3</text>
+      <text x="36" y="24" font-size="11" fill="#e2e8f0">Pull totals: incident counts, response times, ROSC</text>
+    </g>
+    <g transform="translate(20, 202)">
+      <rect width="620" height="38" rx="8" fill="#1a2532" stroke="#1f2937"/>
+      <circle cx="16" cy="19" r="10" fill="#1a2532" stroke="#64748b"/>
+      <text x="16" y="23" text-anchor="middle" font-size="11" font-weight="700" fill="#e2e8f0">4</text>
+      <text x="36" y="24" font-size="11" fill="#e2e8f0">Open last quarter's report as a template</text>
+    </g>
+    <g transform="translate(20, 248)">
+      <rect width="620" height="38" rx="8" fill="#1a2532" stroke="#1f2937"/>
+      <circle cx="16" cy="19" r="10" fill="#1a2532" stroke="#64748b"/>
+      <text x="16" y="23" text-anchor="middle" font-size="11" font-weight="700" fill="#e2e8f0">5</text>
+      <text x="36" y="24" font-size="11" fill="#e2e8f0">Draft executive summary (1 paragraph, ~15 min)</text>
+    </g>
+    <g transform="translate(20, 304)">
+      <rect width="620" height="36" rx="8" fill="rgba(251,191,36,0.1)" stroke="#fbbf24"/>
+      <text x="14" y="24" font-size="11" font-weight="700" fill="#fbbf24">First physical action:</text>
+      <text x="140" y="24" font-size="11" fill="#e2e8f0">Open OneDrive in your browser tab right now.</text>
+    </g>
+  </g>
+
+  
+  <!-- annotation -->
+  <g>
+    <path d="M 100 50 Q 300 30 600 18" stroke="#fbbf24" stroke-width="2.5" fill="none" stroke-linecap="round" stroke-dasharray="0" opacity="0.95"/>
+    <rect x="90" y="38" width="320" height="44" rx="8" fill="#fbbf24" stroke="#92400e" stroke-width="1"/>
+    <text x="250.0" y="64.0" text-anchor="middle" font-size="12" font-weight="700" fill="#0a1218" font-family="DM Sans, sans-serif">Click ✦ Breakdown on any project or task</text>
+  </g>
+  <polygon points="602,18 591.0,23.5 591.0,12.5" fill="#fbbf24"/>
+</svg><div class="howto-visual-caption">AI Breakdown in action — five micro-steps from a project</div></div>
+   
     <h2>AI Breakdown</h2>
     <p class="slide-sub">Turn "plan the trip" into 8 actionable micro-steps.</p>
     <p>Look for the small <strong>✦ Breakdown</strong> button in the header of the Projects and Tasks panels. Click it, then tell Jarvis which project or task you want to break down. You'll get a numbered list of micro-steps, each small enough to start in under 2 minutes.</p>
@@ -594,6 +1273,58 @@ a:hover{text-decoration:underline;}
   <!-- 14 -->
   <div class="slide" id="s14">
     <div class="slide-num">14</div>
+    <div class="howto-visual"><svg viewBox="0 0 820 440" xmlns="http://www.w3.org/2000/svg">
+  <rect width="820" height="440" rx="14" fill="#0e1620"/>
+  <!-- Modal -->
+  <g transform="translate(150, 30)">
+    <rect width="520" height="380" rx="16" fill="#121b25" stroke="#1f2937" filter="url(#sh3)"/>
+    <!-- header -->
+    <g transform="translate(0, 0)">
+      <rect width="520" height="56" rx="16" fill="#1a2532"/>
+      <text x="24" y="34" font-size="16" font-weight="600" fill="#e2e8f0" font-family="Fraunces, serif">📅 Calendar Sync</text>
+      <text x="490" y="34" font-size="16" fill="#64748b">×</text>
+    </g>
+    <!-- status -->
+    <g transform="translate(24, 76)">
+      <rect width="472" height="50" rx="8" fill="#1a2532"/>
+      <circle cx="20" cy="25" r="6" fill="#64748b"/>
+      <text x="36" y="22" font-size="13" font-weight="600" fill="#e2e8f0">Not connected</text>
+      <text x="36" y="38" font-size="11" fill="#94a3b8">Sync events between Centerpost and Google Calendar.</text>
+    </g>
+    <!-- info -->
+    <g transform="translate(24, 142)">
+      <text x="0" y="0" font-size="11" font-weight="700" fill="#5be8ff" letter-spacing="1">WHAT YOU GET</text>
+      <text x="0" y="22" font-size="12" fill="#e2e8f0">✓ Two-way sync — events both ways</text>
+      <text x="0" y="42" font-size="12" fill="#e2e8f0">✓ Color-coded blocks in your Timeline</text>
+      <text x="0" y="62" font-size="12" fill="#e2e8f0">✓ Reminders push to Google as events</text>
+      <text x="0" y="82" font-size="12" fill="#e2e8f0">✓ Works on any device you log into</text>
+    </g>
+    <!-- Connect button highlighted -->
+    <g transform="translate(24, 256)">
+      <rect width="472" height="48" rx="10" fill="#5be8ff" stroke="#fbbf24" stroke-width="3">
+        <animate attributeName="stroke-opacity" values="1;0.3;1" dur="1.6s" repeatCount="indefinite"/>
+      </rect>
+      <text x="236" y="30" text-anchor="middle" font-size="14" font-weight="700" fill="#0e1620">🔗 Connect Google Calendar</text>
+    </g>
+    <!-- secondary buttons -->
+    <g transform="translate(24, 320)">
+      <rect width="230" height="38" rx="8" fill="#1a2532" stroke="#1f2937"/>
+      <text x="115" y="24" text-anchor="middle" font-size="12" fill="#e2e8f0">📥 Download .ics file</text>
+      <rect x="242" width="230" height="38" rx="8" fill="#1a2532" stroke="#1f2937"/>
+      <text x="357" y="24" text-anchor="middle" font-size="12" fill="#e2e8f0">Setup help</text>
+    </g>
+  </g>
+
+  
+  <!-- annotation -->
+  <g>
+    <path d="M 80 360 Q 200 360 320 310" stroke="#fbbf24" stroke-width="2.5" fill="none" stroke-linecap="round" stroke-dasharray="0" opacity="0.95"/>
+    <rect x="40" y="350" width="260" height="44" rx="8" fill="#fbbf24" stroke="#92400e" stroke-width="1"/>
+    <text x="170.0" y="376.0" text-anchor="middle" font-size="12" font-weight="700" fill="#0a1218" font-family="DM Sans, sans-serif">One click — opens Google's sign-in</text>
+  </g>
+  <polygon points="322,308 321.3,320.3 311.7,314.8" fill="#fbbf24"/>
+</svg><div class="howto-visual-caption">Calendar Sync modal — one-click Google connection</div></div>
+   
     <h2>Calendar Sync</h2>
     <p class="slide-sub">Two-way sync with Google Calendar.</p>
     <p>One-time setup, then the Timeline and your calendar talk to each other automatically. Events created in Google appear in Centerpost's timeline. Blocks created in Centerpost push to a dedicated "Centerpost" calendar in your Google account.</p>
@@ -623,6 +1354,93 @@ a:hover{text-decoration:underline;}
   <!-- 16 -->
   <div class="slide" id="s16">
     <div class="slide-num">16</div>
+    <div class="howto-visual"><svg viewBox="0 0 820 460" xmlns="http://www.w3.org/2000/svg">
+  <rect width="820" height="460" rx="14" fill="#0e1620"/>
+  <!-- Modal -->
+  <g transform="translate(110, 24)">
+    <rect width="600" height="412" rx="16" fill="#121b25" stroke="#1f2937" filter="url(#sh4)"/>
+    <!-- header -->
+    <g>
+      <rect width="600" height="52" rx="16" fill="#1a2532"/>
+      <text x="24" y="32" font-size="16" font-weight="600" fill="#e2e8f0" font-family="Fraunces, serif">⚙️ Settings</text>
+      <text x="570" y="32" font-size="16" fill="#64748b">×</text>
+    </g>
+    <!-- tabs -->
+    <g transform="translate(24, 70)">
+      <rect width="100" height="30" rx="6" fill="rgba(91,232,255,0.12)" stroke="rgba(91,232,255,0.45)"/>
+      <text x="50" y="20" text-anchor="middle" font-size="12" font-weight="600" fill="#5be8ff">Panels</text>
+      <rect x="108" width="100" height="30" rx="6" fill="#1a2532" stroke="#1f2937"/>
+      <text x="158" y="20" text-anchor="middle" font-size="12" fill="#94a3b8">Themes</text>
+      <rect x="216" width="100" height="30" rx="6" fill="#1a2532" stroke="#1f2937"/>
+      <text x="266" y="20" text-anchor="middle" font-size="12" fill="#94a3b8">About</text>
+    </g>
+    <!-- panel toggles -->
+    <g transform="translate(24, 122)">
+      <text x="0" y="0" font-size="11" font-weight="700" fill="#94a3b8" letter-spacing="1">VISIBLE PANELS</text>
+    </g>
+    <g transform="translate(24, 138)">
+      <!-- toggle rows -->
+      <g transform="translate(0, 0)">
+        <rect width="262" height="38" rx="6" fill="#1a2532" stroke="#1f2937"/>
+        <text x="14" y="24" font-size="13" fill="#e2e8f0">📂 Projects</text>
+        <rect x="220" y="11" width="32" height="16" rx="8" fill="#5be8ff"/>
+        <circle cx="244" cy="19" r="6" fill="white"/>
+      </g>
+      <g transform="translate(270, 0)">
+        <rect width="262" height="38" rx="6" fill="#1a2532" stroke="#1f2937"/>
+        <text x="14" y="24" font-size="13" fill="#e2e8f0">📋 Task List</text>
+        <rect x="220" y="11" width="32" height="16" rx="8" fill="#5be8ff"/>
+        <circle cx="244" cy="19" r="6" fill="white"/>
+      </g>
+      <g transform="translate(0, 46)">
+        <rect width="262" height="38" rx="6" fill="#1a2532" stroke="#1f2937"/>
+        <text x="14" y="24" font-size="13" fill="#e2e8f0">🧠 Brain Dump</text>
+        <rect x="220" y="11" width="32" height="16" rx="8" fill="#5be8ff"/>
+        <circle cx="244" cy="19" r="6" fill="white"/>
+      </g>
+      <g transform="translate(270, 46)">
+        <rect width="262" height="38" rx="6" fill="#1a2532" stroke="#fbbf24" stroke-width="2"/>
+        <text x="14" y="24" font-size="13" fill="#e2e8f0">📆 Timeline</text>
+        <rect x="220" y="11" width="32" height="16" rx="8" fill="#64748b"/>
+        <circle cx="228" cy="19" r="6" fill="white"/>
+      </g>
+      <g transform="translate(0, 92)">
+        <rect width="262" height="38" rx="6" fill="#1a2532" stroke="#1f2937"/>
+        <text x="14" y="24" font-size="13" fill="#e2e8f0">🔁 Routines</text>
+        <rect x="220" y="11" width="32" height="16" rx="8" fill="#5be8ff"/>
+        <circle cx="244" cy="19" r="6" fill="white"/>
+      </g>
+      <g transform="translate(270, 92)">
+        <rect width="262" height="38" rx="6" fill="#1a2532" stroke="#1f2937"/>
+        <text x="14" y="24" font-size="13" fill="#e2e8f0">⚡ Energy &amp; Mood</text>
+        <rect x="220" y="11" width="32" height="16" rx="8" fill="#5be8ff"/>
+        <circle cx="244" cy="19" r="6" fill="white"/>
+      </g>
+      <g transform="translate(0, 138)">
+        <rect width="262" height="38" rx="6" fill="#1a2532" stroke="#1f2937"/>
+        <text x="14" y="24" font-size="13" fill="#e2e8f0">🚦 HALT+</text>
+        <rect x="220" y="11" width="32" height="16" rx="8" fill="#5be8ff"/>
+        <circle cx="244" cy="19" r="6" fill="white"/>
+      </g>
+      <g transform="translate(270, 138)">
+        <rect width="262" height="38" rx="6" fill="#1a2532" stroke="#1f2937"/>
+        <text x="14" y="24" font-size="13" fill="#e2e8f0">🌿 Grounding</text>
+        <rect x="220" y="11" width="32" height="16" rx="8" fill="#5be8ff"/>
+        <circle cx="244" cy="19" r="6" fill="white"/>
+      </g>
+    </g>
+  </g>
+
+  
+  <!-- annotation -->
+  <g>
+    <path d="M 80 280 Q 200 240 388 222" stroke="#fbbf24" stroke-width="2.5" fill="none" stroke-linecap="round" stroke-dasharray="0" opacity="0.95"/>
+    <rect x="40" y="270" width="320" height="44" rx="8" fill="#fbbf24" stroke="#92400e" stroke-width="1"/>
+    <text x="200.0" y="296.0" text-anchor="middle" font-size="12" font-weight="700" fill="#0a1218" font-family="DM Sans, sans-serif">Toggle off — Timeline panel disappears until re-enabled</text>
+  </g>
+  <polygon points="390,220 387.1,232.0 378.7,224.9" fill="#fbbf24"/>
+</svg><div class="howto-visual-caption">Settings — toggle any panel on or off</div></div>
+   
     <h2>Settings &amp; themes</h2>
     <p class="slide-sub">Hide what you don't need. Theme to your taste.</p>
     <p>Click <em>⚙️ Settings</em> in the bottom status bar to open the customization panel. Toggle individual panels on or off — every panel you turn off disappears completely until you re-enable it. Useful for keeping the dashboard focused on what you actually use.</p>
