@@ -322,8 +322,8 @@ body.standalone-pwa .mobile-home-header{padding-top:max(env(safe-area-inset-top)
 .panel-header{display:flex;align-items:center;justify-content:space-between;margin-bottom:14px;}
 .panel-title{font-family:'Fraunces',serif;font-size:16px;font-weight:600;color:var(--text);display:flex;align-items:center;gap:7px;}
 .panel-title .icon{font-size:17px;}
-.panel-badge{font-size:10px;font-weight:600;padding:2px 8px;border-radius:20px;background:var(--accent-glow);color:var(--accent);}
-.panel-badge.completed-badge{background:var(--green-dim);color:var(--green);}
+.panel-badge{font-size:10px;font-weight:700;padding:2px 8px;border-radius:20px;background:var(--accent-glow);color:var(--accent);border:1px solid var(--accent-dim);}
+.panel-badge.completed-badge{background:var(--green-dim);color:var(--green);border-color:var(--green);}
 .panel.panel-tile .panel-badge{font-size:19px;font-weight:700;padding:5px 16px;border-radius:18px;}
 .panel-content{flex:1;overflow-y:auto;overflow-x:hidden;scroll-behavior:smooth;position:relative;min-height:0;max-height:317px;}
 .panel.expanded .panel-content{max-height:none;}
@@ -699,8 +699,8 @@ body.unlocked .date-editable{border-bottom-color:var(--border);}
 .jarvis-send:disabled{background:var(--border);color:var(--text-faint);cursor:not-allowed;transform:none;}
 .jarvis-greeting{text-align:center;padding:16px 8px 8px;font-size:12px;color:var(--text-dim);font-style:italic;}
 /* ── BREAKDOWN button (lives in Projects + Tasks panel headers) ── */
-.breakdown-btn{background:linear-gradient(135deg,rgba(91,232,255,0.18),rgba(91,232,255,0.06));color:#5be8ff;border:1px solid rgba(91,232,255,0.45);border-radius:10px;padding:2px 8px;font-size:10px;font-weight:600;letter-spacing:0.3px;cursor:pointer;display:inline-flex;align-items:center;gap:3px;transition:all 0.15s;line-height:1.5;text-shadow:0 0 6px rgba(91,232,255,0.4);}
-.breakdown-btn:hover{background:linear-gradient(135deg,rgba(91,232,255,0.28),rgba(91,232,255,0.12));border-color:#5be8ff;transform:translateY(-1px);box-shadow:0 2px 8px rgba(91,232,255,0.25);}
+.breakdown-btn{background:linear-gradient(135deg,#5be8ff,#0ea5e9);color:#0a1218;border:1px solid #0ea5e9;border-radius:10px;padding:2px 8px;font-size:10px;font-weight:700;letter-spacing:0.3px;cursor:pointer;display:inline-flex;align-items:center;gap:3px;transition:all 0.15s;line-height:1.5;box-shadow:0 0 8px rgba(91,232,255,0.35);}
+.breakdown-btn:hover{background:linear-gradient(135deg,#7df0ff,#3ab8e0);border-color:#5be8ff;transform:translateY(-1px);box-shadow:0 2px 12px rgba(91,232,255,0.5);}
 .breakdown-btn:active{transform:translateY(0);}
 .breakdown-btn .bd-spark{font-size:11px;line-height:1;}
 /* When Jarvis is in Breakdown mode, color-shift the title */
@@ -1446,7 +1446,8 @@ body.unlocked .date-editable{border-bottom-color:var(--border);}
   .signin-card{padding:32px 24px;}
 }
 .customize-btn{background:none;border:1px solid var(--border);color:var(--text-faint);padding:3px 8px;border-radius:var(--radius-sm);cursor:pointer;font-size:11px;font-family:inherit;transition:all 0.15s;}
-.kids-launcher:hover{background:linear-gradient(135deg,rgba(255,204,0,0.28),rgba(255,51,153,0.18)) !important;border-color:#ffcc00 !important;color:#ffcc00 !important;box-shadow:0 0 12px rgba(255,204,0,0.3);}
+.kids-launcher:hover{background:linear-gradient(135deg,#ffe060,#ff66bb) !important;border-color:#ffcc00 !important;color:#1a0033 !important;box-shadow:0 2px 14px rgba(255,204,0,0.45) !important;transform:translateY(-1px);}
+.howto-launcher:hover{background:linear-gradient(135deg,#7df0ff,#3ab8e0) !important;border-color:#5be8ff !important;color:#0a1218 !important;box-shadow:0 2px 12px rgba(91,232,255,0.5) !important;transform:translateY(-1px);}
 .customize-btn:hover{border-color:var(--accent-dim);color:var(--accent);}
 .customize-overlay{position:fixed;inset:0;background:rgba(0,0,0,0.6);z-index:300;display:none;align-items:center;justify-content:center;padding:20px;}
 .customize-overlay.show{display:flex;}
@@ -9475,8 +9476,8 @@ setTimeout(checkShareTarget, 400); // slight delay so panels render first
   <span class="sync-status offline" id="syncStatus"><span class="sync-dot"></span> Local</span>
   <div class="status-bar-spacer"></div>
   <button class="customize-btn" onclick="openCustomize()" title="Show/hide panels and theme settings">&#9881; Settings</button>
-  <button class="customize-btn" onclick="window.open('howto.html','_blank')" title="Open the Centerpost How-To guide" style="background:rgba(91,232,255,0.1);border-color:rgba(91,232,255,0.4);color:#5be8ff;">&#128218; How To</button>
-  <button class="customize-btn kids-launcher" onclick="window.open('kids.html','_blank')" title="Open Centerpost Kids (4th tier — kid-friendly arcade mode)" style="background:linear-gradient(135deg,rgba(255,204,0,0.18),rgba(255,51,153,0.12));border-color:rgba(255,204,0,0.5);color:#ffcc00;font-weight:600;letter-spacing:0.5px;">&#127918; Kids Mode</button>
+  <button class="customize-btn howto-launcher" onclick="window.open('howto.html','_blank')" title="Open the Centerpost How-To guide" style="background:linear-gradient(135deg,#5be8ff,#0ea5e9);border:1px solid #0ea5e9;color:#0a1218;font-weight:700;letter-spacing:0.3px;box-shadow:0 0 8px rgba(91,232,255,0.35);">&#128218; How To</button>
+  <button class="customize-btn kids-launcher" onclick="window.open('kids.html','_blank')" title="Open Centerpost Kids (4th tier — kid-friendly arcade mode)" style="background:linear-gradient(135deg,#ffcc00,#ff3399);border:1px solid #cc9900;color:#1a0033;font-weight:700;letter-spacing:0.5px;box-shadow:0 0 8px rgba(255,204,0,0.3);">&#127918; Kids Mode</button>
   <button class="lock-btn" id="lockBtn" onclick="toggleLock()" title="Lock/unlock layout and editing">&#128274; Locked</button>
   <button class="logout-btn" onclick="doLogout()" title="Sign out">Sign out</button>
   <div class="status-bar-spacer"></div>
