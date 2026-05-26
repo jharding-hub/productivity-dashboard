@@ -21,7 +21,7 @@
 //   marker — old clients will see the version change and force-update.
 // ═══════════════════════════════════════════════════════════════════════
 
-const CACHE_VERSION = 'centerpost-v4';
+const CACHE_VERSION = 'centerpost-v5';
 
 // Assets to pre-cache on install (offline-ready essentials).
 // Failures are tolerated individually — one missing icon won't break install.
