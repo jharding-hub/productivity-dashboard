@@ -139,16 +139,44 @@ body{font-family:'DM Sans',sans-serif;background:var(--bg);color:var(--text);min
 /* Push content above bottom bar */
 .app-wrap{padding-bottom:60px;}
 @media(max-width:768px){
-  .header{grid-template-columns:auto 1fr auto;padding:8px 14px 6px;gap:8px;min-height:86px;}
-  .header-title-on-bar{font-size:20px;}
-  .header-subtitle{font-size:15px;}
-  .day-progress-bar{height:48px;}
+  /* ── MOBILE HEADER LAYOUT ──
+     Two visual rows via flex-wrap:
+       Row 1: day-progress bar, edge-to-edge (flex:1 1 100% forces a wrap)
+       Row 2: points badge (left) and clock (right) — share row by ordering */
+  .header{
+    display:flex !important;
+    flex-direction:row;
+    flex-wrap:wrap;
+    grid-template-columns:none;
+    padding:0 0 8px;
+    gap:8px 0;
+    min-height:0;
+    align-items:center;
+    position:sticky;
+    top:0;
+  }
+  /* Row 1: progress bar, full bleed */
+  .header-center{order:1;flex:1 1 100%;width:100%;padding:0;margin:0;}
+  .day-progress-bar{width:100%;border-radius:0;height:64px;margin:0;}
+  /* Smaller hour labels so they breathe inside the taller bar */
+  .day-progress-marker-label,.day-progress-edge-label{font-size:11px;top:2px;}
+  /* Title/subtitle on the bar */
+  .header-title-on-bar{font-size:22px;font-weight:700;letter-spacing:0.5px;}
+  .header-subtitle{font-size:13px;font-weight:500;}
+  /* On mobile, the subtitle drops " Dashboard" — keep "Productivity" only */
+  .header-subtitle .hs-dash,.mobile-home-subtitle .hs-dash{display:none;}
+  .header-subtitle .hs-prod,.mobile-home-subtitle .hs-prod{font-size:13px;}
+  /* Row 2: points badge (left) + clock (right) */
+  .points-wrap{order:2;flex:0 0 auto;padding-left:14px;}
+  .header-right{order:3;flex:1 1 auto;display:flex;align-items:center;justify-content:flex-end;gap:10px;padding-right:14px;}
+  .header-clock-wrap{margin:0;}
+  .header-clock{font-size:22px;font-weight:700;}
   .task-timer-wrap{display:none;}
-  .day-progress-bar{height:42px;border-radius:8px;}
+  /* Points badge sizing */
   .points-badge-lg{padding:6px 12px;gap:8px;}
   .points-badge-lg .points-tier-icon{font-size:22px;}
   .points-badge-lg .points-value{font-size:18px;}
-  /* time-left overlay removed */
+  /* Bottom status bar tweaks */
   .status-bar{padding:8px 14px;gap:8px;height:52px;}
   .status-bar .user-email-display{max-width:90px;}
 }
@@ -1188,10 +1216,7 @@ body.unlocked .date-editable{border-bottom-color:var(--border);}
 @media(max-width:1100px){.dashboard{grid-template-columns:1fr 1fr;}.panel-narrow{grid-column:span 1;}}
 @media(max-width:768px){
   .dashboard{grid-template-columns:1fr;padding:12px 14px 16px;gap:12px;}
-  .header{padding:10px 14px 8px;min-height:86px;}
-  .header-title-on-bar{font-size:20px;}
-  .header-subtitle{font-size:15px;}
-  .day-progress-bar{height:48px;}
+  /* Header padding/min-height handled by the layout block above; don't re-add here */
   .panel{display:none;}
   .panel.mobile-visible{display:flex;}
   /* All panels show full content on mobile vertical scroll — override tile-mode hiding */
@@ -2126,8 +2151,8 @@ body.unlocked .date-editable{border-bottom-color:var(--border);}
       <div class="day-progress-now" id="dayProgressNow"></div>
       <!-- Title: left third of bar -->
       <div class="header-title-on-bar">Centerpost</div>
-      <!-- Subtitle: right third of bar -->
-      <div class="header-subtitle">Productivity Dashboard</div>
+      <!-- Subtitle: right third of bar. On mobile, only "Productivity" shows. -->
+      <div class="header-subtitle"><span class="hs-prod">Productivity</span><span class="hs-dash"> Dashboard</span></div>
     </div>
   </div>
   <!-- Hidden time-left bar (kept for backwards compat with updateTimeLeft fn) -->
@@ -2401,7 +2426,7 @@ body.unlocked .date-editable{border-bottom-color:var(--border);}
   <div class="ptr-indicator" id="ptrIndicator"><span class="ptr-arrow" id="ptrArrow">&#8595;</span></div>
   <div class="mobile-home-header">
     <div class="mobile-home-title">Centerpost</div>
-    <div class="mobile-home-subtitle">Productivity Dashboard</div>
+    <div class="mobile-home-subtitle"><span class="hs-prod">Productivity</span><span class="hs-dash"> Dashboard</span></div>
     <div class="mobile-home-meta">
       <span class="mhm-time" id="mobileHomeClock"></span>
     </div>
