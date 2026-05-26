@@ -139,93 +139,91 @@ body{font-family:'DM Sans',sans-serif;background:var(--bg);color:var(--text);min
 /* Push content above bottom bar */
 .app-wrap{padding-bottom:60px;}
 @media(max-width:768px){
-  /* ── MOBILE HEADER LAYOUT ──
-     The title and subtitle are absolutely-positioned OVERLAYS on the bar.
-     On mobile we need to shrink them dramatically and reposition so they
-     don't pile on top of each other or smash the hour markers. */
+  /* ── MOBILE HEADER LAYOUT v3 ──
+     Approach: hide the desktop title/subtitle overlays entirely (they're
+     not designed for narrow screens). Use a compact mobile-only title
+     element in row 2 next to the clock. */
   .header{
     display:flex !important;
-    flex-direction:row;
-    flex-wrap:wrap;
-    grid-template-columns:none;
-    padding:0 0 8px;
-    gap:8px 0;
+    flex-direction:row !important;
+    flex-wrap:wrap !important;
+    grid-template-columns:none !important;
+    padding:0 0 8px !important;
+    gap:8px 0 !important;
     min-height:0 !important;
-    align-items:center;
+    max-height:none !important;
+    align-items:center !important;
     position:sticky;
     top:0;
   }
-  /* Row 1: progress bar, full bleed */
-  .header-center{order:1;flex:1 1 100%;width:100%;padding:0;margin:0;}
-  .day-progress-bar{width:100%;border-radius:0 !important;height:56px !important;margin:0;}
-
-  /* ── HOUR MARKERS: only show major hours on mobile to avoid the pile-up ── */
-  .day-progress-marker-label,.day-progress-edge-label{display:none;}
-  /* Re-enable only key hours: 8a, 12p, 4p, 8p (every 4 hours) plus the edges */
-  .day-progress-edge-label.start,.day-progress-edge-label.end{display:block !important;font-size:9px;top:2px;font-weight:600;}
-  /* Major-hour markers: target by their left% values (8a=20%, 12p=46.67%, 4p=73.33%) */
-  .day-progress-marker[style*="left:20%"] .day-progress-marker-label,
-  .day-progress-marker[style*="left:46.67%"] .day-progress-marker-label,
-  .day-progress-marker[style*="left:73.33%"] .day-progress-marker-label{
-    display:block !important;font-size:9px;top:2px;font-weight:600;
+  /* Row 1: progress bar takes full width, no title overlay on top */
+  .header > .header-center{
+    order:1 !important;
+    flex:1 1 100% !important;
+    width:100% !important;
+    padding:0 !important;
+    margin:0 !important;
   }
-
-  /* ── TITLE OVERLAY: small left-aligned, NOT centered across full bar ── */
-  .header-title-on-bar{
-    position:absolute !important;
-    inset:auto auto auto 0 !important;
-    top:50% !important;
-    transform:translateY(-50%);
-    left:10px !important;
-    right:auto !important;
-    width:auto !important;
-    display:block !important;
-    font-size:18px !important;
-    font-weight:700 !important;
-    letter-spacing:0.3px !important;
-    line-height:1 !important;
-    text-align:left !important;
-    justify-content:flex-start !important;
-    color:#1a1a1a !important;
-    text-shadow:0 1px 2px rgba(255,255,255,0.5) !important;
+  .header .day-progress-bar{
+    width:100% !important;
+    border-radius:0 !important;
+    height:48px !important;
+    margin:0 !important;
   }
-  /* ── SUBTITLE OVERLAY: small right-aligned ── */
-  .header-subtitle{
-    position:absolute !important;
-    inset:auto 0 auto auto !important;
-    top:50% !important;
-    transform:translateY(-50%);
-    right:10px !important;
-    left:auto !important;
-    width:auto !important;
-    display:block !important;
-    font-size:12px !important;
-    font-weight:500 !important;
-    font-style:italic !important;
-    line-height:1 !important;
-    text-align:right !important;
+  /* HIDE the absolute-positioned title/subtitle overlays on mobile entirely.
+     They're built around desktop bar dimensions and overlap badly at <430px. */
+  .header .header-title-on-bar,
+  .header .header-subtitle{
+    display:none !important;
+  }
+  /* Thin out hour markers on mobile — only show every 4th hour so they read */
+  .header .day-progress-marker-label{display:none !important;}
+  .header .day-progress-edge-label{font-size:9px !important;top:1px !important;font-weight:600 !important;}
+  .header .day-progress-marker[style*="left:20%"] .day-progress-marker-label,
+  .header .day-progress-marker[style*="left:46.67%"] .day-progress-marker-label,
+  .header .day-progress-marker[style*="left:73.33%"] .day-progress-marker-label{
+    display:block !important;font-size:9px !important;top:1px !important;font-weight:600 !important;
+  }
+  /* Row 2: points badge on left, mobile title + clock on right */
+  .header > .points-wrap{
+    order:2 !important;
+    flex:0 0 auto !important;
+    padding-left:14px !important;
+  }
+  .header > .header-right{
+    order:3 !important;
+    flex:1 1 auto !important;
+    display:flex !important;
+    flex-direction:row !important;
+    align-items:center !important;
     justify-content:flex-end !important;
-    color:#1a1a1a !important;
-    text-shadow:0 1px 2px rgba(255,255,255,0.5) !important;
+    gap:14px !important;
+    padding-right:14px !important;
   }
-  /* Drop " Dashboard" — show only "Productivity" on mobile */
-  .header-subtitle .hs-dash,.mobile-home-subtitle .hs-dash{display:none !important;}
-  .header-subtitle .hs-prod,.mobile-home-subtitle .hs-prod{font-size:12px;}
-
-  /* Row 2: points badge (left) + clock (right) */
-  .points-wrap{order:2;flex:0 0 auto;padding-left:14px;}
-  .header-right{order:3;flex:1 1 auto;display:flex !important;flex-direction:row !important;align-items:center;justify-content:flex-end;gap:10px;padding-right:14px;}
-  .header-clock-wrap{margin:0;}
-  .header-clock{font-size:22px;font-weight:700;}
-  .task-timer-wrap{display:none;}
-  /* Points badge sizing */
-  .points-badge-lg{padding:6px 12px;gap:8px;}
-  .points-badge-lg .points-tier-icon{font-size:22px;}
-  .points-badge-lg .points-value{font-size:18px;}
+  /* Mobile-only inline title shown in row 2 next to the clock */
+  .mobile-only-title{
+    display:flex !important;
+    flex-direction:column;
+    align-items:flex-end;
+    gap:1px;
+    line-height:1;
+    font-family:'Fraunces',serif;
+  }
+  .mobile-only-title .mt-name{font-size:18px;font-weight:700;color:var(--text);letter-spacing:0.3px;}
+  .mobile-only-title .mt-sub{font-size:11px;font-weight:500;color:var(--text-dim);font-style:italic;}
+  .header-clock-wrap{margin:0 !important;}
+  .header-clock{font-size:22px !important;font-weight:700 !important;}
+  .task-timer-wrap{display:none !important;}
+  /* Points badge sizing on mobile */
+  .points-badge-lg{padding:6px 12px !important;gap:8px !important;}
+  .points-badge-lg .points-tier-icon{font-size:22px !important;}
+  .points-badge-lg .points-value{font-size:18px !important;}
   /* Bottom status bar */
   .status-bar{padding:8px 14px;gap:8px;height:52px;}
   .status-bar .user-email-display{max-width:90px;}
 }
+/* Hide mobile-only title on desktop */
+.mobile-only-title{display:none;}
 .clock{font-variant-numeric:tabular-nums;font-size:20px;font-weight:600;color:var(--text);letter-spacing:1px;}
 .clock-date{font-size:12px;color:var(--text-dim);text-align:right;}
 .lock-btn{background:none;border:1px solid var(--border);color:var(--text-dim);padding:4px 10px;border-radius:var(--radius-sm);cursor:pointer;font-size:12px;font-family:inherit;transition:all 0.15s;}
@@ -2203,8 +2201,9 @@ body.unlocked .date-editable{border-bottom-color:var(--border);}
   </div>
   <!-- Hidden time-left bar (kept for backwards compat with updateTimeLeft fn) -->
   <div class="time-left-bar" style="display:none;"><div class="time-left-bar-fill" id="timeLeftBar" style="width:100%"></div></div>
-  <!-- Right: Task Timer -->
+  <!-- Right: Mobile-only inline title + Clock + Task Timer -->
   <div class="header-right">
+    <div class="mobile-only-title"><span class="mt-name">Centerpost</span><span class="mt-sub">Productivity</span></div>
     <div class="header-clock-wrap">
       <div class="header-clock" id="headerClock">--:--</div>
     </div>
