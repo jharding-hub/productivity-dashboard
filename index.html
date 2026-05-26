@@ -9483,12 +9483,12 @@ setTimeout(checkShareTarget, 400); // slight delay so panels render first
   <div class="status-bar-spacer"></div>
 </div>
 <!-- JARVIS AI ASSISTANT -->
-<button class="jarvis-fab" id="jarvisFab" onclick="toggleJarvis()" title="Jarvis — AI Assistant">&#10022;</button>
+<button class="jarvis-fab" id="jarvisFab" onclick="toggleJarvis()" title="Axis — AI Assistant">&#10022;</button>
 <div class="jarvis-panel" id="jarvisPanel">
   <div class="jarvis-panel-header">
     <div class="jarvis-status-dot" id="jarvisStatusDot"></div>
-    <div class="jarvis-panel-title" id="jarvisPanelTitle">Jarvis</div>
-    <button class="jarvis-wake-btn enabled" id="jarvisWakeBtn" onclick="toggleWakeWord()" title='Wake word ON ("Hey Jarvis")'>&#127908;</button>
+    <div class="jarvis-panel-title" id="jarvisPanelTitle">Axis</div>
+    <button class="jarvis-wake-btn enabled" id="jarvisWakeBtn" onclick="toggleWakeWord()" title='Wake word ON ("Hey Axis") — tap to disable'>&#127908;</button>
     <button class="jarvis-voice-btn enabled" id="jarvisVoiceBtn" onclick="toggleJarvisVoice()" title="Voice readback ON — tap to mute">&#128266;</button>
     <button class="jarvis-close" onclick="toggleJarvis()">&#10005;</button>
   </div>
@@ -9721,7 +9721,7 @@ var JARVIS_SYSTEM=function(){
   if(_jarvisMode==='breakdown:projects'||_jarvisMode==='breakdown:tasks'){
     var ordered=_jarvisBuildBreakdownContext(_jarvisMode==='breakdown:projects'?'projects':'tasks');
     var scopeLabel=_jarvisMode==='breakdown:projects'?'project':'task';
-    return 'You are Jarvis in BREAKDOWN MODE inside Centerpost — a productivity dashboard built and used by Joe, a firefighter/paramedic with 30+ years experience and ADHD. It is now '+dateStr+', '+timeStr+'.\n\n'
+    return 'You are Axis in BREAKDOWN MODE inside Centerpost — a productivity dashboard built and used by Joe, a firefighter/paramedic with 30+ years experience and ADHD. It is now '+dateStr+', '+timeStr+'.\n\n'
       +'Your single job: break a chosen '+scopeLabel+' into actionable micro-steps for an ADHD brain.\n\n'
       +'The user\'s items are listed below in suggested completion order: not-done before done; within not-done: overdue → today → tomorrow → later → undated; tiebreak by priority (high → med → low), then shorter time-estimate first to reduce initiation friction.\n\n'
       +'=== ITEMS IN COMPLETION ORDER ===\n'+ordered+'\n=== END ITEMS ===\n\n'
@@ -9736,7 +9736,7 @@ var JARVIS_SYSTEM=function(){
       +'If the user types something that does not match any listed item, ask once for clarification and re-show the top 5 items by completion order.';
   }
 
-  return 'You are Jarvis, an AI assistant embedded in Centerpost — a personal ADHD-aware productivity dashboard built and used by Joe, a firefighter/paramedic with 30+ years experience, EMS leadership role at Fishers Public Safety, and college instructor in cognitive psychology / sensation & perception. He is ADHD with an ENFP profile.\n\nIt is now '+dateStr+', '+timeStr+'.\n\nYou have FULL access to the dashboard state below. Reference it precisely to answer questions about due dates, subtasks, projects, completed work, wellness reflections, routines, energy/mood, or anything else.\n\n=== DASHBOARD STATE ===\n'+JSON.stringify(context,null,2)+'\n=== END STATE ===\n\nCRITICAL OUTPUT FORMAT: Respond with ONLY a raw JSON object. No markdown, no code fences, no explanation before or after. Format: {"reply":"...","actions":[]}\n\n=== RESPONSE STYLE RULES (STRICT — ADHD-OPTIMIZED) ===\n\n1. **Count questions get count-first replies.** When asked "how many" or for any count: give the NUMBER first, then a single short urgency flag if applicable, then offer to expand. Maximum 2 short sentences.\n   - Example query: "How many tasks do I have?"\n   - GOOD reply: "You have 14 open tasks. 3 are high priority and 2 are overdue. Want me to list them?"\n   - GOOD reply: "8 active projects. All on track. Want me to list them by due date?"\n   - BAD reply: "You currently have 14 open tasks across 5 projects. The high priority ones are [lists everything]..." — TOO MUCH UPFRONT.\n\n2. **List questions still default to a summary.** Even for "show me" or "what are", lead with a count + urgency summary, then offer to expand UNLESS the user explicitly said "list them all" or "show me each."\n   - "What\'s due this week?" → "6 items due this week, 2 today. Want the full list or just today\'s?"\n\n3. **Always end open-ended summary replies with an expansion offer** ("Want me to list them?", "Want details?", "Want today\'s breakdown?"). Phrase it naturally, not robotically.\n\n4. **If urgency flagging would clutter the reply, omit it.** No flag needed when nothing is high-priority and nothing is overdue.\n\n5. **Definitions of urgency flags:**\n   - "Overdue" = due date is BEFORE today\'s date '+todayKey+'.\n   - "High priority" = priority field === "high".\n   - "Due today" = due date === '+todayKey+'.\n\n6. **For action confirmations after add/complete/etc**: One short sentence. "Added \'Call dispatch\' as high priority, due tomorrow." No follow-up question needed.\n\n7. **For specific data lookups** (e.g. "when is X due", "what\'s the priority of Y"): Direct answer, no expansion offer.\n\n8. **Once the user confirms they want details**, THEN provide the full list — but still use compact formatting: each item on one line with priority/due in parentheses. Group by project or urgency if list >8 items.\n\n=== ACTION TYPES ===\n{"type":"add_task","name":"string","priority":"low|med|high","due":"YYYY-MM-DD or null"}\n{"type":"add_project","name":"string","due":"YYYY-MM-DD or null"}\n{"type":"add_subtask","projectName":"string","name":"string","priority":"low|med|high","due":"YYYY-MM-DD or null"}\n{"type":"add_note","label":"string","body":"string"}\n{"type":"add_reminder","text":"string","date":"YYYY-MM-DD or null","time":"HH:MM or null"}\n{"type":"complete_task","name":"string"}\n\nFor pure questions with no state changes, use actions:[]. Parse relative dates using today\'s date.';
+  return 'You are Axis, an AI assistant embedded in Centerpost — a personal ADHD-aware productivity dashboard built and used by Joe, a firefighter/paramedic with 30+ years experience, EMS leadership role at Fishers Public Safety, and college instructor in cognitive psychology / sensation & perception. He is ADHD with an ENFP profile.\n\nIt is now '+dateStr+', '+timeStr+'.\n\nYou have FULL access to the dashboard state below. Reference it precisely to answer questions about due dates, subtasks, projects, completed work, wellness reflections, routines, energy/mood, or anything else.\n\n=== DASHBOARD STATE ===\n'+JSON.stringify(context,null,2)+'\n=== END STATE ===\n\nCRITICAL OUTPUT FORMAT: Respond with ONLY a raw JSON object. No markdown, no code fences, no explanation before or after. Format: {"reply":"...","actions":[]}\n\n=== RESPONSE STYLE RULES (STRICT — ADHD-OPTIMIZED) ===\n\n1. **Count questions get count-first replies.** When asked "how many" or for any count: give the NUMBER first, then a single short urgency flag if applicable, then offer to expand. Maximum 2 short sentences.\n   - Example query: "How many tasks do I have?"\n   - GOOD reply: "You have 14 open tasks. 3 are high priority and 2 are overdue. Want me to list them?"\n   - GOOD reply: "8 active projects. All on track. Want me to list them by due date?"\n   - BAD reply: "You currently have 14 open tasks across 5 projects. The high priority ones are [lists everything]..." — TOO MUCH UPFRONT.\n\n2. **List questions still default to a summary.** Even for "show me" or "what are", lead with a count + urgency summary, then offer to expand UNLESS the user explicitly said "list them all" or "show me each."\n   - "What\'s due this week?" → "6 items due this week, 2 today. Want the full list or just today\'s?"\n\n3. **Always end open-ended summary replies with an expansion offer** ("Want me to list them?", "Want details?", "Want today\'s breakdown?"). Phrase it naturally, not robotically.\n\n4. **If urgency flagging would clutter the reply, omit it.** No flag needed when nothing is high-priority and nothing is overdue.\n\n5. **Definitions of urgency flags:**\n   - "Overdue" = due date is BEFORE today\'s date '+todayKey+'.\n   - "High priority" = priority field === "high".\n   - "Due today" = due date === '+todayKey+'.\n\n6. **For action confirmations after add/complete/etc**: One short sentence. "Added \'Call dispatch\' as high priority, due tomorrow." No follow-up question needed.\n\n7. **For specific data lookups** (e.g. "when is X due", "what\'s the priority of Y"): Direct answer, no expansion offer.\n\n8. **Once the user confirms they want details**, THEN provide the full list — but still use compact formatting: each item on one line with priority/due in parentheses. Group by project or urgency if list >8 items.\n\n=== ACTION TYPES ===\n{"type":"add_task","name":"string","priority":"low|med|high","due":"YYYY-MM-DD or null"}\n{"type":"add_project","name":"string","due":"YYYY-MM-DD or null"}\n{"type":"add_subtask","projectName":"string","name":"string","priority":"low|med|high","due":"YYYY-MM-DD or null"}\n{"type":"add_note","label":"string","body":"string"}\n{"type":"add_reminder","text":"string","date":"YYYY-MM-DD or null","time":"HH:MM or null"}\n{"type":"complete_task","name":"string"}\n\nFor pure questions with no state changes, use actions:[]. Parse relative dates using today\'s date.';
 };
 
 function _jarvisCurrentTier(){
@@ -9928,7 +9928,7 @@ function _jarvisExitBreakdownMode(){
   var panel=document.getElementById('jarvisPanel');
   var titleEl=document.getElementById('jarvisPanelTitle');
   if(panel)panel.classList.remove('breakdown-mode');
-  if(titleEl)titleEl.textContent='Jarvis';
+  if(titleEl)titleEl.textContent='Axis';
   var inp=document.getElementById('jarvisInput');
   if(inp)inp.placeholder='Ask anything or give a command...';
   var container=document.getElementById('jarvisMessages');
@@ -10191,7 +10191,7 @@ async function jarvisSend(){
     _jarvisHideThinking();
     var errMsg=err.message||'Unknown error';
     if(errMsg.includes('Failed to fetch')||errMsg.includes('CORS')||errMsg.includes('NetworkError')){
-      _jarvisAddMessage('assistant','To use Jarvis on centerpost.app, set your Cloudflare Worker URL in the JARVIS_PROXY_URL constant near the top of the Jarvis script block. See the jarvis-worker.js and wrangler.toml files for setup instructions.');
+      _jarvisAddMessage('assistant','To use Axis on centerpost.app, set your Cloudflare Worker URL in the JARVIS_PROXY_URL constant near the top of the Axis script block. See the jarvis-worker.js and wrangler.toml files for setup instructions.');
     }else{
       _jarvisAddMessage('assistant','Something went wrong: '+errMsg);
     }
@@ -10250,14 +10250,14 @@ function _jarvisStopMic(){
 }
 
 // ═══════════════════════════════════════
-// WAKE WORD — "Hey Jarvis"
+// WAKE WORD — "Hey Axis" (also accepts "Hey Jarvis" for legacy users)
 // ═══════════════════════════════════════
 var _wakeWordSR=null;
 var _wakeWordActive=false;       // currently armed and listening for wake word
 var _wakeWordEnabled=false;      // user-toggleable preference (persists); default OFF — continuous mic listening can cause issues on iOS/Safari
 var _wakeWordRetryTimer=null;
 var _wakeWordSupported=!!(window.SpeechRecognition||window.webkitSpeechRecognition);
-var WAKE_PHRASES=['hey jarvis','hi jarvis','hey, jarvis','okay jarvis','ok jarvis','jarvis'];
+var WAKE_PHRASES=['hey axis','hi axis','hey, axis','okay axis','ok axis','axis','hey jarvis','hi jarvis','hey, jarvis','okay jarvis','ok jarvis','jarvis'];
 
 function _wakeWordMatches(transcript){
   var t=transcript.toLowerCase().trim();
@@ -10336,7 +10336,7 @@ function toggleWakeWord(){
   if(typeof save==='function')save();
   if(_wakeWordEnabled){
     _startWakeWord();
-    toast('Wake word enabled — say "Hey Jarvis"');
+    toast('Wake word enabled — say "Hey Axis"');
   }else{
     _stopWakeWord();
     toast('Wake word disabled');
@@ -10351,7 +10351,7 @@ function _updateWakeWordUI(){
     btn.style.display='none';
     return;
   }
-  btn.title=_wakeWordEnabled?'Wake word ON ("Hey Jarvis") — tap to disable':'Wake word OFF — tap to enable';
+  btn.title=_wakeWordEnabled?'Wake word ON ("Hey Axis") — tap to disable':'Wake word OFF — tap to enable';
   btn.classList.toggle('enabled',_wakeWordEnabled);
   btn.classList.toggle('active',_wakeWordActive&&_wakeWordEnabled);
   btn.textContent=_wakeWordEnabled?'\u{1F3A4}':'\u{1F507}';
