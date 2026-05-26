@@ -1124,6 +1124,19 @@ body.theme-lava{
 }
 .parent-reward-row input{flex:1;background:var(--bg);border:3px solid var(--border);color:var(--text);padding:8px 10px;font-size:18px;outline:none;}
 .parent-reward-row button{background:var(--danger);color:white;border:2px solid var(--shadow);width:32px;height:36px;font-size:18px;font-weight:bold;}
+/* Routine emoji picker */
+.routine-emoji-picker{
+  display:flex;flex-wrap:wrap;gap:6px;
+  padding:8px;background:var(--bg);
+  border:3px solid var(--border);
+  border-radius:8px;
+}
+.emoji-pick-btn{
+  background:none;border:2px solid var(--border);border-radius:6px;
+  padding:4px;font-size:20px;cursor:pointer;
+  transition:transform 0.1s;
+}
+.emoji-pick-btn:hover{transform:scale(1.25);border-color:var(--accent);}
 .parent-actions{
   display:flex;
   flex-direction:column;
@@ -2378,6 +2391,8 @@ function renderParentSettings(){
     +'<div id="parentSyncSection"></div>'
     +'<h3>FEELINGS LOG</h3>'
     +'<div id="parentFeelingsSection"></div>'
+    +'<h3>ROUTINES</h3>'
+    +'<div id="parentRoutineSection"></div>'
     +'<h3>3-DAY REWARDS</h3>'
     +'<div class="parent-reward-list" id="threeDayList"></div>'
     +'<button class="parent-btn" onclick="addReward(\'3day\')">+ Add 3-day reward</button>'
@@ -2395,6 +2410,7 @@ function renderParentSettings(){
   renderParentRewards();
   renderParentFeelings();
   renderParentSync();
+  renderParentRoutines();
 }
 
 function renderParentSync(){
@@ -2537,6 +2553,141 @@ function editReward(tier,idx,val){
   if(tier==='3day')state.rewards.threeDayList[idx]=val;
   else state.rewards.sevenDayList[idx]=val;
   save();
+}
+
+// ═══════════════════════════════════════════════════════════════════════
+// PARENT ROUTINE MANAGEMENT
+// ═══════════════════════════════════════════════════════════════════════
+// Emoji quick-picks for routine items — covers common kid activities.
+var ROUTINE_EMOJI_PICKS=[
+  '🛏️','🪥','💊','🎮','📚','☀️','🔢','🚿','🍎','🥛','💪','🎨',
+  '🐶','🚲','👕','🎵','✏️','🧹','🍽️','🌙','🙏','👟','🎯','🧘'
+];
+
+function _routineEmojiPicker(slot, idx){
+  var html='<div class="routine-emoji-picker">';
+  ROUTINE_EMOJI_PICKS.forEach(function(e){
+    html+='<button class="emoji-pick-btn" onclick="setRoutineEmoji(\''+slot+'\','+idx+',\''+e+'\')" title="'+e+'">'+e+'</button>';
+  });
+  html+='</div>';
+  return html;
+}
+
+function renderParentRoutines(){
+  var el=document.getElementById('parentRoutineSection');
+  if(!el)return;
+  var tabs=['morning','evening'];
+  var tabLabels={morning:'☀️ Morning',evening:'🌙 Evening'};
+  var activeTab=el.dataset.tab||'morning';
+
+  var html='';
+  // Tab switcher
+  html+='<div class="parent-routine-tabs" style="display:flex;gap:8px;margin-bottom:12px;">';
+  tabs.forEach(function(t){
+    var active=t===activeTab;
+    html+='<button class="parent-btn'+(active?' primary':'')+'" style="flex:1;padding:8px;" '
+      +'onclick="document.getElementById(\'parentRoutineSection\').dataset.tab=\''+t+'\';renderParentRoutines();">'
+      +tabLabels[t]+'</button>';
+  });
+  html+='</div>';
+
+  // Current items
+  var list=state.routines[activeTab]||[];
+  if(list.length===0){
+    html+='<div style="font-size:14px;color:var(--text-dim);font-style:italic;padding:6px 0 10px;">No items yet — add one below.</div>';
+  } else {
+    html+='<div id="parentRoutineList">';
+    list.forEach(function(r,i){
+      html+='<div class="parent-reward-row" style="align-items:flex-start;flex-direction:column;gap:6px;padding:10px;margin-bottom:6px;">'
+        // Row 1: emoji button + name input + remove button
+        +'<div style="display:flex;gap:8px;width:100%;align-items:center;">'
+        +'<button class="routine-emoji-trigger" data-slot="'+activeTab+'" data-idx="'+i+'" '
+          +'onclick="toggleEmojiPicker(this)" style="font-size:24px;background:none;border:1px solid var(--border);border-radius:8px;padding:4px 8px;cursor:pointer;min-width:48px;">'+escapeHtml(r.emoji)+'</button>'
+        +'<input type="text" class="parent-input" style="flex:1;margin:0;" value="'+escapeHtml(r.name)+'" '
+          +'oninput="editRoutineItem(\''+activeTab+'\','+i+',\'name\',this.value)">'
+        +'<button onclick="removeRoutineItem(\''+activeTab+'\','+i+')" style="background:none;border:1px solid var(--danger);color:var(--danger);border-radius:6px;padding:4px 10px;font-size:18px;cursor:pointer;flex-shrink:0;">×</button>'
+        +'</div>'
+        // Row 2: collapsible emoji picker (hidden by default)
+        +'<div class="emoji-picker-wrap" id="emojipick-'+activeTab+'-'+i+'" style="display:none;width:100%;">'
+        +_routineEmojiPicker(activeTab,i)
+        +'</div>'
+        +'</div>';
+    });
+    html+='</div>';
+  }
+
+  // Add new item row
+  html+='<div style="display:flex;gap:8px;margin-top:8px;align-items:center;">'
+    +'<span id="newRoutineEmoji" style="font-size:24px;background:none;border:1px solid var(--border);border-radius:8px;padding:4px 10px;min-width:48px;text-align:center;">⭐</span>'
+    +'<input type="text" class="parent-input" id="newRoutineName" placeholder="New item name..." style="flex:1;margin:0;">'
+    +'<button class="parent-btn primary" style="margin:0;flex-shrink:0;" onclick="addRoutineItem(\''+activeTab+'\')">+ Add</button>'
+    +'</div>'
+    // Emoji picker for new item
+    +'<div style="margin-top:6px;">'+_routineEmojiPicker('__new__',-1)+'</div>';
+
+  el.innerHTML=html;
+}
+
+function toggleEmojiPicker(btn){
+  var slot=btn.dataset.slot, idx=btn.dataset.idx;
+  var pickerId='emojipick-'+slot+'-'+idx;
+  var picker=document.getElementById(pickerId);
+  if(!picker)return;
+  var isOpen=picker.style.display!=='none';
+  // Close all open pickers first
+  document.querySelectorAll('.emoji-picker-wrap').forEach(function(p){p.style.display='none';});
+  if(!isOpen) picker.style.display='block';
+}
+
+function setRoutineEmoji(slot,idx,emoji){
+  if(slot==='__new__'){
+    var span=document.getElementById('newRoutineEmoji');
+    if(span)span.textContent=emoji;
+    // Close any open pickers
+    document.querySelectorAll('.emoji-picker-wrap').forEach(function(p){p.style.display='none';});
+    return;
+  }
+  var list=state.routines[slot]||[];
+  if(list[idx])list[idx].emoji=emoji;
+  save();
+  renderRoutines();
+  renderParentRoutines();
+}
+
+function editRoutineItem(slot,idx,field,val){
+  var list=state.routines[slot]||[];
+  if(list[idx])list[idx][field]=val;
+  save();
+  // Don't re-render the whole routine panel while user is typing — just save
+}
+
+function removeRoutineItem(slot,idx){
+  var list=state.routines[slot]||[];
+  if(!list[idx])return;
+  var name=list[idx].name||'this item';
+  if(!confirm('Remove "'+name+'" from the '+slot+' routine?'))return;
+  list.splice(idx,1);
+  state.routines[slot]=list;
+  save();
+  renderRoutines();
+  renderParentRoutines();
+  toast('Removed from '+slot+' routine');
+}
+
+function addRoutineItem(slot){
+  var nameEl=document.getElementById('newRoutineName');
+  var emojiEl=document.getElementById('newRoutineEmoji');
+  var name=(nameEl?nameEl.value.trim():'');
+  var emoji=(emojiEl?emojiEl.textContent.trim():'⭐');
+  if(!name){nameEl&&nameEl.focus();toast('Type a name first');return;}
+  var list=state.routines[slot]||[];
+  var newId=slot[0]+Date.now();
+  list.push({id:newId,name:name,emoji:emoji,done:false});
+  state.routines[slot]=list;
+  save();
+  renderRoutines();
+  renderParentRoutines();
+  toast('Added to '+slot+' routine');
 }
 function addReward(tier){
   if(tier==='3day')state.rewards.threeDayList.push('New reward');
