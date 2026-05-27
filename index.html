@@ -70,6 +70,8 @@ body[data-theme="autumn"] .header-center-title{color:#3a2a18;text-shadow:0 1px 3
 .theme-tier-badge{font-size:8px;padding:1px 6px;border-radius:10px;font-weight:600;letter-spacing:0.3px;}
 .theme-tier-free{background:rgba(107,171,115,0.15);color:#6bab73;}
 .theme-tier-pro{background:rgba(91,143,232,0.15);color:#5b8ce8;}
+.theme-tier-premium{background:rgba(124,58,237,0.15);color:#7c3aed;}
+.theme-tier-legacy{background:rgba(5,150,105,0.15);color:#059669;}
 .theme-tier-premium{background:rgba(212,168,83,0.15);color:#d4a853;}
 @media(max-width:480px){.theme-selector{gap:6px;}.theme-btn{padding:8px 4px 6px;}.theme-btn-name{font-size:9px;}}
 
@@ -1276,6 +1278,28 @@ body.unlocked .date-editable{border-bottom-color:var(--border);}
 .rem-popup-snooze-row button{font-size:11px;font-weight:600;padding:4px 10px;border-radius:6px;cursor:pointer;border:1px solid rgba(91,232,255,0.4);background:rgba(91,232,255,0.1);color:var(--accent);font-family:inherit;}
 .rem-popup-close{margin-top:12px;width:100%;font-size:12px;color:var(--text-faint);background:none;border:1px solid var(--border);border-radius:8px;padding:7px;cursor:pointer;font-family:inherit;}
 .rem-popup-close:hover{color:var(--text);background:var(--surface-raised);}
+/* ── MUSIC STREAMING MODAL ───────────────────────────────────────────── */
+.music-stream-overlay{position:fixed;inset:0;z-index:9001;background:rgba(0,0,0,0.55);display:flex;align-items:center;justify-content:center;animation:fadeIn 0.2s ease;}
+.music-stream-overlay.hidden{display:none;}
+.music-stream-modal{background:var(--surface);border:1px solid var(--border);border-radius:var(--radius);padding:28px 28px 22px;max-width:420px;width:calc(100% - 32px);box-shadow:0 24px 64px rgba(0,0,0,0.5);}
+.music-stream-title{font-family:'Fraunces',serif;font-size:20px;font-weight:600;color:var(--accent);margin-bottom:6px;}
+.music-stream-sub{font-size:12px;color:var(--text-dim);margin-bottom:22px;line-height:1.5;}
+.music-platform-grid{display:grid;grid-template-columns:1fr 1fr 1fr;gap:12px;margin-bottom:18px;}
+.music-platform-btn{
+  display:flex;flex-direction:column;align-items:center;gap:8px;
+  padding:18px 10px;border-radius:12px;border:1px solid var(--border);
+  background:var(--surface-raised);cursor:pointer;
+  font-family:inherit;font-size:12px;font-weight:600;color:var(--text);
+  transition:all 0.15s;
+}
+.music-platform-btn:hover{transform:translateY(-2px);box-shadow:0 6px 20px rgba(0,0,0,0.2);}
+.music-platform-btn.spotify:hover{border-color:#1db954;background:rgba(29,185,84,0.1);}
+.music-platform-btn.apple:hover{border-color:#fc3c44;background:rgba(252,60,68,0.1);}
+.music-platform-btn.amazon:hover{border-color:#00a8e0;background:rgba(0,168,224,0.1);}
+.music-platform-icon{font-size:32px;line-height:1;}
+.music-platform-note{font-size:11px;color:var(--text-faint);text-align:center;margin-bottom:14px;line-height:1.5;}
+.music-stream-close{width:100%;background:none;border:1px solid var(--border);border-radius:8px;padding:8px;font-size:12px;color:var(--text-faint);cursor:pointer;font-family:inherit;}
+.music-stream-close:hover{background:var(--surface-raised);color:var(--text);}
 .mic-btn{background:var(--surface-raised);border:1px solid var(--border);color:var(--text-dim);padding:5px 9px;border-radius:var(--radius-sm);cursor:pointer;font-size:13px;font-family:inherit;transition:all 0.2s;flex-shrink:0;line-height:1;}
 .mic-btn:hover{border-color:var(--teal);color:var(--teal);}
 .mic-btn.listening{background:var(--red-dim);border-color:var(--red);color:var(--red);animation:micPulse 1s ease-in-out infinite;}
@@ -2294,6 +2318,7 @@ body.unlocked .date-editable{border-bottom-color:var(--border);}
 <div class="toolkit-grid">
   <div class="toolkit-music-wrap">
     <button class="toolkit-btn toolkit-music" id="focusMusicBtn" onclick="musicHandleClick(event)" title="Click to play/pause • Use ☰ to switch playlists"><span class="music-emoji" id="musicEmoji">&#127925;</span><span id="musicLabel">Music</span><span class="music-controls" id="musicControls" style="display:none;"><span class="music-ctrl-btn" id="musicStateIcon">&#9654;</span><span class="music-ctrl-btn music-skip" onclick="event.stopPropagation();focusMusicSkip()" title="Next track" role="button" tabindex="0">&#9197;</span><span class="music-ctrl-btn music-menu" onclick="event.stopPropagation();musicToggleDropdown(event)" title="Switch playlist" role="button" tabindex="0">&#9776;</span></span></button>
+    <button class="toolkit-btn" id="toolkitMusicStreamBtn" onclick="openMusicStreamingModal()" title="Open Spotify, Apple Music, or Amazon Music" style="font-size:11px;padding:6px 8px;display:none;">🎵 Streaming</button>
     <div class="music-dropdown" id="musicDropdown" style="display:none;"></div>
   </div>
   <button class="toolkit-btn toolkit-breath" onclick="openBreathworkModal()">&#128311;<span>Breathwork</span></button>
@@ -2455,7 +2480,7 @@ body.unlocked .date-editable{border-bottom-color:var(--border);}
 <div class="panel-header"><div class="panel-title"><span class="drag-handle">&#10495;</span><span class="icon">&#128737;</span> Admin</div><div class="panel-badge">Users &amp; Management</div></div>
 <div class="admin-stat-grid" id="adminStats"></div>
 <div class="panel-content" id="pc_admin">
-<table class="admin-table"><thead><tr><th>User</th><th>Status</th><th>Last Active</th><th>Actions</th></tr></thead><tbody id="adminUserList"></tbody></table>
+<table class="admin-table"><thead><tr><th>User</th><th>Status</th><th>Tier</th><th>Last Active</th><th>Actions</th></tr></thead><tbody id="adminUserList"></tbody></table>
 </div>
 <div class="admin-add-form">
 <div class="section-label">Add User</div>
@@ -2838,50 +2863,42 @@ var userProfile=null;
 // DEV_UID: your Firebase UID — the switcher badge only renders for this account
 var DEV_UID='s3c2jCHRkRWfxRAjJKoVVuL14aJ3';
 
-// Tier config — move features between tiers freely; this is the single source of truth
+// ─── TIER CONFIG ────────────────────────────────────────────────────────────
+// Free → Pro → Premium → Legacy (admin-granted) → Owner (dev)
+// This is the single source of truth for all feature gating.
 var TIER_CONFIG={
   free:{
     label:'Free',
     color:'#6b7280',
-    // Themes available: matches the 'tier' field on each THEMES entry
     allowedThemeTiers:['free'],
-    // Panels visible on free (all others hidden + shown as locked upgrade prompts)
-    panels:['projects','reminders','notes','tasklist','timeline'],
-    // Projects: max active projects (null = unlimited)
+    // Free: basic panels only; no AI assistant, no Timeline, no Toolkit, no Brain Dump
+    panels:['projects','tasklist','notes','routines'],
     maxProjects:3,
-    // Tasks: max standalone tasks
     maxTasks:20,
-    // Notes: max notes
     maxNotes:10,
-    // Reminders: max reminders
-    maxReminders:10,
-    // Tool Kit buttons visible on free (others show lock)
-    toolkitAllowed:['timer'],
-    // Voice input enabled
+    maxReminders:5,
+    toolkitAllowed:[],
     voiceInput:false,
-    // Radar panel visible
     radar:false,
-    // Export allowed
     dataExport:false,
-    // Completed history visible
     completedHistory:false,
-    // Brain dump panel
     brainDump:false,
-    // Routines panel
-    routines:false,
-    // Decision support panel
+    routines:true,
     decision:false,
+    aiAssistant:false,
+    musicStreaming:false,
   },
   pro:{
     label:'Pro',
     color:'#d4a853',
     allowedThemeTiers:['free','pro'],
+    // Pro: adds Toolkit, Timeline, Reminders, Brain Dump, Decision
     panels:['projects','reminders','notes','tasklist','timeline','brain','time','routines','decision'],
     maxProjects:null,
     maxTasks:null,
     maxNotes:null,
     maxReminders:null,
-    toolkitAllowed:['timer','music','journal','halt'],
+    toolkitAllowed:['timer','breath','mood','journal','halt'],
     voiceInput:true,
     radar:true,
     dataExport:true,
@@ -2889,16 +2906,46 @@ var TIER_CONFIG={
     brainDump:true,
     routines:true,
     decision:true,
+    aiAssistant:true,
+    musicStreaming:false,
+  },
+  premium:{
+    label:'Premium',
+    color:'#7c3aed',
+    allowedThemeTiers:['free','pro','premium'],
+    // Premium: all features + all themes
+    panels:['projects','reminders','notes','tasklist','timeline','brain','time','routines','decision','wellness'],
+    maxProjects:null,maxTasks:null,maxNotes:null,maxReminders:null,
+    toolkitAllowed:['music','breath','timer','mood','journal','workout','halt','wellness'],
+    voiceInput:true,radar:true,dataExport:true,completedHistory:true,
+    brainDump:true,routines:true,decision:true,
+    aiAssistant:true,
+    musicStreaming:true,
+  },
+  legacy:{
+    label:'Legacy',
+    color:'#059669',
+    // Legacy: all features, free, admin-granted only
+    allowedThemeTiers:['free','pro','premium'],
+    panels:['projects','reminders','notes','tasklist','timeline','brain','time','routines','decision','wellness'],
+    maxProjects:null,maxTasks:null,maxNotes:null,maxReminders:null,
+    toolkitAllowed:['music','breath','timer','mood','journal','workout','halt','wellness'],
+    voiceInput:true,radar:true,dataExport:true,completedHistory:true,
+    brainDump:true,routines:true,decision:true,
+    aiAssistant:true,
+    musicStreaming:true,
   },
   owner:{
     label:'Owner',
-    color:'#7c3aed',
+    color:'#e07828',
     allowedThemeTiers:['free','pro','premium'],
     panels:['projects','reminders','notes','tasklist','timeline','brain','time','routines','decision','wellness','admin'],
     maxProjects:null,maxTasks:null,maxNotes:null,maxReminders:null,
     toolkitAllowed:['music','breath','timer','mood','journal','workout','halt','wellness'],
     voiceInput:true,radar:true,dataExport:true,completedHistory:true,
     brainDump:true,routines:true,decision:true,
+    aiAssistant:true,
+    musicStreaming:true,
   }
 };
 
@@ -2910,7 +2957,16 @@ var TOOLKIT_CLASS_MAP={
 };
 
 function getActiveTier(){
-  return localStorage.getItem('devTierOverride')||'owner';
+  // Dev override wins (allows testing from dev switcher)
+  var devOverride=localStorage.getItem('devTierOverride');
+  if(devOverride&&TIER_CONFIG[devOverride])return devOverride;
+  // Owner UID is always owner
+  if(currentUser&&currentUser.uid===DEV_UID)return'owner';
+  // Legacy tier: stored in Firestore profile as accountTier:'legacy'
+  if(currentUser&&window._profileAccountTier&&TIER_CONFIG[window._profileAccountTier])
+    return window._profileAccountTier;
+  // Default: owner for now (will map to signup tier when billing is live)
+  return'owner';
 }
 
 function getTierConfig(){
@@ -2967,15 +3023,31 @@ function applyTierGating(){
 
   // ── Dev switcher badge ───────────────────────────────────────────────────────
   _renderDevSwitcher();
+
+  // ── AI assistant (Axis FAB + Breakdown buttons) ─────────────────────────────
+  var fab=document.getElementById('jarvisFab');
+  if(fab){
+    fab.style.display=cfg.aiAssistant===false?'none':'';
+  }
+  document.querySelectorAll('.breakdown-btn').forEach(function(b){
+    b.style.display=cfg.aiAssistant===false?'none':'';
+  });
+
+  // ── Music streaming button (only Owner/Legacy/Premium) ───────────────────────
+  var musicBtn=document.getElementById('toolkitMusicStreamBtn');
+  if(musicBtn)musicBtn.style.display=cfg.musicStreaming?'':'none';
 }
 
 function _injectPanelLockBadge(panel,key){
   if(panel.querySelector('.tier-lock-badge'))return;
-  var names={brain:'Brain Dump',time:'Tool Kit',routines:'Routines',decision:'Decision Support',timeline:'Timeline'};
+  var names={brain:'Brain Dump',time:'Tool Kit',routines:'Routines',decision:'Decision Support',timeline:'Timeline',reminders:'Reminders',wellness:'Wellness'};
   var name=names[key]||key;
+  // Map panel to minimum tier required
+  var tierNeeded={brain:'Pro',time:'Pro',timeline:'Pro',reminders:'Pro',decision:'Pro',wellness:'Premium',admin:'Owner'};
+  var tier=tierNeeded[key]||'Pro';
   var badge=document.createElement('div');
   badge.className='tier-lock-badge';
-  badge.innerHTML='🔒 <strong>'+name+'</strong> is a Pro feature. <button onclick="_tierUpgradeToast()" class="tier-upgrade-btn">Upgrade to Pro</button>';
+  badge.innerHTML='🔒 <strong>'+name+'</strong> requires '+tier+'. <button onclick="_tierUpgradeToast(\''+tier+'\')" class="tier-upgrade-btn">Upgrade to '+tier+'</button>';
   panel.appendChild(badge);
 }
 
@@ -2984,9 +3056,9 @@ function _removePanelLockBadge(panel){
   if(b)b.parentNode.removeChild(b);
 }
 
-function _tierUpgradeToast(){
-  // Replace with real upgrade flow when billing is wired
-  if(typeof toast==='function')toast('⚡ Upgrade to Pro to unlock this feature');
+function _tierUpgradeToast(tier){
+  var t=tier||'Pro';
+  if(typeof toast==='function')toast('⚡ Upgrade to '+t+' to unlock this feature');
 }
 
 function _renderDevSwitcher(){
@@ -3272,6 +3344,8 @@ function initAuthListener(){
             return;
           }
           isAdmin=userProfile.admin===true;
+          // Read account tier for Legacy assignment
+          window._profileAccountTier=userProfile.accountTier||null;
           db.collection('users').doc(user.uid).update({lastActive:firebase.firestore.FieldValue.serverTimestamp()}).catch(function(){});
         }else{
           // Profile missing — create one (non-admin by default)
@@ -4604,14 +4678,21 @@ async function renderAdminPanel(){
     tbody.innerHTML=users.map(u=>{
       const lastActive=u.lastActive?u.lastActive.toDate().toLocaleDateString('en-US',{month:'short',day:'numeric'}):'Never';
       const isSelf=u.uid===currentUser.uid;
-      return '<tr><td>'+esc(u.email)+(u.admin?' <span class="admin-badge admin">Admin</span>':'')+'</td>'+
+      const tier=u.accountTier||'free';
+      const tierLabel={free:'Free',pro:'Pro',premium:'Premium',legacy:'Legacy',owner:'Owner'}[tier]||tier;
+      const isLegacy=u.accountTier==='legacy';
+      return '<tr>'+
+        '<td>'+esc(u.email)+(u.admin?' <span class="admin-badge admin">Admin</span>':'')+'</td>'+
         '<td><span class="admin-badge '+(u.disabled?'disabled':'active')+'">'+(u.disabled?'Disabled':'Active')+'</span></td>'+
+        '<td><span class="admin-badge '+(isLegacy?'active':'disabled')+'" style="'+(isLegacy?'background:rgba(5,150,105,0.15);color:#059669;border-color:rgba(5,150,105,0.4)':'')+'">'+tierLabel+'</span></td>'+
         '<td>'+lastActive+'</td>'+
         '<td><div class="admin-actions">'+
         (!isSelf&&!u.disabled?'<button class="admin-action danger" onclick="adminDisableUser(\''+u.uid+'\')">Disable</button>':'')+
         (!isSelf&&u.disabled?'<button class="admin-action" onclick="adminEnableUser(\''+u.uid+'\')">Enable</button>':'')+
-        '<button class="admin-action" onclick="adminResetPassword(\''+u.email+'\')">Reset PW</button>'+
+        '<button class="admin-action" onclick="adminResetPassword(\''+esc(u.email)+'\')">Reset PW</button>'+
         (!isSelf&&!u.admin?'<button class="admin-action" onclick="adminMakeAdmin(\''+u.uid+'\')">Make Admin</button>':'')+
+        (!isSelf&&!isLegacy?'<button class="admin-action" style="background:rgba(5,150,105,0.12);border-color:rgba(5,150,105,0.5);color:#059669;" onclick="adminGrantLegacy(\''+u.uid+'\')">Grant Legacy</button>':'')+
+        (!isSelf&&isLegacy?'<button class="admin-action" onclick="adminRevokeLegacy(\''+u.uid+'\')">Revoke Legacy</button>':'')+
         (!isSelf?'<button class="admin-action danger" onclick="adminDeleteUser(\''+u.uid+'\',\''+esc(u.email)+'\')">Delete</button>':'')+
         '</div></td></tr>';
     }).join('');
@@ -4646,8 +4727,54 @@ async function adminAddUser(){
   }catch(e){err.textContent=e.message;}
 }
 
-// ═══════════════════════════════════════════════════════════════════════════
-// INVITE CODE MANAGEMENT (admin-only)
+// ─── Legacy tier grant / revoke ───────────────────────────────────────────
+async function adminGrantLegacy(uid){
+  if(!isAdmin)return;
+  try{
+    await db.collection('users').doc(uid).update({accountTier:'legacy'});
+    toast('Legacy access granted');
+    renderAdminPanel();
+  }catch(e){toast('Error: '+e.message);}
+}
+async function adminRevokeLegacy(uid){
+  if(!isAdmin)return;
+  try{
+    await db.collection('users').doc(uid).update({accountTier:firebase.firestore.FieldValue.delete()});
+    toast('Legacy access revoked');
+    renderAdminPanel();
+  }catch(e){toast('Error: '+e.message);}
+}
+
+// ─── Music Streaming Modal ────────────────────────────────────────────────
+// Opens the user's chosen platform in a new tab. No audio is streamed
+// through Centerpost — this sidesteps all copyright/licensing concerns.
+// Only visible to Premium, Legacy, and Owner tiers.
+function openMusicStreamingModal(){
+  var cfg=getTierConfig();
+  if(!cfg.musicStreaming){_tierUpgradeToast('Premium');return;}
+  var overlay=document.getElementById('musicStreamOverlay');
+  if(overlay)overlay.classList.remove('hidden');
+}
+function closeMusicStreamingModal(){
+  var overlay=document.getElementById('musicStreamOverlay');
+  if(overlay)overlay.classList.add('hidden');
+}
+function launchMusicPlatform(platform){
+  var urls={
+    spotify:'https://open.spotify.com',
+    apple:'https://music.apple.com',
+    amazon:'https://music.amazon.com'
+  };
+  var url=urls[platform];
+  if(!url)return;
+  window.open(url,'_blank','noopener,noreferrer');
+  // Save preference
+  if(!state.settings)state.settings={};
+  state.settings.preferredMusicPlatform=platform;
+  save();
+  closeMusicStreamingModal();
+  toast('Opening '+{spotify:'Spotify',apple:'Apple Music',amazon:'Amazon Music'}[platform]+'…');
+}
 // Codes live at /inviteCodes/{CODE} with fields: used, maxUses, note,
 // disabled, createdAt, createdBy, lastUsedAt, lastUsedBy, lastUsedEmail.
 // ═══════════════════════════════════════════════════════════════════════════
@@ -9660,6 +9787,30 @@ setTimeout(checkShareTarget, 400); // slight delay so panels render first
 </div>
 </div>
 
+<!-- MUSIC STREAMING MODAL -->
+<div class="music-stream-overlay hidden" id="musicStreamOverlay" onclick="if(event.target===this)closeMusicStreamingModal()">
+  <div class="music-stream-modal">
+    <div class="music-stream-title">🎵 Music Streaming</div>
+    <div class="music-stream-sub">Open your preferred platform in a new tab. Your music plays there — Centerpost stays open alongside it for distraction-free focus sessions.</div>
+    <div class="music-platform-grid">
+      <button class="music-platform-btn spotify" onclick="launchMusicPlatform('spotify')">
+        <span class="music-platform-icon">🎧</span>
+        <span>Spotify</span>
+      </button>
+      <button class="music-platform-btn apple" onclick="launchMusicPlatform('apple')">
+        <span class="music-platform-icon">🎵</span>
+        <span>Apple Music</span>
+      </button>
+      <button class="music-platform-btn amazon" onclick="launchMusicPlatform('amazon')">
+        <span class="music-platform-icon">🎼</span>
+        <span>Amazon Music</span>
+      </button>
+    </div>
+    <p class="music-platform-note">Your subscription, your library. We redirect you to the platform — nothing is streamed through Centerpost.</p>
+    <button class="music-stream-close" onclick="closeMusicStreamingModal()">Cancel</button>
+  </div>
+</div>
+
 <!-- REMINDER POPUP -->
 <div class="rem-popup-overlay hidden" id="reminderPopupOverlay" onclick="if(event.target===this)closeReminderPopup()">
   <div class="rem-popup" id="reminderPopup">
@@ -10856,7 +11007,7 @@ setTimeout(_initJarvisVoice,1500);
 // ── CONFIG ─────────────────────────────────────────────────────────────────
 // PASTE YOUR OAUTH CLIENT ID HERE (from Google Cloud Console → Credentials)
 // It will look like: '123456789-abc.apps.googleusercontent.com'
-var GOOGLE_CLIENT_ID = '1065593793454-57q4unojejuafv4rihajmoas77ucr6q8.apps.googleusercontent.com';
+var GOOGLE_CLIENT_ID = '';
 
 var GOOGLE_SCOPES = 'https://www.googleapis.com/auth/calendar https://www.googleapis.com/auth/userinfo.email';
 var GCAL_CALENDAR_NAME = 'Centerpost';
