@@ -1448,23 +1448,118 @@ a:hover{text-decoration:underline;}
   <!-- 15 -->
   <div class="slide" id="s15">
     <div class="slide-num">15</div>
-    <h2>Kids Mode</h2>
-    <p class="slide-sub">A productivity dashboard for children.</p>
-    <p>Click <em>🎮 Kids Mode</em> in the bottom status bar to open the child-friendly version in a new tab. It's a pixel-art arcade-themed app with:</p>
-    <ul>
-      <li>Tasks with bright color-coded cards</li>
-      <li>Morning and evening routines</li>
-      <li>Reading list with celebration when a book is finished (+25 stars)</li>
-      <li>Feelings wheel — tap any time, +1 star per day</li>
-      <li>Breathing exercises with face emoji cues</li>
-      <li>Sounds (calm, focus, fun, rain)</li>
-      <li>3-day and 7-day reward systems parents can customize</li>
-      <li>Six theme options (Rainbow, Maze Quest, Speed Hero, Critter Quest, Candy Pop, Lava World)</li>
-    </ul>
-    <p><strong>Parent controls</strong> are gated by PIN. Track your child's mood trends, set custom rewards, sync data across devices using your Centerpost parent account.</p>
+    <div style="display:flex;gap:28px;align-items:flex-start;flex-wrap:wrap;">
+      <div style="flex:1;min-width:260px;">
+        <h2>Kids Mode</h2>
+        <p class="slide-sub">A productivity companion for children.</p>
+        <p>Open it from the <em>🎮 Kids Mode</em> button in the bottom bar — it launches in a new tab with a pixel-art arcade theme kids actually want to use.</p>
+        <ul>
+          <li><strong>Tasks</strong> with bright color-coded cards and a one-tap add</li>
+          <li><strong>Timer</strong> with 5 / 15 / 25 / 45 min presets and a big animated countdown</li>
+          <li><strong>Routines</strong> — morning and evening checklists that reset daily, each item earns a ⭐</li>
+          <li><strong>Feelings wheel</strong> — 8 emotions, first tap of the day earns a star</li>
+          <li><strong>Reading list</strong> with +25 stars for finishing a book</li>
+          <li><strong>3-day and 7-day rewards</strong> parents can customize</li>
+          <li><strong>Six themes</strong> — Rainbow, Maze Quest, Speed Hero, Critter Quest, Candy Pop, Lava World</li>
+        </ul>
+        <p><strong>Parent controls</strong> are behind a PIN. Track mood trends over 14 days, set rewards, sync across devices with your Centerpost parent account.</p>
+      </div>
+      <div style="flex:1;min-width:280px;max-width:480px;">
+        <div class="howto-visual">
+          <svg viewBox="0 0 820 680" xmlns="http://www.w3.org/2000/svg" style="display:block;width:100%;height:auto;">
+  <defs><style>.px{font-family:"Courier New",Courier,monospace;font-weight:700;letter-spacing:1px;}</style></defs>
+  <rect width="820" height="680" rx="10" fill="#1a3a8a"/>
+  <!-- HEADER -->
+  <rect x="6" y="6" width="808" height="58" rx="5" fill="#1a3a8a" stroke="#e6b820" stroke-width="3"/>
+  <text x="20" y="26" class="px" font-size="13" fill="#e6b820">CENTERPOST</text>
+  <text x="20" y="46" class="px" font-size="11" fill="#e6b820">▶ KIDS</text>
+  <rect x="290" y="13" width="94" height="34" rx="4" fill="#1a3a8a" stroke="#e6b820" stroke-width="2"/>
+  <text x="310" y="35" class="px" font-size="12">🔥</text><text x="334" y="36" class="px" font-size="13" fill="#e6b820">3</text>
+  <rect x="394" y="13" width="110" height="34" rx="4" fill="#1a3a8a" stroke="#e6b820" stroke-width="2"/>
+  <text x="412" y="35" class="px" font-size="12">⭐</text><text x="436" y="36" class="px" font-size="13" fill="#e6b820">123</text>
+  <rect x="696" y="13" width="40" height="34" rx="4" fill="#1a3a8a" stroke="#e6b820" stroke-width="2"/>
+  <text x="716" y="36" text-anchor="middle" font-size="18">🎨</text>
+  <rect x="744" y="13" width="40" height="34" rx="4" fill="#1a3a8a" stroke="#e6b820" stroke-width="2"/>
+  <text x="764" y="36" text-anchor="middle" font-size="18">⚙️</text>
+  <!-- TIMER -->
+  <rect x="6" y="74" width="296" height="230" rx="5" fill="#1a3a8a" stroke="#e6b820" stroke-width="3"/>
+  <text x="46" y="96" class="px" font-size="12" fill="#e6b820">⏱ TIMER</text>
+  <rect x="24" y="104" width="260" height="76" rx="4" fill="#1254c4" stroke="#e6b820" stroke-width="2"/>
+  <rect x="26" y="106" width="256" height="72" rx="2" fill="#1a7ab0" opacity="0.4"/>
+  <polygon points="88,130 88,158 110,144" fill="rgba(255,255,255,0.5)"/>
+  <text x="190" y="146" text-anchor="middle" class="px" font-size="24" fill="white">15:00</text>
+  <text x="190" y="170" text-anchor="middle" class="px" font-size="8" fill="rgba(255,255,255,0.8)">TAP TO START</text>
+  <g class="px" font-size="10" fill="#e6b820">
+    <rect x="24" y="192" width="86" height="26" rx="4" fill="#1a3a8a" stroke="#e6b820" stroke-width="2"/>
+    <text x="67" y="210" text-anchor="middle">5 MIN</text>
+    <rect x="118" y="192" width="86" height="26" rx="4" fill="#1a3a8a" stroke="#e6b820" stroke-width="2"/>
+    <text x="161" y="210" text-anchor="middle">15 MIN</text>
+    <rect x="24" y="226" width="86" height="26" rx="4" fill="#1a3a8a" stroke="#e6b820" stroke-width="2"/>
+    <text x="67" y="244" text-anchor="middle">25 MIN</text>
+    <rect x="118" y="226" width="86" height="26" rx="4" fill="#1a3a8a" stroke="#e6b820" stroke-width="2"/>
+    <text x="161" y="244" text-anchor="middle">45 MIN</text>
+  </g>
+  <!-- TASKS -->
+  <rect x="312" y="74" width="502" height="230" rx="5" fill="#1a3a8a" stroke="#e6b820" stroke-width="3"/>
+  <text x="352" y="96" class="px" font-size="12" fill="#e6b820">📋 MY TASKS</text>
+  <rect x="764" y="80" width="26" height="22" rx="3" fill="#1a3a8a" stroke="#e6b820" stroke-width="2"/>
+  <text x="777" y="95" text-anchor="middle" class="px" font-size="9" fill="#e6b820">1</text>
+  <rect x="328" y="104" width="478" height="40" rx="4" fill="#1254c4" stroke="#22c55e" stroke-width="2"/>
+  <rect x="338" y="115" width="16" height="16" rx="2" fill="#22c55e"/>
+  <text x="346" y="127" text-anchor="middle" class="px" font-size="7" fill="white">✓</text>
+  <text x="364" y="127" class="px" font-size="9" fill="#64748b" text-decoration="line-through">Say hi to grandma</text>
+  <rect x="784" y="112" width="18" height="18" rx="2" fill="#ef4444"/>
+  <text x="793" y="125" text-anchor="middle" class="px" font-size="10" fill="white">X</text>
+  <rect x="328" y="152" width="478" height="40" rx="4" fill="#1254c4" stroke="#e6b820" stroke-width="2"/>
+  <rect x="338" y="163" width="16" height="16" rx="2" fill="none" stroke="#e6b820" stroke-width="2"/>
+  <text x="364" y="175" class="px" font-size="9" fill="#e2e8f0">Help grandma vacuum</text>
+  <rect x="784" y="160" width="18" height="18" rx="2" fill="#ef4444"/>
+  <text x="793" y="173" text-anchor="middle" class="px" font-size="10" fill="white">X</text>
+  <rect x="328" y="200" width="330" height="32" rx="4" fill="#1254c4" stroke="#e6b820" stroke-width="1.5"/>
+  <text x="344" y="220" class="px" font-size="8" fill="#64748b">What do you want to do?</text>
+  <rect x="668" y="200" width="104" height="32" rx="4" fill="#e6b820"/>
+  <text x="720" y="220" text-anchor="middle" class="px" font-size="9" fill="#0a1218">+ ADD</text>
+  <!-- ROUTINES -->
+  <rect x="6" y="314" width="454" height="360" rx="5" fill="#1a3a8a" stroke="#e6b820" stroke-width="3"/>
+  <text x="46" y="338" class="px" font-size="12" fill="#e6b820">📅 ROUTINES</text>
+  <rect x="24" y="348" width="192" height="30" rx="4" fill="#1254c4" stroke="#e6b820" stroke-width="2"/>
+  <text x="120" y="368" text-anchor="middle" class="px" font-size="9" fill="#e2e8f0">☀ MORNING</text>
+  <rect x="224" y="348" width="192" height="30" rx="4" fill="#e6b820" stroke="#c49a10" stroke-width="2"/>
+  <text x="320" y="368" text-anchor="middle" class="px" font-size="9" fill="#0a1218">🌙 EVENING</text>
+  <rect x="24" y="386" width="416" height="36" rx="4" fill="#1254c4" stroke="#e6b820" stroke-width="1.5"/>
+  <text x="52" y="408" class="px" font-size="10">📚</text><text x="72" y="408" class="px" font-size="9" fill="#e2e8f0">Reading ⭐</text>
+  <rect x="420" y="397" width="16" height="16" rx="2" fill="none" stroke="#e6b820" stroke-width="2"/>
+  <rect x="24" y="430" width="416" height="36" rx="4" fill="#1254c4" stroke="#64748b" stroke-width="1.5" opacity="0.7"/>
+  <text x="52" y="452" class="px" font-size="10" opacity="0.6">🚿</text><text x="72" y="452" class="px" font-size="9" fill="#64748b" text-decoration="line-through">Shower ⭐</text>
+  <rect x="420" y="441" width="16" height="16" rx="2" fill="#e6b820"/>
+  <text x="428" y="453" text-anchor="middle" class="px" font-size="8" fill="#0a1218">✓</text>
+  <rect x="24" y="474" width="416" height="36" rx="4" fill="#1254c4" stroke="#e6b820" stroke-width="1.5"/>
+  <text x="52" y="496" class="px" font-size="10">🪥</text><text x="72" y="496" class="px" font-size="9" fill="#e2e8f0">Brush teeth ⭐</text>
+  <rect x="420" y="485" width="16" height="16" rx="2" fill="none" stroke="#e6b820" stroke-width="2"/>
+  <rect x="24" y="518" width="416" height="36" rx="4" fill="#1254c4" stroke="#e6b820" stroke-width="1.5"/>
+  <text x="52" y="540" class="px" font-size="10">💊</text><text x="72" y="540" class="px" font-size="9" fill="#e2e8f0">Take meds ⭐</text>
+  <rect x="420" y="529" width="16" height="16" rx="2" fill="none" stroke="#e6b820" stroke-width="2"/>
+  <rect x="24" y="562" width="416" height="24" rx="4" fill="#1254c4" stroke="#e6b820" stroke-width="1.5"/>
+  <rect x="26" y="564" width="100" height="20" rx="3" fill="#e6b820" opacity="0.9"/>
+  <text x="232" y="578" text-anchor="middle" class="px" font-size="8" fill="#e2e8f0">1 / 4 done</text>
+  <!-- REWARDS -->
+  <rect x="470" y="314" width="344" height="360" rx="5" fill="#1a3a8a" stroke="#e6b820" stroke-width="3"/>
+  <text x="510" y="338" class="px" font-size="12" fill="#e6b820">🏆 REWARDS</text>
+  <rect x="488" y="356" width="140" height="96" rx="5" fill="#1254c4" stroke="#e6b820" stroke-width="2"/>
+  <text x="558" y="382" text-anchor="middle" class="px" font-size="9" fill="#e2e8f0">3 DAY</text>
+  <text x="558" y="420" text-anchor="middle" class="px" font-size="28" fill="#e6b820">3/3</text>
+  <text x="558" y="442" text-anchor="middle" class="px" font-size="8" fill="#22c55e">claimed!</text>
+  <rect x="648" y="356" width="140" height="96" rx="5" fill="#1254c4" stroke="#e6b820" stroke-width="2"/>
+  <text x="718" y="382" text-anchor="middle" class="px" font-size="9" fill="#e2e8f0">7 DAY</text>
+  <text x="718" y="420" text-anchor="middle" class="px" font-size="28" fill="#e6b820">3/7</text>
+  <text x="718" y="442" text-anchor="middle" class="px" font-size="8" fill="#94a3b8">4 more days</text>
+</svg>
+          <div class="howto-visual-caption">Kids Mode — pixel-art arcade theme with tasks, routines, timer, and rewards</div>
+        </div>
+      </div>
+    </div>
   </div>
 
-  <!-- 16 -->
   <div class="slide" id="s16">
     <div class="slide-num">16</div>
     <div class="howto-visual"><svg viewBox="0 0 820 740" xmlns="http://www.w3.org/2000/svg">
