@@ -9762,12 +9762,12 @@ setTimeout(checkShareTarget, 400); // slight delay so panels render first
     </div>
     
     <div class="section-label" style="margin-bottom:6px;">When?</div>
-    <div style="display:flex;gap:8px;align-items:center;margin-bottom:14px;">
-      <input type="time" id="wtTime" style="flex:1;font-size:15px;padding:8px;">
-      <select id="wtDuration" style="font-size:13px;padding:8px;">
+    <div style="display:flex;gap:8px;align-items:stretch;margin-bottom:14px;">
+      <input type="time" id="wtTime" style="flex:0 0 150px;width:150px;min-width:150px;font-size:16px;padding:10px 12px;border:1px solid var(--border);border-radius:8px;background:var(--surface-raised);color:var(--text);cursor:text;font-family:inherit;box-sizing:border-box;">
+      <select id="wtDuration" style="flex:1;min-width:90px;font-size:14px;padding:10px 8px;border:1px solid var(--border);border-radius:8px;background:var(--surface-raised);color:var(--text);cursor:pointer;font-family:inherit;box-sizing:border-box;">
         <option value="15">15m</option>
-        <option value="30">30m</option>
-        <option value="60" selected>1hr</option>
+        <option value="30" selected>30m</option>
+        <option value="60">1hr</option>
         <option value="90">1.5hr</option>
         <option value="120">2hr</option>
         <option value="180">3hr</option>
