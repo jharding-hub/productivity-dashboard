@@ -1252,6 +1252,8 @@ body.unlocked .date-editable{border-bottom-color:var(--border);}
 .tl-completed-list{display:none;}
 .tl-completed-list.open{display:block;}
 .tl-completed-empty{font-size:12px;color:var(--text-faint);padding:6px 0;text-align:center;}
+/* Hide completed folder in tile mode — only show in expanded overlay */
+.panel.panel-tile #taskListCompleted{display:none !important;}
 .mic-btn{background:var(--surface-raised);border:1px solid var(--border);color:var(--text-dim);padding:5px 9px;border-radius:var(--radius-sm);cursor:pointer;font-size:13px;font-family:inherit;transition:all 0.2s;flex-shrink:0;line-height:1;}
 .mic-btn:hover{border-color:var(--teal);color:var(--teal);}
 .mic-btn.listening{background:var(--red-dim);border-color:var(--red);color:var(--red);animation:micPulse 1s ease-in-out infinite;}
