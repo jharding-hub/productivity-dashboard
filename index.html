@@ -1254,6 +1254,28 @@ body.unlocked .date-editable{border-bottom-color:var(--border);}
 .tl-completed-empty{font-size:12px;color:var(--text-faint);padding:6px 0;text-align:center;}
 /* Hide completed folder in tile mode — only show in expanded overlay */
 .panel.panel-tile #taskListCompleted{display:none !important;}
+/* ── REMINDER POPUP MODAL ─────────────────────────────────────────── */
+.rem-popup-overlay{position:fixed;inset:0;z-index:9000;background:rgba(0,0,0,0.45);display:flex;align-items:flex-start;justify-content:center;padding-top:80px;animation:fadeIn 0.2s ease;}
+.rem-popup-overlay.hidden{display:none;}
+.rem-popup{background:var(--surface);border:1px solid var(--border);border-radius:var(--radius);padding:20px 24px;max-width:460px;width:calc(100% - 32px);box-shadow:0 20px 60px rgba(0,0,0,0.4);max-height:70vh;overflow-y:auto;}
+.rem-popup-title{font-family:'Fraunces',serif;font-size:18px;font-weight:600;color:var(--accent);margin-bottom:6px;display:flex;align-items:center;gap:8px;}
+.rem-popup-sub{font-size:12px;color:var(--text-dim);margin-bottom:14px;}
+.rem-popup-item{background:var(--surface-raised);border:1px solid var(--border);border-radius:10px;padding:12px 14px;margin-bottom:8px;}
+.rem-popup-item-text{font-size:14px;font-weight:500;color:var(--text);margin-bottom:4px;}
+.rem-popup-item-meta{font-size:11px;color:var(--text-dim);margin-bottom:8px;}
+.rem-popup-item-actions{display:flex;gap:6px;flex-wrap:wrap;}
+.rem-popup-item-actions button{font-size:11px;font-weight:600;padding:4px 10px;border-radius:6px;cursor:pointer;border:1px solid var(--border);background:var(--surface);color:var(--text);font-family:inherit;transition:all 0.15s;}
+.rpa-done{background:rgba(34,197,94,0.15) !important;border-color:rgba(34,197,94,0.5) !important;color:var(--green) !important;}
+.rpa-done:hover{background:rgba(34,197,94,0.28) !important;}
+.rpa-snooze{background:rgba(91,232,255,0.1) !important;border-color:rgba(91,232,255,0.4) !important;color:var(--accent) !important;}
+.rpa-snooze:hover{background:rgba(91,232,255,0.2) !important;}
+.rem-popup-snooze-row{display:none;flex-direction:column;gap:6px;margin-top:8px;}
+.rem-popup-snooze-row.open{display:flex;}
+.rem-popup-snooze-row .snooze-inputs{display:flex;gap:6px;align-items:center;flex-wrap:wrap;}
+.rem-popup-snooze-row input{font-size:11px;padding:4px 8px;border-radius:6px;border:1px solid var(--border);background:var(--surface);color:var(--text);font-family:inherit;}
+.rem-popup-snooze-row button{font-size:11px;font-weight:600;padding:4px 10px;border-radius:6px;cursor:pointer;border:1px solid rgba(91,232,255,0.4);background:rgba(91,232,255,0.1);color:var(--accent);font-family:inherit;}
+.rem-popup-close{margin-top:12px;width:100%;font-size:12px;color:var(--text-faint);background:none;border:1px solid var(--border);border-radius:8px;padding:7px;cursor:pointer;font-family:inherit;}
+.rem-popup-close:hover{color:var(--text);background:var(--surface-raised);}
 .mic-btn{background:var(--surface-raised);border:1px solid var(--border);color:var(--text-dim);padding:5px 9px;border-radius:var(--radius-sm);cursor:pointer;font-size:13px;font-family:inherit;transition:all 0.2s;flex-shrink:0;line-height:1;}
 .mic-btn:hover{border-color:var(--teal);color:var(--teal);}
 .mic-btn.listening{background:var(--red-dim);border-color:var(--red);color:var(--red);animation:micPulse 1s ease-in-out infinite;}
@@ -9367,6 +9389,12 @@ document.addEventListener('visibilitychange',function(){
 });
 window.addEventListener('focus',function(){ try { checkDailyRoutineReset(); } catch(e){} });
 
+// ── Reminder auto-schedule + popup (deferred so Firestore data is loaded) ──
+setTimeout(function(){
+  try { autoScheduleTodayReminders(); } catch(e){console.warn('[reminders] auto-schedule failed',e);}
+  try { checkAndShowReminderPopup(); } catch(e){console.warn('[reminders] popup failed',e);}
+},1500);
+
 // ═══════════════════════════════════════
 // PULL-TO-REFRESH (mobile)
 // ═══════════════════════════════════════
@@ -9630,6 +9658,16 @@ setTimeout(checkShareTarget, 400); // slight delay so panels render first
     </div>
   </div>
 </div>
+</div>
+
+<!-- REMINDER POPUP -->
+<div class="rem-popup-overlay hidden" id="reminderPopupOverlay" onclick="if(event.target===this)closeReminderPopup()">
+  <div class="rem-popup" id="reminderPopup">
+    <div class="rem-popup-title">🔔 Reminders for today</div>
+    <div class="rem-popup-sub" id="reminderPopupSub"></div>
+    <div id="reminderPopupList"></div>
+    <button class="rem-popup-close" onclick="closeReminderPopup()">Dismiss all — I'll handle these later</button>
+  </div>
 </div>
 
 </body>
@@ -10322,6 +10360,184 @@ function _jarvisStopMic(){
 }
 
 // ═══════════════════════════════════════
+// ═══════════════════════════════════════════════════════════════════════
+// REMINDER POPUP + AUTO-SCHEDULE ON TIMELINE
+// Runs on app init and on visibility return (handles overnight).
+// ═══════════════════════════════════════════════════════════════════════
+
+// ── 1. Auto-schedule today's reminders in the first open timeline slot ─
+function autoScheduleTodayReminders(){
+  var today=todayStr();
+  var rems=(state.reminders||[]).filter(function(r){
+    return r.date===today && !r._autoScheduled && !r._dismissed;
+  });
+  if(!rems.length)return;
+  if(!state.tlBlocks)state.tlBlocks=[];
+
+  rems.forEach(function(r){
+    // Skip if already on timeline (by linkedId)
+    var alreadyOn=(state.tlBlocks||[]).some(function(b){return b.linkedId===r.id&&b.date===today;});
+    if(alreadyOn){r._autoScheduled=true;return;}
+
+    // Default duration: 30min. If reminder has a time, use that exact slot.
+    var dur=30;
+    var startMin;
+    if(r.time){
+      // Parse HH:MM
+      var parts=r.time.split(':');
+      startMin=parseInt(parts[0],10)*60+(parseInt(parts[1],10)||0);
+    } else {
+      // Find first available 30-min gap from now / 9am, no later than 8pm
+      startMin=_suggestWorkTime?_suggestWorkTime(dur,today):null;
+      if(startMin===null||startMin===undefined){
+        var now=new Date();
+        var nowMin=now.getHours()*60+now.getMinutes();
+        startMin=Math.max(540,Math.ceil(nowMin/30)*30);
+      }
+    }
+
+    var h=Math.floor(startMin/60);
+    var m=startMin%60;
+    var timeStr=(h<10?'0':'')+h+':'+(m<10?'0':'')+m;
+
+    state.tlBlocks.push({
+      id:'rem_tl_'+r.id+'_'+Date.now(),
+      name:'🔔 '+r.text,
+      date:today,
+      time:timeStr,
+      startMin:startMin,
+      duration:dur,
+      projectId:r.projectId||'',
+      projectIds:r.projectIds||[],
+      priority:'med',
+      linkedType:'reminder',
+      linkedId:r.id,
+      color:'#f97316'  // distinct orange so reminders stand out from tasks
+    });
+    r._autoScheduled=true;
+  });
+  save();
+  if(typeof renderTimeline==='function')renderTimeline();
+}
+
+// ── 2. Today reminder popup ─────────────────────────────────────────────
+var _reminderPopupShownDate=null;
+
+function checkAndShowReminderPopup(){
+  var today=todayStr();
+  // Only show once per calendar day per session
+  if(_reminderPopupShownDate===today)return;
+  var rems=(state.reminders||[]).filter(function(r){
+    return r.date===today && !r._dismissed && !r._done;
+  });
+  if(!rems.length)return;
+  _reminderPopupShownDate=today;
+  openReminderPopup(rems);
+}
+
+function openReminderPopup(rems){
+  var overlay=document.getElementById('reminderPopupOverlay');
+  var list=document.getElementById('reminderPopupList');
+  var sub=document.getElementById('reminderPopupSub');
+  if(!overlay||!list)return;
+
+  sub.textContent=rems.length+' reminder'+(rems.length>1?'s':'')+' due today';
+  list.innerHTML=rems.map(function(r){
+    var meta=r.time?('⏰ '+_tlFmtTime?_tlFmtTime(_tlParseTime(r.time)):r.time):'No time set';
+    return '<div class="rem-popup-item" id="rpi_'+r.id+'">'+
+      '<div class="rem-popup-item-text">'+esc(r.text)+'</div>'+
+      '<div class="rem-popup-item-meta">'+meta+'</div>'+
+      '<div class="rem-popup-item-actions">'+
+        '<button class="rpa-done" onclick="reminderPopupDone(\''+r.id+'\')">✓ Mark done</button>'+
+        '<button class="rpa-snooze" onclick="reminderPopupToggleSnooze(\''+r.id+'\')">⏰ Move</button>'+
+        '<button onclick="reminderPopupDismiss(\''+r.id+'\')">× Dismiss</button>'+
+      '</div>'+
+      '<div class="rem-popup-snooze-row" id="rps_'+r.id+'">'+
+        '<div class="snooze-inputs">'+
+          '<input type="date" id="rpsd_'+r.id+'" value="">'+
+          '<input type="time" id="rpst_'+r.id+'" value="">'+
+          '<button onclick="reminderPopupSnooze(\''+r.id+'\')">Save</button>'+
+        '</div>'+
+      '</div>'+
+    '</div>';
+  }).join('');
+
+  overlay.classList.remove('hidden');
+}
+
+function closeReminderPopup(){
+  var overlay=document.getElementById('reminderPopupOverlay');
+  if(overlay)overlay.classList.add('hidden');
+}
+
+function _reminderPopupRemoveItem(id){
+  var el=document.getElementById('rpi_'+id);
+  if(el)el.remove();
+  // If no items left, close popup
+  var list=document.getElementById('reminderPopupList');
+  if(list&&!list.querySelector('.rem-popup-item'))closeReminderPopup();
+}
+
+function reminderPopupDone(id){
+  var r=(state.reminders||[]).find(function(r){return r.id===id;});
+  if(r){r._done=true;r._dismissed=true;}
+  // Remove any auto-scheduled timeline block for this reminder
+  state.tlBlocks=(state.tlBlocks||[]).filter(function(b){return b.linkedId!==id;});
+  save();
+  if(typeof renderReminders==='function')renderReminders();
+  if(typeof renderTimeline==='function')renderTimeline();
+  _reminderPopupRemoveItem(id);
+  toast('Reminder marked done');
+}
+
+function reminderPopupDismiss(id){
+  var r=(state.reminders||[]).find(function(r){return r.id===id;});
+  if(r)r._dismissed=true;
+  save();
+  _reminderPopupRemoveItem(id);
+  toast('Reminder dismissed for today');
+}
+
+function reminderPopupToggleSnooze(id){
+  var row=document.getElementById('rps_'+id);
+  if(!row)return;
+  var isOpen=row.classList.contains('open');
+  // Close any other open snooze rows
+  document.querySelectorAll('.rem-popup-snooze-row.open').forEach(function(r){r.classList.remove('open');});
+  if(!isOpen){
+    row.classList.add('open');
+    // Pre-fill with existing date/time
+    var rem=(state.reminders||[]).find(function(r){return r.id===id;});
+    if(rem){
+      document.getElementById('rpsd_'+id).value=rem.date||'';
+      document.getElementById('rpst_'+id).value=rem.time||'';
+    }
+  }
+}
+
+function reminderPopupSnooze(id){
+  var dateEl=document.getElementById('rpsd_'+id);
+  var timeEl=document.getElementById('rpst_'+id);
+  var newDate=dateEl?dateEl.value:'';
+  var newTime=timeEl?timeEl.value:'';
+  if(!newDate){toast('Pick a date first');return;}
+
+  var r=(state.reminders||[]).find(function(r){return r.id===id;});
+  if(r){
+    r.date=newDate;
+    r.time=newTime;
+    r._dismissed=false;
+    r._autoScheduled=false;
+    // Remove the old auto-scheduled block — new date might be different
+    state.tlBlocks=(state.tlBlocks||[]).filter(function(b){return b.linkedId!==id;});
+    save();
+    if(typeof renderReminders==='function')renderReminders();
+    if(typeof renderTimeline==='function')renderTimeline();
+    _reminderPopupRemoveItem(id);
+    toast('Reminder moved to '+newDate+(newTime?' at '+newTime:''));
+  }
+}
+
 // WAKE WORD — "Hey Axis" (also accepts "Hey Jarvis" for legacy users)
 // ═══════════════════════════════════════
 var _wakeWordSR=null;
