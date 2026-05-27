@@ -1940,7 +1940,7 @@ body.unlocked .date-editable{border-bottom-color:var(--border);}
 .theme-btn-locked:hover{border-color:var(--border) !important;background:var(--surface) !important;transform:none !important;}
 
 /* ─── DEV TIER SWITCHER ─────────────────────────────────────────────────────── */
-#devTierSwitcher{position:fixed;bottom:80px;right:14px;z-index:9999;font-family:inherit;}
+#devTierSwitcher{position:fixed;bottom:140px;right:14px;z-index:9999;font-family:inherit;}
 .dev-tier-badge{background:rgba(30,28,26,0.95);border:1.5px solid var(--border);border-radius:20px;padding:5px 12px;font-size:11px;font-weight:700;color:var(--text-dim);cursor:pointer;user-select:none;letter-spacing:0.5px;backdrop-filter:blur(8px);box-shadow:0 2px 12px rgba(0,0,0,0.4);}
 .dev-tier-badge:hover{border-color:var(--accent-dim);}
 .dev-tier-menu{display:none;position:absolute;bottom:calc(100% + 6px);right:0;background:var(--surface-raised);border:1px solid var(--border);border-radius:var(--radius-sm);min-width:150px;padding:6px;box-shadow:0 4px 20px rgba(0,0,0,0.5);}
@@ -2906,7 +2906,7 @@ var TIER_CONFIG={
     brainDump:true,
     routines:true,
     decision:true,
-    aiAssistant:true,
+    aiAssistant:false,
     musicStreaming:false,
   },
   premium:{
@@ -11007,7 +11007,7 @@ setTimeout(_initJarvisVoice,1500);
 // ── CONFIG ─────────────────────────────────────────────────────────────────
 // PASTE YOUR OAUTH CLIENT ID HERE (from Google Cloud Console → Credentials)
 // It will look like: '123456789-abc.apps.googleusercontent.com'
-var GOOGLE_CLIENT_ID = '';
+var GOOGLE_CLIENT_ID = '1065593793454-57q4unojejuafv4rihajmoas77ucr6q8.apps.googleusercontent.com';
 
 var GOOGLE_SCOPES = 'https://www.googleapis.com/auth/calendar https://www.googleapis.com/auth/userinfo.email';
 var GCAL_CALENDAR_NAME = 'Centerpost';
