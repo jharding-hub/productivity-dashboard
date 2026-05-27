@@ -335,8 +335,8 @@ body.standalone-pwa .mobile-home-header{padding-top:max(env(safe-area-inset-top)
 .panel.panel-tile .panel-header{cursor:pointer;user-select:none;transition:opacity 0.15s;}
 .panel.panel-tile .panel-header:hover{opacity:0.85;}
 .panel.panel-tile .panel-header .expand-btn .expand-arrow{transform:rotate(-90deg);}
-.panel.panel-tile .panel-tile-summary{display:flex;align-items:center;gap:10px;padding:12px 0;font-size:19px;color:var(--text-dim);border-top:1px dashed var(--border);margin-top:6px;flex-wrap:wrap;}
-.panel.panel-tile .panel-tile-summary-pill{display:inline-flex;align-items:center;gap:7px;padding:6px 16px;background:var(--surface-raised);border-radius:18px;font-size:19px;font-weight:500;}
+.panel.panel-tile .panel-tile-summary{display:flex;align-items:center;gap:6px;padding:6px 0 2px;font-size:13px;color:var(--text-dim);border-bottom:1px dashed var(--border);margin-bottom:6px;flex-wrap:wrap;}
+.panel.panel-tile .panel-tile-summary-pill{display:inline-flex;align-items:center;gap:4px;padding:3px 10px;background:var(--surface-raised);border-radius:12px;font-size:13px;font-weight:500;}
 .panel.panel-tile .panel-tile-summary-pill.warn{color:var(--accent);background:rgba(212,168,83,0.12);}
 .panel.panel-tile .panel-tile-summary-pill.urgent{color:var(--red);font-weight:700;background:rgba(229,57,53,0.12);}
 
@@ -2332,17 +2332,17 @@ body.unlocked .date-editable{border-bottom-color:var(--border);}
 <div style="display:flex;gap:6px;align-items:center;"><button class="breakdown-btn" onclick="openJarvisBreakdown('tasks')" title="AI Breakdown — pick a task to break into micro-steps"><span class="bd-spark">&#10022;</span> Breakdown</button><span class="panel-badge" id="taskListCount">0</span><span class="panel-badge completed-badge" id="taskListCompletedBadge" style="display:none;">✓ 0</span><button class="expand-btn" onclick="openPanelOverlay('tasklist')" title="Expand to full view"><span class="expand-arrow">&#9660;</span></button></div></div>
 <div class="panel-tile-summary" id="tile-summary-tasklist" onclick="openPanelOverlay('tasklist')" style="cursor:pointer;"></div>
 <div class="tasklist-controls">
-<select id="tlSortBy" onchange="renderTaskList()" style="width:auto;padding:4px 8px;font-size:11px;">
+<select id="tlSortBy" onchange="renderTaskList()" style="width:auto;padding:3px 7px;font-size:11px;">
 <option value="priority">Sort: Priority</option>
 <option value="time">Sort: Time Needed</option>
 <option value="project">Sort: Project</option>
 <option value="due">Sort: Due Date</option>
 </select>
-<select id="tlFilterProj" onchange="renderTaskList()" style="width:auto;padding:4px 8px;font-size:11px;">
-<option value="all">All Projects</option>
+<select id="tlFilterProj" onchange="renderTaskList()" style="width:auto;padding:3px 7px;font-size:11px;max-width:130px;">
+<option value="all">Projects</option>
 </select>
+<label class="upcoming-filter-toggle" onclick="event.stopPropagation();" style="margin-left:4px;"><input type="checkbox" id="taskUpcomingOnly" onchange="renderTaskList()"> <span style="font-size:11px;">Show all tasks</span></label>
 </div>
-<label class="upcoming-filter-toggle" onclick="event.stopPropagation();"><input type="checkbox" id="taskUpcomingOnly" onchange="renderTaskList()"> <span>Show all tasks (sorted by priority)</span></label>
 <div class="panel-content" id="pc_tasklist">
 <div class="tl-list" id="taskListItems"></div>
 <div id="taskListCompleted"></div>
@@ -4142,7 +4142,7 @@ function updateNoteSelectors(){
   var taskFilterEl=document.getElementById('tlFilterProj');
   if(taskFilterEl){
     var prevVal=taskFilterEl.value;
-    taskFilterEl.innerHTML='<option value="all">All Projects</option>'+state.projects.map(function(p){return '<option value="'+p.id+'">'+esc(p.name)+'</option>';}).join('');
+    taskFilterEl.innerHTML='<option value="all">Projects</option>'+state.projects.map(function(p){return '<option value="'+p.id+'">'+esc(p.name)+'</option>';}).join('');
     if(prevVal&&[].slice.call(taskFilterEl.options).some(function(o){return o.value===prevVal;}))taskFilterEl.value=prevVal;
   }
   // Render any open multi-pickers
