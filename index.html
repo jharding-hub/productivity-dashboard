@@ -8468,7 +8468,7 @@ function updateCompletedWorkoutsCounter(){
 // ═══════════════════════════════════════
 // TIMELINE PANEL — daily time-blocking
 // ═══════════════════════════════════════
-const TL_DAY_START_H=6;   // 6 AM
+const TL_DAY_START_H=5;   // 5 AM — matches day-progress bar
 const TL_DAY_END_H=22;    // 10 PM
 const TL_HOUR_PX=52;      // px per hour
 const TL_COLOR_COUNT=8;   // palette size
@@ -9162,25 +9162,46 @@ function renderTimeline(){
   
   // Place blocks for the active view date
   var blocks=_tlCollectBlocks(viewDate);
+  var winStart=TL_DAY_START_H*60;   // 5am in minutes
+  var winEnd=TL_DAY_END_H*60;       // 10pm in minutes
   blocks.forEach(function(b){
-    if(b.startMin<TL_DAY_START_H*60||b.startMin>=TL_DAY_END_H*60)return;
-    var y=_tlMinutesToY(b.startMin);
-    var height=Math.max(24,(b.durMin/60)*TL_HOUR_PX-2);
+    var blockEnd=b.startMin+b.durMin;
+    // Skip if block is entirely outside the visible window
+    if(blockEnd<=winStart||b.startMin>=winEnd)return;
+    // Clip to visible window (block may start before 5am or end after 10pm)
+    var visStart=Math.max(b.startMin,winStart);
+    var visEnd=Math.min(blockEnd,winEnd);
+    var visDur=visEnd-visStart;
+    var clippedStart=visStart>b.startMin;  // true if start was clipped
+    var clippedEnd=visEnd<blockEnd;        // true if end was clipped
+    var y=_tlMinutesToY(visStart);
+    var height=Math.max(24,(visDur/60)*TL_HOUR_PX-2);
     var colorClass='tl-color-'+_tlProjectColor(b.projectId);
     var proj=b.projectId?(state.projects||[]).find(function(p){return p.id===b.projectId;}):null;
     var projName=proj?proj.name:'';
     var endMin=b.startMin+b.durMin;
     var div=document.createElement('div');
-    div.className='tl-block '+colorClass;
+    div.className='tl-block '+colorClass+(clippedStart?' tl-block-clipped-top':'')+(clippedEnd?' tl-block-clipped-bottom':'');
     div.style.top=y+'px';
     div.style.height=height+'px';
+    if(clippedStart){
+      // Show a visual cue that this block started earlier
+      div.style.borderTop='2px dashed rgba(255,255,255,0.4)';
+      div.style.borderRadius='0 4px 4px 4px';
+    }
+    if(clippedEnd){
+      div.style.borderBottom='2px dashed rgba(255,255,255,0.4)';
+      div.style.borderRadius=(clippedStart?'0 4px':'4px 4px')+' 4px 0';
+    }
     div.dataset.blockId=b.id;
     div.dataset.source=b.source;
     var priorityLabel='';
     if(b.priority==='high')priorityLabel='<span class="tl-block-priority priority-high">HIGH</span>';
     else if(b.priority==='low')priorityLabel='<span class="tl-block-priority priority-low">low</span>';
     div.innerHTML=
-      '<div class="tl-block-title">'+esc(b.name)+priorityLabel+'</div>'
+      '<div class="tl-block-title">'+esc(b.name)+priorityLabel
+      +(clippedStart?' <span style="font-size:9px;opacity:0.7">← started '+_tlFmtTime(b.startMin)+'</span>':'')
+      +'</div>'
       +'<div class="tl-block-meta">'+_tlFmtTime(b.startMin)+' – '+_tlFmtTime(endMin)+' · '+b.durMin+'m</div>'
       +(projName?'<div class="tl-block-proj">'+esc(projName)+'</div>':'')
       +(b.source==='manual'?'<div class="tl-block-del" onclick="event.stopPropagation();deleteTimelineBlock(\''+b.id+'\')" title="Delete block">&#10005;</div>':'');
