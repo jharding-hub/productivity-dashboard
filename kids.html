@@ -941,6 +941,75 @@ body.theme-lava{
   text-align:left;
   line-height:1.35;
 }
+/* ── ELECTRONICS TIMER ────────────────────────────────────── */
+.elec-panel{text-align:center;}
+.elec-sessions-row{
+  display:flex;justify-content:center;gap:10px;
+  margin-bottom:14px;flex-wrap:wrap;
+}
+.elec-session-pip{
+  width:36px;height:36px;border-radius:50%;
+  border:3px solid var(--accent);
+  display:flex;align-items:center;justify-content:center;
+  font-size:18px;
+  transition:all 0.3s;
+}
+.elec-session-pip.used{
+  background:var(--accent);
+  opacity:0.4;
+}
+.elec-session-pip.active-pip{
+  background:var(--accent);
+  animation:elec-pulse 1s ease-in-out infinite;
+}
+@keyframes elec-pulse{
+  0%,100%{box-shadow:0 0 0 0 rgba(var(--accent-rgb,91,232,255),0.5);}
+  50%{box-shadow:0 0 0 10px rgba(var(--accent-rgb,91,232,255),0);}
+}
+.elec-timer-display{
+  font-family:var(--header-font);
+  font-size:52px;
+  font-weight:700;
+  color:var(--accent);
+  letter-spacing:2px;
+  line-height:1;
+  margin:8px 0;
+}
+.elec-timer-label{
+  font-size:12px;
+  color:var(--text-dim);
+  margin-bottom:14px;
+  letter-spacing:1px;
+}
+.elec-start-btn{
+  background:var(--accent);
+  color:var(--bg);
+  border:none;
+  border-radius:var(--radius);
+  padding:14px 32px;
+  font-family:var(--header-font);
+  font-size:18px;
+  font-weight:700;
+  letter-spacing:1px;
+  cursor:pointer;
+  transition:all 0.2s;
+  width:100%;
+  margin-bottom:10px;
+}
+.elec-start-btn:hover{transform:scale(1.03);box-shadow:0 4px 16px rgba(0,0,0,0.3);}
+.elec-start-btn:disabled{opacity:0.4;cursor:not-allowed;transform:none;}
+.elec-start-btn.running{background:var(--danger);animation:none;}
+.elec-no-sessions{
+  font-family:var(--header-font);
+  font-size:15px;
+  color:var(--danger);
+  padding:16px 0;
+  letter-spacing:0.5px;
+}
+.elec-sessions-label{
+  font-size:13px;color:var(--text-dim);
+  margin-bottom:10px;letter-spacing:0.5px;
+}
 .claim-btn{
   background:var(--accent);
   color:var(--bg);
@@ -1308,6 +1377,19 @@ body.theme-critter::before,body.theme-candy::before{
       </div>
     </div>
 
+    <!-- ELECTRONICS TIMER -->
+    <div class="panel span-6" id="electronicsPanel">
+      <div class="panel-title"><span class="panel-icon">📺</span> ELECTRONICS TIME</div>
+      <div class="elec-panel">
+        <div class="elec-sessions-label" id="elecSessionsLabel">SESSIONS TODAY</div>
+        <div class="elec-sessions-row" id="elecSessionPips"></div>
+        <div class="elec-timer-display" id="elecTimerDisplay">--:--</div>
+        <div class="elec-timer-label" id="elecTimerLabel">TAP TO START A SESSION</div>
+        <button class="elec-start-btn" id="elecStartBtn" onclick="elecToggle()">▶ START</button>
+        <div style="font-size:11px;color:var(--text-faint);line-height:1.4;" id="elecTimerNote"></div>
+      </div>
+    </div>
+
     <!-- READING LIST -->
     <div class="panel span-6">
       <div class="panel-title"><span class="panel-icon">📚</span> READING LIST <span class="panel-count" id="bookCount">0</span></div>
@@ -1513,7 +1595,16 @@ var DEFAULT_STATE={
   activeRoutineTab:'morning',
   timerDuration:15,
   parentPin:'1234',
-  sync:{enabled:false,email:null,lastSync:null}
+  sync:{enabled:false,email:null,lastSync:null},
+  electronics:{
+    sessionMins:15,       // length of each session (parent sets)
+    sessionsPerDay:2,     // how many sessions allowed per day (parent sets)
+    sessionsUsedDate:null,// date string of last reset
+    sessionsUsed:0,       // sessions used today
+    active:false,         // session currently running
+    remaining:0,          // seconds remaining in active session
+    startedAt:null        // wall-clock ms when session started (anti-cheat)
+  }
 };
 
 var state=loadState();
@@ -2261,6 +2352,151 @@ function isLightColor(hex){
   return (r*0.299+g*0.587+b*0.114)>165;
 }
 
+// ═══════════════════════════════════════════════════════════════════════
+// ELECTRONICS TIMER
+// ═══════════════════════════════════════════════════════════════════════
+var _elecInterval=null;
+function _elecEnsureState(){
+  if(!state.electronics)state.electronics={sessionMins:15,sessionsPerDay:2,sessionsUsedDate:null,sessionsUsed:0,active:false,remaining:0,startedAt:null};
+}
+function _elecResetDailyIfNeeded(){
+  _elecEnsureState();
+  var today=todayStr();
+  if(state.electronics.sessionsUsedDate!==today){
+    state.electronics.sessionsUsedDate=today;
+    state.electronics.sessionsUsed=0;
+    if(state.electronics.active){state.electronics.active=false;state.electronics.remaining=0;state.electronics.startedAt=null;}
+    save();
+  }
+}
+function renderElectronics(){
+  _elecEnsureState();_elecResetDailyIfNeeded();
+  var e=state.electronics;
+  var perDay=e.sessionsPerDay||2;
+  var used=e.sessionsUsed||0;
+  var sessionSec=(e.sessionMins||15)*60;
+  var display=document.getElementById('elecTimerDisplay');
+  var label=document.getElementById('elecTimerLabel');
+  var btn=document.getElementById('elecStartBtn');
+  var pips=document.getElementById('elecSessionPips');
+  var note=document.getElementById('elecTimerNote');
+  if(!display)return;
+  // Draw pips
+  if(pips){
+    var ph='';
+    for(var i=0;i<perDay;i++){
+      if(e.active&&i===used-1)ph+='<div class="elec-session-pip active-pip" title="In progress">📺</div>';
+      else if(i<used)ph+='<div class="elec-session-pip used" title="Used">✓</div>';
+      else ph+='<div class="elec-session-pip" title="Available">📺</div>';
+    }
+    pips.innerHTML=ph;
+  }
+  if(e.active){
+    var elapsedSec=Math.floor((Date.now()-(e.startedAt||Date.now()))/1000);
+    var secLeft=Math.max(0,sessionSec-elapsedSec);
+    if(secLeft===0){_elecEndSession(false);return;}
+    display.textContent=_elecFmtTime(secLeft);
+    label.textContent='SESSION '+used+' OF '+perDay+' \u2014 IN PROGRESS';
+    if(btn){btn.textContent='\u23f9 STOP SESSION';btn.classList.add('running');btn.disabled=false;}
+    if(note)note.textContent='Stopping early still uses this session.';
+    _elecStartInterval();
+  } else if(used>=perDay){
+    display.textContent='DONE';
+    label.textContent='ALL '+perDay+' SESSIONS USED TODAY';
+    if(btn){btn.textContent='SEE YOU TOMORROW \uD83D\uDC4B';btn.disabled=true;btn.classList.remove('running');}
+    if(note)note.textContent='Reset happens at midnight.';
+    _elecStopInterval();
+  } else {
+    display.textContent=_elecFmtTime(sessionSec);
+    label.textContent=(perDay-used)+' SESSION'+(perDay-used!==1?'S':'')+' REMAINING';
+    if(btn){btn.textContent='\u25b6 START SESSION '+(used+1);btn.disabled=false;btn.classList.remove('running');}
+    if(note)note.textContent=(e.sessionMins||15)+' minutes per session.';
+    _elecStopInterval();
+  }
+}
+function _elecFmtTime(s){var m=Math.floor(s/60),sec=s%60;return(m<10?'0':'')+m+':'+(sec<10?'0':'')+sec;}
+function _elecStartInterval(){
+  if(_elecInterval)return;
+  _elecInterval=setInterval(function(){
+    _elecEnsureState();
+    var e=state.electronics;
+    if(!e.active){_elecStopInterval();renderElectronics();return;}
+    var sessionSec=(e.sessionMins||15)*60;
+    var secLeft=Math.max(0,sessionSec-Math.floor((Date.now()-(e.startedAt||Date.now()))/1000));
+    var disp=document.getElementById('elecTimerDisplay');
+    if(disp)disp.textContent=_elecFmtTime(secLeft);
+    if(secLeft===0)_elecEndSession(false);
+  },1000);
+}
+function _elecStopInterval(){if(_elecInterval){clearInterval(_elecInterval);_elecInterval=null;}}
+function elecToggle(){
+  _elecEnsureState();_elecResetDailyIfNeeded();
+  var e=state.electronics;
+  if(e.active){_elecEndSession(true);return;}
+  if((e.sessionsUsed||0)>=(e.sessionsPerDay||2)){toast('No sessions left today!');return;}
+  // ANTI-CHEAT: increment session count immediately before timer starts
+  e.sessionsUsed=(e.sessionsUsed||0)+1;
+  e.sessionsUsedDate=todayStr();
+  e.active=true;
+  e.startedAt=Date.now();
+  e.remaining=(e.sessionMins||15)*60;
+  save();
+  renderElectronics();
+  toast('Session '+e.sessionsUsed+' started! Have fun \uD83D\uDCFA');
+}
+function _elecEndSession(early){
+  _elecEnsureState();_elecStopInterval();
+  state.electronics.active=false;state.electronics.remaining=0;state.electronics.startedAt=null;
+  save();renderElectronics();
+  if(!early){toast('\u23F0 Time is up! Great job!');_playElecDone();}
+}
+function _playElecDone(){
+  try{
+    var ctx=new(window.AudioContext||window.webkitAudioContext)();
+    [0,300,600].forEach(function(d){
+      var o=ctx.createOscillator(),g=ctx.createGain();
+      o.connect(g);g.connect(ctx.destination);
+      o.frequency.value=880;
+      g.gain.setValueAtTime(0.4,ctx.currentTime+d/1000);
+      g.gain.exponentialRampToValueAtTime(0.001,ctx.currentTime+d/1000+0.4);
+      o.start(ctx.currentTime+d/1000);o.stop(ctx.currentTime+d/1000+0.5);
+    });
+  }catch(e){}
+}
+function renderParentElectronics(){
+  var el=document.getElementById('parentElectronicsSection');if(!el)return;
+  _elecEnsureState();var e=state.electronics;
+  el.innerHTML=
+    '<div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-bottom:10px;">'
+    +'<div><div style="font-size:11px;color:var(--text-dim);margin-bottom:4px;letter-spacing:0.5px;">SESSION LENGTH (MIN)</div>'
+    +'<input type="number" class="parent-input" id="elecMinsInput" min="1" max="120" value="'+(e.sessionMins||15)+'" oninput="elecSaveSettings()" style="width:100%;text-align:center;font-size:18px;"></div>'
+    +'<div><div style="font-size:11px;color:var(--text-dim);margin-bottom:4px;letter-spacing:0.5px;">SESSIONS PER DAY</div>'
+    +'<input type="number" class="parent-input" id="elecDailyInput" min="1" max="10" value="'+(e.sessionsPerDay||2)+'" oninput="elecSaveSettings()" style="width:100%;text-align:center;font-size:18px;"></div>'
+    +'</div>'
+    +'<div style="font-size:12px;color:var(--text-dim);margin-bottom:8px;">Today: <strong>'+(e.sessionsUsed||0)+'</strong> of <strong>'+(e.sessionsPerDay||2)+'</strong> sessions used.</div>'
+    +(e.active?'<div style="color:var(--danger);font-size:12px;margin-bottom:8px;">\u26A0\uFE0F Session is currently active.</div><button class="parent-btn danger" onclick="elecParentCancel()">Cancel Active Session</button>':'')
+    +'<button class="parent-btn" onclick="elecParentResetToday()">Reset Today\'s Sessions</button>';
+}
+function elecSaveSettings(){
+  _elecEnsureState();
+  var m=parseInt((document.getElementById('elecMinsInput')||{}).value||15,10)||15;
+  var d=parseInt((document.getElementById('elecDailyInput')||{}).value||2,10)||2;
+  state.electronics.sessionMins=Math.max(1,Math.min(120,m));
+  state.electronics.sessionsPerDay=Math.max(1,Math.min(10,d));
+  save();renderElectronics();
+}
+function elecParentResetToday(){
+  _elecEnsureState();
+  state.electronics.sessionsUsed=0;state.electronics.sessionsUsedDate=todayStr();
+  if(state.electronics.active){_elecStopInterval();state.electronics.active=false;state.electronics.remaining=0;state.electronics.startedAt=null;}
+  save();renderElectronics();renderParentElectronics();toast('Session count reset');
+}
+function elecParentCancel(){
+  _elecStopInterval();_elecEnsureState();
+  state.electronics.active=false;state.electronics.remaining=0;state.electronics.startedAt=null;
+  save();renderElectronics();renderParentElectronics();toast('Active session cancelled');
+}
+
 function renderFeelingsWheel(){
   var size=360;
   var cx=size/2,cy=size/2;
@@ -2423,6 +2659,8 @@ function renderParentSettings(){
     +'<div id="parentSyncSection"></div>'
     +'<h3>FEELINGS LOG</h3>'
     +'<div id="parentFeelingsSection"></div>'
+    +'<h3>📺 ELECTRONICS TIME</h3>'
+    +'<div id="parentElectronicsSection"></div>'
     +'<h3>ROUTINES</h3>'
     +'<div id="parentRoutineSection"></div>'
     +'<h3>3-DAY REWARDS</h3>'
@@ -2442,6 +2680,7 @@ function renderParentSettings(){
   renderParentRewards();
   renderParentFeelings();
   renderParentSync();
+  renderParentElectronics();
   renderParentRoutines();
 }
 
@@ -2779,6 +3018,7 @@ function init(){
   renderReading();
   renderFeelingsWheel();
   renderRewards();
+  renderElectronics();
   updateHeader();
   setDuration(state.timerDuration||15);
   _timerRemaining=(state.timerDuration||15)*60;
@@ -2801,6 +3041,7 @@ function _refreshOnDayChange(){
       renderTasks();
       renderFeelingsWheel();
       renderRewards();
+      renderElectronics();
       updateHeader();
     }
   } catch(e){console.warn('day-change refresh failed',e);}
