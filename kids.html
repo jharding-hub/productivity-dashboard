@@ -924,6 +924,23 @@ body.theme-lava{
   50%{box-shadow:3px 3px 0 var(--shadow),0 0 24px var(--success);}
 }
 .reward-tier.unlocked .tier-status{color:var(--bg);font-weight:bold;}
+.reward-items-list{
+  margin-top:10px;
+  border-top:2px solid var(--border);
+  padding-top:8px;
+  display:flex;
+  flex-direction:column;
+  gap:4px;
+}
+.reward-item-chip{
+  font-size:12px;
+  color:var(--text-dim);
+  padding:4px 6px;
+  background:var(--bg);
+  border:1px solid var(--border);
+  text-align:left;
+  line-height:1.35;
+}
 .claim-btn{
   background:var(--accent);
   color:var(--bg);
@@ -1275,16 +1292,18 @@ body.theme-critter::before,body.theme-candy::before{
     <!-- REWARDS -->
     <div class="panel span-6">
       <div class="panel-title"><span class="panel-icon">🏆</span> REWARDS</div>
-      <div class="rewards-summary" style="display:flex;flex-direction:column;gap:12px;">
+      <div class="rewards-summary" style="display:grid;grid-template-columns:1fr 1fr;gap:12px;">
         <div class="reward-tier" id="reward3Tier">
-          <div class="tier-label">3 DAY STREAK</div>
+          <div class="tier-label">3 DAY</div>
           <div class="tier-progress" id="reward3Progress">0/3</div>
           <div class="tier-status" id="reward3Status">keep going!</div>
+          <div class="reward-items-list" id="reward3List"></div>
         </div>
         <div class="reward-tier" id="reward7Tier">
-          <div class="tier-label">7 DAY STREAK</div>
+          <div class="tier-label">7 DAY</div>
           <div class="tier-progress" id="reward7Progress">0/7</div>
           <div class="tier-status" id="reward7Status">keep going!</div>
+          <div class="reward-items-list" id="reward7List"></div>
         </div>
       </div>
     </div>
@@ -1832,6 +1851,19 @@ function renderRewards(){
   }else{
     t7.classList.remove('unlocked');
     document.getElementById('reward7Status').textContent=state.streak%7===0&&state.streak>0?'claimed!':(7-(state.streak%7))+' more days';
+  }
+  // Populate reward item lists below each counter
+  var list3=document.getElementById('reward3List');
+  var list7=document.getElementById('reward7List');
+  if(list3){
+    list3.innerHTML=(state.rewards.threeDayList||[]).map(function(r){
+      return '<div class="reward-item-chip">⭐ '+escapeHtml(r)+'</div>';
+    }).join('');
+  }
+  if(list7){
+    list7.innerHTML=(state.rewards.sevenDayList||[]).map(function(r){
+      return '<div class="reward-item-chip">🏆 '+escapeHtml(r)+'</div>';
+    }).join('');
   }
 }
 
