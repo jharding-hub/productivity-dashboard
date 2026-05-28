@@ -5327,7 +5327,9 @@ function renderTaskList(){
         dueHTML+
         '</div></div>'+
         '<span class="wt-clock-btn '+(_isScheduledToday(t.id)?'scheduled':'')+'" onclick="event.stopPropagation();handleWorkTodayClick(\''+(t.source==='standalone'?'task':'subtask')+'\',\''+t.id+'\',\''+(t.projectId||'')+'\')" title="Work on this today">&#128197;</span>'+
-        (t.source==='standalone'?'<span class="tl-del" onclick="deleteStandaloneTask(\''+t.id+'\')">\u2715</span>':'')+
+        (t.source==='standalone'
+          ?'<span class="tl-del" onclick="deleteStandaloneTask(\''+t.id+'\')" title="Delete task">\u2715</span>'
+          :'<span class="tl-del" onclick="deleteSubtask(\''+t.projectId+'\',\''+t.id+'\')" title="Delete subtask">\u2715</span>')+
         '</div>';
     }).join('');
     // Wire editables
