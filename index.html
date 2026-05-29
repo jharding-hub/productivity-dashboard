@@ -2318,9 +2318,9 @@ body.unlocked .date-editable{border-bottom-color:var(--border);}
 <div class="toolkit-grid">
   <div class="toolkit-music-wrap">
     <button class="toolkit-btn toolkit-music" id="focusMusicBtn" onclick="musicHandleClick(event)" title="Click to play/pause • Use ☰ to switch playlists"><span class="music-emoji" id="musicEmoji">&#127925;</span><span id="musicLabel">Music</span><span class="music-controls" id="musicControls" style="display:none;"><span class="music-ctrl-btn" id="musicStateIcon">&#9654;</span><span class="music-ctrl-btn music-skip" onclick="event.stopPropagation();focusMusicSkip()" title="Next track" role="button" tabindex="0">&#9197;</span><span class="music-ctrl-btn music-menu" onclick="event.stopPropagation();musicToggleDropdown(event)" title="Switch playlist" role="button" tabindex="0">&#9776;</span></span></button>
-    <button class="toolkit-btn" id="toolkitMusicStreamBtn" onclick="openMusicStreamingModal()" title="Open Spotify, Apple Music, or Amazon Music" style="font-size:11px;padding:6px 8px;display:none;">🎵 Streaming</button>
     <div class="music-dropdown" id="musicDropdown" style="display:none;"></div>
   </div>
+  <button class="toolkit-btn" id="toolkitMusicStreamBtn" onclick="openMusicStreamingModal()" title="Open Spotify, Apple Music, or Amazon Music" style="display:none;">🎵<span>Streaming</span></button>
   <button class="toolkit-btn toolkit-breath" onclick="openBreathworkModal()">&#128311;<span>Breathwork</span></button>
   <div class="toolkit-timer-wrap">
     <button class="toolkit-btn toolkit-timer" id="timerBtn" onclick="timerHandleClick()" title="Click to start/pause • Use ☰ to pick duration">
