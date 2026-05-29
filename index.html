@@ -3434,7 +3434,27 @@ async function load(){
       const doc=await db.collection('users').doc(currentUser.uid).collection('data').doc('dashboard').get();
       if(doc.exists&&doc.data().state){
         const cloud=JSON.parse(doc.data().state);
-        if(cloud.projects||cloud.reminders||cloud.notes){state={...state,...cloud};}
+        if(cloud.projects||cloud.reminders||cloud.notes){
+          // ── SAFE MERGE ────────────────────────────────────────────────────
+          // Spread cloud over local, then protect fields where local is more
+          // current — prevents Firestore pulls from:
+          //   (a) wiping notes the user just saved mid-session
+          //   (b) rolling back lastRoutineReset, causing routines to re-clear
+          //       every time the tab returns from background
+          var today=todayStr();
+          var merged=Object.assign({},state,cloud);
+          // Protect lastRoutineReset — never let cloud roll it back to a past date
+          if(state.lastRoutineReset===today){merged.lastRoutineReset=today;}
+          // Protect routines done-state if local reset already happened today
+          if(state.lastRoutineReset===today&&cloud.lastRoutineReset!==today){
+            merged.routines=state.routines;merged.lastRoutineReset=today;
+          }
+          // Prefer whichever notes/tasks/thoughts array is larger
+          if((state.notes||[]).length>(cloud.notes||[]).length)merged.notes=state.notes;
+          if((state.tasks||[]).length>(cloud.tasks||[]).length)merged.tasks=state.tasks;
+          if((state.thoughts||[]).length>(cloud.thoughts||[]).length)merged.thoughts=state.thoughts;
+          state=merged;
+        }
         setSyncStatus('synced','Synced');
       }else{
         // First time or migration — also check old shared location
@@ -4475,12 +4495,23 @@ function renderNotes(){
 // ROUTINES
 function checkDailyRoutineReset(){
   const today=todayStr();
+  // Primary guard: state field (persisted to Firestore)
   if(state.lastRoutineReset===today)return;
-  // Reset all routine tabs
+  // Secondary guard: sessionStorage so a Firestore pull mid-session can't re-trigger
+  // (sessionStorage survives tab focus/visibility changes but clears on true tab close)
+  var ssKey='_routineResetDate';
+  if(sessionStorage.getItem(ssKey)===today){
+    // Cloud state is stale — update it without wiping done-checkmarks
+    state.lastRoutineReset=today;
+    save();
+    return;
+  }
+  // New calendar day — do the reset
   ['morning','evening','custom'].forEach(tab=>{
     if(state.routines[tab])state.routines[tab].forEach(r=>r.done=false);
   });
   state.lastRoutineReset=today;
+  sessionStorage.setItem(ssKey,today);
   save();
   renderRoutines();
 }
@@ -9688,7 +9719,7 @@ setTimeout(function(){
 
 
 
-document.addEventListener('visibilitychange',function(){if(!document.hidden){checkDailyRoutineReset();awardDailyLogin();renderTimeline();}});
+document.addEventListener('visibilitychange',function(){if(!document.hidden){awardDailyLogin();renderTimeline();}});
 
 renderProjects();renderReminders();renderThoughts();renderNotes();renderRoutines();renderTaskList();renderTimeline();checkDailyRoutineReset();newDecisionPrompt();initDragDrop();updateAllTileSummaries();_applySavedTheme();renderThemeSelector();applyTierGating();
 if(_isMobile()){showMobileHome();}else{document.querySelector('.header')&&document.querySelector('.header').classList.add('mobile-visible');}
