@@ -2670,7 +2670,16 @@ function renderParentSettings(){
     +'<div class="parent-reward-list" id="sevenDayList"></div>'
     +'<button class="parent-btn" onclick="addReward(\'7day\')">+ Add 7-day reward</button>'
     +'<h3>STREAK</h3>'
-    +'<div style="font-size:20px;margin-bottom:10px;">Current: '+state.streak+' days<br>Longest: '+state.longestStreak+' days<br>Books finished: '+((state.reading&&state.reading.completed)?state.reading.completed.length:0)+'<br>Lifetime stars: '+state.lifetimePoints+'</div>'
+    +'<div style="font-size:16px;margin-bottom:10px;line-height:1.6;">Current streak: <strong>'+state.streak+'</strong> days<br>Longest: '+state.longestStreak+' days<br>Books finished: '+((state.reading&&state.reading.completed)?state.reading.completed.length:0)+'<br>Lifetime stars: '+state.lifetimePoints+'</div>'
+    +'<div style="background:var(--surface-raised);border:2px solid var(--border);border-radius:8px;padding:12px;margin-bottom:10px;">'
+    +'<div style="font-size:13px;color:var(--text-dim);margin-bottom:8px;line-height:1.4;">Correct the streak day count. Reward progress (3-day &amp; 7-day) updates automatically based on this number.</div>'
+    +'<div style="display:flex;gap:8px;align-items:center;margin-bottom:8px;">'
+    +'<label style="font-size:13px;flex:1;">Day streak count</label>'
+    +'<input class="parent-input" type="number" id="streakEditInput" min="0" max="999" value="'+state.streak+'" oninput="updateStreakPreview()" style="width:90px;text-align:center;font-size:18px;margin:0;">'
+    +'<button class="parent-btn primary" style="margin:0;" onclick="setStreakValue()">Set</button>'
+    +'</div>'
+    +'<div style="font-size:11px;color:var(--text-faint);line-height:1.4;" id="streakPreview"></div>'
+    +'</div>'
     +'<button class="parent-btn" onclick="resetStreak()">Reset streak to 0</button>'
     +'<h3>PIN</h3>'
     +'<input class="parent-input" type="text" id="newPin" placeholder="New PIN (numbers)" inputmode="numeric" maxlength="6" value="'+state.parentPin+'">'
@@ -2682,6 +2691,7 @@ function renderParentSettings(){
   renderParentSync();
   renderParentElectronics();
   renderParentRoutines();
+  if(typeof updateStreakPreview==='function')updateStreakPreview();
 }
 
 function renderParentSync(){
@@ -2980,6 +2990,35 @@ function updatePin(){
 function resetStreak(){
   if(!confirm('Reset streak to 0? (rewards stay)'))return;
   state.streak=0;state.lastStreakDate=null;save();updateHeader();renderRewards();toast('Streak reset');
+}
+function setStreakValue(){
+  var inp=document.getElementById('streakEditInput');
+  if(!inp)return;
+  var n=parseInt(inp.value,10);
+  if(isNaN(n)||n<0){toast('Enter a valid number');return;}
+  n=Math.max(0,Math.min(999,n));
+  // Set the streak. Mark lastStreakDate as today so today's progress isn't
+  // double-counted and tomorrow correctly continues from this number.
+  state.streak=n;
+  state.lastStreakDate=n>0?todayStr():null;
+  if(n>state.longestStreak)state.longestStreak=n;
+  save();
+  updateHeader();
+  renderRewards();
+  // Re-render the parent settings so the displayed numbers refresh
+  if(typeof renderParentSettings==='function')renderParentSettings();
+  toast('Streak set to '+n+' days');
+}
+function updateStreakPreview(){
+  var inp=document.getElementById('streakEditInput');
+  var prev=document.getElementById('streakPreview');
+  if(!inp||!prev)return;
+  var n=parseInt(inp.value,10);
+  if(isNaN(n)||n<0){prev.textContent='';return;}
+  var d3=n%3, d7=n%7;
+  var towards3=d3===0&&n>0?'3-day reward ready to claim':((3-d3)+' day'+(3-d3!==1?'s':'')+' to next 3-day reward');
+  var towards7=d7===0&&n>0?'7-day reward ready to claim':((7-d7)+' day'+(7-d7!==1?'s':'')+' to next 7-day reward');
+  prev.innerHTML='At '+n+' days: '+towards3+' · '+towards7;
 }
 function resetAllData(){
   if(!confirm('Erase EVERYTHING for this kid? This cannot be undone.'))return;
