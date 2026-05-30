@@ -498,6 +498,8 @@ body.unlocked .date-editable{border-bottom-color:var(--border);}
 .subtask-add{display:flex;gap:6px;margin-top:8px;}
 .subtask-add input,.subtask-add select{flex:1;font-size:12px;padding:6px 8px;}
 .priority-dot{display:inline-block;width:7px;height:7px;border-radius:50%;margin-right:5px;vertical-align:middle;}
+.priority-dot.clickable{cursor:pointer;width:11px;height:11px;transition:transform 0.15s;border:1px solid rgba(255,255,255,0.2);}
+.priority-dot.clickable:hover{transform:scale(1.4);}
 .priority-high{background:var(--red);}.priority-med{background:var(--orange);}.priority-low{background:var(--blue);}
 
 /* REMINDERS */
@@ -4024,6 +4026,28 @@ function toggleSubtask(pid,sid){
   save();renderProjects();renderTaskList();
 }
 function deleteSubtask(pid,sid){const p=state.projects.find(p=>p.id===pid);if(p)p.subtasks=p.subtasks.filter(s=>s.id!==sid);save();renderProjects();renderTaskList();}
+
+// Cycle priority low → med → high → low on click. Works for subtasks.
+function cycleSubtaskPriority(pid,sid,ev){
+  if(ev){ev.stopPropagation();}
+  const p=state.projects.find(p=>p.id===pid);
+  const s=p&&p.subtasks.find(s=>s.id===sid);
+  if(!s)return;
+  const order=['low','med','high'];
+  const cur=order.indexOf((s.priority||'med').replace('medium','med'));
+  s.priority=order[(cur+1)%3];
+  save();renderProjects();renderTaskList();
+}
+// Cycle priority for a standalone task
+function cycleTaskPriority(id,ev){
+  if(ev){ev.stopPropagation();}
+  const t=(state.tasks||[]).find(t=>t.id===id);
+  if(!t)return;
+  const order=['low','med','high'];
+  const cur=order.indexOf((t.priority||'med').replace('medium','med'));
+  t.priority=order[(cur+1)%3];
+  save();renderTaskList();renderProjects();
+}
 function editProjectName(pid,v){if(!v)return;const p=state.projects.find(p=>p.id===pid);if(p)p.name=v;save();}
 function editSubtaskName(pid,sid,v){if(!v)return;const p=state.projects.find(p=>p.id===pid);const s=p&&p.subtasks.find(s=>s.id===sid);if(s)s.name=v;save();renderTaskList();}
 function editProjectDue(pid,v){const p=state.projects.find(p=>p.id===pid);if(p){p.due=v;save();renderProjects();}}
@@ -4081,6 +4105,11 @@ if(showAll){
     var bDue=b.due||'9999-12-31';
     return aDue.localeCompare(bDue);
   });
+} else {
+  // Default: alphabetical by project name (case-insensitive)
+  visibleProjects=state.projects.slice().sort(function(a,b){
+    return (a.name||'').toLowerCase().localeCompare((b.name||'').toLowerCase());
+  });
 }
 if(state.projects.length===0){el.innerHTML='<div class="empty-state">No projects yet.</div>'+_renderCompletedProjectsSection();document.getElementById('projCount').textContent='0';var emptyProjCompCount=(state.completedTasks||[]).filter(function(t){return t.source==='project';}).length;var emptyProjCompBadge=document.getElementById('projCompletedBadge');if(emptyProjCompBadge){emptyProjCompBadge.textContent='✓ '+emptyProjCompCount;emptyProjCompBadge.style.display=emptyProjCompCount>0?'inline-flex':'none';}updateNoteSelectors();if(typeof _updateTileSummaryProjects==='function')_updateTileSummaryProjects();return;}
 var pcpEl=document.getElementById('pc_projects');
@@ -4132,7 +4161,7 @@ if(linkedTasks.length||linkedNotes.length||linkedReminders.length){
   linkedHtml+='</div>';
 }
 
-return '<div class="project-card"><div class="proj-header" onclick="openProjectModal(\''+p.id+'\')"><span class="proj-expand '+(p.expanded?'open':'')+'">\u25B6</span><div class="proj-info"><div class="proj-name-row"><span class="proj-name editable" id="pn_'+p.id+'">'+esc(p.name)+'</span><button class="proj-edit-btn" onclick="event.stopPropagation();promptEditProject(\''+p.id+'\')" title="Rename project">&#9998;</button></div><div class="proj-meta"><span>'+total+' subtask'+(total!==1?'s':'')+'</span>'+(linkedNotes.length?'<span>'+linkedNotes.length+' note'+(linkedNotes.length!==1?'s':'')+'</span>':'')+''+(linkedReminders.length?'<span>'+linkedReminders.length+' reminder'+(linkedReminders.length!==1?'s':'')+'</span>':'')+'</div></div><div style="display:flex;gap:4px;align-items:center;"><span class="wt-clock-btn '+(_isScheduledToday(p.id)?'scheduled':'')+'" onclick="event.stopPropagation();handleWorkTodayClick(\'project\',\''+p.id+'\',\''+p.id+'\')" title="Work on today" style="width:20px;height:20px;font-size:10px;">\u{1F4C5}</span><span class="st-btn st-cal" onclick="exportProjectICS(\''+p.id+'\')">\u{1F4C5}</span><button class="proj-complete-btn" onclick="event.stopPropagation();markProjectComplete(\''+p.id+'\',this)" title="Mark complete">\u2713</button><span class="proj-delete" onclick="deleteProject(\''+p.id+'\')">\u2715</span></div></div><div class="subtask-area '+(p.expanded?'open':'')+'"><div class="proj-due-display">'+(p.due?'<span class="date-editable" id="pd_'+p.id+'">Ends: '+fmtDate(p.due)+'</span>':'<span class="date-editable" id="pd_'+p.id+'" style="color:var(--text-faint);">+ set end date</span>')+'</div>'+_renderProjSummary(p,total,linkedNotes.length,linkedReminders.length,projCompletedItems)+'<div class="subtask-list">'+(sorted.length===0?'<div class="empty-state" style="padding:10px;">No subtasks yet.</div>':sorted.map(st=>{return '<div class="subtask-item"><div class="st-check" onclick="toggleSubtask(\''+p.id+"','"+st.id+'\')"></div><span class="st-name editable" id="sn_'+st.id+'"><span class="priority-dot priority-'+st.priority+'"></span>'+esc(st.name)+'</span>'+(st.due?'<span class="st-due date-editable" id="sd_'+st.id+'">'+fmtDate(st.due)+'</span>':'<span class="st-due date-editable" id="sd_'+st.id+'" style="color:var(--text-faint);">+ date</span>')+'<div class="st-actions">'+(st.timeEst?'<span class="tl-time-badge">'+fmtTimeEst(st.timeEst)+'</span>':'')+'<span class="wt-clock-btn '+(_isScheduledToday(st.id)?'scheduled':'')+'" onclick="event.stopPropagation();handleWorkTodayClick(\'subtask\',\''+st.id+'\',\''+p.id+'\')" title="Work on today" style="width:18px;height:18px;font-size:9px;">\u{1F4C5}</span><span class="st-btn st-cal" onclick="exportSubtaskICS(\''+p.id+"','"+st.id+'\')">\u{1F4C5}</span><span class="st-btn st-del" onclick="deleteSubtask(\''+p.id+"','"+st.id+'\')">\u2715</span></div></div>';}).join(''))+'</div><div class="subtask-add"><input type="text" id="stN_'+p.id+'" placeholder="New subtask..." onkeydown="if(event.key===\'Enter\')addSubtask(\''+p.id+'\')"><button class="mic-btn" id="stMic_'+p.id+'" onclick="toggleMic(\'stN_'+p.id+'\',\'stMic_'+p.id+'\')" title="Voice input">&#127908;</button><select id="stP_'+p.id+'"><option value="low">Low</option><option value="med" selected>Med</option><option value="high">High</option></select><select id="stT_'+p.id+'" class="time-est-select"><option value="">Time?</option><option value="30">30m</option><option value="60">1hr</option><option value="90">1.5hr</option><option value="120">2hr</option><option value="180">3hr</option><option value="240">4hr</option><option value="999">4hr+</option></select><input type="date" id="stD_'+p.id+'"><button class="btn btn-accent btn-sm" onclick="addSubtask(\''+p.id+'\')">+</button></div></div></div>';}).join('');
+return '<div class="project-card"><div class="proj-header" onclick="openProjectModal(\''+p.id+'\')"><span class="proj-expand '+(p.expanded?'open':'')+'">\u25B6</span><div class="proj-info"><div class="proj-name-row"><span class="proj-name editable" id="pn_'+p.id+'">'+esc(p.name)+'</span><button class="proj-edit-btn" onclick="event.stopPropagation();promptEditProject(\''+p.id+'\')" title="Rename project">&#9998;</button></div><div class="proj-meta"><span>'+total+' subtask'+(total!==1?'s':'')+'</span>'+(linkedNotes.length?'<span>'+linkedNotes.length+' note'+(linkedNotes.length!==1?'s':'')+'</span>':'')+''+(linkedReminders.length?'<span>'+linkedReminders.length+' reminder'+(linkedReminders.length!==1?'s':'')+'</span>':'')+'</div></div><div style="display:flex;gap:4px;align-items:center;"><span class="wt-clock-btn '+(_isScheduledToday(p.id)?'scheduled':'')+'" onclick="event.stopPropagation();handleWorkTodayClick(\'project\',\''+p.id+'\',\''+p.id+'\')" title="Work on today" style="width:20px;height:20px;font-size:10px;">\u{1F4C5}</span><span class="st-btn st-cal" onclick="exportProjectICS(\''+p.id+'\')">\u{1F4C5}</span><button class="proj-complete-btn" onclick="event.stopPropagation();markProjectComplete(\''+p.id+'\',this)" title="Mark complete">\u2713</button><span class="proj-delete" onclick="deleteProject(\''+p.id+'\')">\u2715</span></div></div><div class="subtask-area '+(p.expanded?'open':'')+'"><div class="proj-due-display">'+(p.due?'<span class="date-editable" id="pd_'+p.id+'">Ends: '+fmtDate(p.due)+'</span>':'<span class="date-editable" id="pd_'+p.id+'" style="color:var(--text-faint);">+ set end date</span>')+'</div>'+_renderProjSummary(p,total,linkedNotes.length,linkedReminders.length,projCompletedItems)+'<div class="subtask-list">'+(sorted.length===0?'<div class="empty-state" style="padding:10px;">No subtasks yet.</div>':sorted.map(st=>{return '<div class="subtask-item"><div class="st-check" onclick="toggleSubtask(\''+p.id+"','"+st.id+'\')"></div><span class="st-name editable" id="sn_'+st.id+'"><span class="priority-dot clickable priority-'+st.priority+'" onclick="event.stopPropagation();cycleSubtaskPriority(\''+p.id+"','"+st.id+'\',event)" title="Click to change priority"></span>'+esc(st.name)+'</span>'+(st.due?'<span class="st-due date-editable" id="sd_'+st.id+'">'+fmtDate(st.due)+'</span>':'<span class="st-due date-editable" id="sd_'+st.id+'" style="color:var(--text-faint);">+ date</span>')+'<div class="st-actions">'+(st.timeEst?'<span class="tl-time-badge">'+fmtTimeEst(st.timeEst)+'</span>':'')+'<span class="wt-clock-btn '+(_isScheduledToday(st.id)?'scheduled':'')+'" onclick="event.stopPropagation();handleWorkTodayClick(\'subtask\',\''+st.id+'\',\''+p.id+'\')" title="Work on today" style="width:18px;height:18px;font-size:9px;">\u{1F4C5}</span><span class="st-btn st-cal" onclick="exportSubtaskICS(\''+p.id+"','"+st.id+'\')">\u{1F4C5}</span><span class="st-btn st-del" onclick="deleteSubtask(\''+p.id+"','"+st.id+'\')">\u2715</span></div></div>';}).join(''))+'</div><div class="subtask-add"><input type="text" id="stN_'+p.id+'" placeholder="New subtask..." onkeydown="if(event.key===\'Enter\')addSubtask(\''+p.id+'\')"><button class="mic-btn" id="stMic_'+p.id+'" onclick="toggleMic(\'stN_'+p.id+'\',\'stMic_'+p.id+'\')" title="Voice input">&#127908;</button><select id="stP_'+p.id+'"><option value="low">Low</option><option value="med" selected>Med</option><option value="high">High</option></select><select id="stT_'+p.id+'" class="time-est-select"><option value="">Time?</option><option value="30">30m</option><option value="60">1hr</option><option value="90">1.5hr</option><option value="120">2hr</option><option value="180">3hr</option><option value="240">4hr</option><option value="999">4hr+</option></select><input type="date" id="stD_'+p.id+'"><button class="btn btn-accent btn-sm" onclick="addSubtask(\''+p.id+'\')">+</button></div></div></div>';}).join('');
 document.getElementById('projCount').textContent=state.projects.length;
 // Append "Completed Projects" section at the bottom of the projects list
 el.innerHTML+=_renderCompletedProjectsSection();
@@ -5352,7 +5381,7 @@ function renderTaskList(){
       }
       return '<div class="tl-item">'+
         '<div class="tl-check" onclick="toggleTaskDone(\''+t.id+'\',\''+t.source+'\',\''+t.projectId+'\')"></div>'+
-        '<div class="tl-body"><div class="tl-name"><span class="priority-dot priority-'+t.priority+'"></span><span class="editable" id="'+nameId+'">'+esc(t.name)+'</span></div>'+
+        '<div class="tl-body"><div class="tl-name"><span class="priority-dot clickable priority-'+t.priority+'" onclick="event.stopPropagation();'+(t.source==='standalone'?'cycleTaskPriority(\''+t.id+'\',event)':'cycleSubtaskPriority(\''+t.projectId+'\',\''+t.id+'\',event)')+'" title="Click to change priority"></span><span class="editable" id="'+nameId+'">'+esc(t.name)+'</span></div>'+
         '<div class="tl-meta">'+(t.projectName?'<span class="tl-proj-badge">'+esc(t.projectName)+'</span>':'')+
         (t.timeEst?'<span class="tl-time-badge">'+fmtTimeEst(t.timeEst)+'</span>':'')+
         dueHTML+
@@ -6331,7 +6360,7 @@ function openProjectModal(pid){
       return '<div class="pmd-subtask">'
         +'<div class="pmd-st-check" onclick="pmdToggleSubtask(\''+pid+'\',\''+st.id+'\')"></div>'
         +'<span class="pmd-st-name">'
-        +'<span class="priority-dot priority-'+( st.priority||'med')+'"></span><span class="editable" id="'+nameId+'">'+esc(st.name)+'</span></span>'
+        +'<span class="priority-dot clickable priority-'+( st.priority||'med')+'" onclick="event.stopPropagation();cycleSubtaskPriorityInModal(\''+pid+'\',\''+st.id+'\',event)" title="Click to change priority"></span><span class="editable" id="'+nameId+'">'+esc(st.name)+'</span></span>'
         +dueHTML
         +(st.timeEst?'<span class="tl-time-badge">'+fmtTimeEst(st.timeEst)+'</span>':'')
         +'<span class="st-btn st-del" onclick="deleteSubtask(\''+pid+'\',\''+st.id+'\')" title="Delete">\u2715</span>'
@@ -6350,7 +6379,7 @@ function openProjectModal(pid){
         '<div class="pmd-item-meta">Due: <span class="date-editable" id="'+dueId+'">'+fmtDate(t.due)+'</span></div>':
         '<div class="pmd-item-meta">Due: <span class="date-editable" id="'+dueId+'" style="color:var(--text-faint);">+ set</span></div>';
       return '<div class="pmd-item"><div class="pmd-item-label">'
-        +'<span class="priority-dot priority-'+(t.priority||'med')+'"></span>'
+        +'<span class="priority-dot clickable priority-'+(t.priority||'med')+'" onclick="event.stopPropagation();cycleTaskPriorityInModal(\''+pid+'\',\''+t.id+'\',event)" title="Click to change priority"></span>'
         +'<span class="editable" id="'+nameId+'">'+esc(t.name)+'</span>'+(t.done?' <span style="color:var(--text-faint);font-size:11px;">(done)</span>':'')
         +'</div>'+dueHTML+'</div>';
     }).join('');
@@ -6418,6 +6447,18 @@ function openProjectModal(pid){
 function closeProjectModal(){
   document.getElementById('projDetailModal').classList.remove('open');
   _unblurDashboard();
+}
+
+// Modal-aware priority cyclers — re-open the modal to refresh the view
+function cycleSubtaskPriorityInModal(pid,sid,ev){
+  if(ev)ev.stopPropagation();
+  cycleSubtaskPriority(pid,sid,null);
+  openProjectModal(pid);
+}
+function cycleTaskPriorityInModal(pid,tid,ev){
+  if(ev)ev.stopPropagation();
+  cycleTaskPriority(tid,null);
+  openProjectModal(pid);
 }
 
 function pmdToggleSubtask(pid,sid){
