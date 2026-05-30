@@ -3323,6 +3323,22 @@ async function _pullFromFirebase(){
     // the most-recently-updated source.
     var cloudLifetime=cloudState.lifetimePoints||0;
     var localLifetime=state.lifetimePoints||0;
+
+    // ── STREAK PROTECTION ──────────────────────────────────────────────────
+    // Streak fields move INDEPENDENTLY of lifetime points (you earn points for
+    // each routine item, but a streak DAY only counts when both routines are
+    // fully done). A stale cloud snapshot can have equal/higher points but an
+    // OLDER streak — adopting it wholesale rolls the streak back and resets it
+    // to 1 on the next completion. So we merge streak fields separately, always
+    // keeping the most-progressed values regardless of which side "wins".
+    var bestStreak=Math.max(state.streak||0, cloudState.streak||0);
+    var bestLongest=Math.max(state.longestStreak||0, cloudState.longestStreak||0, bestStreak);
+    // Keep the MORE RECENT lastStreakDate (string compare works for YYYY-MM-DD)
+    var bestStreakDate=state.lastStreakDate||null;
+    if(cloudState.lastStreakDate && (!bestStreakDate || cloudState.lastStreakDate>bestStreakDate)){
+      bestStreakDate=cloudState.lastStreakDate;
+    }
+
     if(cloudLifetime >= localLifetime){
       // Cloud is ahead or equal — adopt cloud version of sacred fields
       SACRED_KEYS.forEach(function(k){
@@ -3334,14 +3350,25 @@ async function _pullFromFirebase(){
       if(cloudState.theme)state.theme=cloudState.theme;
       if(cloudState.timerDuration)state.timerDuration=cloudState.timerDuration;
       if(cloudState.thoughts)state.thoughts=cloudState.thoughts;
+      // Override streak fields with the protected best-of values
+      state.streak=bestStreak;
+      state.longestStreak=bestLongest;
+      state.lastStreakDate=bestStreakDate;
       state.sync.lastSync=new Date().toISOString();
       localStorage.setItem('centerpost_kids_state',JSON.stringify(state));
       // Refresh UI
       applyTheme(state.theme||'rainbow');
       renderTasks();renderRoutines();renderBubbles();renderReading();renderFeelingsWheel();renderRewards();updateHeader();
+      // If we corrected a streak rollback, push the fix back up
+      if(bestStreak>(cloudState.streak||0)||bestStreakDate!==cloudState.lastStreakDate){
+        _pushToFirebase();
+      }
       toast('Synced from cloud ('+cloudLifetime+' lifetime stars)');
     } else {
-      // Local is ahead — push our state up
+      // Local is ahead — push our state up (local streak fields already best)
+      state.streak=bestStreak;
+      state.longestStreak=bestLongest;
+      state.lastStreakDate=bestStreakDate;
       await _pushToFirebase();
       toast('Pushed local data to cloud');
     }
