@@ -251,6 +251,141 @@ body.theme-electric #lightningLayer{display:block;animation:lightning-flash 7s i
   #lightningLayer::before,#lightningLayer::after{animation:none;opacity:0.15;}
 }
 
+/* ── THEME: FIRETRUCK — red/white with emergency strobe ── */
+body.theme-firetruck{
+  --bg:#1a0000;
+  --surface:#2a0000;
+  --surface-light:#3d0000;
+  --border:#ff2200;
+  --border-dark:#990000;
+  --primary:#ff2200;
+  --secondary:#ffffff;
+  --accent:#ff2200;
+  --success:#66ff33;
+  --danger:#ff0000;
+  --text:#ffffff;
+  --text-dim:#ffaaaa;
+  --shadow:#080000;
+  --header-font:'Press Start 2P',monospace;
+  --body-font:'VT323',monospace;
+}
+body.theme-firetruck .app{background:transparent;}
+body.theme-firetruck .panel{
+  background:rgba(30,0,0,0.58) !important;
+  backdrop-filter:blur(5px);
+  -webkit-backdrop-filter:blur(5px);
+  box-shadow:0 0 0 1px rgba(255,34,0,0.3),0 4px 20px rgba(0,0,0,0.5) !important;
+}
+body.theme-firetruck .panel-title{text-shadow:0 0 8px rgba(255,34,0,0.7);}
+
+/* Firetruck strobe overlay: alternating red left / white right like emergency lights */
+#firetruckStrobe{
+  position:fixed;inset:0;z-index:1;pointer-events:none;
+  opacity:0;display:none;
+}
+body.theme-firetruck #firetruckStrobe{display:block;animation:ft-strobe 1.4s infinite;}
+@keyframes ft-strobe{
+  /* Red flash left */
+  0%  {opacity:0;background:linear-gradient(90deg,rgba(255,20,0,0.45) 0%,rgba(255,20,0,0.15) 45%,transparent 55%);}
+  8%  {opacity:1;}
+  14% {opacity:0;}
+  /* brief dark gap */
+  20% {opacity:0;background:linear-gradient(90deg,rgba(255,20,0,0.45) 0%,rgba(255,20,0,0.15) 45%,transparent 55%);}
+  28% {opacity:1;}
+  36% {opacity:0;}
+  /* White flash right */
+  50% {opacity:0;background:linear-gradient(90deg,transparent 45%,rgba(255,255,255,0.35) 55%,rgba(255,255,255,0.55) 100%);}
+  58% {opacity:1;}
+  64% {opacity:0;}
+  78% {opacity:0;background:linear-gradient(90deg,transparent 45%,rgba(255,255,255,0.35) 55%,rgba(255,255,255,0.55) 100%);}
+  86% {opacity:1;}
+  94% {opacity:0;}
+  100%{opacity:0;}
+}
+/* Rotating light bar effect at the top */
+#firetruckStrobe::before{
+  content:'';
+  position:absolute;top:0;left:0;right:0;height:6px;
+  background:linear-gradient(90deg,transparent 0%,#ff2200 20%,#ff2200 30%,transparent 50%,#ffffff 70%,#ffffff 80%,transparent 100%);
+  animation:ft-bar 1.4s infinite;
+  opacity:0.9;
+}
+@keyframes ft-bar{
+  0%,100%{transform:scaleX(1);}
+  50%{transform:scaleX(-1);}
+}
+@media(prefers-reduced-motion:reduce){
+  body.theme-firetruck #firetruckStrobe{animation:none;opacity:0.06;background:radial-gradient(circle at 20% 50%,rgba(255,20,0,0.15),transparent 60%);}
+  #firetruckStrobe::before{animation:none;}
+}
+
+/* ── THEME: POLICE — blue/red with alternating emergency strobe ── */
+body.theme-police{
+  --bg:#000a1a;
+  --surface:#001428;
+  --surface-light:#001e3d;
+  --border:#0066ff;
+  --border-dark:#003399;
+  --primary:#0066ff;
+  --secondary:#ff0033;
+  --accent:#00aaff;
+  --success:#66ff33;
+  --danger:#ff0033;
+  --text:#ffffff;
+  --text-dim:#88aacc;
+  --shadow:#000008;
+  --header-font:'Press Start 2P',monospace;
+  --body-font:'VT323',monospace;
+}
+body.theme-police .app{background:transparent;}
+body.theme-police .panel{
+  background:rgba(0,10,28,0.58) !important;
+  backdrop-filter:blur(5px);
+  -webkit-backdrop-filter:blur(5px);
+  box-shadow:0 0 0 1px rgba(0,102,255,0.3),0 4px 20px rgba(0,0,0,0.5) !important;
+}
+body.theme-police .panel-title{text-shadow:0 0 8px rgba(0,170,255,0.7);}
+
+/* Police strobe: classic red-left / blue-right alternating */
+#policeStrobe{
+  position:fixed;inset:0;z-index:1;pointer-events:none;
+  opacity:0;display:none;
+}
+body.theme-police #policeStrobe{display:block;animation:cop-strobe 1.6s infinite;}
+@keyframes cop-strobe{
+  /* Blue left */
+  0%  {opacity:0;background:linear-gradient(90deg,rgba(0,80,255,0.5) 0%,rgba(0,80,255,0.18) 40%,transparent 55%);}
+  7%  {opacity:1;}
+  15% {opacity:0;}
+  22% {opacity:0;}
+  29% {opacity:1;}
+  37% {opacity:0;}
+  /* Red right */
+  50% {opacity:0;background:linear-gradient(90deg,transparent 45%,rgba(255,0,40,0.18) 60%,rgba(255,0,40,0.5) 100%);}
+  57% {opacity:1;}
+  65% {opacity:0;}
+  72% {opacity:0;}
+  79% {opacity:1;}
+  87% {opacity:0;}
+  100%{opacity:0;}
+}
+/* Rotating light bar at top */
+#policeStrobe::before{
+  content:'';
+  position:absolute;top:0;left:0;right:0;height:6px;
+  background:linear-gradient(90deg,transparent 0%,#0055ff 20%,#0055ff 30%,transparent 50%,#ff0033 70%,#ff0033 80%,transparent 100%);
+  animation:cop-bar 1.6s infinite;
+  opacity:0.9;
+}
+@keyframes cop-bar{
+  0%,100%{transform:scaleX(1);}
+  50%{transform:scaleX(-1);}
+}
+@media(prefers-reduced-motion:reduce){
+  body.theme-police #policeStrobe{animation:none;opacity:0.06;background:radial-gradient(circle at 80% 50%,rgba(0,80,255,0.15),transparent 60%);}
+  #policeStrobe::before{animation:none;}
+}
+
 
 /* ═══ LAYOUT ═══ */
 .app{
@@ -1246,6 +1381,8 @@ body.theme-electric #lightningLayer{display:block;animation:lightning-flash 7s i
 .theme-option-candy{background:#fff0f9;color:#4a0044;}
 .theme-option-lava{background:#220000;}
 .theme-option-electric{background:linear-gradient(135deg,#0a0e1a 40%,#ffe000 100%);color:#ffe000;text-shadow:0 0 6px rgba(255,224,0,0.8);}
+.theme-option-firetruck{background:linear-gradient(135deg,#1a0000 40%,#ff2200 100%);color:#ffffff;}
+.theme-option-police{background:linear-gradient(135deg,#000a1a 0%,#0066ff 50%,#ff0033 100%);color:#ffffff;}
 
 /* ═══ PARENT SETTINGS MODAL ═══ */
 .parent-modal{
@@ -1390,6 +1527,8 @@ body.theme-critter::before,body.theme-candy::before{
 </head>
 <body class="theme-rainbow">
 <div id="lightningLayer"></div>
+<div id="firetruckStrobe"></div>
+<div id="policeStrobe"></div>
 <div class="app">
 
   <!-- HEADER -->
@@ -1614,6 +1753,14 @@ body.theme-critter::before,body.theme-candy::before{
       <button class="theme-option theme-option-electric" data-theme="electric" onclick="setTheme('electric')">
         <div class="theme-swatch"><div class="swatch" style="background:#ffe000"></div><div class="swatch" style="background:#00d4ff"></div><div class="swatch" style="background:#0a0e1a"></div><div class="swatch" style="background:#ff3b6b"></div></div>
         ⚡ THUNDERBOLT
+      </button>
+      <button class="theme-option theme-option-firetruck" data-theme="firetruck" onclick="setTheme('firetruck')">
+        <div class="theme-swatch"><div class="swatch" style="background:#ff2200"></div><div class="swatch" style="background:#ffffff"></div><div class="swatch" style="background:#1a0000"></div><div class="swatch" style="background:#ff6633"></div></div>
+        🚒 FIRETRUCK
+      </button>
+      <button class="theme-option theme-option-police" data-theme="police" onclick="setTheme('police')">
+        <div class="theme-swatch"><div class="swatch" style="background:#0066ff"></div><div class="swatch" style="background:#ff0033"></div><div class="swatch" style="background:#000a1a"></div><div class="swatch" style="background:#00aaff"></div></div>
+        🚔 POLICE
       </button>
     </div>
   </div>
