@@ -1,0 +1,1295 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Centerpost — Teacher Planner</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Playfair+Display:wght@600;700&family=DM+Sans:wght@300;400;500;600&display=swap" rel="stylesheet">
+<script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-auth-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore-compat.js"></script>
+<style>
+/* ══════════════════════════════════════════════════════════════════
+   CENTERPOST TEACHER PLANNER
+   Aesthetic: refined editorial — warm cream, deep forest green,
+   terracotta accent. Clean grid for print, rich interactions on screen.
+   ══════════════════════════════════════════════════════════════════ */
+:root{
+  --cream:#faf7f2;
+  --warm-white:#fff9f4;
+  --forest:#1e3a2f;
+  --forest-mid:#2d5240;
+  --forest-light:#3d6b52;
+  --terra:#c4522a;
+  --terra-light:#e06840;
+  --gold:#c9973a;
+  --ink:#1a1a1a;
+  --ink-mid:#444;
+  --ink-dim:#777;
+  --ink-faint:#aaa;
+  --border:#ddd3c5;
+  --border-light:#ede7df;
+  --surface:#fff;
+  --surface-raised:#fdf9f5;
+  --complete-bg:rgba(30,58,47,0.07);
+  --incomplete-bg:rgba(196,82,42,0.07);
+  --behavior-bg:rgba(201,151,58,0.1);
+  --shadow:rgba(30,20,10,0.10);
+  --print-border:#ccc;
+  --radius:8px;
+  --font-head:'Playfair Display',serif;
+  --font-body:'DM Sans',sans-serif;
+}
+
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0;}
+html{font-size:15px;}
+body{
+  font-family:var(--font-body);
+  background:var(--cream);
+  color:var(--ink);
+  min-height:100vh;
+}
+
+/* ── TOP BAR ── */
+.top-bar{
+  background:var(--forest);
+  color:#fff;
+  padding:0 28px;
+  height:58px;
+  display:flex;
+  align-items:center;
+  justify-content:space-between;
+  position:sticky;top:0;z-index:100;
+  box-shadow:0 2px 12px rgba(0,0,0,0.18);
+}
+.top-bar-logo{
+  font-family:var(--font-head);
+  font-size:20px;
+  display:flex;align-items:center;gap:10px;
+  letter-spacing:0.3px;
+}
+.top-bar-logo span{font-size:12px;font-family:var(--font-body);font-weight:300;opacity:0.7;letter-spacing:0.5px;text-transform:uppercase;}
+.top-bar-controls{display:flex;gap:10px;align-items:center;}
+.top-bar-btn{
+  background:rgba(255,255,255,0.12);
+  border:1px solid rgba(255,255,255,0.2);
+  color:#fff;
+  padding:6px 14px;
+  border-radius:6px;
+  font-family:var(--font-body);
+  font-size:12px;
+  font-weight:500;
+  cursor:pointer;
+  transition:all 0.15s;
+  letter-spacing:0.3px;
+}
+.top-bar-btn:hover{background:rgba(255,255,255,0.22);}
+.top-bar-btn.accent{background:var(--terra);border-color:var(--terra);}
+.top-bar-btn.accent:hover{background:var(--terra-light);}
+
+/* ── TOOLBAR ── */
+.toolbar{
+  background:var(--warm-white);
+  border-bottom:1px solid var(--border);
+  padding:12px 28px;
+  display:flex;
+  align-items:center;
+  gap:16px;
+  flex-wrap:wrap;
+}
+.toolbar-group{display:flex;align-items:center;gap:8px;}
+.toolbar-label{font-size:11px;font-weight:600;color:var(--ink-dim);text-transform:uppercase;letter-spacing:0.6px;}
+select.ctrl, input.ctrl{
+  font-family:var(--font-body);
+  font-size:13px;
+  padding:6px 10px;
+  border:1px solid var(--border);
+  border-radius:6px;
+  background:var(--surface);
+  color:var(--ink);
+  cursor:pointer;
+}
+select.ctrl{padding-right:24px;}
+.week-nav{display:flex;align-items:center;gap:8px;}
+.week-nav button{
+  width:28px;height:28px;border-radius:50%;
+  border:1px solid var(--border);
+  background:var(--surface);
+  cursor:pointer;font-size:14px;
+  display:flex;align-items:center;justify-content:center;
+  transition:all 0.15s;
+}
+.week-nav button:hover{background:var(--forest);color:#fff;border-color:var(--forest);}
+.week-label{font-size:13px;font-weight:600;color:var(--forest);min-width:180px;text-align:center;}
+.toolbar-sep{width:1px;height:24px;background:var(--border);margin:0 4px;}
+
+/* ── PLANNER GRID ── */
+.planner-wrap{padding:20px 24px 60px;overflow-x:auto;}
+.planner-grid{
+  display:grid;
+  min-width:900px;
+  border:1.5px solid var(--border);
+  border-radius:10px;
+  overflow:hidden;
+  box-shadow:0 2px 16px var(--shadow);
+  background:var(--surface);
+}
+/* Columns: time label + 5 days */
+.grid-header{
+  display:contents;
+}
+.col-time{
+  grid-column:1;
+  background:var(--forest);
+}
+.day-head{
+  background:var(--forest);
+  color:#fff;
+  padding:14px 12px 12px;
+  text-align:center;
+  border-left:1px solid rgba(255,255,255,0.1);
+  font-weight:600;
+  font-size:12px;
+  letter-spacing:0.4px;
+}
+.day-head .day-name{
+  font-family:var(--font-head);
+  font-size:16px;
+  font-weight:600;
+  display:block;
+  margin-bottom:2px;
+}
+.day-head .day-date{
+  font-size:10px;
+  opacity:0.65;
+  font-weight:400;
+  letter-spacing:0.3px;
+}
+.time-head{
+  background:var(--forest);
+  padding:14px 12px;
+  color:rgba(255,255,255,0.5);
+  font-size:10px;
+  font-weight:600;
+  text-transform:uppercase;
+  letter-spacing:0.8px;
+  text-align:center;
+}
+/* Each row in the grid = one 30-min block */
+.grid-row{
+  display:contents;
+}
+.time-cell{
+  background:var(--surface-raised);
+  border-top:1px solid var(--border-light);
+  padding:0 8px;
+  display:flex;
+  align-items:center;
+  justify-content:flex-end;
+  min-height:52px;
+}
+.time-cell.hour-marker{background:#f2ede6;}
+.time-tick{
+  font-size:11px;
+  font-weight:600;
+  color:var(--ink-dim);
+  white-space:nowrap;
+}
+.time-cell.half .time-tick{font-size:10px;color:var(--ink-faint);font-weight:400;}
+.lesson-cell{
+  border-top:1px solid var(--border-light);
+  border-left:1px solid var(--border);
+  min-height:52px;
+  position:relative;
+  cursor:pointer;
+  transition:background 0.1s;
+}
+.lesson-cell:hover{background:rgba(30,58,47,0.04);}
+.lesson-cell.has-lesson{cursor:default;}
+.lesson-cell.hour-marker{background:rgba(250,247,242,0.6);}
+
+/* ── LESSON BLOCK ── */
+.lesson-block{
+  position:absolute;
+  top:1px;left:1px;right:1px;
+  border-radius:5px;
+  padding:5px 7px;
+  font-size:11.5px;
+  line-height:1.35;
+  overflow:hidden;
+  cursor:pointer;
+  transition:box-shadow 0.15s;
+  z-index:2;
+}
+.lesson-block:hover{box-shadow:0 2px 8px rgba(0,0,0,0.18);}
+.lesson-block.status-complete{
+  background:var(--complete-bg);
+  border-left:3px solid var(--forest-light);
+}
+.lesson-block.status-incomplete{
+  background:var(--incomplete-bg);
+  border-left:3px solid var(--terra);
+}
+.lesson-block.status-none{
+  background:rgba(30,58,47,0.06);
+  border-left:3px solid var(--gold);
+}
+.lesson-block.has-behavior{
+  border-right:3px solid var(--gold);
+}
+.lb-title{
+  font-weight:600;
+  font-size:11.5px;
+  color:var(--ink);
+  margin-bottom:1px;
+  white-space:nowrap;
+  overflow:hidden;
+  text-overflow:ellipsis;
+}
+.lb-grade{
+  font-size:9.5px;
+  font-weight:600;
+  text-transform:uppercase;
+  letter-spacing:0.4px;
+  color:var(--forest-light);
+  margin-bottom:2px;
+}
+.lb-staff{
+  font-size:10px;
+  color:var(--ink-dim);
+  white-space:nowrap;
+  overflow:hidden;
+  text-overflow:ellipsis;
+}
+.lb-flags{display:flex;gap:4px;margin-top:3px;flex-wrap:wrap;}
+.lb-flag{
+  font-size:9px;
+  padding:1px 5px;
+  border-radius:3px;
+  font-weight:600;
+  letter-spacing:0.3px;
+}
+.lb-flag.complete{background:rgba(30,58,47,0.15);color:var(--forest);}
+.lb-flag.incomplete{background:rgba(196,82,42,0.15);color:var(--terra);}
+.lb-flag.behavior{background:rgba(201,151,58,0.2);color:#8a6010;}
+.lb-add{
+  position:absolute;
+  inset:0;
+  display:flex;
+  align-items:center;
+  justify-content:center;
+  opacity:0;
+  transition:opacity 0.15s;
+  color:var(--ink-faint);
+  font-size:18px;
+}
+.lesson-cell:hover:not(.has-lesson) .lb-add{opacity:1;}
+
+/* ── MODAL ── */
+.modal-overlay{
+  position:fixed;inset:0;
+  background:rgba(10,10,10,0.5);
+  z-index:200;
+  display:flex;
+  align-items:center;
+  justify-content:center;
+  padding:20px;
+  backdrop-filter:blur(2px);
+}
+.modal-overlay.hidden{display:none;}
+.modal{
+  background:var(--surface);
+  border-radius:12px;
+  width:100%;
+  max-width:560px;
+  max-height:90vh;
+  overflow-y:auto;
+  box-shadow:0 24px 64px rgba(0,0,0,0.28);
+  animation:modal-in 0.2s cubic-bezier(0.34,1.56,0.64,1);
+}
+@keyframes modal-in{from{opacity:0;transform:translateY(16px) scale(0.97);}to{opacity:1;transform:none;}}
+.modal-head{
+  padding:22px 24px 16px;
+  border-bottom:1px solid var(--border-light);
+  display:flex;
+  align-items:flex-start;
+  justify-content:space-between;
+  gap:12px;
+  background:var(--forest);
+  border-radius:12px 12px 0 0;
+  color:#fff;
+}
+.modal-head-info{}
+.modal-title{
+  font-family:var(--font-head);
+  font-size:18px;
+  font-weight:600;
+  margin-bottom:3px;
+}
+.modal-subtitle{font-size:11px;opacity:0.65;letter-spacing:0.3px;}
+.modal-close{
+  background:rgba(255,255,255,0.15);
+  border:none;
+  color:#fff;
+  width:28px;height:28px;
+  border-radius:50%;
+  cursor:pointer;
+  font-size:14px;
+  display:flex;align-items:center;justify-content:center;
+  flex-shrink:0;
+  transition:background 0.15s;
+  margin-top:2px;
+}
+.modal-close:hover{background:rgba(255,255,255,0.28);}
+.modal-body{padding:20px 24px;}
+.form-row{margin-bottom:16px;}
+.form-row.two-col{display:grid;grid-template-columns:1fr 1fr;gap:12px;}
+.form-row.three-col{display:grid;grid-template-columns:1fr 1fr 1fr;gap:10px;}
+label.field-label{
+  display:block;
+  font-size:11px;
+  font-weight:600;
+  text-transform:uppercase;
+  letter-spacing:0.6px;
+  color:var(--ink-dim);
+  margin-bottom:5px;
+}
+input.field, select.field, textarea.field{
+  width:100%;
+  font-family:var(--font-body);
+  font-size:13.5px;
+  padding:9px 12px;
+  border:1.5px solid var(--border);
+  border-radius:7px;
+  background:var(--surface);
+  color:var(--ink);
+  transition:border-color 0.15s;
+}
+input.field:focus, select.field:focus, textarea.field:focus{
+  outline:none;
+  border-color:var(--forest-light);
+  box-shadow:0 0 0 3px rgba(30,58,47,0.08);
+}
+textarea.field{resize:vertical;min-height:80px;}
+.status-row{display:flex;gap:10px;flex-wrap:wrap;}
+.status-btn{
+  flex:1;min-width:120px;
+  padding:9px 12px;
+  border-radius:7px;
+  border:1.5px solid var(--border);
+  background:var(--surface);
+  font-family:var(--font-body);
+  font-size:12px;
+  font-weight:600;
+  cursor:pointer;
+  display:flex;align-items:center;gap:6px;
+  transition:all 0.15s;
+  color:var(--ink-mid);
+}
+.status-btn .dot{width:8px;height:8px;border-radius:50%;background:var(--border);}
+.status-btn:hover{border-color:var(--ink-mid);}
+.status-btn.active-complete{
+  border-color:var(--forest-light);
+  background:var(--complete-bg);
+  color:var(--forest);
+}
+.status-btn.active-complete .dot{background:var(--forest-light);}
+.status-btn.active-incomplete{
+  border-color:var(--terra);
+  background:var(--incomplete-bg);
+  color:var(--terra);
+}
+.status-btn.active-incomplete .dot{background:var(--terra);}
+.status-btn.active-behavior{
+  border-color:var(--gold);
+  background:var(--behavior-bg);
+  color:#8a6010;
+}
+.status-btn.active-behavior .dot{background:var(--gold);}
+.behavior-section{
+  margin-top:12px;
+  padding:14px;
+  background:var(--behavior-bg);
+  border:1px solid rgba(201,151,58,0.3);
+  border-radius:8px;
+  display:none;
+}
+.behavior-section.open{display:block;}
+.behavior-label{
+  font-size:11px;
+  font-weight:600;
+  color:#8a6010;
+  text-transform:uppercase;
+  letter-spacing:0.6px;
+  margin-bottom:10px;
+  display:flex;align-items:center;gap:6px;
+}
+.student-tags{display:flex;flex-wrap:wrap;gap:6px;margin-bottom:10px;}
+.student-tag{
+  padding:4px 10px;
+  border-radius:20px;
+  font-size:11px;
+  font-weight:600;
+  cursor:pointer;
+  border:1.5px solid rgba(201,151,58,0.4);
+  background:rgba(255,255,255,0.6);
+  color:var(--ink-mid);
+  transition:all 0.12s;
+}
+.student-tag.selected{
+  background:var(--gold);
+  border-color:var(--gold);
+  color:#fff;
+}
+.student-add-row{display:flex;gap:6px;margin-bottom:10px;}
+.student-add-row input{
+  flex:1;font-family:var(--font-body);font-size:12px;
+  padding:6px 10px;border:1.5px solid rgba(201,151,58,0.4);
+  border-radius:6px;background:rgba(255,255,255,0.7);color:var(--ink);
+}
+.student-add-row input:focus{outline:none;border-color:var(--gold);}
+.student-add-btn{
+  padding:6px 12px;border:none;border-radius:6px;
+  background:var(--gold);color:#fff;
+  font-family:var(--font-body);font-size:12px;font-weight:600;cursor:pointer;
+}
+.modal-foot{
+  padding:14px 24px 18px;
+  border-top:1px solid var(--border-light);
+  display:flex;
+  gap:8px;
+  justify-content:flex-end;
+  flex-wrap:wrap;
+}
+.btn{
+  padding:9px 18px;
+  border-radius:7px;
+  font-family:var(--font-body);
+  font-size:13px;
+  font-weight:600;
+  cursor:pointer;
+  border:1.5px solid var(--border);
+  background:var(--surface);
+  color:var(--ink-mid);
+  transition:all 0.15s;
+}
+.btn:hover{border-color:var(--ink-mid);}
+.btn.primary{background:var(--forest);border-color:var(--forest);color:#fff;}
+.btn.primary:hover{background:var(--forest-mid);}
+.btn.danger{border-color:rgba(196,82,42,0.4);color:var(--terra);}
+.btn.danger:hover{background:var(--incomplete-bg);border-color:var(--terra);}
+
+/* ── BEHAVIOR REPORT MODAL ── */
+.report-table{width:100%;border-collapse:collapse;font-size:12px;}
+.report-table th{
+  text-align:left;
+  padding:7px 10px;
+  background:var(--forest);
+  color:#fff;
+  font-size:10px;
+  text-transform:uppercase;
+  letter-spacing:0.5px;
+}
+.report-table td{
+  padding:8px 10px;
+  border-bottom:1px solid var(--border-light);
+  color:var(--ink);
+  vertical-align:top;
+}
+.report-table tr:last-child td{border-bottom:none;}
+.report-table tr:nth-child(even) td{background:var(--surface-raised);}
+.tag-list{display:flex;flex-wrap:wrap;gap:4px;}
+.tag-chip{
+  background:rgba(201,151,58,0.18);
+  color:#8a6010;
+  border-radius:10px;
+  padding:2px 7px;
+  font-size:10px;
+  font-weight:600;
+}
+.empty-report{text-align:center;padding:30px;color:var(--ink-faint);font-size:13px;}
+
+/* ── TOAST ── */
+.toast{
+  position:fixed;
+  bottom:24px;left:50%;
+  transform:translateX(-50%) translateY(0);
+  background:var(--forest);
+  color:#fff;
+  padding:10px 20px;
+  border-radius:8px;
+  font-size:13px;
+  font-weight:500;
+  z-index:999;
+  box-shadow:0 4px 16px rgba(0,0,0,0.25);
+  opacity:0;
+  transition:opacity 0.2s, transform 0.2s;
+  pointer-events:none;
+}
+.toast.show{opacity:1;transform:translateX(-50%) translateY(-4px);}
+
+/* ══════════════════════════════
+   PRINT STYLES
+   Week grid prints on one A4/Letter page landscape.
+   ══════════════════════════════ */
+@media print{
+  *{-webkit-print-color-adjust:exact !important;print-color-adjust:exact !important;}
+  body{background:#fff;font-size:9pt;}
+  .top-bar,.toolbar,.modal-overlay,.toast{display:none !important;}
+  .planner-wrap{padding:0;overflow:visible;}
+  .planner-grid{
+    min-width:0;
+    border:1pt solid #999;
+    box-shadow:none;
+    page-break-inside:avoid;
+  }
+  .print-header{
+    display:block !important;
+    text-align:center;
+    padding:8pt 0 6pt;
+    font-family:var(--font-head);
+    font-size:15pt;
+    color:var(--forest);
+    border-bottom:1pt solid var(--print-border);
+    margin-bottom:6pt;
+  }
+  .day-head{background:var(--forest) !important;-webkit-print-color-adjust:exact;}
+  .time-cell{min-height:36pt;}
+  .lesson-cell{min-height:36pt;}
+  .lesson-block{font-size:7pt;padding:3pt 4pt;}
+  .lb-title{font-size:7pt;}
+  .lb-staff,.lb-grade{font-size:6pt;}
+  .lb-flags{display:none;}
+  .behavior-comment-print{
+    display:block !important;
+    font-size:6.5pt;
+    color:#8a6010;
+    margin-top:2pt;
+    font-style:italic;
+  }
+  @page{size:landscape;margin:10mm 8mm;}
+}
+.print-header{display:none;}
+.behavior-comment-print{display:none;}
+</style>
+</head>
+<body>
+
+<!-- TOAST -->
+<div class="toast" id="toast"></div>
+
+<!-- PRINT HEADER -->
+<div class="print-header" id="printHeader"></div>
+
+<!-- TOP BAR -->
+<div class="top-bar">
+  <div class="top-bar-logo">
+    <svg width="22" height="22" viewBox="0 0 24 24" fill="none"><rect x="2" y="3" width="20" height="18" rx="2" stroke="rgba(255,255,255,0.7)" stroke-width="1.5"/><line x1="8" y1="2" x2="8" y2="6" stroke="rgba(255,255,255,0.7)" stroke-width="1.5" stroke-linecap="round"/><line x1="16" y1="2" x2="16" y2="6" stroke="rgba(255,255,255,0.7)" stroke-width="1.5" stroke-linecap="round"/><line x1="2" y1="10" x2="22" y2="10" stroke="rgba(255,255,255,0.7)" stroke-width="1.5"/></svg>
+    Centerpost <span>Teacher Planner</span>
+  </div>
+  <div class="top-bar-controls">
+    <button class="top-bar-btn" onclick="openReport()">📊 Behavior Report</button>
+    <button class="top-bar-btn" onclick="window.print()">🖨️ Print Week</button>
+    <button class="top-bar-btn" onclick="clearWeek()" style="opacity:0.7;">Clear Week</button>
+  </div>
+</div>
+
+<!-- TOOLBAR -->
+<div class="toolbar">
+  <div class="toolbar-group">
+    <span class="toolbar-label">Teacher</span>
+    <input class="ctrl" id="teacherName" type="text" placeholder="Your name" style="width:160px;" oninput="savePrefs()">
+  </div>
+  <div class="toolbar-sep"></div>
+  <div class="toolbar-group">
+    <span class="toolbar-label">Week</span>
+    <div class="week-nav">
+      <button onclick="shiftWeek(-1)">&#8249;</button>
+      <div class="week-label" id="weekLabel"></div>
+      <button onclick="shiftWeek(1)">&#8250;</button>
+    </div>
+    <button class="top-bar-btn" onclick="goToday()" style="font-size:11px;padding:5px 10px;background:rgba(30,58,47,0.1);color:var(--forest);border-color:var(--border);">Today</button>
+  </div>
+  <div class="toolbar-sep"></div>
+  <div class="toolbar-group">
+    <span class="toolbar-label">Default Block</span>
+    <select class="ctrl" id="defaultDuration" onchange="savePrefs()">
+      <option value="30">30 min</option>
+      <option value="60">60 min</option>
+      <option value="90">90 min</option>
+    </select>
+  </div>
+</div>
+
+<!-- PLANNER GRID -->
+<div class="planner-wrap">
+  <div class="planner-grid" id="plannerGrid"></div>
+</div>
+
+<!-- LESSON MODAL -->
+<div class="modal-overlay hidden" id="lessonModalOverlay" onclick="if(event.target===this)closeLessonModal()">
+  <div class="modal" id="lessonModal">
+    <div class="modal-head">
+      <div class="modal-head-info">
+        <div class="modal-title" id="modalTitle">Add Lesson</div>
+        <div class="modal-subtitle" id="modalSubtitle"></div>
+      </div>
+      <button class="modal-close" onclick="closeLessonModal()">✕</button>
+    </div>
+    <div class="modal-body">
+      <div class="form-row two-col">
+        <div>
+          <label class="field-label">Grade Level</label>
+          <select class="field" id="f_grade">
+            <option value="">Select grade</option>
+            <option value="K">Kindergarten</option>
+            <option value="1">Grade 1</option>
+            <option value="2">Grade 2</option>
+            <option value="3">Grade 3</option>
+            <option value="4">Grade 4</option>
+            <option value="5">Grade 5</option>
+            <option value="Multi">Multi-grade</option>
+            <option value="SpEd">Special Education</option>
+          </select>
+        </div>
+        <div>
+          <label class="field-label">Subject / Area</label>
+          <select class="field" id="f_subject">
+            <option value="">Select subject</option>
+            <option value="Reading">Reading / ELA</option>
+            <option value="Math">Math</option>
+            <option value="Science">Science</option>
+            <option value="Social Studies">Social Studies</option>
+            <option value="Writing">Writing</option>
+            <option value="Art">Art</option>
+            <option value="Music">Music</option>
+            <option value="PE">Physical Education</option>
+            <option value="Speech">Speech / Language</option>
+            <option value="OT">Occupational Therapy</option>
+            <option value="Life Skills">Life Skills</option>
+            <option value="IEP">IEP Goals</option>
+            <option value="Other">Other</option>
+          </select>
+        </div>
+      </div>
+      <div class="form-row">
+        <label class="field-label">Lesson Title</label>
+        <input class="field" id="f_title" type="text" placeholder="e.g. Phonics — short vowel blends">
+      </div>
+      <div class="form-row">
+        <label class="field-label">Lesson Plan / Objectives</label>
+        <textarea class="field" id="f_plan" placeholder="Standards, materials, activities, differentiation..."></textarea>
+      </div>
+      <div class="form-row two-col">
+        <div>
+          <label class="field-label">Start Time</label>
+          <input class="field" id="f_start" type="time" step="1800">
+        </div>
+        <div>
+          <label class="field-label">Duration</label>
+          <select class="field" id="f_duration">
+            <option value="30">30 min</option>
+            <option value="60">60 min</option>
+            <option value="90">90 min</option>
+            <option value="120">2 hrs</option>
+            <option value="custom">Custom…</option>
+          </select>
+        </div>
+      </div>
+      <div class="form-row" id="customDurRow" style="display:none;">
+        <label class="field-label">Custom Duration (minutes)</label>
+        <input class="field" id="f_customDur" type="number" min="5" max="300" step="5" placeholder="e.g. 45">
+      </div>
+      <div class="form-row">
+        <label class="field-label">Supporting Staff</label>
+        <input class="field" id="f_staff" type="text" placeholder="e.g. Ms. Rivera (para), Mr. Liu (OT)">
+      </div>
+      <div class="form-row">
+        <label class="field-label">Notes / Materials</label>
+        <input class="field" id="f_notes" type="text" placeholder="Worksheet 4B, manipulatives, sensory kit...">
+      </div>
+      <div class="form-row">
+        <label class="field-label">Lesson Status</label>
+        <div class="status-row">
+          <button class="status-btn" id="statusNone" onclick="setStatus('none')"><span class="dot"></span>Not started</button>
+          <button class="status-btn" id="statusComplete" onclick="setStatus('complete')"><span class="dot"></span>✓ Complete</button>
+          <button class="status-btn" id="statusIncomplete" onclick="setStatus('incomplete')"><span class="dot"></span>✗ Incomplete</button>
+        </div>
+      </div>
+      <div class="form-row">
+        <div class="status-row">
+          <button class="status-btn" id="statusBehavior" onclick="toggleBehavior()" style="flex:0 0 auto;min-width:140px;">
+            <span class="dot" style="background:var(--gold)"></span>⚑ Behavior noted
+          </button>
+        </div>
+        <div class="behavior-section" id="behaviorSection">
+          <div class="behavior-label">⚑ Behavior Log</div>
+          <div class="student-add-row">
+            <input type="text" id="studentInput" placeholder="Add student name…" onkeydown="if(event.key==='Enter')addStudentToClass()">
+            <button class="student-add-btn" onclick="addStudentToClass()">+ Add</button>
+          </div>
+          <div class="student-tags" id="studentTagList"></div>
+          <label class="field-label" style="margin-top:8px;">Behavior Notes</label>
+          <textarea class="field" id="f_behavior" placeholder="Describe behavior, context, antecedent, response taken…" style="min-height:70px;"></textarea>
+        </div>
+      </div>
+    </div>
+    <div class="modal-foot">
+      <button class="btn danger" id="deleteLessonBtn" onclick="deleteLesson()" style="margin-right:auto;display:none;">Delete</button>
+      <button class="btn" onclick="closeLessonModal()">Cancel</button>
+      <button class="btn primary" onclick="saveLesson()">Save Lesson</button>
+    </div>
+  </div>
+</div>
+
+<!-- BEHAVIOR REPORT MODAL -->
+<div class="modal-overlay hidden" id="reportOverlay" onclick="if(event.target===this)document.getElementById('reportOverlay').classList.add('hidden')">
+  <div class="modal" style="max-width:680px;">
+    <div class="modal-head">
+      <div class="modal-head-info">
+        <div class="modal-title">Behavior Report</div>
+        <div class="modal-subtitle" id="reportSubtitle"></div>
+      </div>
+      <button class="modal-close" onclick="document.getElementById('reportOverlay').classList.add('hidden')">✕</button>
+    </div>
+    <div class="modal-body" id="reportBody"></div>
+    <div class="modal-foot">
+      <button class="btn" onclick="document.getElementById('reportOverlay').classList.add('hidden')">Close</button>
+    </div>
+  </div>
+</div>
+
+<script>
+// ══════════════════════════════════════════════════════════════════
+// CENTERPOST TEACHER PLANNER — DATA + UI
+// ══════════════════════════════════════════════════════════════════
+
+var FIREBASE_CONFIG = {
+  apiKey: "AIzaSyCgNToGWHbZI8s8OnhF1Z9l2BMXXtfHuC0",
+  authDomain: "productivity-dashboard-f8488.firebaseapp.com",
+  projectId: "productivity-dashboard-f8488",
+  storageBucket: "productivity-dashboard-f8488.firebasestorage.app",
+  messagingSenderId: "921593287670",
+  appId: "1:921593287670:web:eda2ab0cb829ca850f6dd7"
+};
+
+// ── CONSTANTS ──────────────────────────────────────────────────────
+var DAY_START = 9 * 60;  // 9:00 AM in minutes
+var DAY_END = {
+  0:15*60+30, // Mon 3:30
+  1:15*60+30, // Tue 3:30
+  2:15*60,    // Wed 3:00
+  3:15*60+30, // Thu 3:30
+  4:15*60+30  // Fri 3:30
+};
+var DAYS = ['Monday','Tuesday','Wednesday','Thursday','Friday'];
+
+// ── STATE ──────────────────────────────────────────────────────────
+var currentWeekStart = getMondayOf(new Date()); // Date object for current Monday
+var lessons = {};       // key: "weekKey_dayIdx_slotMin" → lesson object
+var students = [];      // saved class roster
+var prefs = { teacherName:'', defaultDuration:30 };
+
+// Session editing state
+var _editKey = null;    // currently editing lesson key
+var _editDay = null;
+var _editSlotMin = null;
+var _currentStatus = 'none';
+var _behaviorOpen = false;
+var _selectedStudents = [];
+
+// ── STORAGE ───────────────────────────────────────────────────────
+function storageKey(){ return 'tp_lessons'; }
+
+function load(){
+  try{
+    var raw = localStorage.getItem(storageKey());
+    if(raw) lessons = JSON.parse(raw);
+  }catch(e){}
+  try{
+    var p = localStorage.getItem('tp_prefs');
+    if(p) prefs = Object.assign({}, prefs, JSON.parse(p));
+  }catch(e){}
+  try{
+    var s = localStorage.getItem('tp_students');
+    if(s) students = JSON.parse(s);
+  }catch(e){}
+}
+
+function save(){
+  try{ localStorage.setItem(storageKey(), JSON.stringify(lessons)); }catch(e){}
+}
+
+function savePrefs(){
+  prefs.teacherName = document.getElementById('teacherName').value;
+  prefs.defaultDuration = parseInt(document.getElementById('defaultDuration').value) || 30;
+  try{ localStorage.setItem('tp_prefs', JSON.stringify(prefs)); }catch(e){}
+}
+
+function saveStudents(){
+  try{ localStorage.setItem('tp_students', JSON.stringify(students)); }catch(e){}
+}
+
+// ── DATE HELPERS ──────────────────────────────────────────────────
+function getMondayOf(d){
+  var day = d.getDay();
+  var diff = (day === 0 ? -6 : 1 - day);
+  var mon = new Date(d);
+  mon.setDate(d.getDate() + diff);
+  mon.setHours(0,0,0,0);
+  return mon;
+}
+
+function dateForDay(dayIdx){
+  var d = new Date(currentWeekStart);
+  d.setDate(d.getDate() + dayIdx);
+  return d;
+}
+
+function weekKey(){
+  var d = currentWeekStart;
+  return d.getFullYear() + '-' + pad2(d.getMonth()+1) + '-' + pad2(d.getDate());
+}
+
+function pad2(n){ return n < 10 ? '0'+n : ''+n; }
+
+function fmtDate(d){
+  return d.toLocaleDateString('en-US',{month:'short',day:'numeric'});
+}
+
+function fmtTime(min){
+  var h = Math.floor(min/60);
+  var m = min % 60;
+  var suffix = h >= 12 ? 'p' : 'a';
+  var h12 = h > 12 ? h-12 : (h===0 ? 12 : h);
+  return h12 + (m > 0 ? ':'+pad2(m) : '') + suffix;
+}
+
+function parseTime(str){
+  // Parse HH:MM from time input
+  if(!str) return null;
+  var parts = str.split(':');
+  return parseInt(parts[0])*60 + parseInt(parts[1]||0);
+}
+
+function toTimeInputVal(min){
+  return pad2(Math.floor(min/60)) + ':' + pad2(min%60);
+}
+
+function shiftWeek(dir){
+  currentWeekStart = new Date(currentWeekStart);
+  currentWeekStart.setDate(currentWeekStart.getDate() + dir*7);
+  renderGrid();
+}
+
+function goToday(){
+  currentWeekStart = getMondayOf(new Date());
+  renderGrid();
+}
+
+// ── LESSON KEY ────────────────────────────────────────────────────
+function lessonKey(dayIdx, startMin){
+  return weekKey() + '_' + dayIdx + '_' + startMin;
+}
+
+// ── GRID RENDER ───────────────────────────────────────────────────
+function renderGrid(){
+  var wk = weekKey();
+  var mon = currentWeekStart;
+  var fri = new Date(mon); fri.setDate(fri.getDate()+4);
+
+  // Update week label
+  document.getElementById('weekLabel').textContent =
+    fmtDate(mon) + ' – ' + fmtDate(fri) + ', ' + mon.getFullYear();
+
+  // Update print header
+  document.getElementById('printHeader').textContent =
+    (prefs.teacherName ? prefs.teacherName + ' — ' : '') +
+    'Week of ' + fmtDate(mon) + ' – ' + fmtDate(fri) + ', ' + mon.getFullYear();
+
+  // Determine time range: 9am to latest end time across all days
+  var maxEnd = Math.max.apply(null, Object.values(DAY_END));
+  var totalMins = maxEnd - DAY_START; // e.g. 390 min for 3:30
+  var slots = [];
+  for(var m = DAY_START; m < maxEnd; m += 30) slots.push(m);
+
+  // CSS grid: 52px time col + 5 equal day cols
+  var grid = document.getElementById('plannerGrid');
+  grid.style.gridTemplateColumns = '64px repeat(5, 1fr)';
+  grid.style.gridTemplateRows = '48px ' + slots.map(function(){ return '52px'; }).join(' ');
+
+  var html = '';
+
+  // Row 1: headers
+  html += '<div class="time-head" style="grid-row:1;grid-column:1;">Time</div>';
+  DAYS.forEach(function(name, i){
+    var d = dateForDay(i);
+    var isToday = d.toDateString() === new Date().toDateString();
+    html += '<div class="day-head" style="grid-row:1;grid-column:'+(i+2)+';'+(isToday?'background:var(--forest-light);':'')+'">'+
+      '<span class="day-name">'+name+'</span>'+
+      '<span class="day-date">'+fmtDate(d)+'</span>'+
+    '</div>';
+  });
+
+  // Rows 2+: time slots
+  slots.forEach(function(slotMin, rowIdx){
+    var row = rowIdx + 2;
+    var isHour = slotMin % 60 === 0;
+    var isHalf = slotMin % 60 === 30;
+
+    // Time cell
+    html += '<div class="time-cell'+(isHour?' hour-marker':'')+(isHalf?' half':'')+'" style="grid-row:'+row+';grid-column:1;">'+
+      '<span class="time-tick">'+fmtTime(slotMin)+'</span>'+
+    '</div>';
+
+    // Day cells
+    DAYS.forEach(function(name, dayIdx){
+      var endMin = DAY_END[dayIdx];
+      var inactive = slotMin >= endMin;
+      var key = wk + '_' + dayIdx + '_' + slotMin;
+      var lesson = lessons[key];
+
+      html += '<div class="lesson-cell'+(isHour?' hour-marker':'')+(lesson?' has-lesson':'')+'"'+
+        ' style="grid-row:'+row+';grid-column:'+(dayIdx+2)+';'+( inactive?'background:rgba(0,0,0,0.04);cursor:default;':'')+'"'+
+        (!inactive && !lesson ? ' onclick="openNew('+dayIdx+','+slotMin+')"' : '')+
+        (!inactive && lesson ? ' onclick="openEdit(\''+key+'\')"' : '')+
+        ' data-key="'+key+'"'+
+      '>';
+
+      if(!inactive && !lesson){
+        html += '<div class="lb-add">+</div>';
+      }
+      // Lesson blocks are injected by renderLessonBlocks after grid is in DOM
+      html += '</div>';
+    });
+  });
+
+  grid.innerHTML = html;
+  renderLessonBlocks();
+}
+
+function renderLessonBlocks(){
+  var wk = weekKey();
+  // For each lesson in this week, inject the block element
+  Object.keys(lessons).forEach(function(key){
+    if(key.indexOf(wk + '_') !== 0) return;
+    var lesson = lessons[key];
+    var cell = document.querySelector('[data-key="'+key+'"]');
+    if(!cell) return;
+
+    // Calculate height: span duration/30 rows, minus 2px gap
+    var slots = Math.max(1, Math.floor(lesson.duration / 30));
+    var height = slots * 52 - 3;
+
+    var statusClass = lesson.status === 'complete' ? 'status-complete' :
+                      lesson.status === 'incomplete' ? 'status-incomplete' : 'status-none';
+    var behaviorClass = lesson.behavior && lesson.behavior.notes ? ' has-behavior' : '';
+
+    var flags = '';
+    if(lesson.status === 'complete') flags += '<span class="lb-flag complete">✓ Done</span>';
+    if(lesson.status === 'incomplete') flags += '<span class="lb-flag incomplete">✗ Incomplete</span>';
+    if(lesson.behavior && lesson.behavior.notes) flags += '<span class="lb-flag behavior">⚑ Behavior</span>';
+
+    var block = document.createElement('div');
+    block.className = 'lesson-block ' + statusClass + behaviorClass;
+    block.style.height = height + 'px';
+    block.innerHTML =
+      (lesson.grade ? '<div class="lb-grade">'+esc(lesson.grade)+(lesson.subject?' · '+esc(lesson.subject):'')+'</div>' : '') +
+      '<div class="lb-title">'+(lesson.title ? esc(lesson.title) : '<em style="opacity:0.5">Lesson</em>')+'</div>'+
+      (lesson.staff ? '<div class="lb-staff">Staff: '+esc(lesson.staff)+'</div>' : '')+
+      '<div class="lb-flags">'+flags+'</div>'+
+      '<div class="behavior-comment-print">'+(lesson.behavior&&lesson.behavior.notes?'⚑ '+esc(lesson.behavior.notes):'')+'</div>';
+    block.onclick = function(e){ e.stopPropagation(); openEdit(key); };
+    cell.appendChild(block);
+    cell.classList.add('has-lesson');
+  });
+}
+
+// ── MODAL ─────────────────────────────────────────────────────────
+function openNew(dayIdx, slotMin){
+  _editKey = null;
+  _editDay = dayIdx;
+  _editSlotMin = slotMin;
+  _currentStatus = 'none';
+  _behaviorOpen = false;
+  _selectedStudents = [];
+
+  var d = dateForDay(dayIdx);
+  document.getElementById('modalTitle').textContent = 'Add Lesson';
+  document.getElementById('modalSubtitle').textContent = DAYS[dayIdx] + ', ' + fmtDate(d) + ' · ' + fmtTime(slotMin);
+  document.getElementById('deleteLessonBtn').style.display = 'none';
+
+  // Clear form
+  document.getElementById('f_grade').value = '';
+  document.getElementById('f_subject').value = '';
+  document.getElementById('f_title').value = '';
+  document.getElementById('f_plan').value = '';
+  document.getElementById('f_staff').value = '';
+  document.getElementById('f_notes').value = '';
+  document.getElementById('f_behavior').value = '';
+  document.getElementById('f_start').value = toTimeInputVal(slotMin);
+  document.getElementById('f_duration').value = prefs.defaultDuration;
+  document.getElementById('customDurRow').style.display = 'none';
+  setStatus('none');
+  setBehaviorOpen(false);
+  renderStudentTags();
+
+  document.getElementById('lessonModalOverlay').classList.remove('hidden');
+  setTimeout(function(){ document.getElementById('f_title').focus(); }, 120);
+}
+
+function openEdit(key){
+  var lesson = lessons[key];
+  if(!lesson) return;
+  _editKey = key;
+
+  // Parse key to get day/slot
+  var parts = key.split('_');
+  // key = "YYYY-MM-DD_dayIdx_slotMin"
+  _editDay = parseInt(parts[3]);
+  _editSlotMin = parseInt(parts[4]);
+
+  var d = dateForDay(_editDay);
+  document.getElementById('modalTitle').textContent = 'Edit Lesson';
+  document.getElementById('modalSubtitle').textContent = DAYS[_editDay] + ', ' + fmtDate(d) + ' · ' + fmtTime(_editSlotMin);
+  document.getElementById('deleteLessonBtn').style.display = 'inline-flex';
+
+  document.getElementById('f_grade').value = lesson.grade || '';
+  document.getElementById('f_subject').value = lesson.subject || '';
+  document.getElementById('f_title').value = lesson.title || '';
+  document.getElementById('f_plan').value = lesson.plan || '';
+  document.getElementById('f_staff').value = lesson.staff || '';
+  document.getElementById('f_notes').value = lesson.notes || '';
+  document.getElementById('f_start').value = toTimeInputVal(lesson.startMin || _editSlotMin);
+
+  var dur = lesson.duration || 30;
+  var durSel = document.getElementById('f_duration');
+  var knownVals = ['30','60','90','120'];
+  if(knownVals.indexOf(String(dur)) >= 0){
+    durSel.value = String(dur);
+    document.getElementById('customDurRow').style.display = 'none';
+  } else {
+    durSel.value = 'custom';
+    document.getElementById('f_customDur').value = dur;
+    document.getElementById('customDurRow').style.display = 'block';
+  }
+
+  _currentStatus = lesson.status || 'none';
+  _behaviorOpen = !!(lesson.behavior && (lesson.behavior.notes || (lesson.behavior.students||[]).length));
+  _selectedStudents = (lesson.behavior && lesson.behavior.students) ? lesson.behavior.students.slice() : [];
+  document.getElementById('f_behavior').value = (lesson.behavior && lesson.behavior.notes) || '';
+
+  setStatus(_currentStatus);
+  setBehaviorOpen(_behaviorOpen);
+  renderStudentTags();
+
+  document.getElementById('lessonModalOverlay').classList.remove('hidden');
+}
+
+function closeLessonModal(){
+  document.getElementById('lessonModalOverlay').classList.add('hidden');
+}
+
+function setStatus(s){
+  _currentStatus = s;
+  ['none','complete','incomplete'].forEach(function(st){
+    var el = document.getElementById('status'+st.charAt(0).toUpperCase()+st.slice(1));
+    if(el) el.className = 'status-btn' + (s===st ? ' active-'+st : '');
+  });
+}
+
+function toggleBehavior(){
+  setBehaviorOpen(!_behaviorOpen);
+}
+
+function setBehaviorOpen(open){
+  _behaviorOpen = open;
+  var sec = document.getElementById('behaviorSection');
+  var btn = document.getElementById('statusBehavior');
+  sec.classList.toggle('open', open);
+  btn.className = 'status-btn' + (open ? ' active-behavior' : '');
+}
+
+function renderStudentTags(){
+  var container = document.getElementById('studentTagList');
+  if(!container) return;
+  var html = students.map(function(name){
+    var sel = _selectedStudents.indexOf(name) >= 0;
+    return '<span class="student-tag'+(sel?' selected':'')+'" onclick="toggleStudent(\''+esc(name)+'\')">'+esc(name)+'</span>';
+  }).join('');
+  container.innerHTML = html || '<span style="font-size:11px;color:var(--ink-faint);">Add student names above to tag them</span>';
+}
+
+function toggleStudent(name){
+  var idx = _selectedStudents.indexOf(name);
+  if(idx >= 0) _selectedStudents.splice(idx, 1);
+  else _selectedStudents.push(name);
+  renderStudentTags();
+}
+
+function addStudentToClass(){
+  var inp = document.getElementById('studentInput');
+  var name = (inp.value || '').trim();
+  if(!name) return;
+  if(students.indexOf(name) < 0){
+    students.push(name);
+    saveStudents();
+  }
+  if(_selectedStudents.indexOf(name) < 0) _selectedStudents.push(name);
+  inp.value = '';
+  renderStudentTags();
+}
+
+// Duration select handler
+document.addEventListener('change', function(e){
+  if(e.target.id === 'f_duration'){
+    document.getElementById('customDurRow').style.display = (e.target.value === 'custom') ? 'block' : 'none';
+  }
+});
+
+function saveLesson(){
+  var title = document.getElementById('f_title').value.trim();
+  if(!title){ toast('Enter a lesson title'); return; }
+
+  var startMin = parseTime(document.getElementById('f_start').value) || _editSlotMin;
+  var durVal = document.getElementById('f_duration').value;
+  var duration = durVal === 'custom'
+    ? (parseInt(document.getElementById('f_customDur').value) || 30)
+    : parseInt(durVal);
+
+  var behaviorNotes = document.getElementById('f_behavior').value.trim();
+  var hasBehavior = _behaviorOpen && (behaviorNotes || _selectedStudents.length > 0);
+
+  var lesson = {
+    title:  document.getElementById('f_title').value.trim(),
+    grade:  document.getElementById('f_grade').value,
+    subject: document.getElementById('f_subject').value,
+    plan:   document.getElementById('f_plan').value.trim(),
+    staff:  document.getElementById('f_staff').value.trim(),
+    notes:  document.getElementById('f_notes').value.trim(),
+    startMin: startMin,
+    duration: duration,
+    status: _currentStatus,
+    behavior: hasBehavior ? {
+      notes: behaviorNotes,
+      students: _selectedStudents.slice()
+    } : null,
+    savedAt: new Date().toISOString()
+  };
+
+  // If editing and start time changed, update key
+  var newKey;
+  if(_editKey && startMin !== _editSlotMin){
+    // Remove old key
+    delete lessons[_editKey];
+    newKey = lessonKey(_editDay, startMin);
+  } else if(_editKey){
+    newKey = _editKey;
+  } else {
+    newKey = lessonKey(_editDay, startMin);
+  }
+  lessons[newKey] = lesson;
+  save();
+  closeLessonModal();
+  renderGrid();
+  toast((_editKey ? 'Lesson updated' : 'Lesson saved') + ' ✓');
+}
+
+function deleteLesson(){
+  if(!_editKey) return;
+  if(!confirm('Delete this lesson?')) return;
+  delete lessons[_editKey];
+  save();
+  closeLessonModal();
+  renderGrid();
+  toast('Lesson deleted');
+}
+
+function clearWeek(){
+  if(!confirm('Clear all lessons for this week?')) return;
+  var wk = weekKey();
+  Object.keys(lessons).forEach(function(k){
+    if(k.indexOf(wk+'_')===0) delete lessons[k];
+  });
+  save();
+  renderGrid();
+  toast('Week cleared');
+}
+
+// ── BEHAVIOR REPORT ───────────────────────────────────────────────
+function openReport(){
+  var wk = weekKey();
+  var rows = [];
+  Object.keys(lessons).forEach(function(key){
+    if(key.indexOf(wk+'_')!==0) return;
+    var l = lessons[key];
+    if(!l.behavior || (!l.behavior.notes && !(l.behavior.students||[]).length)) return;
+    var parts = key.split('_');
+    var dayIdx = parseInt(parts[3]);
+    var slotMin = parseInt(parts[4]);
+    rows.push({
+      day: DAYS[dayIdx],
+      time: fmtTime(slotMin),
+      title: l.title || '—',
+      grade: l.grade || '—',
+      students: l.behavior.students || [],
+      notes: l.behavior.notes || ''
+    });
+  });
+  rows.sort(function(a,b){
+    return DAYS.indexOf(a.day) - DAYS.indexOf(b.day);
+  });
+
+  var mon = currentWeekStart;
+  document.getElementById('reportSubtitle').textContent = 'Week of ' + fmtDate(mon);
+
+  var body = document.getElementById('reportBody');
+  if(rows.length === 0){
+    body.innerHTML = '<div class="empty-report">No behavior incidents logged this week.</div>';
+  } else {
+    body.innerHTML = '<table class="report-table">'+
+      '<thead><tr>'+
+        '<th>Day</th><th>Time</th><th>Lesson</th><th>Grade</th>'+
+        '<th>Students</th><th>Notes</th>'+
+      '</tr></thead>'+
+      '<tbody>'+
+      rows.map(function(r){
+        return '<tr>'+
+          '<td>'+esc(r.day)+'</td>'+
+          '<td>'+esc(r.time)+'</td>'+
+          '<td>'+esc(r.title)+'</td>'+
+          '<td>'+esc(r.grade)+'</td>'+
+          '<td><div class="tag-list">'+r.students.map(function(s){return '<span class="tag-chip">'+esc(s)+'</span>';}).join('')+'</div></td>'+
+          '<td>'+esc(r.notes)+'</td>'+
+        '</tr>';
+      }).join('')+
+      '</tbody></table>';
+  }
+  document.getElementById('reportOverlay').classList.remove('hidden');
+}
+
+// ── UTILITIES ────────────────────────────────────────────────────
+function esc(s){
+  var d=document.createElement('div');d.textContent=s||'';return d.innerHTML;
+}
+
+var _toastTimer = null;
+function toast(msg, dur){
+  var el = document.getElementById('toast');
+  el.textContent = msg;
+  el.classList.add('show');
+  if(_toastTimer) clearTimeout(_toastTimer);
+  _toastTimer = setTimeout(function(){ el.classList.remove('show'); }, dur||2200);
+}
+
+// ── INIT ─────────────────────────────────────────────────────────
+load();
+document.getElementById('teacherName').value = prefs.teacherName || '';
+document.getElementById('defaultDuration').value = prefs.defaultDuration || 30;
+currentWeekStart = getMondayOf(new Date());
+renderGrid();
+</script>
+</body>
+</html>
