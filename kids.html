@@ -1902,47 +1902,65 @@ function checkStreakProgress(){
 }
 
 function checkRewardUnlocks(){
-  // Unlock 3-day reward every time we cross a multiple of 3
-  var threeDayMilestones=Math.floor(state.streak/3);
-  var sevenDayMilestones=Math.floor(state.streak/7);
-  var totalThreeUnlocked=(state.rewards.history||[]).filter(function(h){return h.type==='3day';}).length+state.rewards.pendingThreeDay;
-  var totalSevenUnlocked=(state.rewards.history||[]).filter(function(h){return h.type==='7day';}).length+state.rewards.pendingSevenDay;
-  if(threeDayMilestones>totalThreeUnlocked){
-    state.rewards.pendingThreeDay+=1;
-    save();
-    setTimeout(function(){openRewardModal('3day');},500);
-  }
-  if(sevenDayMilestones>totalSevenUnlocked){
-    state.rewards.pendingSevenDay+=1;
-    save();
-    setTimeout(function(){openRewardModal('7day');},800);
-  }
+  // 3-day and 7-day are FULLY INDEPENDENT. Each milestone of its own kind
+  // grants one pending reward the child can claim from that tier's list.
+  // Award ALL outstanding milestones (in case any were missed), so on day 6
+  // the child gets their 2nd 3-day pick even if day-3's was already claimed.
+  var threeDayMilestones=Math.floor((state.streak||0)/3);
+  var sevenDayMilestones=Math.floor((state.streak||0)/7);
+  // Total already accounted for = claimed (in history) + still-pending
+  var claimed3=(state.rewards.history||[]).filter(function(h){return h.type==='3day';}).length;
+  var claimed7=(state.rewards.history||[]).filter(function(h){return h.type==='7day';}).length;
+  var accounted3=claimed3+(state.rewards.pendingThreeDay||0);
+  var accounted7=claimed7+(state.rewards.pendingSevenDay||0);
+  var new3=Math.max(0,threeDayMilestones-accounted3);
+  var new7=Math.max(0,sevenDayMilestones-accounted7);
+  if(new3>0)state.rewards.pendingThreeDay=(state.rewards.pendingThreeDay||0)+new3;
+  if(new7>0)state.rewards.pendingSevenDay=(state.rewards.pendingSevenDay||0)+new7;
+  if(new3>0||new7>0)save();
+  // Pop the modal for whatever just unlocked (3-day first, then 7-day)
+  if(new3>0)setTimeout(function(){openRewardModal('3day');},500);
+  if(new7>0)setTimeout(function(){openRewardModal('7day');},new3>0?1100:500);
   renderRewards();
 }
 
 function renderRewards(){
-  var pct3=Math.min(100,(state.streak%3)/3*100);if(state.streak>0&&state.streak%3===0)pct3=100;
-  var pct7=Math.min(100,(state.streak%7)/7*100);if(state.streak>0&&state.streak%7===0)pct7=100;
-  var progress3=state.streak%3===0&&state.streak>0?'3/3':((state.streak%3)+'/3');
-  var progress7=state.streak%7===0&&state.streak>0?'7/7':((state.streak%7)+'/7');
+  var s=state.streak||0;
+  var progress3=(s%3)+'/3';
+  var progress7=(s%7)+'/7';
+  // When sitting exactly on a milestone with a pending claim, show full bar
+  if(s>0&&s%3===0&&state.rewards.pendingThreeDay>0)progress3='3/3';
+  if(s>0&&s%7===0&&state.rewards.pendingSevenDay>0)progress7='7/7';
   document.getElementById('reward3Progress').textContent=progress3;
   document.getElementById('reward7Progress').textContent=progress7;
   var t3=document.getElementById('reward3Tier');
   var t7=document.getElementById('reward7Tier');
+
+  // ── 3-DAY tier status ──
+  // Independent of 7-day. Shows CLAIM if a reward is waiting, else countdown.
+  var claimed3=(state.rewards.history||[]).filter(function(h){return h.type==='3day';}).length;
   if(state.rewards.pendingThreeDay>0){
     t3.classList.add('unlocked');
-    document.getElementById('reward3Status').innerHTML='UNLOCKED!<br><button class="claim-btn" onclick="openRewardModal(\'3day\')">CLAIM</button>';
+    var label3=state.rewards.pendingThreeDay>1?('CLAIM ('+state.rewards.pendingThreeDay+')'):'CLAIM';
+    document.getElementById('reward3Status').innerHTML='UNLOCKED!<br><button class="claim-btn" onclick="openRewardModal(\'3day\')">'+label3+'</button>';
   }else{
     t3.classList.remove('unlocked');
-    document.getElementById('reward3Status').textContent=state.streak%3===0&&state.streak>0?'claimed!':(3-(state.streak%3))+' more days';
+    var days3=3-(s%3);
+    document.getElementById('reward3Status').innerHTML=days3+' more day'+(days3!==1?'s':'')+(claimed3>0?'<br><span style="font-size:10px;opacity:0.7;">'+claimed3+' claimed total</span>':'');
   }
+
+  // ── 7-DAY tier status (fully independent) ──
+  var claimed7=(state.rewards.history||[]).filter(function(h){return h.type==='7day';}).length;
   if(state.rewards.pendingSevenDay>0){
     t7.classList.add('unlocked');
-    document.getElementById('reward7Status').innerHTML='UNLOCKED!<br><button class="claim-btn" onclick="openRewardModal(\'7day\')">CLAIM</button>';
+    var label7=state.rewards.pendingSevenDay>1?('CLAIM ('+state.rewards.pendingSevenDay+')'):'CLAIM';
+    document.getElementById('reward7Status').innerHTML='UNLOCKED!<br><button class="claim-btn" onclick="openRewardModal(\'7day\')">'+label7+'</button>';
   }else{
     t7.classList.remove('unlocked');
-    document.getElementById('reward7Status').textContent=state.streak%7===0&&state.streak>0?'claimed!':(7-(state.streak%7))+' more days';
+    var days7=7-(s%7);
+    document.getElementById('reward7Status').innerHTML=days7+' more day'+(days7!==1?'s':'')+(claimed7>0?'<br><span style="font-size:10px;opacity:0.7;">'+claimed7+' claimed total</span>':'');
   }
+
   // Populate reward item lists below each counter
   var list3=document.getElementById('reward3List');
   var list7=document.getElementById('reward7List');
