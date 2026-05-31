@@ -1639,6 +1639,7 @@ body.unlocked .date-editable{border-bottom-color:var(--border);}
 
 /* ── META BAR — date + dropdowns pinned below header ── */
 .journal-meta-bar{display:flex;align-items:center;gap:8px;flex-wrap:wrap;padding:9px 18px;border-bottom:1px solid var(--border);flex-shrink:0;background:var(--surface-raised);}
+.journal-main{flex:1;flex-direction:column;min-height:0;overflow:hidden;}
 .journal-meta-bar .journal-date-stamp{font-size:11px;color:var(--text-dim);font-weight:500;flex:1;min-width:0;white-space:nowrap;}
 .journal-proj-tag,.journal-mood-tag{font-size:12px;padding:5px 9px;background:var(--surface);border:1px solid var(--border);border-radius:20px;color:var(--text-dim);font-family:inherit;cursor:pointer;outline:none;transition:border-color 0.15s;}
 .journal-proj-tag:focus,.journal-mood-tag:focus{border-color:var(--accent-dim);}
@@ -1650,12 +1651,12 @@ body.unlocked .date-editable{border-bottom-color:var(--border);}
 }
 
 /* ── COMPOSE — textarea gets all remaining vertical space ── */
-.journal-compose{display:flex;flex-direction:column;flex:1;padding:12px 18px 14px;gap:10px;overflow:hidden;}
+.journal-compose{display:flex;flex-direction:column;flex:1 1 0;padding:12px 18px 14px;gap:10px;overflow:hidden;min-height:0;}
 .journal-compose-meta{display:none;} /* moved to meta-bar, hidden here */
 .journal-date-stamp{font-size:12px;color:var(--text-dim);font-weight:500;}
 /* textarea grows to fill all available space — no fixed min-height on mobile */
 .journal-textarea{
-  flex:1;
+  flex:1 1 0;
   resize:none;
   background:var(--surface-raised);
   border:1px solid var(--border);
@@ -1667,7 +1668,7 @@ body.unlocked .date-editable{border-bottom-color:var(--border);}
   line-height:1.75;
   outline:none;
   transition:border-color 0.15s;
-  min-height:0; /* let flex handle it */
+  min-height:160px; /* fallback if flex chain hasn't resolved */
 }
 .journal-textarea:focus{border-color:var(--accent-dim);}
 .journal-compose-actions{display:flex;align-items:center;justify-content:space-between;flex-shrink:0;}
