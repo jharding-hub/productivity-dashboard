@@ -1625,7 +1625,7 @@ body.unlocked .date-editable{border-bottom-color:var(--border);}
 @keyframes journalSlideIn{from{opacity:0;transform:translateY(18px) scale(0.98)}to{opacity:1;transform:translateY(0) scale(1)}}
 
 /* ── JOURNAL HEADER ── */
-.journal-header{display:flex;align-items:center;justify-content:space-between;padding:18px 22px 14px;border-bottom:1px solid var(--border);flex-shrink:0;}
+.journal-header{display:flex;align-items:center;justify-content:space-between;padding:14px 18px 12px;border-bottom:1px solid var(--border);flex-shrink:0;}
 .journal-header-left{display:flex;align-items:center;gap:10px;}
 .journal-title-icon{font-size:22px;}
 .journal-title-text{font-family:'Fraunces',serif;font-size:20px;font-weight:600;color:var(--accent);}
@@ -1637,16 +1637,40 @@ body.unlocked .date-editable{border-bottom-color:var(--border);}
 .journal-close-btn{background:none;border:none;color:var(--text-faint);cursor:pointer;font-size:18px;padding:4px 6px;line-height:1;transition:color 0.15s;}
 .journal-close-btn:hover{color:var(--text);}
 
-/* ── COMPOSE ── */
-.journal-compose{display:flex;flex-direction:column;flex:1;padding:18px 22px;gap:12px;overflow:hidden;}
-.journal-compose-meta{display:flex;align-items:center;gap:10px;flex-wrap:wrap;}
-.journal-date-stamp{font-size:12px;color:var(--text-dim);font-weight:500;}
-.journal-proj-tag,.journal-mood-tag{font-size:12px;padding:4px 9px;background:var(--surface-raised);border:1px solid var(--border);border-radius:20px;color:var(--text-dim);font-family:inherit;cursor:pointer;outline:none;transition:border-color 0.15s;}
+/* ── META BAR — date + dropdowns pinned below header ── */
+.journal-meta-bar{display:flex;align-items:center;gap:8px;flex-wrap:wrap;padding:9px 18px;border-bottom:1px solid var(--border);flex-shrink:0;background:var(--surface-raised);}
+.journal-meta-bar .journal-date-stamp{font-size:11px;color:var(--text-dim);font-weight:500;flex:1;min-width:0;white-space:nowrap;}
+.journal-proj-tag,.journal-mood-tag{font-size:12px;padding:5px 9px;background:var(--surface);border:1px solid var(--border);border-radius:20px;color:var(--text-dim);font-family:inherit;cursor:pointer;outline:none;transition:border-color 0.15s;}
 .journal-proj-tag:focus,.journal-mood-tag:focus{border-color:var(--accent-dim);}
 .journal-proj-tag.has-tag,.journal-mood-tag.has-tag{background:var(--accent-glow);border-color:var(--accent-dim);color:var(--accent);}
-.journal-textarea{flex:1;min-height:320px;resize:none;background:var(--surface-raised);border:1px solid var(--border);border-radius:var(--radius-sm);padding:14px 16px;color:var(--text);font-family:'DM Sans',sans-serif;font-size:14px;line-height:1.75;outline:none;transition:border-color 0.15s;}
+/* Constrain on mobile so dropdowns don't overflow */
+@media(max-width:600px){
+  .journal-proj-tag{max-width:120px;}
+  .journal-mood-tag{max-width:150px;}
+}
+
+/* ── COMPOSE — textarea gets all remaining vertical space ── */
+.journal-compose{display:flex;flex-direction:column;flex:1;padding:12px 18px 14px;gap:10px;overflow:hidden;}
+.journal-compose-meta{display:none;} /* moved to meta-bar, hidden here */
+.journal-date-stamp{font-size:12px;color:var(--text-dim);font-weight:500;}
+/* textarea grows to fill all available space — no fixed min-height on mobile */
+.journal-textarea{
+  flex:1;
+  resize:none;
+  background:var(--surface-raised);
+  border:1px solid var(--border);
+  border-radius:var(--radius-sm);
+  padding:14px 16px;
+  color:var(--text);
+  font-family:'DM Sans',sans-serif;
+  font-size:16px; /* 16px prevents iOS auto-zoom on focus */
+  line-height:1.75;
+  outline:none;
+  transition:border-color 0.15s;
+  min-height:0; /* let flex handle it */
+}
 .journal-textarea:focus{border-color:var(--accent-dim);}
-.journal-compose-actions{display:flex;align-items:center;justify-content:space-between;}
+.journal-compose-actions{display:flex;align-items:center;justify-content:space-between;flex-shrink:0;}
 .journal-char-count{font-size:11px;color:var(--text-faint);}
 
 /* ── ENTRIES VIEW ── */
@@ -2805,6 +2829,7 @@ body.unlocked .date-editable{border-bottom-color:var(--border);}
   </div>
   <!-- Main journal UI -->
   <div class="journal-main" id="journalMain" style="display:none;">
+    <!-- Row 1: Title + entry count + Entries + close -->
     <div class="journal-header">
       <div class="journal-header-left">
         <span class="journal-title-icon">&#128221;</span>
@@ -2816,22 +2841,46 @@ body.unlocked .date-editable{border-bottom-color:var(--border);}
         <button class="journal-close-btn" onclick="closeJournal()" title="Close">&#10005;</button>
       </div>
     </div>
-    <!-- Compose area (always accessible) -->
-    <div class="journal-compose" id="journalCompose">
-      <div class="journal-compose-meta">
-        <span class="journal-date-stamp" id="journalDateStamp"></span>
-        <select class="journal-proj-tag" id="journalProjTag"><option value="">No project tag</option></select>
-        <select class="journal-mood-tag" id="journalMoodTag">
-          <option value="">Mood...</option>
-          <option value="reflective">&#129300; Reflective</option>
+    <!-- Row 2: Date + category + mood — compact meta bar -->
+    <div class="journal-meta-bar">
+      <span class="journal-date-stamp" id="journalDateStamp"></span>
+      <select class="journal-proj-tag" id="journalProjTag"><option value="">No project tag</option></select>
+      <select class="journal-mood-tag" id="journalMoodTag">
+        <option value="">Mood…</option>
+        <optgroup label="Positive">
           <option value="grateful">&#128149; Grateful</option>
-          <option value="anxious">&#128560; Anxious</option>
           <option value="motivated">&#128293; Motivated</option>
-          <option value="frustrated">&#128548; Frustrated</option>
           <option value="content">&#127774; Content</option>
-          <option value="uncertain">&#129300; Uncertain</option>
-        </select>
-      </div>
+          <option value="happy">&#128512; Happy</option>
+          <option value="excited">&#129321; Excited</option>
+          <option value="calm">&#129488; Calm</option>
+          <option value="hopeful">&#127775; Hopeful</option>
+          <option value="proud">&#129351; Proud</option>
+          <option value="energized">&#9889; Energized</option>
+        </optgroup>
+        <optgroup label="Neutral / Mixed">
+          <option value="reflective">&#129300; Reflective</option>
+          <option value="uncertain">&#129350; Uncertain</option>
+          <option value="distracted">&#128049; Distracted</option>
+          <option value="tired">&#128564; Tired</option>
+          <option value="bored">&#128566; Bored</option>
+          <option value="numb">&#129390; Numb</option>
+          <option value="nostalgic">&#128149; Nostalgic</option>
+        </optgroup>
+        <optgroup label="Challenging">
+          <option value="anxious">&#128560; Anxious</option>
+          <option value="frustrated">&#128548; Frustrated</option>
+          <option value="overwhelmed">&#129327; Overwhelmed</option>
+          <option value="stressed">&#128165; Stressed</option>
+          <option value="sad">&#128546; Sad</option>
+          <option value="angry">&#128344; Angry</option>
+          <option value="lonely">&#128064; Lonely</option>
+          <option value="discouraged">&#128531; Discouraged</option>
+        </optgroup>
+      </select>
+    </div>
+    <!-- Compose area — textarea fills all remaining space -->
+    <div class="journal-compose" id="journalCompose">
       <textarea class="journal-textarea" id="journalText" placeholder="What's on your mind today?&#10;&#10;This is your private space. No pressure, no structure — just write."></textarea>
       <div class="journal-compose-actions">
         <span class="journal-char-count" id="journalCharCount">0 characters</span>
