@@ -1712,7 +1712,11 @@ body.unlocked .date-editable{border-bottom-color:var(--border);}
   }
   .journal-pin-gate,.journal-set-pin{
     padding-top:max(32px, calc(env(safe-area-inset-top, 24px) + 16px));
+    width:100%;
+    align-items:center;
+    justify-content:flex-start;
   }
+  .journal-numpad{margin-left:auto;margin-right:auto;}
   .journal-meta-bar{padding-left:16px;padding-right:16px;}
   .journal-compose{padding-left:14px;padding-right:14px;}
   .journal-view-btn{padding:8px 14px;font-size:13px;min-height:36px;}
@@ -1728,8 +1732,8 @@ body.unlocked .date-editable{border-bottom-color:var(--border);}
 .pin-dot.shake{animation:pinShake 0.4s ease;}
 @keyframes pinShake{0%,100%{transform:translateX(0)}20%,60%{transform:translateX(-5px)}40%,80%{transform:translateX(5px)}}
 .journal-pin-error{font-size:12px;color:var(--red);min-height:18px;text-align:center;}
-.journal-numpad{display:grid;grid-template-columns:repeat(3,64px);gap:8px;margin-top:4px;}
-.np-btn{width:64px;height:52px;border-radius:var(--radius-sm);border:1px solid var(--border);background:var(--surface-raised);color:var(--text);font-size:18px;font-weight:600;font-family:inherit;cursor:pointer;transition:all 0.12s;}
+.journal-numpad{display:grid;grid-template-columns:repeat(3,72px);gap:10px;margin-top:4px;justify-self:center;}
+.np-btn{width:72px;height:58px;border-radius:var(--radius-sm);border:1px solid var(--border);background:var(--surface-raised);color:var(--text);font-size:20px;font-weight:600;font-family:inherit;cursor:pointer;transition:all 0.12s;}
 .np-btn:hover{background:var(--surface-hover);border-color:var(--border-focus);}
 .np-btn:active{transform:scale(0.94);}
 /* ── BREATHWORK & TIMER BANNER BUTTONS ── */
