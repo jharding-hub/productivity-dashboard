@@ -158,11 +158,101 @@ body.theme-lava{
   --shadow:#110000;
 }
 
+/* ── THEME: ELECTRIC / THUNDERBOLT — bright yellow + electric blue on storm sky ── */
+body.theme-electric{
+  --bg:#0a0e1a;
+  --bg-pattern:radial-gradient(circle at 20% 30%,rgba(255,224,0,0.06) 0%,transparent 40%),radial-gradient(circle at 80% 70%,rgba(0,200,255,0.06) 0%,transparent 40%);
+  --surface:#141a2e;
+  --surface-light:#1f2942;
+  --border:#ffe000;
+  --border-dark:#b39c00;
+  --primary:#ffe000;
+  --secondary:#00d4ff;
+  --accent:#ffe000;
+  --success:#5bff8a;
+  --danger:#ff3b6b;
+  --text:#ffffff;
+  --text-dim:#9fb3d4;
+  --shadow:#04060d;
+  --header-font:'Press Start 2P',monospace;
+  --body-font:'VT323',monospace;
+}
+/* Electric glow on key elements */
+body.theme-electric .panel{box-shadow:0 0 0 1px rgba(255,224,0,0.15),0 4px 16px rgba(0,0,0,0.5);}
+body.theme-electric .panel-title{text-shadow:0 0 8px rgba(255,224,0,0.6);}
+
+/* ── LIGHTNING FLASH OVERLAY ──
+   A fixed full-screen layer that flashes white/yellow at irregular
+   intervals to mimic distant lightning. Only visible on the electric theme. */
+#lightningLayer{
+  position:fixed;inset:0;z-index:1;pointer-events:none;
+  opacity:0;display:none;
+  background:
+    radial-gradient(ellipse 120% 80% at 30% 0%,rgba(255,255,255,0.9) 0%,rgba(255,238,120,0.4) 25%,transparent 55%),
+    radial-gradient(ellipse 100% 70% at 75% 10%,rgba(180,230,255,0.7) 0%,transparent 50%);
+  mix-blend-mode:screen;
+}
+body.theme-electric #lightningLayer{display:block;animation:lightning-flash 7s infinite;}
+@keyframes lightning-flash{
+  /* mostly dark, with two quick double-flashes per cycle */
+  0%,100%{opacity:0;}
+  3%{opacity:0.9;}    /* flash 1 */
+  4%{opacity:0.2;}
+  5%{opacity:1;}      /* flash 1 — second strike */
+  7%{opacity:0;}
+  46%{opacity:0;}
+  48%{opacity:0.85;}  /* flash 2 */
+  49%{opacity:0.3;}
+  50.5%{opacity:0.95;}/* flash 2 — second strike */
+  53%{opacity:0;}
+}
+/* The lightning BOLT shape that streaks down during a flash */
+#lightningLayer::before{
+  content:'';
+  position:absolute;top:-5%;left:22%;
+  width:6px;height:60%;
+  background:linear-gradient(180deg,rgba(255,255,255,0.95),rgba(255,224,0,0.8) 60%,transparent);
+  filter:drop-shadow(0 0 12px rgba(255,224,0,0.9)) drop-shadow(0 0 24px rgba(0,212,255,0.6));
+  clip-path:polygon(50% 0%,20% 38%,55% 38%,25% 70%,60% 55%,40% 100%,75% 45%,45% 45%,80% 12%);
+  opacity:0;
+  animation:bolt-strike 7s infinite;
+}
+#lightningLayer::after{
+  content:'';
+  position:absolute;top:-5%;left:70%;
+  width:5px;height:55%;
+  background:linear-gradient(180deg,rgba(200,240,255,0.95),rgba(0,212,255,0.8) 55%,transparent);
+  filter:drop-shadow(0 0 12px rgba(0,212,255,0.9)) drop-shadow(0 0 22px rgba(255,224,0,0.5));
+  clip-path:polygon(50% 0%,25% 35%,58% 35%,28% 68%,62% 52%,42% 100%,72% 42%,48% 42%,78% 10%);
+  opacity:0;
+  animation:bolt-strike-2 7s infinite;
+}
+@keyframes bolt-strike{
+  0%,2%{opacity:0;transform:scaleY(0.9);}
+  3%{opacity:1;transform:scaleY(1);}
+  6%{opacity:0;}
+  100%{opacity:0;}
+}
+@keyframes bolt-strike-2{
+  0%,47%{opacity:0;transform:scaleY(0.9);}
+  49%{opacity:1;transform:scaleY(1);}
+  52%{opacity:0;}
+  100%{opacity:0;}
+}
+/* Respect reduced-motion: keep the colors, drop the flashing */
+@media(prefers-reduced-motion:reduce){
+  body.theme-electric #lightningLayer{animation:none;opacity:0.08;}
+  #lightningLayer::before,#lightningLayer::after{animation:none;opacity:0.15;}
+}
+
+
 /* ═══ LAYOUT ═══ */
 .app{
   max-width:1400px;
   margin:0 auto;
   padding:14px;
+  position:relative;
+  z-index:2;
 }
 
 .header{
@@ -1149,6 +1239,7 @@ body.theme-lava{
 .theme-option-critter{background:#ee1515;color:white;}
 .theme-option-candy{background:#fff0f9;color:#4a0044;}
 .theme-option-lava{background:#220000;}
+.theme-option-electric{background:linear-gradient(135deg,#0a0e1a 40%,#ffe000 100%);color:#ffe000;text-shadow:0 0 6px rgba(255,224,0,0.8);}
 
 /* ═══ PARENT SETTINGS MODAL ═══ */
 .parent-modal{
@@ -1292,6 +1383,7 @@ body.theme-critter::before,body.theme-candy::before{
 </style>
 </head>
 <body class="theme-rainbow">
+<div id="lightningLayer"></div>
 <div class="app">
 
   <!-- HEADER -->
@@ -1512,6 +1604,10 @@ body.theme-critter::before,body.theme-candy::before{
       <button class="theme-option theme-option-lava" data-theme="lava" onclick="setTheme('lava')">
         <div class="theme-swatch"><div class="swatch" style="background:#ff6600"></div><div class="swatch" style="background:#ffcc00"></div><div class="swatch" style="background:#ff0033"></div><div class="swatch" style="background:#66ff33"></div></div>
         LAVA WORLD
+      </button>
+      <button class="theme-option theme-option-electric" data-theme="electric" onclick="setTheme('electric')">
+        <div class="theme-swatch"><div class="swatch" style="background:#ffe000"></div><div class="swatch" style="background:#00d4ff"></div><div class="swatch" style="background:#0a0e1a"></div><div class="swatch" style="background:#ff3b6b"></div></div>
+        ⚡ THUNDERBOLT
       </button>
     </div>
   </div>
