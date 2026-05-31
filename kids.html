@@ -178,7 +178,13 @@ body.theme-electric{
   --body-font:'VT323',monospace;
 }
 /* Electric glow on key elements */
-body.theme-electric .panel{box-shadow:0 0 0 1px rgba(255,224,0,0.15),0 4px 16px rgba(0,0,0,0.5);}
+body.theme-electric .app{background:transparent;}
+body.theme-electric .panel{
+  background:rgba(14,20,40,0.55) !important;
+  backdrop-filter:blur(6px);
+  -webkit-backdrop-filter:blur(6px);
+  box-shadow:0 0 0 1px rgba(255,224,0,0.25),0 4px 24px rgba(0,0,0,0.4) !important;
+}
 body.theme-electric .panel-title{text-shadow:0 0 8px rgba(255,224,0,0.6);}
 
 /* ── LIGHTNING FLASH OVERLAY ──
