@@ -287,19 +287,23 @@ body.theme-firetruck .panel-title{text-shadow:0 0 8px rgba(255,34,0,0.7);}
 }
 body.theme-firetruck #firetruckStrobe{display:block;animation:ft-strobe 1.82s infinite;}
 @keyframes ft-strobe{
-  0%  {opacity:0;background:linear-gradient(90deg,rgba(255,20,0,0.55) 0%,rgba(255,20,0,0.2) 45%,transparent 55%);}
-  8%  {opacity:1;}
-  14% {opacity:0;}
-  20% {opacity:0;background:linear-gradient(90deg,rgba(255,20,0,0.55) 0%,rgba(255,20,0,0.2) 45%,transparent 55%);}
-  28% {opacity:1;}
-  36% {opacity:0;}
-  50% {opacity:0;background:linear-gradient(90deg,transparent 45%,rgba(255,255,255,0.35) 55%,rgba(255,255,255,0.65) 100%);}
-  58% {opacity:1;}
-  64% {opacity:0;}
-  78% {opacity:0;background:linear-gradient(90deg,transparent 45%,rgba(255,255,255,0.35) 55%,rgba(255,255,255,0.65) 100%);}
-  86% {opacity:1;}
-  94% {opacity:0;}
-  100%{opacity:0;}
+  /* ── RED × 2 (0–50%) ── */
+  0%   {opacity:0;  background:linear-gradient(90deg,rgba(255,20,0,0.6) 0%,rgba(255,20,0,0.22) 45%,transparent 60%);}
+  6%   {opacity:1;}
+  19%  {opacity:0;}
+  /* gap between the two red flashes */
+  25%  {opacity:0;  background:linear-gradient(90deg,rgba(255,20,0,0.6) 0%,rgba(255,20,0,0.22) 45%,transparent 60%);}
+  31%  {opacity:1;}
+  44%  {opacity:0;}
+  /* ── WHITE × 2 (50–100%) ── */
+  50%  {opacity:0;  background:linear-gradient(90deg,transparent 40%,rgba(255,255,255,0.28) 55%,rgba(255,255,255,0.62) 100%);}
+  56%  {opacity:1;}
+  69%  {opacity:0;}
+  /* gap between the two white flashes */
+  75%  {opacity:0;  background:linear-gradient(90deg,transparent 40%,rgba(255,255,255,0.28) 55%,rgba(255,255,255,0.62) 100%);}
+  81%  {opacity:1;}
+  94%  {opacity:0;}
+  100% {opacity:0;}
 }
 /* Light bar strip along the very top */
 #firetruckStrobe::before{
@@ -417,21 +421,21 @@ body.theme-police .panel-title{text-shadow:0 0 8px rgba(0,170,255,0.7);}
 }
 body.theme-police #policeStrobe{display:block;animation:cop-strobe 2.08s infinite;}
 @keyframes cop-strobe{
-  /* Blue left */
-  0%  {opacity:0;background:linear-gradient(90deg,rgba(0,80,255,0.5) 0%,rgba(0,80,255,0.18) 40%,transparent 55%);}
-  7%  {opacity:1;}
-  15% {opacity:0;}
-  22% {opacity:0;}
-  29% {opacity:1;}
-  37% {opacity:0;}
-  /* Red right */
-  50% {opacity:0;background:linear-gradient(90deg,transparent 45%,rgba(255,0,40,0.18) 60%,rgba(255,0,40,0.5) 100%);}
-  57% {opacity:1;}
-  65% {opacity:0;}
-  72% {opacity:0;}
-  79% {opacity:1;}
-  87% {opacity:0;}
-  100%{opacity:0;}
+  /* ── BLUE × 2 (0–50%) ── */
+  0%   {opacity:0;  background:linear-gradient(90deg,rgba(0,80,255,0.55) 0%,rgba(0,80,255,0.2) 40%,transparent 58%);}
+  6%   {opacity:1;}
+  19%  {opacity:0;}
+  25%  {opacity:0;  background:linear-gradient(90deg,rgba(0,80,255,0.55) 0%,rgba(0,80,255,0.2) 40%,transparent 58%);}
+  31%  {opacity:1;}
+  44%  {opacity:0;}
+  /* ── RED × 2 (50–100%) ── */
+  50%  {opacity:0;  background:linear-gradient(90deg,transparent 42%,rgba(255,0,40,0.2) 58%,rgba(255,0,40,0.55) 100%);}
+  56%  {opacity:1;}
+  69%  {opacity:0;}
+  75%  {opacity:0;  background:linear-gradient(90deg,transparent 42%,rgba(255,0,40,0.2) 58%,rgba(255,0,40,0.55) 100%);}
+  81%  {opacity:1;}
+  94%  {opacity:0;}
+  100% {opacity:0;}
 }
 /* Rotating light bar at top */
 #policeStrobe::before{
