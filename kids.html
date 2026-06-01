@@ -1240,6 +1240,33 @@ body.theme-police #policeStrobe{display:block;animation:cop-strobe 2.08s infinit
   text-align:left;
   line-height:1.35;
 }
+.reward-item-chip.chosen{
+  text-decoration:line-through;
+  text-decoration-color:var(--accent);
+  text-decoration-thickness:2px;
+  opacity:0.75;
+  background:rgba(255,204,0,0.12);
+  border-color:var(--accent);
+}
+.chosen-badge{
+  display:inline-block;
+  font-size:9px;
+  font-weight:700;
+  text-decoration:none;
+  color:var(--bg);
+  background:var(--accent);
+  padding:1px 6px;
+  border-radius:10px;
+  margin-left:4px;
+  letter-spacing:0.3px;
+  vertical-align:middle;
+}
+.reward-option.chosen{
+  text-decoration:line-through;
+  text-decoration-color:var(--accent);
+  opacity:0.7;
+}
+.reward-option.chosen .chosen-badge{text-decoration:none;}
 /* ── ELECTRONICS TIMER ────────────────────────────────────── */
 .elec-panel{text-align:center;}
 .elec-sessions-row{
@@ -2320,17 +2347,23 @@ function renderRewards(){
     document.getElementById('reward7Status').innerHTML=days7+' more day'+(days7!==1?'s':'')+(claimed7>0?'<br><span style="font-size:10px;opacity:0.7;">'+claimed7+' claimed total</span>':'');
   }
 
-  // Populate reward item lists below each counter
+  // Populate reward item lists below each counter.
+  // Rewards already chosen (in history) get struck through + a "chosen" badge.
+  var hist=state.rewards.history||[];
+  var chosen3=hist.filter(function(h){return h.type==='3day';}).map(function(h){return h.reward;});
+  var chosen7=hist.filter(function(h){return h.type==='7day';}).map(function(h){return h.reward;});
   var list3=document.getElementById('reward3List');
   var list7=document.getElementById('reward7List');
   if(list3){
     list3.innerHTML=(state.rewards.threeDayList||[]).map(function(r){
-      return '<div class="reward-item-chip">⭐ '+escapeHtml(r)+'</div>';
+      var picked=chosen3.indexOf(r)>=0;
+      return '<div class="reward-item-chip'+(picked?' chosen':'')+'">⭐ '+escapeHtml(r)+(picked?' <span class="chosen-badge">✓ chosen</span>':'')+'</div>';
     }).join('');
   }
   if(list7){
     list7.innerHTML=(state.rewards.sevenDayList||[]).map(function(r){
-      return '<div class="reward-item-chip">🏆 '+escapeHtml(r)+'</div>';
+      var picked=chosen7.indexOf(r)>=0;
+      return '<div class="reward-item-chip'+(picked?' chosen':'')+'">🏆 '+escapeHtml(r)+(picked?' <span class="chosen-badge">✓ chosen</span>':'')+'</div>';
     }).join('');
   }
 }
@@ -2342,12 +2375,26 @@ function openRewardModal(tier){
   document.getElementById('rewardTitle').textContent=tier==='3day'?'3-DAY REWARD!':'7-DAY REWARD!';
   document.getElementById('rewardSub').textContent='Pick your prize:';
   var opts=document.getElementById('rewardOptions');
+  var hist=state.rewards.history||[];
+  var chosenList=hist.filter(function(h){return h.type===tier;}).map(function(h){return h.reward;});
   opts.innerHTML=list.map(function(r,i){
-    return '<button class="reward-option" onclick="claimReward(\''+tier+'\','+i+')">'+escapeHtml(r)+'</button>';
+    var picked=chosenList.indexOf(r)>=0;
+    return '<button class="reward-option'+(picked?' chosen':'')+'" onclick="claimReward(\''+tier+'\','+i+')">'+escapeHtml(r)+(picked?' <span class="chosen-badge">✓ chosen before</span>':'')+'</button>';
   }).join('');
   document.getElementById('rewardModal').classList.add('open');
 }
 function closeRewardModal(){document.getElementById('rewardModal').classList.remove('open');}
+
+// Parent: clear the "chosen" history so all rewards are available again.
+// Keeps the reward lists intact — only wipes the chosen-this-cycle marks.
+function resetRewardChoices(){
+  if(!confirm('Reset chosen rewards? All rewards become available to pick again. (Your reward list stays the same.)'))return;
+  state.rewards.history=[];
+  save();
+  renderRewards();
+  if(typeof renderParentSettings==='function')renderParentSettings();
+  toast('Rewards reset — all available again');
+}
 function claimReward(tier,idx){
   var list=tier==='3day'?state.rewards.threeDayList:state.rewards.sevenDayList;
   var chosen=list[idx];
@@ -3046,6 +3093,10 @@ function renderParentSettings(){
     +'<h3>7-DAY REWARDS</h3>'
     +'<div class="parent-reward-list" id="sevenDayList"></div>'
     +'<button class="parent-btn" onclick="addReward(\'7day\')">+ Add 7-day reward</button>'
+    +'<div style="margin-top:12px;padding:12px;background:var(--surface-raised);border:2px solid var(--border);border-radius:8px;">'
+    +'<div style="font-size:13px;color:var(--text-dim);margin-bottom:8px;line-height:1.4;">Clear the "chosen" marks so all rewards become available to pick again. This keeps your reward list — it only resets which ones have been used.</div>'
+    +'<button class="parent-btn" onclick="resetRewardChoices()">↺ Reset chosen rewards</button>'
+    +'</div>'
     +'<h3>STREAK</h3>'
     +'<div style="font-size:16px;margin-bottom:10px;line-height:1.6;">Current streak: <strong>'+state.streak+'</strong> days<br>Longest: '+state.longestStreak+' days<br>Books finished: '+((state.reading&&state.reading.completed)?state.reading.completed.length:0)+'<br>Lifetime stars: '+state.lifetimePoints+'</div>'
     +'<div style="background:var(--surface-raised);border:2px solid var(--border);border-radius:8px;padding:12px;margin-bottom:10px;">'
