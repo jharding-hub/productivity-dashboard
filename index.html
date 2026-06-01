@@ -1621,7 +1621,7 @@ body.unlocked .date-editable{border-bottom-color:var(--border);}
 .journal-overlay{position:fixed;inset:0;z-index:800;display:flex;align-items:center;justify-content:center;visibility:hidden;opacity:0;transition:opacity 0.3s ease,visibility 0.3s ease;}
 .journal-overlay.open{visibility:visible;opacity:1;}
 .journal-backdrop{position:absolute;inset:0;background:rgba(10,9,8,0.55);backdrop-filter:blur(6px);-webkit-backdrop-filter:blur(6px);}
-.journal-panel{position:relative;z-index:1;background:var(--surface);border:1px solid var(--border);border-radius:var(--radius);width:min(860px,92vw);max-height:88vh;display:flex;flex-direction:column;overflow:hidden;box-shadow:0 24px 60px rgba(0,0,0,0.6);animation:journalSlideIn 0.3s cubic-bezier(0.22,1,0.36,1) both;}
+.journal-panel{position:relative;z-index:1;background:var(--surface);border:1px solid var(--border);border-radius:var(--radius);width:min(860px,92vw);height:85vh;max-height:88vh;display:flex;flex-direction:column;overflow:hidden;box-shadow:0 24px 60px rgba(0,0,0,0.6);animation:journalSlideIn 0.3s cubic-bezier(0.22,1,0.36,1) both;}
 @keyframes journalSlideIn{from{opacity:0;transform:translateY(18px) scale(0.98)}to{opacity:1;transform:translateY(0) scale(1)}}
 
 /* ── JOURNAL HEADER ── */
@@ -1709,6 +1709,7 @@ body.unlocked .date-editable{border-bottom-color:var(--border);}
   .journal-panel{
     width:100vw !important;
     max-width:100vw !important;
+    height:92vh !important;
     min-height:85vh;
     max-height:calc(100vh - env(safe-area-inset-top,0px));
     border-radius:0 0 var(--radius) var(--radius);
@@ -1773,7 +1774,7 @@ body.unlocked .date-editable{border-bottom-color:var(--border);}
 .timer-preset-btn.active{background:var(--green-dim);border-color:var(--green);color:var(--green);font-weight:600;}
 
 /* ── JOURNAL PANEL — upsized ── */
-.journal-panel{position:relative;z-index:1;background:var(--surface);border:1px solid var(--border);border-radius:var(--radius);width:min(1100px,95vw);max-height:92vh;display:flex;flex-direction:column;overflow:hidden;box-shadow:0 24px 60px rgba(0,0,0,0.6);animation:journalSlideIn 0.3s cubic-bezier(0.22,1,0.36,1) both;}
+.journal-panel{position:relative;z-index:1;background:var(--surface);border:1px solid var(--border);border-radius:var(--radius);width:min(1100px,95vw);height:85vh;max-height:92vh;display:flex;flex-direction:column;overflow:hidden;box-shadow:0 24px 60px rgba(0,0,0,0.6);animation:journalSlideIn 0.3s cubic-bezier(0.22,1,0.36,1) both;}
 /* ── WORKOUT PANEL ── */
 .wo-section{margin-bottom:12px;}
 .wo-section-title{font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:1px;color:#7a6a50;margin-bottom:8px;display:flex;align-items:center;gap:6px;}
