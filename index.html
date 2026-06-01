@@ -1639,7 +1639,7 @@ body.unlocked .date-editable{border-bottom-color:var(--border);}
 
 /* ── META BAR — date + dropdowns pinned below header ── */
 .journal-meta-bar{display:flex;align-items:center;gap:8px;flex-wrap:wrap;padding:9px 18px;border-bottom:1px solid var(--border);flex-shrink:0;background:var(--surface-raised);}
-.journal-main{flex:1;flex-direction:column;min-height:0;overflow:hidden;}
+.journal-main{display:flex;flex:1;flex-direction:column;min-height:0;overflow:hidden;}
 .journal-meta-bar .journal-date-stamp{font-size:11px;color:var(--text-dim);font-weight:500;flex:1;min-width:0;white-space:nowrap;}
 .journal-proj-tag,.journal-mood-tag{font-size:12px;padding:5px 9px;background:var(--surface);border:1px solid var(--border);border-radius:20px;color:var(--text-dim);font-family:inherit;cursor:pointer;outline:none;transition:border-color 0.15s;}
 .journal-proj-tag:focus,.journal-mood-tag:focus{border-color:var(--accent-dim);}
@@ -1668,7 +1668,7 @@ body.unlocked .date-editable{border-bottom-color:var(--border);}
   line-height:1.75;
   outline:none;
   transition:border-color 0.15s;
-  min-height:160px; /* fallback if flex chain hasn't resolved */
+  min-height:280px; /* generous writing area; flex grows it further */
 }
 .journal-textarea:focus{border-color:var(--accent-dim);}
 .journal-compose-actions{display:flex;align-items:center;justify-content:space-between;flex-shrink:0;}
@@ -1695,6 +1695,15 @@ body.unlocked .date-editable{border-bottom-color:var(--border);}
 .journal-empty{text-align:center;padding:40px 20px;color:var(--text-faint);font-size:13px;line-height:1.8;}
 
 /* ── PIN GATE ── */
+.journal-pin-gate,.journal-set-pin{
+  flex-direction:column;
+  align-items:center;
+  justify-content:flex-start;
+  gap:10px;
+  padding:40px 24px;
+  width:100%;
+  box-sizing:border-box;
+}
 @media(max-width:600px){
   .journal-overlay{align-items:flex-start;padding:0;}
   .journal-panel{
