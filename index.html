@@ -2845,7 +2845,6 @@ body.unlocked .date-editable{border-bottom-color:var(--border);}
     </div>
     <div style="display:flex;gap:8px;justify-content:center;margin-top:4px;">
       <button class="btn" onclick="closeJournal()" style="font-size:12px;padding:6px 14px;">Cancel</button>
-      <button class="btn" onclick="showSetPinForm()" style="font-size:12px;padding:6px 14px;color:var(--text-faint);">Change PIN</button>
     </div>
   </div>
   <!-- Set PIN form (first time or change) -->
@@ -7375,6 +7374,7 @@ var _pinBuffer='';
 var _setPinBuffer='';
 var _setPinStage=0; // 0=first entry, 1=confirm
 var _setPinFirst='';
+var _changingPin=false; // true while verifying old PIN before a change
 
 function openJournal(){
   _journalUnlocked=false;
@@ -7387,7 +7387,12 @@ function closeJournal(){
   document.getElementById('journalOverlay').classList.remove('open');
   _unblurDashboard();
   _journalUnlocked=false;
-  _pinBuffer='';_setPinBuffer='';_setPinStage=0;_setPinFirst='';
+  _pinBuffer='';_setPinBuffer='';_setPinStage=0;_setPinFirst='';_changingPin=false;
+  // Restore lock-gate labels in case a change was mid-flight
+  var t=document.querySelector('#journalPinGate .journal-pin-title');
+  var s=document.querySelector('#journalPinGate .journal-pin-sub');
+  if(t)t.textContent='Journal is locked';
+  if(s)s.textContent='Enter your PIN to view entries';
 }
 
 function _journalShowMain(){
@@ -7486,6 +7491,22 @@ function journalPinKey(k){
   if(_pinBuffer.length===4){
     setTimeout(function(){
       if(_pinBuffer===state.journalPin){
+        _pinBuffer='';
+        if(_changingPin){
+          // Old PIN confirmed — now let them set a new one
+          _changingPin=false;
+          // Restore the lock-gate labels for next time
+          document.querySelector('#journalPinGate .journal-pin-title').textContent='Journal is locked';
+          document.querySelector('#journalPinGate .journal-pin-sub').textContent='Enter your PIN to view entries';
+          document.getElementById('journalPinGate').style.display='none';
+          _setPinBuffer='';_setPinStage=0;_setPinFirst='';
+          document.getElementById('journalSetPin').style.display='flex';
+          document.getElementById('setPinTitle').textContent='Set a new 4-digit PIN';
+          document.getElementById('setPinSub').textContent='Enter a new PIN to replace your current one.';
+          document.getElementById('setPinError').textContent='';
+          _renderPinDots('setPinDots',0);
+          return;
+        }
         _journalUnlocked=true;
         document.getElementById('journalPinGate').style.display='none';
         document.getElementById('journalMain').style.display='flex';
@@ -7494,7 +7515,6 @@ function journalPinKey(k){
         document.getElementById('journalViewToggle').classList.add('active');
         _populateJournalProjDropdowns();
         renderJournalEntries();
-        _pinBuffer='';
       } else {
         err.textContent='Incorrect PIN. Try again.';
         document.querySelectorAll('#journalPinDots .pin-dot').forEach(d=>d.classList.add('shake'));
@@ -7505,22 +7525,39 @@ function journalPinKey(k){
   }
 }
 
-// ── Change PIN (only reachable from unlocked entries view) ──
+// ── Change PIN (requires re-entering the current PIN) ──
 function changeJournalPin(){
-  // User is already authenticated (entries are unlocked), so we go straight
-  // to the create-new-PIN flow. The set-pin flow handles enter + confirm.
+  // SECURITY: require the user to re-enter their CURRENT PIN before they can
+  // set a new one — even though they're already in the unlocked view.
+  if(!_journalUnlocked){
+    toast('Unlock the journal first');
+    return;
+  }
+  if(!state.journalPin){
+    // No PIN yet — go straight to creating one
+    _showSetPin();
+    return;
+  }
+  // Send them to the PIN gate in "change" mode to confirm the old PIN.
+  _changingPin=true;
+  _pinBuffer='';
   document.getElementById('journalEntriesView').style.display='none';
   document.getElementById('journalMain').style.display='none';
-  _setPinBuffer='';_setPinStage=0;_setPinFirst='';
-  document.getElementById('journalSetPin').style.display='flex';
-  document.getElementById('setPinTitle').textContent='Set a new 4-digit PIN';
-  document.getElementById('setPinSub').textContent='Enter a new PIN to replace your current one.';
-  document.getElementById('setPinError').textContent='';
-  _renderPinDots('setPinDots',0);
+  document.getElementById('journalPinGate').style.display='flex';
+  document.querySelector('#journalPinGate .journal-pin-title').textContent='Confirm current PIN';
+  document.querySelector('#journalPinGate .journal-pin-sub').textContent='Enter your current PIN to change it';
+  document.getElementById('journalPinError').textContent='';
+  _renderPinDots('journalPinDots',0);
 }
 
 // ── Set / change PIN ──
 function showSetPinForm(){
+  // Only allowed when there is NO existing PIN (first-time setup) or the
+  // journal is already unlocked. Prevents bypassing an existing PIN.
+  if(state.journalPin && !_journalUnlocked){
+    toast('Unlock the journal first');
+    return;
+  }
   document.getElementById('journalPinGate').style.display='none';
   _showSetPin();
 }
