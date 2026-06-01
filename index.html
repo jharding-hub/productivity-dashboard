@@ -2932,6 +2932,7 @@ body.unlocked .date-editable{border-bottom-color:var(--border);}
         <select id="journalFilterProj" onchange="renderJournalEntries()" style="font-size:12px;padding:4px 8px;background:var(--surface-raised);border:1px solid var(--border);border-radius:var(--radius-sm);color:var(--text);font-family:inherit;">
           <option value="all">All projects</option>
         </select>
+        <button class="btn btn-sm" onclick="changeJournalPin()" style="font-size:11px;" title="Change your journal PIN">&#128273; Change PIN</button>
         <button class="btn btn-sm" onclick="lockJournalEntries()" style="font-size:11px;">&#128274; Lock</button>
       </div>
       <div class="journal-entries-list" id="journalEntriesList"></div>
@@ -7502,6 +7503,20 @@ function journalPinKey(k){
       }
     },120);
   }
+}
+
+// ── Change PIN (only reachable from unlocked entries view) ──
+function changeJournalPin(){
+  // User is already authenticated (entries are unlocked), so we go straight
+  // to the create-new-PIN flow. The set-pin flow handles enter + confirm.
+  document.getElementById('journalEntriesView').style.display='none';
+  document.getElementById('journalMain').style.display='none';
+  _setPinBuffer='';_setPinStage=0;_setPinFirst='';
+  document.getElementById('journalSetPin').style.display='flex';
+  document.getElementById('setPinTitle').textContent='Set a new 4-digit PIN';
+  document.getElementById('setPinSub').textContent='Enter a new PIN to replace your current one.';
+  document.getElementById('setPinError').textContent='';
+  _renderPinDots('setPinDots',0);
 }
 
 // ── Set / change PIN ──
