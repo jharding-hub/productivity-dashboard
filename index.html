@@ -58,26 +58,24 @@ body[data-theme="fire"] .day-progress-bar,
 body[data-theme="police"] .day-progress-bar{position:relative;z-index:1;}
 
 /* ── FIRE NIGHT: red/white emergency lights TOP, fire BOTTOM ── */
-body[data-theme="fire"] #emsStrobe{display:block;animation:ems-fire-strobe 1.82s infinite;}
+body[data-theme="fire"] #emsStrobe{display:block;animation:ems-fire-strobe 5.46s infinite;}
 @keyframes ems-fire-strobe{
+  /* ── RED (0–50%) ── */
   0%   {opacity:0;  background:linear-gradient(90deg,rgba(255,20,0,0.5) 0%,rgba(255,20,0,0.18) 45%,transparent 60%);}
-  6%   {opacity:1;}
-  19%  {opacity:0;}
-  25%  {opacity:0;  background:linear-gradient(90deg,rgba(255,20,0,0.5) 0%,rgba(255,20,0,0.18) 45%,transparent 60%);}
-  31%  {opacity:1;}
-  44%  {opacity:0;}
+  8%   {opacity:1;}
+  38%  {opacity:1;}
+  46%  {opacity:0;}
+  /* ── WHITE (50–100%) ── */
   50%  {opacity:0;  background:linear-gradient(90deg,transparent 40%,rgba(255,255,255,0.22) 55%,rgba(255,255,255,0.5) 100%);}
-  56%  {opacity:1;}
-  69%  {opacity:0;}
-  75%  {opacity:0;  background:linear-gradient(90deg,transparent 40%,rgba(255,255,255,0.22) 55%,rgba(255,255,255,0.5) 100%);}
-  81%  {opacity:1;}
-  94%  {opacity:0;}
+  58%  {opacity:1;}
+  88%  {opacity:1;}
+  96%  {opacity:0;}
   100% {opacity:0;}
 }
 body[data-theme="fire"] #emsStrobe::before{
   content:'';position:absolute;top:0;left:0;right:0;height:6px;
   background:linear-gradient(90deg,#ff2200 0%,#ff2200 25%,#ffffff 25%,#ffffff 50%,#ff2200 50%,#ff2200 75%,#ffffff 75%,#ffffff 100%);
-  animation:ems-bar 1.82s infinite;opacity:0.9;box-shadow:0 0 12px rgba(255,80,0,0.8),0 0 24px rgba(255,80,0,0.4);
+  animation:ems-bar 5.46s infinite;opacity:0.9;box-shadow:0 0 12px rgba(255,80,0,0.8),0 0 24px rgba(255,80,0,0.4);
 }
 body[data-theme="fire"] #emsFire{display:block;}
 body[data-theme="fire"] #emsFire::before{
@@ -120,26 +118,24 @@ body[data-theme="fire"] #emsFire::after{
 }
 
 /* ── POLICE NIGHT: blue/red strobe TOP, NO fire ── */
-body[data-theme="police"] #emsStrobe{display:block;animation:ems-cop-strobe 2.08s infinite;}
+body[data-theme="police"] #emsStrobe{display:block;animation:ems-cop-strobe 6.24s infinite;}
 @keyframes ems-cop-strobe{
+  /* ── BLUE (0–50%) ── */
   0%   {opacity:0;  background:linear-gradient(90deg,rgba(0,80,255,0.5) 0%,rgba(0,80,255,0.18) 40%,transparent 58%);}
-  6%   {opacity:1;}
-  19%  {opacity:0;}
-  25%  {opacity:0;  background:linear-gradient(90deg,rgba(0,80,255,0.5) 0%,rgba(0,80,255,0.18) 40%,transparent 58%);}
-  31%  {opacity:1;}
-  44%  {opacity:0;}
+  8%   {opacity:1;}
+  38%  {opacity:1;}
+  46%  {opacity:0;}
+  /* ── RED (50–100%) ── */
   50%  {opacity:0;  background:linear-gradient(90deg,transparent 42%,rgba(255,0,40,0.18) 58%,rgba(255,0,40,0.5) 100%);}
-  56%  {opacity:1;}
-  69%  {opacity:0;}
-  75%  {opacity:0;  background:linear-gradient(90deg,transparent 42%,rgba(255,0,40,0.18) 58%,rgba(255,0,40,0.5) 100%);}
-  81%  {opacity:1;}
-  94%  {opacity:0;}
+  58%  {opacity:1;}
+  88%  {opacity:1;}
+  96%  {opacity:0;}
   100% {opacity:0;}
 }
 body[data-theme="police"] #emsStrobe::before{
   content:'';position:absolute;top:0;left:0;right:0;height:6px;
   background:linear-gradient(90deg,#0055ff 0%,#0055ff 25%,#ff0033 25%,#ff0033 50%,#0055ff 50%,#0055ff 75%,#ff0033 75%,#ff0033 100%);
-  animation:ems-bar 2.08s infinite;opacity:0.9;box-shadow:0 0 12px rgba(0,90,255,0.7),0 0 24px rgba(0,90,255,0.4);
+  animation:ems-bar 6.24s infinite;opacity:0.9;box-shadow:0 0 12px rgba(0,90,255,0.7),0 0 24px rgba(0,90,255,0.4);
 }
 
 @keyframes ems-bar{
