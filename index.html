@@ -48,7 +48,7 @@ body[data-theme="fire"] .jarvis-fab{background:radial-gradient(circle at 50% 50%
 
 /* ═══ EMERGENCY THEME OVERLAYS (fire + police night) ═══ */
 /* Both overlays are hidden by default and only activate for their theme. */
-#emsStrobe{position:fixed;top:0;left:0;right:0;height:50%;z-index:0;pointer-events:none;opacity:0;display:none;}
+#emsStrobe{position:fixed;top:0;left:0;right:0;height:50%;z-index:0;pointer-events:none;display:none;background:none;}
 #emsFire{position:fixed;bottom:0;left:0;right:0;height:50%;z-index:0;pointer-events:none;display:none;overflow:hidden;}
 
 /* Keep app content above the overlays */
@@ -58,26 +58,32 @@ body[data-theme="fire"] .day-progress-bar,
 body[data-theme="police"] .day-progress-bar{position:relative;z-index:1;}
 
 /* ── FIRE NIGHT: red/white emergency lights TOP, fire BOTTOM ── */
-/* LEFT glow (red) on the element itself; RIGHT glow (white) on ::after.
-   Each has a FIXED background and animates opacity only — animating the
-   background gradient causes the browser to interpolate the two gradients
-   together, which collapses both glows onto one side. */
-body[data-theme="fire"] #emsStrobe{
-  display:block;
-  background:linear-gradient(90deg,rgba(255,20,0,0.55) 0%,rgba(255,20,0,0.2) 45%,transparent 62%);
+/* #emsStrobe is a transparent positioning shell.
+   ::before = red left glow + light bar (layered background)
+   ::after  = white right glow
+   Each pseudo-el animates its own opacity independently. */
+body[data-theme="fire"] #emsStrobe{display:block;}
+body[data-theme="fire"] #emsStrobe::before{
+  content:'';position:absolute;inset:0;
+  background:
+    /* light bar strip at top */
+    linear-gradient(90deg,#ff2200 0%,#ff2200 25%,#fff 25%,#fff 50%,#ff2200 50%,#ff2200 75%,#fff 75%,#fff 100%) top/100% 6px no-repeat,
+    /* red left glow */
+    linear-gradient(90deg,rgba(255,20,0,0.55) 0%,rgba(255,20,0,0.2) 45%,transparent 62%);
+  box-shadow:0 2px 24px rgba(255,80,0,0.4);
   opacity:0;
   animation:ems-strobe-left 5.46s infinite;
 }
 body[data-theme="fire"] #emsStrobe::after{
   content:'';position:absolute;inset:0;
-  background:linear-gradient(90deg,transparent 38%,rgba(255,255,255,0.24) 55%,rgba(255,255,255,0.55) 100%);
+  background:
+    /* light bar strip at top */
+    linear-gradient(90deg,#ff2200 0%,#ff2200 25%,#fff 25%,#fff 50%,#ff2200 50%,#ff2200 75%,#fff 75%,#fff 100%) top/100% 6px no-repeat,
+    /* white right glow */
+    linear-gradient(90deg,transparent 38%,rgba(255,255,255,0.24) 55%,rgba(255,255,255,0.55) 100%);
+  box-shadow:0 2px 24px rgba(255,255,255,0.2);
   opacity:0;
   animation:ems-strobe-right 5.46s infinite;
-}
-body[data-theme="fire"] #emsStrobe::before{
-  content:'';position:absolute;top:0;left:0;right:0;height:6px;z-index:2;
-  background:linear-gradient(90deg,#ff2200 0%,#ff2200 25%,#ffffff 25%,#ffffff 50%,#ff2200 50%,#ff2200 75%,#ffffff 75%,#ffffff 100%);
-  animation:ems-bar 5.46s infinite;opacity:0.9;box-shadow:0 0 12px rgba(255,80,0,0.8),0 0 24px rgba(255,80,0,0.4);
 }
 body[data-theme="fire"] #emsFire{display:block;}
 body[data-theme="fire"] #emsFire::before{
@@ -120,22 +126,24 @@ body[data-theme="fire"] #emsFire::after{
 }
 
 /* ── POLICE NIGHT: blue/red strobe TOP, NO fire ── */
-body[data-theme="police"] #emsStrobe{
-  display:block;
-  background:linear-gradient(90deg,rgba(0,80,255,0.55) 0%,rgba(0,80,255,0.2) 40%,transparent 60%);
+body[data-theme="police"] #emsStrobe{display:block;}
+body[data-theme="police"] #emsStrobe::before{
+  content:'';position:absolute;inset:0;
+  background:
+    linear-gradient(90deg,#0055ff 0%,#0055ff 25%,#ff0033 25%,#ff0033 50%,#0055ff 50%,#0055ff 75%,#ff0033 75%,#ff0033 100%) top/100% 6px no-repeat,
+    linear-gradient(90deg,rgba(0,80,255,0.55) 0%,rgba(0,80,255,0.2) 40%,transparent 60%);
+  box-shadow:0 2px 24px rgba(0,90,255,0.35);
   opacity:0;
   animation:ems-strobe-left 6.24s infinite;
 }
 body[data-theme="police"] #emsStrobe::after{
   content:'';position:absolute;inset:0;
-  background:linear-gradient(90deg,transparent 40%,rgba(255,0,40,0.2) 60%,rgba(255,0,40,0.55) 100%);
+  background:
+    linear-gradient(90deg,#0055ff 0%,#0055ff 25%,#ff0033 25%,#ff0033 50%,#0055ff 50%,#0055ff 75%,#ff0033 75%,#ff0033 100%) top/100% 6px no-repeat,
+    linear-gradient(90deg,transparent 40%,rgba(255,0,40,0.2) 60%,rgba(255,0,40,0.55) 100%);
+  box-shadow:0 2px 24px rgba(255,0,40,0.35);
   opacity:0;
   animation:ems-strobe-right 6.24s infinite;
-}
-body[data-theme="police"] #emsStrobe::before{
-  content:'';position:absolute;top:0;left:0;right:0;height:6px;z-index:2;
-  background:linear-gradient(90deg,#0055ff 0%,#0055ff 25%,#ff0033 25%,#ff0033 50%,#0055ff 50%,#0055ff 75%,#ff0033 75%,#ff0033 100%);
-  animation:ems-bar 6.24s infinite;opacity:0.9;box-shadow:0 0 12px rgba(0,90,255,0.7),0 0 24px rgba(0,90,255,0.4);
 }
 
 /* Shared strobe opacity timing — LEFT color first half, RIGHT color second half.
@@ -156,10 +164,6 @@ body[data-theme="police"] #emsStrobe::before{
   100% {opacity:0;}
 }
 
-@keyframes ems-bar{
-  0%,100%{transform:scaleX(1);filter:brightness(1);}
-  50%{transform:scaleX(-1);filter:brightness(1.4);}
-}
 
 /* Semi-transparent panels so the strobe/fire bleeds through */
 body[data-theme="fire"] .panel{background:rgba(26,14,14,0.62) !important;backdrop-filter:blur(6px);-webkit-backdrop-filter:blur(6px);}
