@@ -455,6 +455,108 @@ body.theme-police #policeStrobe{display:block;animation:cop-strobe 2.08s infinit
 }
 
 
+@media(prefers-reduced-motion:reduce){
+  body.theme-police #policeStrobe{animation:none;opacity:0.06;background:radial-gradient(circle at 80% 50%,rgba(0,80,255,0.15),transparent 60%);}
+  #policeStrobe::before{animation:none;}
+}
+
+/* ── THEME: STARRY NIGHT ──────────────────────────────────────── */
+body.theme-starry{
+  --bg:#0a0e1a;
+  --surface:#10152a;
+  --surface-light:#161c34;
+  --border:#1e2545;
+  --border-dark:#0e1530;
+  --primary:#7b68ee;
+  --secondary:#5a48cc;
+  --accent:#7b68ee;
+  --success:#60c080;
+  --danger:#e06060;
+  --text:#c8c0e8;
+  --text-dim:#8a82b0;
+  --shadow:#040610;
+  --header-font:'Press Start 2P',monospace;
+  --body-font:'VT323',monospace;
+}
+body.theme-starry .app{background:transparent;}
+body.theme-starry .panel{
+  background:rgba(16,21,42,0.68) !important;
+  backdrop-filter:blur(4px);
+  -webkit-backdrop-filter:blur(4px);
+  box-shadow:0 0 0 1px rgba(123,104,238,0.2),0 4px 20px rgba(0,0,0,0.5) !important;
+}
+body.theme-starry .panel-title{text-shadow:0 0 8px rgba(123,104,238,0.5);}
+
+/* ── Starry overlay divs (hidden by default) ── */
+#kidsStarryLayer{position:fixed;inset:0;z-index:1;pointer-events:none;display:none;}
+#kidsFirefliesLayer{position:fixed;bottom:0;left:0;right:0;height:45%;z-index:1;pointer-events:none;display:none;overflow:hidden;}
+body.theme-starry .app{position:relative;z-index:2;}
+body.theme-starry #kidsStarryLayer{display:block;}
+body.theme-starry #kidsFirefliesLayer{display:block;}
+
+/* Moonlight glow (::before on the starry layer) */
+#kidsStarryLayer::before{
+  content:'';
+  position:absolute;
+  top:-10%;right:6%;
+  width:480px;height:480px;
+  border-radius:50%;
+  background:radial-gradient(circle,
+    rgba(230,220,255,0.28) 0%,
+    rgba(200,180,250,0.18) 28%,
+    rgba(160,140,220,0.10) 52%,
+    rgba(120,100,180,0.04) 68%,
+    transparent 80%);
+  filter:blur(22px);
+  animation:kids-moon-breathe 8s ease-in-out infinite alternate;
+}
+@keyframes kids-moon-breathe{
+  0%  {opacity:0.8;transform:scale(1);}
+  100%{opacity:1;  transform:scale(1.07);}
+}
+
+/* Individual stars */
+.kids-star{
+  position:absolute;
+  border-radius:50%;
+  background:#fff;
+  animation:kids-star-twinkle var(--dur,3s) ease-in-out infinite alternate;
+}
+@keyframes kids-star-twinkle{
+  0%  {opacity:var(--dim,0.45);transform:scale(1);}
+  100%{opacity:var(--bright,0.9);transform:scale(1.4);}
+}
+
+/* Fireflies */
+.kids-firefly{
+  position:absolute;
+  border-radius:50%;
+  background:rgba(180,255,120,0.9);
+  box-shadow:0 0 6px 3px rgba(140,255,80,0.5),0 0 14px 6px rgba(100,220,60,0.2);
+  animation:
+    kids-ff-pulse var(--pdur,2.8s) ease-in-out infinite alternate,
+    kids-ff-drift var(--ddur,9s)   ease-in-out infinite alternate;
+}
+@keyframes kids-ff-pulse{
+  0%  {opacity:0;  box-shadow:0 0 4px 2px rgba(140,255,80,0.3);}
+  35% {opacity:0.85;box-shadow:0 0 10px 5px rgba(140,255,80,0.65),0 0 20px 8px rgba(100,220,60,0.3);}
+  65% {opacity:0.85;}
+  100%{opacity:0.1;box-shadow:0 0 3px 1px rgba(140,255,80,0.15);}
+}
+@keyframes kids-ff-drift{
+  0%  {transform:translate(0,0);}
+  25% {transform:translate(var(--dx1,12px),var(--dy1,-8px));}
+  50% {transform:translate(var(--dx2,-8px),var(--dy2,-16px));}
+  75% {transform:translate(var(--dx3,6px),var(--dy3,-6px));}
+  100%{transform:translate(var(--dx4,-14px),var(--dy4,-20px));}
+}
+
+@media(prefers-reduced-motion:reduce){
+  body.theme-starry #kidsStarryLayer,
+  body.theme-starry #kidsFirefliesLayer{display:none;}
+}
+
+
 /* ═══ LAYOUT ═══ */
 .app{
   max-width:1400px;
@@ -1478,6 +1580,7 @@ body.theme-police #policeStrobe{display:block;animation:cop-strobe 2.08s infinit
 .theme-option-electric{background:linear-gradient(135deg,#0a0e1a 40%,#ffe000 100%);color:#ffe000;text-shadow:0 0 6px rgba(255,224,0,0.8);}
 .theme-option-firetruck{background:linear-gradient(135deg,#1a0000 40%,#ff2200 100%);color:#ffffff;}
 .theme-option-police{background:linear-gradient(135deg,#000a1a 0%,#0066ff 50%,#ff0033 100%);color:#ffffff;}
+.theme-option-starry{background:linear-gradient(160deg,#0a0e1a 0%,#1a1040 60%,#2a1060 100%);color:#c8b8ff;}
 
 /* ═══ PARENT SETTINGS MODAL ═══ */
 .parent-modal{
@@ -1625,6 +1728,8 @@ body.theme-critter::before,body.theme-candy::before{
 <div id="firetruckStrobe"></div>
 <div id="fireAnimation"></div>
 <div id="policeStrobe"></div>
+<div id="kidsStarryLayer"></div>
+<div id="kidsFirefliesLayer"></div>
 <div class="app">
 
   <!-- HEADER -->
@@ -1858,6 +1963,10 @@ body.theme-critter::before,body.theme-candy::before{
         <div class="theme-swatch"><div class="swatch" style="background:#0066ff"></div><div class="swatch" style="background:#ff0033"></div><div class="swatch" style="background:#000a1a"></div><div class="swatch" style="background:#00aaff"></div></div>
         🚔 POLICE
       </button>
+      <button class="theme-option theme-option-starry" data-theme="starry" onclick="setTheme('starry')">
+        <div class="theme-swatch"><div class="swatch" style="background:#0a0e1a"></div><div class="swatch" style="background:#7b68ee"></div><div class="swatch" style="background:#c8b8ff"></div><div class="swatch" style="background:#60c080"></div></div>
+        🌙 STARRY NIGHT
+      </button>
     </div>
   </div>
 </div>
@@ -2086,6 +2195,12 @@ function applyTheme(name){
   } else {
     _stopEmbers();
   }
+  // Start/stop starry night overlays
+  if(name==='starry'){
+    _kidsStarryStart();
+  } else {
+    _kidsStarryStop();
+  }
 }
 function setTheme(name){applyTheme(name);toast('Theme changed!');setTimeout(closeThemeModal,500);}
 
@@ -2124,6 +2239,96 @@ function _stopEmbers(){
   if(_emberInterval){clearInterval(_emberInterval);_emberInterval=null;}
   var container=document.getElementById('fireAnimation');
   if(container)container.innerHTML='';
+}
+
+// ── STARRY NIGHT ────────────────────────────────────────────────
+var _kidsStarryActive=false;
+var _kidsFireflyInterval=null;
+
+function _kidsStarryStart(){
+  if(_kidsStarryActive)return;
+  _kidsStarryActive=true;
+  _kidsSpawnStars();
+  _kidsSpawnFireflies();
+}
+
+function _kidsStarryStop(){
+  _kidsStarryActive=false;
+  var sl=document.getElementById('kidsStarryLayer');
+  var fl=document.getElementById('kidsFirefliesLayer');
+  if(sl)sl.querySelectorAll('.kids-star').forEach(function(e){e.remove();});
+  if(fl)fl.innerHTML='';
+  if(_kidsFireflyInterval){clearInterval(_kidsFireflyInterval);_kidsFireflyInterval=null;}
+}
+
+function _kidsRand(min,max){return min+Math.random()*(max-min);}
+
+function _kidsSpawnStars(){
+  var layer=document.getElementById('kidsStarryLayer');
+  if(!layer)return;
+  layer.querySelectorAll('.kids-star').forEach(function(e){e.remove();});
+  for(var i=0;i<200;i++){
+    var s=document.createElement('div');
+    s.className='kids-star';
+    var sz=_kidsRand(0.8,2.8);
+    var top=_kidsRand(0,60);
+    var left=_kidsRand(1,99);
+    var dim=_kidsRand(0.45,0.70);
+    var bright=_kidsRand(0.82,1.0);
+    var dur=_kidsRand(2.5,7);
+    var delay=_kidsRand(0,6);
+    s.style.cssText=[
+      'width:'+sz+'px','height:'+sz+'px',
+      'top:'+top+'vh','left:'+left+'vw',
+      '--dim:'+dim,'--bright:'+bright,
+      '--dur:'+dur+'s',
+      'animation-delay:'+delay+'s',
+      'opacity:'+dim
+    ].join(';');
+    layer.appendChild(s);
+  }
+}
+
+function _kidsSpawnFireflies(){
+  var layer=document.getElementById('kidsFirefliesLayer');
+  if(!layer)return;
+  layer.innerHTML='';
+  for(var i=0;i<14;i++){_kidsSpawnOneFirefly(layer);}
+  _kidsFireflyInterval=setInterval(function(){
+    if(!_kidsStarryActive)return;
+    var l=document.getElementById('kidsFirefliesLayer');
+    if(!l)return;
+    var old=l.querySelectorAll('.kids-firefly');
+    var idx=Math.floor(Math.random()*old.length);
+    if(old[idx])old[idx].remove();
+    _kidsSpawnOneFirefly(l);
+  },3200);
+}
+
+function _kidsSpawnOneFirefly(layer){
+  var f=document.createElement('div');
+  f.className='kids-firefly';
+  var sz=_kidsRand(3,7);
+  var top=_kidsRand(10,85);
+  var left=_kidsRand(3,96);
+  var pdur=_kidsRand(2.2,5.0);
+  var ddur=_kidsRand(7,14);
+  var pDel=_kidsRand(0,4);
+  var dDel=_kidsRand(0,6);
+  function rv(){return (_kidsRand(8,22)*(Math.random()>0.5?1:-1)).toFixed(1)+'px';}
+  function rvy(){return (-_kidsRand(4,20)).toFixed(1)+'px';}
+  f.style.cssText=[
+    'width:'+sz+'px','height:'+sz+'px',
+    'top:'+top+'%','left:'+left+'%',
+    '--pdur:'+pdur+'s','--ddur:'+ddur+'s',
+    'animation-delay:'+pDel+'s,'+dDel+'s',
+    '--dx1:'+rv(),'--dy1:'+rvy(),
+    '--dx2:'+rv(),'--dy2:'+rvy(),
+    '--dx3:'+rv(),'--dy3:'+rvy(),
+    '--dx4:'+rv(),'--dy4:'+rvy(),
+    'opacity:0'
+  ].join(';');
+  layer.appendChild(f);
 }
 function openThemeModal(){
   document.querySelectorAll('.theme-option').forEach(function(el){
