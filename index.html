@@ -11050,7 +11050,16 @@ function _jarvisAddMessage(role,content,actionSummary){
   div.className='jarvis-msg '+role;
   var bubble=document.createElement('div');
   bubble.className='jarvis-msg-bubble';
-  bubble.textContent=content;
+  bubble.innerHTML=content
+  .replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;')
+  .replace(/\*\*(.+?)\*\*/g,'<strong>$1</strong>')
+  .replace(/\*(.+?)\*/g,'<em>$1</em>')
+  .replace(/^#{1,3} (.+)$/gm,'<strong>$1</strong>')
+  .replace(/^---+$/gm,'<hr>')
+  .replace(/\n\n/g,'<br><br>')
+  .replace(/\n• /g,'<br>• ')
+  .replace(/\n- /g,'<br>• ')
+  .replace(/\n/g,'<br>');
   div.appendChild(bubble);
   if(actionSummary){
     var act=document.createElement('div');
