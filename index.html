@@ -3914,22 +3914,24 @@ async function load(){
         if(cloud.projects||cloud.reminders||cloud.notes){
           // ── SAFE MERGE ────────────────────────────────────────────────────
           // Spread cloud over local, then protect fields where local is more
-          // current — prevents Firestore pulls from:
-          //   (a) wiping notes the user just saved mid-session
-          //   (b) rolling back lastRoutineReset, causing routines to re-clear
-          //       every time the tab returns from background
+          // current. CRITICAL: for every array field, if local has MORE items
+          // than cloud, keep local — this prevents an empty/partial cloud doc
+          // (e.g. from a save that fired before load completed) from wiping
+          // good local data on the next load.
           var today=todayStr();
           var merged=Object.assign({},state,cloud);
           // Protect lastRoutineReset — never let cloud roll it back to a past date
           if(state.lastRoutineReset===today){merged.lastRoutineReset=today;}
-          // Protect routines done-state if local reset already happened today
           if(state.lastRoutineReset===today&&cloud.lastRoutineReset!==today){
             merged.routines=state.routines;merged.lastRoutineReset=today;
           }
-          // Prefer whichever notes/tasks/thoughts array is larger
-          if((state.notes||[]).length>(cloud.notes||[]).length)merged.notes=state.notes;
-          if((state.tasks||[]).length>(cloud.tasks||[]).length)merged.tasks=state.tasks;
-          if((state.thoughts||[]).length>(cloud.thoughts||[]).length)merged.thoughts=state.thoughts;
+          // For each array field, keep whichever side has more items.
+          ['projects','reminders','notes','tasks','thoughts','journal','moodLog','completedTasks','completedWorkouts'].forEach(function(key){
+            var localArr=state[key], cloudArr=cloud[key];
+            if(Array.isArray(localArr) && (!Array.isArray(cloudArr) || localArr.length>cloudArr.length)){
+              merged[key]=localArr;
+            }
+          });
           state=merged;
         }
         setSyncStatus('synced','Synced');
@@ -3954,6 +3956,8 @@ async function load(){
   if(!state.routines)state.routines={morning:[],evening:[],custom:[]};
   if(!state.reminders)state.reminders=[];
   if(!state.notes)state.notes=[];if(!state.moodLog)state.moodLog=[];if(!state.tasks)state.tasks=[];if(!state.visiblePanels)state.visiblePanels={};if(!state.knownPanels)state.knownPanels=[];
+  // Backfill any note missing a created timestamp (older notes) so sorts can't crash
+  state.notes.forEach(function(n){if(n&&!n.created)n.created=n.updated||n.date||new Date(0).toISOString();});
   if(!state.journal)state.journal=[];if(!state.journalPin)state.journalPin='';
   if(!state.workoutLog)state.workoutLog={};
   if(!state.completedTasks)state.completedTasks=[];
@@ -4950,7 +4954,7 @@ function renderNotes(){
   if(filter==='none')notes=notes.filter(n=>noteProjIds(n).length===0);
   else if(filter!=='all')notes=notes.filter(n=>noteProjIds(n).indexOf(filter)>=0);
   if(search)notes=notes.filter(n=>(n.label+' '+n.body).toLowerCase().includes(search));
-  notes.sort((a,b)=>b.created.localeCompare(a.created));
+  notes.sort((a,b)=>(b.created||'').localeCompare(a.created||''));
   if(notes.length===0){el.innerHTML='<div class="empty-state">'+(state.notes.length===0?'No notes yet. Add your first one below.':'No matching notes.')+'</div>';document.getElementById('noteCount').textContent=state.notes.length;if(typeof _updateTileSummaryNotes==='function')_updateTileSummaryNotes();return;}
   el.innerHTML=notes.map(n=>{
     var pids=noteProjIds(n);
