@@ -46,20 +46,21 @@ body[data-theme="starry"] .panel{
 #starryLayer::before{
   content:'';
   position:absolute;
-  top:-8%;right:8%;
-  width:340px;height:340px;
+  top:-10%;right:6%;
+  width:480px;height:480px;
   border-radius:50%;
   background:radial-gradient(circle,
-    rgba(220,210,255,0.18) 0%,
-    rgba(180,160,240,0.10) 30%,
-    rgba(140,120,200,0.05) 55%,
-    transparent 75%);
-  filter:blur(18px);
+    rgba(230,220,255,0.28) 0%,
+    rgba(200,180,250,0.18) 28%,
+    rgba(160,140,220,0.10) 52%,
+    rgba(120,100,180,0.04) 68%,
+    transparent 80%);
+  filter:blur(22px);
   animation:moon-breathe 8s ease-in-out infinite alternate;
 }
 @keyframes moon-breathe{
-  0%  {opacity:0.7;transform:scale(1);}
-  100%{opacity:1;  transform:scale(1.06);}
+  0%  {opacity:0.8;transform:scale(1);}
+  100%{opacity:1;  transform:scale(1.07);}
 }
 
 /* ── Individual stars (JS-spawned .star elements) ── */
@@ -9952,17 +9953,18 @@ function _spawnStars(){
   if(!layer)return;
   // Remove any old stars
   layer.querySelectorAll('.star').forEach(function(e){e.remove();});
-  // Spawn ~90 stars concentrated in the upper 55% of the screen
-  for(var i=0;i<90;i++){
+  // Spawn ~200 stars concentrated in the upper 60% of the screen.
+  // Higher opacity floors (dim 0.45, bright 0.8+) keep them consistently visible.
+  for(var i=0;i<200;i++){
     var s=document.createElement('div');
     s.className='star';
-    var sz=_starryRand(0.8,2.6);          // 0.8–2.6px
-    var top=_starryRand(0,55);             // top 55% of screen
-    var left=_starryRand(2,98);
-    var dim=_starryRand(0.1,0.35);
-    var bright=_starryRand(0.6,1.0);
-    var dur=_starryRand(2,6);
-    var delay=_starryRand(0,5);
+    var sz=_starryRand(0.8,2.8);
+    var top=_starryRand(0,60);
+    var left=_starryRand(1,99);
+    var dim=_starryRand(0.45,0.70);      // never goes very dim — always visible
+    var bright=_starryRand(0.82,1.0);    // peaks near full white
+    var dur=_starryRand(2.5,7);
+    var delay=_starryRand(0,6);
     s.style.cssText=[
       'width:'+sz+'px',
       'height:'+sz+'px',
