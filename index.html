@@ -29,6 +29,170 @@ body[data-theme="starry"] .day-progress-bar{background:linear-gradient(to right,
 body[data-theme="starry"] .header-center-title{color:#c8b8ff;text-shadow:0 0 12px rgba(123,104,238,0.5);}
 body[data-theme="starry"] .jarvis-fab{background:radial-gradient(circle at 50% 50%,#1a1040 0%,#0a0820 100%) !important;box-shadow:0 0 20px rgba(123,104,238,0.4) !important;}
 
+/* ══ STORM DARK ═════════════════════════════════════════════════ */
+body[data-theme="storm-dark"]{
+  --bg:#0c0f14;--surface:#111520;--surface-raised:#161c2a;--surface-hover:#1c2438;
+  --border:#1e2840;--border-focus:#3a5080;
+  --text:#c8d8ee;--text-dim:#7a98b8;--text-faint:#4a6880;
+  --accent:#7ab8e8;--accent-dim:#4a88c8;--accent-glow:rgba(122,184,232,0.15);
+  --red:#e06060;--green:#60b890;--blue:#5a9de0;--teal:#4ab0c0;
+}
+body[data-theme="storm-dark"] .day-progress-bar{
+  background:linear-gradient(to right,#2a3848 0%,#1a2838 20%,#0e1828 40%,#0c1420 60%,#0e1828 80%,#2a3848 100%);
+}
+body[data-theme="storm-dark"] .panel{
+  background:rgba(14,18,28,0.72) !important;
+  backdrop-filter:blur(5px);-webkit-backdrop-filter:blur(5px);
+}
+
+/* ══ STORM LIGHT ════════════════════════════════════════════════ */
+body[data-theme="storm-light"]{
+  --bg:#cdd8e8;--surface:#e4ecf7;--surface-raised:#dce6f4;--surface-hover:#d0dced;
+  --border:#b0c0d8;--border-focus:#5a80b0;
+  --text:#1c2a3a;--text-dim:#3a5070;--text-faint:#6a8aaa;
+  --accent:#3a6090;--accent-dim:#2a4870;--accent-glow:rgba(58,96,144,0.12);
+  --red:#a83030;--green:#308858;--blue:#2a60a0;--teal:#2a8898;
+}
+body[data-theme="storm-light"] .day-progress-bar{
+  background:linear-gradient(to right,#8898b0 0%,#6a80a0 20%,#5a7090 40%,#4a6080 60%,#5a7090 80%,#8898b0 100%);
+}
+body[data-theme="storm-light"] .panel{
+  background:rgba(228,236,247,0.78) !important;
+  backdrop-filter:blur(4px);-webkit-backdrop-filter:blur(4px);
+}
+
+/* ══ STORM OVERLAYS ═════════════════════════════════════════════ */
+/* stormLayer — full screen, holds rain streaks, lightning, and cloud gradients */
+#stormLayer{position:fixed;inset:0;z-index:0;pointer-events:none;display:none;overflow:hidden;}
+body[data-theme="storm-dark"] .app-wrap,
+body[data-theme="storm-light"] .app-wrap{position:relative;z-index:1;}
+body[data-theme="storm-dark"] #stormLayer,
+body[data-theme="storm-light"] #stormLayer{display:block;}
+
+/* ── Cloud atmosphere ── */
+body[data-theme="storm-dark"] #stormLayer::before{
+  content:'';position:absolute;inset:0;
+  background:
+    radial-gradient(ellipse 120% 40% at 30% 0%,  rgba(30,50,80,0.55) 0%,transparent 65%),
+    radial-gradient(ellipse 90%  35% at 80% 5%,  rgba(20,35,60,0.45) 0%,transparent 60%),
+    radial-gradient(ellipse 100% 30% at 55% 12%, rgba(25,40,70,0.35) 0%,transparent 55%);
+}
+body[data-theme="storm-light"] #stormLayer::before{
+  content:'';position:absolute;inset:0;
+  background:
+    radial-gradient(ellipse 120% 40% at 30% 0%,  rgba(80,100,140,0.40) 0%,transparent 65%),
+    radial-gradient(ellipse 90%  35% at 80% 5%,  rgba(60,80,120,0.30) 0%,transparent 60%),
+    radial-gradient(ellipse 100% 30% at 55% 12%, rgba(70,90,130,0.25) 0%,transparent 55%);
+}
+
+/* ── Lightning bolt (CSS-only, on ::after, triggered via class) ── */
+#stormLayer::after{
+  content:'';
+  position:absolute;
+  top:0;
+  width:3px;
+  height:70%;
+  left:28%;   /* default; JS randomises via inline style */
+  transform-origin:top center;
+  opacity:0;
+  /* clip-path forms a jagged bolt shape */
+  clip-path:polygon(48% 0%,16% 34%,54% 34%,24% 65%,62% 52%,38% 100%,72% 46%,44% 46%,80% 10%);
+  filter:drop-shadow(0 0 10px rgba(180,220,255,0.9)) drop-shadow(0 0 24px rgba(120,180,255,0.6));
+}
+body[data-theme="storm-dark"] #stormLayer::after{
+  background:linear-gradient(180deg,rgba(220,238,255,0.98),rgba(180,210,255,0.85) 60%,transparent);
+  animation:bolt-flash-dk 8s infinite;
+}
+body[data-theme="storm-light"] #stormLayer::after{
+  background:linear-gradient(180deg,rgba(255,255,255,0.99),rgba(200,228,255,0.88) 60%,transparent);
+  filter:drop-shadow(0 0 12px rgba(60,120,220,0.9)) drop-shadow(0 0 28px rgba(100,160,255,0.5));
+  animation:bolt-flash-lt 8s infinite;
+}
+@keyframes bolt-flash-dk{
+  0%,100%{opacity:0;width:3px;}
+  /* first bolt */
+  12%  {opacity:0;width:4px;left:22%;}
+  12.5%{opacity:1;}
+  13%  {opacity:0.3;}
+  13.5%{opacity:0.95;}
+  14.5%{opacity:0;}
+  /* second bolt, different position */
+  55%  {opacity:0;width:3px;left:64%;}
+  55.5%{opacity:1;}
+  56%  {opacity:0.4;}
+  56.5%{opacity:1;}
+  57.5%{opacity:0;}
+}
+@keyframes bolt-flash-lt{
+  0%,100%{opacity:0;}
+  8%   {opacity:0;left:35%;}
+  8.5% {opacity:1;}
+  9%   {opacity:0.35;}
+  9.5% {opacity:0.9;}
+  10.5%{opacity:0;}
+  62%  {opacity:0;left:58%;}
+  62.5%{opacity:1;}
+  63%  {opacity:0.4;}
+  63.5%{opacity:0.95;}
+  64.5%{opacity:0;}
+}
+
+/* ── Lightning flash (full-screen white wash when bolt fires) ── */
+#lightningFlash{
+  position:fixed;inset:0;z-index:0;pointer-events:none;display:none;opacity:0;
+}
+body[data-theme="storm-dark"] #lightningFlash{
+  display:block;
+  background:rgba(180,210,255,0.12);
+  animation:lflash-dk 8s infinite;
+}
+body[data-theme="storm-light"] #lightningFlash{
+  display:block;
+  background:rgba(255,255,255,0.22);
+  animation:lflash-lt 8s infinite;
+}
+@keyframes lflash-dk{
+  0%,11%,15%,100%{opacity:0;}
+  12.5%{opacity:1;}13.5%{opacity:0.1;}
+  55.5%{opacity:1;}57%{opacity:0;}
+}
+@keyframes lflash-lt{
+  0%,7%,11%,100%{opacity:0;}
+  8.5%{opacity:1;}10%{opacity:0.1;}
+  62.5%{opacity:1;}64%{opacity:0;}
+}
+
+/* ── Rain streaks (JS-spawned .rain-streak divs) ── */
+.rain-streak{
+  position:absolute;
+  width:1px;
+  top:-8%;
+  border-radius:2px;
+  opacity:0;
+  animation:rain-fall var(--rdur,0.7s) linear var(--rdel,0s) infinite;
+  transform:rotate(var(--rang,15deg));
+  transform-origin:top center;
+}
+body[data-theme="storm-dark"] .rain-streak{
+  background:linear-gradient(180deg,transparent,rgba(160,200,240,0.55) 30%,rgba(180,218,255,0.7) 70%,transparent);
+}
+body[data-theme="storm-light"] .rain-streak{
+  background:linear-gradient(180deg,transparent,rgba(80,120,180,0.45) 30%,rgba(100,140,200,0.60) 70%,transparent);
+}
+@keyframes rain-fall{
+  0%  {transform:translateY(-5%) rotate(var(--rang,15deg));opacity:0;}
+  8%  {opacity:1;}
+  88% {opacity:0.9;}
+  100%{transform:translateY(115vh) rotate(var(--rang,15deg));opacity:0;}
+}
+
+@media(prefers-reduced-motion:reduce){
+  body[data-theme="storm-dark"] #stormLayer,
+  body[data-theme="storm-light"] #stormLayer{display:none;}
+  body[data-theme="storm-dark"] #lightningFlash,
+  body[data-theme="storm-light"] #lightningFlash{display:none;}
+}
+
 /* ══ STARRY NIGHT OVERLAYS ══════════════════════════════════════ */
 #starryLayer,#firefliesLayer{position:fixed;pointer-events:none;display:none;z-index:0;}
 #starryLayer{inset:0;}
@@ -2544,6 +2708,9 @@ body.unlocked .date-editable{border-bottom-color:var(--border);}
 <!-- Starry Night theme overlays -->
 <div id="starryLayer"></div>
 <div id="firefliesLayer"></div>
+<!-- Storm theme overlays -->
+<div id="stormLayer"></div>
+<div id="lightningFlash"></div>
 <!-- Point popup container -->
 <div class="point-popup-container" id="pointPopupContainer"></div>
 
@@ -9883,7 +10050,9 @@ var THEMES=[
   {key:'police-light',name:'Police Light',tier:'premium',bg:'#eef2fa',surface:'#ffffff',accent:'#2a60cc'},
   {key:'fire',name:'Fire Dark',tier:'premium',bg:'#120808',surface:'#1a0e0e',accent:'#e53935'},
   {key:'fire-light',name:'Fire Light',tier:'premium',bg:'#faf0ee',surface:'#ffffff',accent:'#c03020'},
-  {key:'autumn',name:'Autumn Ember',tier:'premium',bg:'#f0ebe0',surface:'#faf5ec',accent:'#c06030'}
+  {key:'autumn',name:'Autumn Ember',tier:'premium',bg:'#f0ebe0',surface:'#faf5ec',accent:'#c06030'},
+  {key:'storm-dark',name:'Storm Dark',tier:'premium',bg:'#0c0f14',surface:'#111520',accent:'#7ab8e8'},
+  {key:'storm-light',name:'Storm Light',tier:'premium',bg:'#cdd8e8',surface:'#e4ecf7',accent:'#3a6090'}
 ];
 
 function applyTheme(key){
@@ -9922,6 +10091,11 @@ function _emsUpdateOverlays(key){
     _starryStart();
   } else {
     _starryStop();
+  }
+  if(key==='storm-dark'||key==='storm-light'){
+    _stormStart();
+  } else {
+    _stormStop();
   }
 }
 
@@ -10030,9 +10204,56 @@ function _spawnOneFirefly(layer){
   ].join(';');
   layer.appendChild(f);
 }
+
+// ── Storm theme: rain + lightning ────────────────────────────────
+var _stormActive=false;
+var _stormRainInterval=null;
+var _stormRainStreaks=[];
+
+function _stormStart(){
+  if(_stormActive)return;
+  _stormActive=true;
+  _spawnRain();
+}
+
+function _stormStop(){
+  _stormActive=false;
+  if(_stormRainInterval){clearInterval(_stormRainInterval);_stormRainInterval=null;}
+  var layer=document.getElementById('stormLayer');
+  if(layer)layer.querySelectorAll('.rain-streak').forEach(function(e){e.remove();});
+}
+
+function _spawnRain(){
+  var layer=document.getElementById('stormLayer');
+  if(!layer)return;
+  // Initial batch: 120 streaks spread across the screen at staggered delays
+  for(var i=0;i<120;i++){
+    _spawnOneRainStreak(layer,true);
+  }
+}
+
+function _spawnOneRainStreak(layer,initial){
+  var r=document.createElement('div');
+  r.className='rain-streak';
+  var left=_starryRand(0,100);
+  var dur=_starryRand(0.50,0.90);       // fast — 0.5–0.9s to cross screen
+  var del=initial ? _starryRand(0,dur)  // stagger initial batch across first cycle
+                  : 0;
+  var len=_starryRand(12,36);           // streak length in px
+  var ang=_starryRand(10,20);           // angle: slight diagonal
+  r.style.cssText=[
+    'left:'+left+'%',
+    'height:'+len+'px',
+    '--rdur:'+dur+'s',
+    '--rdel:'+del+'s',
+    '--rang:'+ang+'deg'
+  ].join(';');
+  layer.appendChild(r);
+  // Self-cleaning: remove after ~30s (well past any animation) to avoid unbounded DOM growth
+  setTimeout(function(){if(r.parentNode)r.parentNode.removeChild(r);},32000);
+}
 function _emsStartEmbers(){
   _emsStopEmbers();
-  var container=document.getElementById('emsFire');
   if(!container)return;
   _emsEmberInterval=setInterval(function(){
     if(document.body.getAttribute('data-theme')!=='fire'){_emsStopEmbers();return;}
