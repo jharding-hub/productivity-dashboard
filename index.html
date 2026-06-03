@@ -10226,21 +10226,21 @@ function _stormStop(){
 function _spawnRain(){
   var layer=document.getElementById('stormLayer');
   if(!layer)return;
-  // Initial batch: 120 streaks spread across the screen at staggered delays
-  for(var i=0;i<120;i++){
-    _spawnOneRainStreak(layer,true);
+  // 140 streaks staggered across the first cycle, then loop indefinitely.
+  // No self-destruct timeout — the animation is infinite so streaks just keep falling.
+  for(var i=0;i<140;i++){
+    _spawnOneRainStreak(layer);
   }
 }
 
-function _spawnOneRainStreak(layer,initial){
+function _spawnOneRainStreak(layer){
   var r=document.createElement('div');
   r.className='rain-streak';
   var left=_starryRand(0,100);
-  var dur=_starryRand(0.50,0.90);       // fast — 0.5–0.9s to cross screen
-  var del=initial ? _starryRand(0,dur)  // stagger initial batch across first cycle
-                  : 0;
-  var len=_starryRand(12,36);           // streak length in px
-  var ang=_starryRand(10,20);           // angle: slight diagonal
+  var dur=_starryRand(0.50,0.90);
+  var del=_starryRand(0,dur);    // stagger so they don't all start together
+  var len=_starryRand(12,36);
+  var ang=_starryRand(10,20);
   r.style.cssText=[
     'left:'+left+'%',
     'height:'+len+'px',
@@ -10249,8 +10249,6 @@ function _spawnOneRainStreak(layer,initial){
     '--rang:'+ang+'deg'
   ].join(';');
   layer.appendChild(r);
-  // Self-cleaning: remove after ~30s (well past any animation) to avoid unbounded DOM growth
-  setTimeout(function(){if(r.parentNode)r.parentNode.removeChild(r);},32000);
 }
 function _emsStartEmbers(){
   _emsStopEmbers();
