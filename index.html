@@ -488,6 +488,60 @@ body{font-family:'DM Sans',sans-serif;background:var(--bg);color:var(--text);min
 .day-progress-edge-label.end{right:5px;}
 .day-progress-now{position:absolute;top:0;bottom:0;width:3px;background:rgba(255,255,255,0.7);z-index:6;border-radius:2px;pointer-events:none;box-shadow:0 0 6px rgba(255,255,255,0.5);}
 .day-progress-now.resting{display:none !important;}
+
+/* ── Dark-theme day-progress-bar: glowing contrasting markers + labels ── */
+/* Default dark, fire, police, starry, storm-dark all have deep dark backgrounds
+   on the bar — flip ticks and numbers to bright glowing white/accent variants. */
+body:not([data-theme]) .day-progress-marker,
+body[data-theme="fire"] .day-progress-marker,
+body[data-theme="police"] .day-progress-marker,
+body[data-theme="starry"] .day-progress-marker,
+body[data-theme="storm-dark"] .day-progress-marker{
+  background:rgba(255,255,255,0.45);
+  box-shadow:0 0 4px rgba(255,255,255,0.5);
+}
+body:not([data-theme]) .day-progress-marker-label,
+body[data-theme="fire"] .day-progress-marker-label,
+body[data-theme="police"] .day-progress-marker-label,
+body[data-theme="starry"] .day-progress-marker-label,
+body[data-theme="storm-dark"] .day-progress-marker-label,
+body:not([data-theme]) .day-progress-edge-label,
+body[data-theme="fire"] .day-progress-edge-label,
+body[data-theme="police"] .day-progress-edge-label,
+body[data-theme="starry"] .day-progress-edge-label,
+body[data-theme="storm-dark"] .day-progress-edge-label{
+  color:rgba(255,255,255,0.92);
+  text-shadow:0 0 6px rgba(255,255,255,0.7),0 0 12px rgba(255,255,255,0.35);
+}
+/* Per-theme accent glow tint on the labels */
+body[data-theme="fire"] .day-progress-marker-label,
+body[data-theme="fire"] .day-progress-edge-label{
+  color:#ffb090;
+  text-shadow:0 0 6px rgba(255,120,60,0.8),0 0 14px rgba(255,80,30,0.4);
+}
+body[data-theme="police"] .day-progress-marker-label,
+body[data-theme="police"] .day-progress-edge-label{
+  color:#a0c8ff;
+  text-shadow:0 0 6px rgba(100,160,255,0.8),0 0 14px rgba(60,100,255,0.4);
+}
+body[data-theme="starry"] .day-progress-marker-label,
+body[data-theme="starry"] .day-progress-edge-label{
+  color:#c8b8ff;
+  text-shadow:0 0 6px rgba(160,130,255,0.8),0 0 14px rgba(120,100,238,0.4);
+}
+body[data-theme="storm-dark"] .day-progress-marker-label,
+body[data-theme="storm-dark"] .day-progress-edge-label{
+  color:#a8d8f8;
+  text-shadow:0 0 6px rgba(122,184,232,0.8),0 0 14px rgba(80,150,210,0.4);
+}
+/* Elapsed overlay: slightly lighter on dark bars so the unelapsed portion still reads */
+body:not([data-theme]) .day-progress-elapsed,
+body[data-theme="fire"] .day-progress-elapsed,
+body[data-theme="police"] .day-progress-elapsed,
+body[data-theme="starry"] .day-progress-elapsed,
+body[data-theme="storm-dark"] .day-progress-elapsed{
+  background:rgba(0,0,0,0.45);
+}
 @keyframes pulse-line{0%,100%{opacity:1;transform:scaleY(1);}50%{opacity:0.6;transform:scaleY(0.95);}}
 
 /* Time-left text overlay sits inside the bar */
