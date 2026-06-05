@@ -1404,6 +1404,39 @@ body.unlocked .date-editable{border-bottom-color:var(--border);}
   border-right:1px solid var(--border);
 }
 
+/* ── Dark-theme timeline: softly glowing hour labels + visible grid lines ── */
+/* Targets: dark (no data-theme), fire, police, starry, storm-dark           */
+body:not([data-theme]) .tl-hour-label,
+body[data-theme="fire"] .tl-hour-label,
+body[data-theme="police"] .tl-hour-label,
+body[data-theme="starry"] .tl-hour-label,
+body[data-theme="storm-dark"] .tl-hour-label{
+  color:var(--accent);
+  opacity:0.75;
+  text-shadow:0 0 8px var(--accent),0 0 16px var(--accent);
+}
+body:not([data-theme]) .tl-hour-row,
+body[data-theme="fire"] .tl-hour-row,
+body[data-theme="police"] .tl-hour-row,
+body[data-theme="starry"] .tl-hour-row,
+body[data-theme="storm-dark"] .tl-hour-row{
+  border-bottom:1px solid rgba(255,255,255,0.10);
+}
+body:not([data-theme]) .tl-hour-row::after,
+body[data-theme="fire"] .tl-hour-row::after,
+body[data-theme="police"] .tl-hour-row::after,
+body[data-theme="starry"] .tl-hour-row::after,
+body[data-theme="storm-dark"] .tl-hour-row::after{
+  border-top:1px dashed rgba(255,255,255,0.10);
+}
+body:not([data-theme]) .tl-hour-label,
+body[data-theme="fire"] .tl-hour-label,
+body[data-theme="police"] .tl-hour-label,
+body[data-theme="starry"] .tl-hour-label,
+body[data-theme="storm-dark"] .tl-hour-label{
+  border-right-color:rgba(255,255,255,0.12);
+}
+
 /* Now indicator — red horizontal line */
 .tl-now-line{
   position:absolute;left:48px;right:0;height:2px;
