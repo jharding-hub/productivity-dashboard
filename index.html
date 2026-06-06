@@ -2082,7 +2082,15 @@ body[data-theme="storm-dark"] .tl-hour-label{
 .customize-btn:hover{border-color:var(--accent-dim);color:var(--accent);}
 .customize-overlay{position:fixed;inset:0;background:rgba(0,0,0,0.6);z-index:300;display:none;align-items:center;justify-content:center;padding:20px;}
 .customize-overlay.show{display:flex;}
-.customize-box{background:var(--surface);border:1px solid var(--border);border-radius:var(--radius);padding:28px;max-width:440px;width:100%;max-height:80vh;overflow-y:auto;}
+.customize-box{background:var(--surface);border:1px solid var(--border);border-radius:var(--radius);padding:28px;max-width:440px;width:100%;max-height:80vh;max-height:80dvh;overflow-y:auto;}
+/* iOS-safe Settings modal: scroll the whole overlay (top-aligned) so the
+   bottom rows — including the newest themes — are always reachable. iOS sizes
+   `vh` against the full screen, which can push a centered, vh-capped box's
+   bottom (where Storm Light/Dark live) off-screen and out of reach. */
+@media(max-width:768px){
+  .customize-overlay{align-items:flex-start;overflow-y:auto;-webkit-overflow-scrolling:touch;padding:16px 14px calc(16px + env(safe-area-inset-bottom));}
+  .customize-box{max-height:none;}
+}
 .customize-box h3{font-family:'Fraunces',serif;font-size:18px;color:var(--accent);margin-bottom:4px;}
 .customize-box .cust-sub{font-size:12px;color:var(--text-dim);margin-bottom:16px;}
 .panel-toggle{display:flex;align-items:center;gap:10px;padding:10px 12px;background:var(--surface-raised);border:1px solid var(--border);border-radius:var(--radius-sm);margin-bottom:6px;transition:all 0.15s;}
@@ -2099,6 +2107,7 @@ body[data-theme="storm-dark"] .tl-hour-label{
 .toggle-switch input:checked+.toggle-slider{background:var(--accent-glow);border-color:var(--accent);}
 .toggle-switch input:checked+.toggle-slider::before{transform:translateX(18px);background:var(--accent);}
 .customize-actions{display:flex;gap:8px;justify-content:flex-end;margin-top:16px;padding-top:12px;border-top:1px solid var(--border);}
+.cust-build{margin-top:14px;text-align:center;font-size:10px;color:var(--text-faint);letter-spacing:0.4px;font-variant-numeric:tabular-nums;}
 .app-wrap{display:none;}
 .app-wrap.visible{display:block;}
 /* ADMIN PANEL */
@@ -3131,6 +3140,7 @@ body[data-theme="storm-dark"] .tl-hour-label{
 <button class="btn" onclick="resetPanelVisibility()">Show All</button>
 <button class="btn btn-accent" onclick="closeCustomize()">Done</button>
 </div>
+<div class="cust-build" id="custBuild"></div>
 </div>
 </div>
 <div class="breath-overlay" id="breathOverlay">
@@ -4217,6 +4227,8 @@ function openCustomize(){
     return '<div class="panel-toggle"><span class="pt-icon">'+p.icon+'</span><div class="pt-info"><div class="pt-name">'+p.name+(isNew?'<span class="pt-new">NEW</span>':'')+'</div><div class="pt-desc">'+p.desc+'</div></div><label class="toggle-switch"><input type="checkbox" '+(checked?'checked':'')+' onchange="togglePanelVisibility(\''+p.id+'\',this.checked)"><span class="toggle-slider"></span></label></div>';
   }).join('');
   document.getElementById('customizeOverlay').classList.add('show');
+  var _cb=document.getElementById('custBuild');
+  if(_cb)_cb.textContent='Build '+APP_BUILD;
 }
 
 function closeCustomize(){
@@ -10194,19 +10206,22 @@ var THEMES=[
   {key:'ocean',name:'Midnight Ocean',tier:'pro',bg:'#0a1a1a',surface:'#0f2222',accent:'#20c9a6'},
   {key:'sunset',name:'Sunset Horizon',tier:'pro',bg:'#1a1018',surface:'#1e1420',accent:'#e84a7a'},
   {key:'police',name:'Police Dark',tier:'premium',bg:'#0a0c14',surface:'#101420',accent:'#3a7aee'},
-  {key:'police-light',name:'Police Light',tier:'premium',bg:'#eef2fa',surface:'#ffffff',accent:'#2a60cc'},
   {key:'fire',name:'Fire Dark',tier:'premium',bg:'#120808',surface:'#1a0e0e',accent:'#e53935'},
-  {key:'fire-light',name:'Fire Light',tier:'premium',bg:'#faf0ee',surface:'#ffffff',accent:'#c03020'},
   {key:'autumn',name:'Autumn Ember',tier:'premium',bg:'#f0ebe0',surface:'#faf5ec',accent:'#c06030'},
-  {key:'storm-dark',name:'Storm Dark',tier:'premium',bg:'#0c0f14',surface:'#111520',accent:'#7ab8e8'},
-  {key:'storm-light',name:'Storm Light',tier:'premium',bg:'#cdd8e8',surface:'#e4ecf7',accent:'#3a6090'}
+  {key:'storm-dark',name:'Storm Dark',tier:'premium',bg:'#0c0f14',surface:'#111520',accent:'#7ab8e8'}
 ];
+// Build stamp — bump this on each deploy. Shown at the bottom of Settings so
+// you can confirm on any device exactly which build it's running.
+var APP_BUILD='2026.06.06-beta';
+// BETA: ignore tier gating for themes (every theme selectable). Set to false
+// to restore the per-tier theme locks after beta.
+var BETA_ALL_THEMES=true;
 
 function applyTheme(key){
   // Block if theme is above current tier
   var cfg=getTierConfig();
   var theme=THEMES.find(function(t){return t.key===key;});
-  if(theme&&cfg.allowedThemeTiers.indexOf(theme.tier)<0){
+  if(!BETA_ALL_THEMES&&theme&&cfg.allowedThemeTiers.indexOf(theme.tier)<0){
     if(typeof toast==='function')toast('⚡ Upgrade to unlock this theme');
     return;
   }
@@ -10428,7 +10443,7 @@ function renderThemeSelector(){
   var currentTheme=(state.settings&&state.settings.theme)||'dark';
   var cfg=getTierConfig();
   el.innerHTML=THEMES.map(function(t){
-    var allowed=cfg.allowedThemeTiers.indexOf(t.tier)>=0;
+    var allowed=BETA_ALL_THEMES||cfg.allowedThemeTiers.indexOf(t.tier)>=0;
     var active=t.key===currentTheme?' active':'';
     var tierLabel=t.tier.charAt(0).toUpperCase()+t.tier.slice(1);
     var tierClass='theme-tier-'+t.tier;
