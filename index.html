@@ -10212,7 +10212,7 @@ var THEMES=[
 ];
 // Build stamp — bump this on each deploy. Shown at the bottom of Settings so
 // you can confirm on any device exactly which build it's running.
-var APP_BUILD='2026.06.06-beta';
+var APP_BUILD='2026.06.06b-beta';
 // BETA: ignore tier gating for themes (every theme selectable). Set to false
 // to restore the per-tier theme locks after beta.
 var BETA_ALL_THEMES=true;
@@ -10664,12 +10664,31 @@ showAdminPanel();
 // page so it picks up the latest index.html. Guarded by sessionStorage
 // so it can't loop within a session.
 if('serviceWorker' in navigator){
-  navigator.serviceWorker.register('sw.js')
+  navigator.serviceWorker.register('sw.js', {updateViaCache:'none'})
     .then(function(reg){
       // Force a check for updates on every page load (cheap, no-op if nothing changed)
       try { reg.update(); } catch(e) {}
+      // When a new SW is found, push it to activate ASAP — iOS PWAs otherwise
+      // cling to the old worker (and old HTML) across warm resumes.
+      reg.addEventListener('updatefound', function(){
+        var nw=reg.installing;
+        if(!nw)return;
+        nw.addEventListener('statechange', function(){
+          if(nw.state==='installed' && navigator.serviceWorker.controller){
+            try{ nw.postMessage({type:'SKIP_WAITING'}); }catch(e){}
+          }
+        });
+      });
     })
     .catch(function(e){console.log('SW:',e);});
+  // iOS PWAs resume from the background without re-checking for updates on
+  // their own, so force an update check every time the app becomes visible.
+  document.addEventListener('visibilitychange', function(){
+    if(document.visibilityState!=='visible')return;
+    navigator.serviceWorker.getRegistration().then(function(reg){
+      if(reg){ try{ reg.update(); }catch(e){} }
+    });
+  });
   navigator.serviceWorker.addEventListener('controllerchange', function(){
     if (sessionStorage.getItem('_swReloaded')) return;
     sessionStorage.setItem('_swReloaded', '1');
@@ -10712,9 +10731,9 @@ setTimeout(checkShareTarget, 400); // slight delay so panels render first
   <span class="sync-status offline" id="syncStatus"><span class="sync-dot"></span> Local</span>
   <div class="status-bar-spacer"></div>
   <button class="customize-btn" onclick="openCustomize()" title="Show/hide panels and theme settings">&#9881; Settings</button>
-  <button class="customize-btn howto-launcher" onclick="window.open('howto.html','_blank')" title="Open the Centerpost How-To guide" style="background:linear-gradient(135deg,#5be8ff,#0ea5e9);border:1px solid #0ea5e9;color:#0a1218;font-weight:700;letter-spacing:0.3px;box-shadow:0 0 8px rgba(91,232,255,0.35);">&#128218; How To</button>
-  <button class="customize-btn kids-launcher" onclick="(function(){if(currentUser)try{localStorage.setItem('_kidsParentUid',currentUser.uid);localStorage.setItem('_kidsParentEmail',currentUser.email||'');}catch(e){}window.open('kids.html','_blank');})()" title="Open Centerpost Kids (4th tier — kid-friendly arcade mode)" style="background:linear-gradient(135deg,#ffcc00,#ff3399);border:1px solid #cc9900;color:#1a0033;font-weight:700;letter-spacing:0.5px;box-shadow:0 0 8px rgba(255,204,0,0.3);">&#127918; Kids Mode</button>
-  <button class="customize-btn teacher-launcher" id="teacherLauncherBtn" onclick="window.open('teacher.html','_blank')" title="Open Centerpost Teacher Planner (Legacy)" style="display:none;background:linear-gradient(135deg,#2d5240,#1e3a2f);border:1px solid #3d6b52;color:#fff;font-weight:700;letter-spacing:0.3px;box-shadow:0 0 8px rgba(45,82,64,0.4);">&#128196; Teacher</button>
+  <button class="customize-btn howto-launcher" onclick="window.open('https://centerpost.app/howto.html','_blank')" title="Open the Centerpost How-To guide" style="background:linear-gradient(135deg,#5be8ff,#0ea5e9);border:1px solid #0ea5e9;color:#0a1218;font-weight:700;letter-spacing:0.3px;box-shadow:0 0 8px rgba(91,232,255,0.35);">&#128218; How To</button>
+  <button class="customize-btn kids-launcher" onclick="(function(){if(currentUser)try{localStorage.setItem('_kidsParentUid',currentUser.uid);localStorage.setItem('_kidsParentEmail',currentUser.email||'');}catch(e){}window.open('https://centerpost.app/kids.html','_blank');})()" title="Open Centerpost Kids (4th tier — kid-friendly arcade mode)" style="background:linear-gradient(135deg,#ffcc00,#ff3399);border:1px solid #cc9900;color:#1a0033;font-weight:700;letter-spacing:0.5px;box-shadow:0 0 8px rgba(255,204,0,0.3);">&#127918; Kids Mode</button>
+  <button class="customize-btn teacher-launcher" id="teacherLauncherBtn" onclick="window.open('https://centerpost.app/teacher.html','_blank')" title="Open Centerpost Teacher Planner (Legacy)" style="display:none;background:linear-gradient(135deg,#2d5240,#1e3a2f);border:1px solid #3d6b52;color:#fff;font-weight:700;letter-spacing:0.3px;box-shadow:0 0 8px rgba(45,82,64,0.4);">&#128196; Teacher</button>
   <button class="lock-btn" id="lockBtn" onclick="toggleLock()" title="Lock/unlock layout and editing">&#128274; Locked</button>
   <button class="logout-btn" onclick="doLogout()" title="Sign out">Sign out</button>
   <div class="status-bar-spacer"></div>
