@@ -848,6 +848,10 @@ body.standalone-pwa .mobile-home-header{padding-top:max(env(safe-area-inset-top)
 
 @media(max-width:768px){
   .panel-overlay-frame{top:0;left:0;right:0;bottom:0;width:100%;max-height:100vh;border-radius:0;transform:none;}
+  /* Drop the header (title + ✕ close) below the camera notch / status bar so the
+     close button is reachable without rotating the phone. Uses the real safe-area
+     inset when reported, with a 46px floor for when it isn't. */
+  .panel-overlay-header{padding-top:max(env(safe-area-inset-top),46px);}
   @keyframes panelOverlayPop{from{opacity:0;transform:translateY(20px) scale(0.96);}to{opacity:1;transform:translateY(0) scale(1);}}
 }
 @keyframes fadeUp{from{opacity:0;transform:translateY(10px)}to{opacity:1;transform:translateY(0)}}
