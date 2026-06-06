@@ -1,5 +1,5 @@
 // ═══════════════════════════════════════════════════════════════════════
-// Centerpost Service Worker — v4 (network-first HTML)
+// Centerpost Service Worker — v6 (network-first HTML + background refresh)
 // ═══════════════════════════════════════════════════════════════════════
 //
 // STRATEGY
@@ -21,7 +21,7 @@
 //   marker — old clients will see the version change and force-update.
 // ═══════════════════════════════════════════════════════════════════════
 
-const CACHE_VERSION = 'centerpost-v5';
+const CACHE_VERSION = 'centerpost-v6';
 
 // Assets to pre-cache on install (offline-ready essentials).
 // Failures are tolerated individually — one missing icon won't break install.
@@ -115,20 +115,24 @@ self.addEventListener('fetch', e => {
 
 async function networkFirst(req) {
   const cache = await caches.open(CACHE_VERSION);
+  // One network request. Whenever it resolves — even AFTER our timeout — a
+  // successful response refreshes the cache, so a slow load that fell back to
+  // stale cache still self-heals (shows the fresh deploy) on the next load.
+  const netFetch = fetch(req).then(resp => {
+    if (resp && resp.ok) cache.put(req, resp.clone()).catch(() => {});
+    return resp;
+  });
   try {
     // Race the network against a 4s timeout
     const fresh = await Promise.race([
-      fetch(req),
+      netFetch,
       new Promise((_, rej) => setTimeout(() => rej(new Error('sw-timeout')), 4000))
     ]);
-    if (fresh && fresh.ok) {
-      // Cache the fresh response for offline fallback
-      cache.put(req, fresh.clone()).catch(() => {});
-      return fresh;
-    }
+    if (fresh && fresh.ok) return fresh;
     throw new Error('sw-bad-response');
   } catch (err) {
-    // Network failed or timed out — try cache
+    // Network slow/failed — serve cache now; netFetch keeps running and
+    // refreshes the cache in the background for the next load.
     const cached = await cache.match(req);
     if (cached) return cached;
     // Last resort for navigations: serve the cached root
