@@ -699,7 +699,7 @@ body.theme-halloween .panel::after{
   position:absolute;
   top:-6px;right:10px;
   width:18px;height:24px;
-  background:url("data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 40 52'><polygon points='20,2 25.33,18 14.67,18' fill='%23ffffff'/><polygon points='14.67,18 25.33,18 30.67,34 9.33,34' fill='%23ff8a1e'/><polygon points='9.33,34 30.67,34 36,50 4,50' fill='%23ffd23e'/></svg>") no-repeat center/contain;
+  background:url("data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 84'><path d='M32,5 C42,5 49,18 52,32 C56,46 59,52 59,61 C59,73 48,80 32,80 C16,80 5,73 5,61 C5,52 8,46 12,32 C15,18 22,5 32,5 Z' fill='%23ffc21e'/><path d='M32,5 C42,5 49,18 52,32 C56,46 59,52 59,57 L5,57 C5,52 8,46 12,32 C15,18 22,5 32,5 Z' fill='%23ff7a18'/><path d='M32,5 C42,5 49,18 52,32 L12,32 C15,18 22,5 32,5 Z' fill='%23f2f2f0'/><path d='M47,16 C53,30 54,46 49,63 C48,66 46,69 44,70 C49,58 48,38 43,24 C44,20 45,17 47,16 Z' fill='%23ffffff' opacity='0.28'/></svg>") no-repeat center/contain;
   z-index:3;
   opacity:0.95;
   filter:drop-shadow(0 2px 6px rgba(255,138,30,0.5));
@@ -849,8 +849,8 @@ body.theme-christmas .panel::after{
   content:'';
   position:absolute;
   top:-12px;right:12px;
-  width:14px;height:34px;
-  background:url("data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 22 56'><defs><pattern id='cc' patternUnits='userSpaceOnUse' width='7' height='7' patternTransform='rotate(48)'><rect width='7' height='7' fill='%23ffffff'/><rect width='3.5' height='7' fill='%23e8404a'/></pattern></defs><path d='M15.5,52 V15 A5.5,5.5 0 0,1 4.5,15 L4.5,20' fill='none' stroke='url(%23cc)' stroke-width='7' stroke-linecap='round'/></svg>") no-repeat center/contain;
+  width:22px;height:36px;
+  background:url("data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 76 124'><circle cx='54' cy='112' r='9' fill='%23e23b46'/><path d='M54,112 L54,98.5' fill='none' stroke='%23e23b46' stroke-width='18' stroke-linecap='butt'/><path d='M54,98.5 L54,85' fill='none' stroke='%23f4f4f2' stroke-width='18' stroke-linecap='butt'/><path d='M54,85 L54,73' fill='none' stroke='%23e23b46' stroke-width='18' stroke-linecap='butt'/><path d='M54,73 L54,59.5' fill='none' stroke='%23f4f4f2' stroke-width='18' stroke-linecap='butt'/><path d='M54,59.5 L54,46' fill='none' stroke='%23e23b46' stroke-width='18' stroke-linecap='butt'/><path d='M54,46 L54,38.7 L53.3,34.8 L52.9,33.5' fill='none' stroke='%23f4f4f2' stroke-width='18' stroke-linecap='butt'/><path d='M52.9,33.5 L51.1,29.9 L48.7,26.8 L45.6,24.2 L44.5,23.5' fill='none' stroke='%23e23b46' stroke-width='18' stroke-linecap='butt'/><path d='M44.5,23.5 L40.9,21.9 L37,21.1 L33,21.1 L31.7,21.3' fill='none' stroke='%23f4f4f2' stroke-width='18' stroke-linecap='butt'/><path d='M31.7,21.3 L27.9,22.4 L24.4,24.2 L21.3,26.8' fill='none' stroke='%23e23b46' stroke-width='18' stroke-linecap='butt'/><path d='M21.3,26.8 L18.9,29.9 L17.1,33.5 L16.2,37.4 L16,38.7' fill='none' stroke='%23f4f4f2' stroke-width='18' stroke-linecap='butt'/><path d='M16,38.7 L16,52' fill='none' stroke='%23e23b46' stroke-width='18' stroke-linecap='butt'/><path d='M16,52' fill='none' stroke='%23f4f4f2' stroke-width='18' stroke-linecap='butt'/></svg>") no-repeat center/contain;
   z-index:4;
   filter:drop-shadow(0 2px 6px rgba(232,64,74,0.6));
   animation:xmas-cane-sway 3.5s ease-in-out infinite;
@@ -903,6 +903,16 @@ body.theme-christmas #kidsXmasLights{display:block;}
   content:'';position:absolute;top:6px;left:0;right:0;height:2px;
   background:rgba(40,60,50,0.7);
 }
+
+/* Matching light string draped across the bottom of the screen */
+#kidsXmasLightsBottom{position:fixed;bottom:0;left:0;right:0;height:30px;z-index:0;pointer-events:none;display:none;}
+body.theme-christmas #kidsXmasLightsBottom{display:block;}
+#kidsXmasLightsBottom::before{
+  content:'';position:absolute;bottom:6px;left:0;right:0;height:2px;
+  background:rgba(40,60,50,0.7);
+}
+#kidsXmasLightsBottom .xmas-light{top:auto;bottom:8px;}
+#kidsXmasLightsBottom .xmas-light::before{top:auto;bottom:-3px;}
 
 /* Snowflakes */
 .xmas-snow{
@@ -2128,6 +2138,7 @@ body.theme-critter::before,body.theme-candy::before{
 <div id="kidsHalloweenLayer"></div>
 <div id="kidsChristmasLayer"></div>
 <div id="kidsXmasLights"></div>
+<div id="kidsXmasLightsBottom"></div>
 <div id="kidsSanta">🛷🎅</div>
 <div class="app">
 
@@ -2885,6 +2896,8 @@ function _kidsChristmasStop(){
   if(layer)layer.querySelectorAll('.xmas-snow').forEach(function(e){e.remove();});
   var lights=document.getElementById('kidsXmasLights');
   if(lights)lights.querySelectorAll('.xmas-light').forEach(function(e){e.remove();});
+  var lightsB=document.getElementById('kidsXmasLightsBottom');
+  if(lightsB)lightsB.querySelectorAll('.xmas-light').forEach(function(e){e.remove();});
 }
 function _kidsSpawnSnow(){
   var layer=document.getElementById('kidsChristmasLayer');
@@ -2911,24 +2924,27 @@ function _kidsSpawnSnow(){
   }
 }
 function _kidsSpawnXmasLights(){
-  var bar=document.getElementById('kidsXmasLights');
-  if(!bar)return;
-  bar.querySelectorAll('.xmas-light').forEach(function(e){e.remove();});
+  var bars=['kidsXmasLights','kidsXmasLightsBottom'];
   var colors=['#ff3030','#30c050','#3070ff','#ffd030','#ff30c0','#30d0d0'];
   var count=Math.ceil(window.innerWidth/40);
-  for(var i=0;i<count;i++){
-    var l=document.createElement('div');
-    l.className='xmas-light';
-    var color=colors[i%colors.length];
-    l.style.cssText=[
-      'left:'+(i*40+10)+'px',
-      'background:'+color,
-      'box-shadow:0 0 8px 2px '+color,
-      '--bdur:'+_kidsRand(1.0,2.2).toFixed(2)+'s',
-      '--bdel:'+_kidsRand(0,1.5).toFixed(2)+'s'
-    ].join(';');
-    bar.appendChild(l);
-  }
+  bars.forEach(function(barId,bIdx){
+    var bar=document.getElementById(barId);
+    if(!bar)return;
+    bar.querySelectorAll('.xmas-light').forEach(function(e){e.remove();});
+    for(var i=0;i<count;i++){
+      var l=document.createElement('div');
+      l.className='xmas-light';
+      var color=colors[(i+bIdx*3)%colors.length];
+      l.style.cssText=[
+        'left:'+(i*40+10)+'px',
+        'background:'+color,
+        'box-shadow:0 0 8px 2px '+color,
+        '--bdur:'+_kidsRand(1.0,2.2).toFixed(2)+'s',
+        '--bdel:'+_kidsRand(0,1.5).toFixed(2)+'s'
+      ].join(';');
+      bar.appendChild(l);
+    }
+  });
 }
 
 function openThemeModal(){
