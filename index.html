@@ -10625,6 +10625,31 @@ if('serviceWorker' in navigator){
     window.location.reload();
   });
 }
+// ─── iOS: zoom back out when leaving a text field (no rotation needed) ───
+// On iOS, focusing a field with font-size < 16px auto-zooms in and never
+// resets on blur. Keep that helpful zoom-in, but when focus leaves a field
+// (and no other field is focused) briefly clamp the viewport to scale 1.0 —
+// which snaps the page back out — then restore the zoomable viewport so
+// pinch-zoom and the next field's zoom-in still work.
+(function(){
+  if(!('ontouchstart' in window))return;
+  var vp=document.querySelector('meta[name="viewport"]');
+  if(!vp)return;
+  var zoomable=vp.getAttribute('content');
+  var clamped=zoomable+', maximum-scale=1.0';
+  function isField(el){return el&&/^(INPUT|TEXTAREA|SELECT)$/.test(el.tagName);}
+  document.addEventListener('focusin',function(e){
+    if(isField(e.target))vp.setAttribute('content',zoomable);
+  });
+  document.addEventListener('focusout',function(e){
+    if(!isField(e.target))return;
+    setTimeout(function(){
+      if(isField(document.activeElement))return; // moved to another field — keep zoom
+      vp.setAttribute('content',clamped);        // snap back out to scale 1.0
+      setTimeout(function(){vp.setAttribute('content',zoomable);},350); // re-allow zoom
+    },0);
+  });
+})();
 // Handle Web Share Target inbound data
 setTimeout(checkShareTarget, 400); // slight delay so panels render first
 }
