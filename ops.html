@@ -1,0 +1,717 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>CENTERPOST // OPS</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Orbitron:wght@400;700&family=Share+Tech+Mono&display=swap">
+<style>
+:root {
+  --bg:        #010c1a;
+  --surface:   #030f22;
+  --s2:        #050e20;
+  --cyan:      #00d4ff;
+  --cyan-dim:  rgba(0,212,255,.12);
+  --cyan-glow: rgba(0,212,255,.55);
+  --gold:      #d4a853;
+  --gold-dim:  rgba(212,168,83,.15);
+  --green:     #00e676;
+  --amber:     #ff9800;
+  --red:       #ff4040;
+  --text:      #b8d8ef;
+  --text-dim:  #3a6282;
+  --border:    rgba(0,212,255,.1);
+  --border2:   rgba(0,212,255,.3);
+  --orb:       'Orbitron', sans-serif;
+  --mono:      'Share Tech Mono', monospace;
+}
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+html, body { height: 100%; overflow: hidden; }
+body { background: var(--bg); color: var(--text); font-family: var(--mono); font-size: 12px; }
+
+#bg-canvas { position: fixed; inset: 0; z-index: 0; pointer-events: none; }
+
+.scanlines {
+  position: fixed; inset: 0; z-index: 1; pointer-events: none;
+  background: repeating-linear-gradient(0deg, transparent 0, transparent 3px, rgba(0,0,0,.04) 3px, rgba(0,0,0,.04) 4px);
+}
+.vignette {
+  position: fixed; inset: 0; z-index: 1; pointer-events: none;
+  background: radial-gradient(ellipse at center, transparent 55%, rgba(0,0,0,.55) 100%);
+}
+
+#app { position: relative; z-index: 2; display: flex; flex-direction: column; height: 100vh; }
+
+/* ── HEADER ───────────────────────────────────── */
+.hdr {
+  display: flex; align-items: center; justify-content: space-between;
+  padding: 0 20px; height: 44px; flex-shrink: 0;
+  border-bottom: 1px solid var(--border);
+  background: rgba(1,12,26,.85); backdrop-filter: blur(8px);
+}
+.hdr-logo { font-family: var(--orb); font-size: 16px; font-weight: 700; color: var(--cyan); letter-spacing: 4px; text-shadow: 0 0 16px var(--cyan); }
+.hdr-tag  { font-size: 10px; color: var(--text-dim); letter-spacing: 3px; margin-left: 16px; }
+.hdr-right { display: flex; align-items: center; gap: 24px; }
+.sys-indicator { display: flex; align-items: center; gap: 7px; font-size: 10px; color: var(--text-dim); letter-spacing: 1px; }
+.s-dot { width: 7px; height: 7px; border-radius: 50%; flex-shrink: 0; }
+.s-dot.ok   { background: var(--green); box-shadow: 0 0 8px var(--green); animation: dot-pulse 2.5s ease-in-out infinite; }
+.s-dot.warn { background: var(--amber); box-shadow: 0 0 8px var(--amber); }
+.s-dot.err  { background: var(--red);   box-shadow: 0 0 6px var(--red); }
+#clock { font-family: var(--orb); font-size: 11px; color: var(--text-dim); letter-spacing: 2px; }
+
+/* ── MAIN ─────────────────────────────────────── */
+.main { display: flex; flex: 1; overflow: hidden; }
+
+/* ── REACTOR PANEL ────────────────────────────── */
+.panel-reactor {
+  width: 210px; flex-shrink: 0;
+  display: flex; flex-direction: column; align-items: center;
+  padding: 22px 14px; gap: 0;
+  border-right: 1px solid var(--border);
+  background: rgba(3,15,34,.6);
+}
+.reactor-svg-wrap {
+  width: 150px; height: 150px;
+  filter: drop-shadow(0 0 14px rgba(0,212,255,.4));
+  margin-bottom: 18px;
+}
+.reactor-svg-wrap svg { width: 100%; height: 100%; overflow: visible; }
+
+.r-stat { width: 100%; text-align: center; margin-bottom: 10px; }
+.r-stat-label { font-size: 9px; color: var(--text-dim); letter-spacing: 2px; margin-bottom: 3px; }
+.r-stat-value { font-family: var(--orb); font-size: 11px; color: var(--cyan); text-shadow: 0 0 8px var(--cyan); }
+
+/* ── AGENTS + CHAT ────────────────────────────── */
+.panel-main { flex: 1; display: flex; flex-direction: column; overflow: hidden; }
+
+/* ── AGENT CARDS ──────────────────────────────── */
+.agents-bar {
+  display: flex; gap: 12px; padding: 14px;
+  flex-shrink: 0; border-bottom: 1px solid var(--border);
+  overflow-x: auto;
+}
+.agents-bar::-webkit-scrollbar { height: 3px; }
+.agents-bar::-webkit-scrollbar-thumb { background: var(--border); }
+
+.agent-card {
+  flex: 1; min-width: 175px;
+  background: var(--surface); border: 1px solid var(--border); border-radius: 6px;
+  padding: 13px 14px; position: relative; cursor: pointer;
+  transition: border-color .25s, box-shadow .25s;
+  overflow: hidden;
+}
+.agent-card::before {
+  content: ''; position: absolute; top: 0; left: 0; right: 0; height: 1px;
+  background: linear-gradient(90deg, transparent, var(--c, var(--cyan)), transparent);
+  opacity: .35;
+}
+/* Corner brackets on hover */
+.agent-card::after {
+  content: ''; position: absolute; inset: 0; border-radius: 6px; opacity: 0;
+  outline: 1px solid var(--c, var(--cyan)); outline-offset: -3px;
+  transition: opacity .25s;
+}
+.agent-card:hover::after { opacity: .3; }
+.agent-card:hover { border-color: var(--border2); box-shadow: 0 0 18px rgba(0,212,255,.06); }
+.agent-card.status-ok   { border-color: rgba(0,230,118,.18); }
+.agent-card.status-ok::before { background: linear-gradient(90deg, transparent, var(--c, var(--green)), transparent); }
+.agent-card.status-err  { border-color: rgba(255,64,64,.2); }
+.agent-card.status-load { opacity: .65; }
+
+.card-top { display: flex; align-items: center; justify-content: space-between; margin-bottom: 9px; }
+.card-name { font-family: var(--orb); font-size: 11px; font-weight: 700; letter-spacing: 2px; }
+.card-dot  { width: 7px; height: 7px; border-radius: 50%; background: var(--text-dim); flex-shrink: 0; }
+.card-dot.ok   { background: var(--green); box-shadow: 0 0 7px var(--green); animation: dot-pulse 2.5s ease-in-out infinite; }
+.card-dot.warn { background: var(--amber); box-shadow: 0 0 7px var(--amber); }
+.card-dot.err  { background: var(--red);   box-shadow: 0 0 5px var(--red); }
+.card-dot.scan { background: var(--cyan-dim); animation: scan-blink 1s ease-in-out infinite; }
+
+.card-primary { font-family: var(--orb); font-size: 20px; font-weight: 700; color: var(--text); margin: 2px 0; line-height: 1; }
+.card-primary.lg { font-size: 14px; }
+.card-sublabel { font-size: 9px; color: var(--text-dim); letter-spacing: 1.5px; margin-bottom: 8px; }
+.card-lines { font-size: 10px; color: var(--text-dim); line-height: 1.5; max-height: 48px; overflow: hidden; }
+
+.card-refresh-btn {
+  position: absolute; top: 9px; right: 9px;
+  width: 20px; height: 20px; border-radius: 3px;
+  background: none; border: 1px solid var(--border);
+  color: var(--text-dim); cursor: pointer; font-size: 11px;
+  display: flex; align-items: center; justify-content: center;
+  opacity: 0; transition: opacity .2s, background .2s;
+  font-family: var(--mono);
+}
+.agent-card:hover .card-refresh-btn { opacity: 1; }
+.card-refresh-btn:hover { background: var(--cyan-dim); color: var(--cyan); border-color: var(--cyan); }
+
+/* ── CHAT ─────────────────────────────────────── */
+.chat-panel { flex: 1; display: flex; flex-direction: column; overflow: hidden; }
+
+.chat-hdr {
+  display: flex; align-items: center; gap: 10px; padding: 9px 16px;
+  border-bottom: 1px solid var(--border); flex-shrink: 0;
+}
+.jarvis-label { font-family: var(--orb); font-size: 14px; color: var(--gold); letter-spacing: 3px; text-shadow: 0 0 10px var(--gold); }
+.chat-hdr-tag { font-size: 9px; color: var(--text-dim); letter-spacing: 2px; }
+.hdr-controls { margin-left: auto; display: flex; gap: 8px; }
+.ctrl-btn {
+  background: none; border: 1px solid var(--border); border-radius: 4px;
+  color: var(--text-dim); padding: 4px 10px; font-size: 9px; font-family: var(--mono);
+  letter-spacing: 1.5px; cursor: pointer; transition: all .2s;
+}
+.ctrl-btn:hover { border-color: var(--cyan); color: var(--cyan); }
+.ctrl-btn.on  { border-color: var(--gold); color: var(--gold); box-shadow: 0 0 6px rgba(212,168,83,.2); }
+
+.chat-messages {
+  flex: 1; overflow-y: auto; padding: 14px 16px;
+  display: flex; flex-direction: column; gap: 14px;
+}
+.chat-messages::-webkit-scrollbar { width: 3px; }
+.chat-messages::-webkit-scrollbar-thumb { background: var(--border); }
+
+.msg { max-width: 88%; }
+.msg.user { align-self: flex-end; }
+.msg.ai   { align-self: flex-start; }
+.msg-who { font-size: 9px; letter-spacing: 2px; margin-bottom: 4px; }
+.msg.user .msg-who { color: var(--text-dim); text-align: right; }
+.msg.ai   .msg-who { color: var(--gold); }
+.msg-body {
+  padding: 8px 12px; border-radius: 4px; font-size: 12px; line-height: 1.6;
+}
+.msg.user .msg-body { background: var(--s2); border: 1px solid var(--border); color: var(--text); }
+.msg.ai   .msg-body { background: rgba(212,168,83,.04); border: 1px solid rgba(212,168,83,.14); color: var(--text); }
+.msg-body.typing::after { content: '█'; animation: blink .7s step-end infinite; color: var(--gold); margin-left: 2px; }
+
+.quick-row {
+  padding: 8px 16px; display: flex; gap: 7px; flex-wrap: wrap;
+  border-top: 1px solid var(--border); flex-shrink: 0;
+}
+.chip {
+  background: none; border: 1px solid var(--border); border-radius: 20px;
+  color: var(--text-dim); padding: 4px 11px; font-size: 9px; font-family: var(--mono);
+  letter-spacing: 1.5px; cursor: pointer; transition: all .2s; white-space: nowrap;
+}
+.chip:hover { border-color: var(--cyan); color: var(--cyan); background: var(--cyan-dim); }
+
+.input-row {
+  display: flex; gap: 8px; padding: 10px 16px;
+  border-top: 1px solid var(--border); flex-shrink: 0;
+  background: rgba(1,12,26,.5);
+}
+#chat-in {
+  flex: 1; background: var(--s2); border: 1px solid var(--border); border-radius: 4px;
+  color: var(--text); padding: 8px 12px; font-family: var(--mono); font-size: 12px;
+  outline: none; transition: border-color .2s;
+}
+#chat-in::placeholder { color: var(--text-dim); }
+#chat-in:focus { border-color: var(--cyan); box-shadow: 0 0 10px rgba(0,212,255,.08); }
+.ibtn {
+  width: 36px; height: 36px; background: var(--s2); border: 1px solid var(--border);
+  border-radius: 4px; color: var(--text-dim); cursor: pointer; font-size: 14px;
+  display: flex; align-items: center; justify-content: center;
+  transition: all .2s; font-family: var(--mono);
+}
+.ibtn:hover { border-color: var(--cyan); color: var(--cyan); background: var(--cyan-dim); }
+.ibtn.active { border-color: var(--red); color: var(--red); background: rgba(255,64,64,.08); }
+.ibtn.send { border-color: var(--cyan); color: var(--cyan); background: var(--cyan-dim); }
+.ibtn.send:hover { background: rgba(0,212,255,.22); }
+
+/* ── ANIMATIONS ───────────────────────────────── */
+@keyframes dot-pulse  { 0%,100%{opacity:1;transform:scale(1)} 50%{opacity:.5;transform:scale(.8)} }
+@keyframes scan-blink { 0%,100%{opacity:.25} 50%{opacity:.75} }
+@keyframes blink      { 0%,100%{opacity:1} 50%{opacity:0} }
+@keyframes r-cw       { to { transform: rotate(360deg); } }
+@keyframes r-ccw      { to { transform: rotate(-360deg); } }
+@keyframes core-pulse { 0%,100%{opacity:1} 50%{opacity:.55} }
+@keyframes arc-fade   { 0%,100%{opacity:.9} 50%{opacity:.3} }
+
+/* ── RESPONSIVE ────────────────────────────────── */
+@media (max-width: 860px) { .panel-reactor { display: none; } }
+@media (max-width: 600px) { .agents-bar { flex-direction: column; } .agent-card { min-width: 0; } }
+</style>
+</head>
+<body>
+<canvas id="bg-canvas"></canvas>
+<div class="scanlines"></div>
+<div class="vignette"></div>
+
+<div id="app">
+  <header class="hdr">
+    <div style="display:flex;align-items:center">
+      <div class="hdr-logo">CENTERPOST</div>
+      <div class="hdr-tag">// OPS INTERFACE</div>
+    </div>
+    <div class="hdr-right">
+      <div class="sys-indicator"><div class="s-dot ok" id="sys-dot"></div><span id="sys-text">NOMINAL</span></div>
+      <div id="clock">--:--:-- UTC</div>
+    </div>
+  </header>
+
+  <div class="main">
+    <aside class="panel-reactor" id="panel-reactor">
+      <div class="reactor-svg-wrap" id="reactor-wrap"></div>
+      <div class="r-stat">
+        <div class="r-stat-label">OPERATOR</div>
+        <div class="r-stat-value">J. HARDING</div>
+      </div>
+      <div class="r-stat">
+        <div class="r-stat-label">ACTIVE WORKERS</div>
+        <div class="r-stat-value" id="r-workers">—</div>
+      </div>
+      <div class="r-stat">
+        <div class="r-stat-label">LAST SWEEP</div>
+        <div class="r-stat-value" id="r-sweep">—</div>
+      </div>
+      <div class="r-stat">
+        <div class="r-stat-label">UPTIME</div>
+        <div class="r-stat-value" id="r-uptime">00:00:00</div>
+      </div>
+    </aside>
+
+    <div class="panel-main">
+      <div class="agents-bar" id="agents-bar"><!-- generated --></div>
+      <div class="chat-panel">
+        <div class="chat-hdr">
+          <div class="jarvis-label">JARVIS</div>
+          <div class="chat-hdr-tag">// AI OPERATIONS INTERFACE</div>
+          <div class="hdr-controls">
+            <button class="ctrl-btn" id="voice-btn" onclick="toggleVoice()">◉ VOICE</button>
+            <button class="ctrl-btn" onclick="refreshAll()">↺ SWEEP</button>
+          </div>
+        </div>
+        <div class="chat-messages" id="chat-messages"></div>
+        <div class="quick-row" id="quick-row"><!-- generated --></div>
+        <div class="input-row">
+          <button class="ibtn" id="mic-btn" onclick="toggleListen()" title="Voice input">🎤</button>
+          <input type="text" id="chat-in" placeholder="Query JARVIS…" autocomplete="off"/>
+          <button class="ibtn send" onclick="sendChat()" title="Send (Enter)">↵</button>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script>
+// ════════════════════════════════════════════════════════════════════════
+// CONFIGURATION — add a worker object to WORKERS to add a new agent card
+// ════════════════════════════════════════════════════════════════════════
+const WORKERS = [
+  {
+    id: 'pulse',
+    name: 'PULSE',
+    tag: 'Daily Briefing',
+    color: '#00d4ff',
+    endpoint: 'https://centerpost-pulse.medicjth.workers.dev/data',
+    parse(d) {
+      if (!d) return { primary: '—', label: 'NO DATA', lines: [] };
+      return {
+        primary: d.date || '—',
+        label: 'LAST BRIEFING',
+        lines: [(d.summary || d.briefing || '').slice(0, 120)]
+      };
+    }
+  },
+  {
+    id: 'sentinel',
+    name: 'SENTINEL',
+    tag: 'Uptime Monitor',
+    color: '#00e676',
+    endpoint: 'https://centerpost-sentinel.medicjth.workers.dev/data',
+    parse(d) {
+      if (!d) return { primary: '—', label: 'NO DATA', lines: [] };
+      const eps = d.endpoints || [];
+      const up = eps.filter(e => e.status === 'up').length;
+      return {
+        primary: `${up}/${eps.length}`,
+        label: 'ENDPOINTS UP',
+        lines: eps.map(e => `${e.status === 'up' ? '✓' : '✗'} ${(e.url || '').replace('https://', '').replace(/\/.*/, '')}`)
+      };
+    }
+  },
+  {
+    id: 'guardian',
+    name: 'GUARDIAN',
+    tag: 'Spend Monitor',
+    color: '#d4a853',
+    endpoint: 'https://centerpost-guardian.medicjth.workers.dev/data',
+    parse(d) {
+      if (!d) return { primary: '—', label: 'NO DATA', lines: [] };
+      const total = (d.platforms || []).reduce((s, p) => s + (p.todayCostUSD || 0), 0);
+      return {
+        primary: `$${total.toFixed(4)}`,
+        label: 'TODAY SPEND',
+        lines: (d.platforms || []).map(p => `${p.name}: ${p.todayCostUSD != null ? '$' + p.todayCostUSD.toFixed(4) : (p.status || '—')}`)
+      };
+    }
+  }
+  // ← add more workers here
+];
+
+const JARVIS_ENDPOINT = 'https://centerpost-jarvis.medicjth.workers.dev/ops-chat';
+
+// ════════════════════════════════════════════════════════════════════════
+// STATE
+// ════════════════════════════════════════════════════════════════════════
+const S = {
+  data: {},
+  history: [],
+  voice: false,
+  listening: false,
+  startTime: Date.now(),
+};
+
+// ════════════════════════════════════════════════════════════════════════
+// REACTOR SVG
+// ════════════════════════════════════════════════════════════════════════
+function buildReactor() {
+  const cx = 75, cy = 75;
+  let ticks = '';
+  for (let i = 0; i < 48; i++) {
+    const a = (i / 48) * 2 * Math.PI - Math.PI / 2;
+    const major = i % 8 === 0;
+    const r1 = major ? 64 : 67, r2 = 70;
+    const x1 = (cx + r1 * Math.cos(a)).toFixed(2), y1 = (cy + r1 * Math.sin(a)).toFixed(2);
+    const x2 = (cx + r2 * Math.cos(a)).toFixed(2), y2 = (cy + r2 * Math.sin(a)).toFixed(2);
+    ticks += `<line x1="${x1}" y1="${y1}" x2="${x2}" y2="${y2}" stroke="rgba(0,212,255,${major ? .65 : .25})" stroke-width="${major ? 1.5 : .7}" stroke-linecap="round"/>`;
+  }
+  return `<svg viewBox="0 0 150 150" xmlns="http://www.w3.org/2000/svg">
+    <circle cx="75" cy="75" r="72" fill="none" stroke="rgba(0,212,255,.06)" stroke-width=".5"/>
+    ${ticks}
+    <g style="animation:r-cw 45s linear infinite;transform-box:fill-box;transform-origin:center">
+      <circle cx="75" cy="75" r="64" fill="none" stroke="rgba(0,212,255,.18)" stroke-width=".8" stroke-dasharray="7 11"/>
+    </g>
+    <g style="animation:r-ccw 18s linear infinite;transform-box:fill-box;transform-origin:center">
+      <circle cx="75" cy="75" r="52" fill="none" stroke="rgba(0,212,255,.32)" stroke-width="1.4" stroke-dasharray="4 6"/>
+      <polygon points="75,28 101,43 101,107 75,122 49,107 49,43" fill="none" stroke="rgba(0,212,255,.1)" stroke-width="1"/>
+    </g>
+    <g style="animation:r-cw 9s linear infinite;transform-box:fill-box;transform-origin:center">
+      <circle cx="75" cy="75" r="37" fill="none" stroke="rgba(0,212,255,.5)" stroke-width="1.8" stroke-dasharray="14 8"/>
+    </g>
+    <g style="animation:r-cw 5.5s linear infinite;transform-box:fill-box;transform-origin:center">
+      <path d="M75,38 A37,37 0 0,1 112,75" fill="none" stroke="#00d4ff" stroke-width="3" stroke-linecap="round"/>
+      <path d="M75,112 A37,37 0 0,1 38,75" fill="none" stroke="#00d4ff" stroke-width="1.8" stroke-linecap="round" opacity=".4" style="animation:arc-fade 3s ease-in-out infinite"/>
+    </g>
+    <g style="animation:r-ccw 22s linear infinite;transform-box:fill-box;transform-origin:center">
+      <polygon points="75,46 100,61 100,89 75,104 50,89 50,61" fill="none" stroke="rgba(0,212,255,.22)" stroke-width="1.4"/>
+    </g>
+    <circle cx="75" cy="75" r="24" fill="rgba(0,212,255,.04)" stroke="rgba(0,212,255,.45)" stroke-width="1.4"/>
+    <circle cx="75" cy="75" r="16" fill="rgba(0,212,255,.07)" stroke="rgba(0,212,255,.65)" stroke-width="1"/>
+    <circle cx="75" cy="75" r="12" fill="rgba(0,212,255,.3)" style="animation:core-pulse 2.2s ease-in-out infinite"/>
+    <circle cx="75" cy="75" r="7"  fill="rgba(0,212,255,.85)" style="animation:core-pulse 2.2s ease-in-out infinite reverse"/>
+    <circle cx="75" cy="75" r="3"  fill="#fff"/>
+    <line x1="75" y1="58" x2="75" y2="64" stroke="#00d4ff" stroke-width="1.5" stroke-linecap="round" opacity=".7"/>
+    <line x1="75" y1="86" x2="75" y2="92" stroke="#00d4ff" stroke-width="1.5" stroke-linecap="round" opacity=".7"/>
+    <line x1="58" y1="75" x2="64" y2="75" stroke="#00d4ff" stroke-width="1.5" stroke-linecap="round" opacity=".7"/>
+    <line x1="86" y1="75" x2="92" y2="75" stroke="#00d4ff" stroke-width="1.5" stroke-linecap="round" opacity=".7"/>
+  </svg>`;
+}
+
+// ════════════════════════════════════════════════════════════════════════
+// PARTICLE NETWORK
+// ════════════════════════════════════════════════════════════════════════
+function initParticles() {
+  const cv = document.getElementById('bg-canvas');
+  const ctx = cv.getContext('2d');
+  let pts = [];
+
+  function resize() {
+    cv.width = window.innerWidth;
+    cv.height = window.innerHeight;
+  }
+  function seed() {
+    const n = Math.min(90, Math.floor(cv.width * cv.height / 14000));
+    pts = Array.from({ length: n }, () => ({
+      x: Math.random() * cv.width,
+      y: Math.random() * cv.height,
+      vx: (Math.random() - .5) * .22,
+      vy: (Math.random() - .5) * .22,
+      r: Math.random() * 1.1 + .4,
+    }));
+  }
+  function draw() {
+    ctx.clearRect(0, 0, cv.width, cv.height);
+    pts.forEach((p, i) => {
+      p.x += p.vx; p.y += p.vy;
+      if (p.x < 0 || p.x > cv.width)  p.vx *= -1;
+      if (p.y < 0 || p.y > cv.height) p.vy *= -1;
+      for (let j = i + 1; j < pts.length; j++) {
+        const q = pts[j], dx = p.x - q.x, dy = p.y - q.y, d = Math.hypot(dx, dy);
+        if (d < 105) {
+          ctx.beginPath();
+          ctx.strokeStyle = `rgba(0,212,255,${.11 * (1 - d / 105)})`;
+          ctx.lineWidth = .5;
+          ctx.moveTo(p.x, p.y); ctx.lineTo(q.x, q.y); ctx.stroke();
+        }
+      }
+      ctx.beginPath();
+      ctx.arc(p.x, p.y, p.r, 0, Math.PI * 2);
+      ctx.fillStyle = 'rgba(0,212,255,.45)';
+      ctx.fill();
+    });
+    requestAnimationFrame(draw);
+  }
+  window.addEventListener('resize', () => { resize(); seed(); });
+  resize(); seed(); draw();
+}
+
+// ════════════════════════════════════════════════════════════════════════
+// CLOCK + UPTIME
+// ════════════════════════════════════════════════════════════════════════
+function initClock() {
+  function tick() {
+    const now = new Date();
+    const h = String(now.getUTCHours()).padStart(2, '0');
+    const m = String(now.getUTCMinutes()).padStart(2, '0');
+    const ss = String(now.getUTCSeconds()).padStart(2, '0');
+    document.getElementById('clock').textContent = `${h}:${m}:${ss} UTC`;
+
+    const up = Math.floor((Date.now() - S.startTime) / 1000);
+    const uh = String(Math.floor(up / 3600)).padStart(2, '0');
+    const um = String(Math.floor((up % 3600) / 60)).padStart(2, '0');
+    const us = String(up % 60).padStart(2, '0');
+    const el = document.getElementById('r-uptime');
+    if (el) el.textContent = `${uh}:${um}:${us}`;
+  }
+  tick(); setInterval(tick, 1000);
+}
+
+// ════════════════════════════════════════════════════════════════════════
+// AGENT CARDS
+// ════════════════════════════════════════════════════════════════════════
+function renderCards() {
+  document.getElementById('agents-bar').innerHTML = WORKERS.map(w => `
+    <div class="agent-card status-load" id="c-${w.id}" style="--c:${w.color}">
+      <button class="card-refresh-btn" onclick="event.stopPropagation();fetchAgent('${w.id}')">↺</button>
+      <div class="card-top">
+        <div class="card-name" style="color:${w.color};text-shadow:0 0 9px ${w.color}">${w.name}</div>
+        <div class="card-dot scan" id="d-${w.id}"></div>
+      </div>
+      <div class="card-primary" id="p-${w.id}">···</div>
+      <div class="card-sublabel" id="sl-${w.id}">${w.tag.toUpperCase()}</div>
+      <div class="card-lines" id="ln-${w.id}">SCANNING</div>
+    </div>`).join('');
+  document.getElementById('r-workers').textContent = WORKERS.length;
+}
+
+function setCard(id, data, err) {
+  const w = WORKERS.find(x => x.id === id);
+  const card = document.getElementById(`c-${id}`);
+  const dot  = document.getElementById(`d-${id}`);
+  const prim = document.getElementById(`p-${id}`);
+  const sub  = document.getElementById(`sl-${id}`);
+  const lns  = document.getElementById(`ln-${id}`);
+  if (!card) return;
+  card.classList.remove('status-load');
+  if (err) {
+    card.classList.add('status-err');
+    dot.className = 'card-dot err';
+    prim.textContent = 'OFFLINE'; prim.classList.remove('lg');
+    sub.textContent  = 'NO RESPONSE';
+    lns.textContent  = err;
+    return;
+  }
+  const fmt = w.parse(data);
+  card.classList.add('status-ok');
+  dot.className = 'card-dot ok';
+  prim.textContent = fmt.primary;
+  prim.classList.toggle('lg', (fmt.primary || '').length > 8);
+  sub.textContent  = fmt.label;
+  lns.textContent  = fmt.lines.filter(Boolean).join('\n');
+}
+
+async function fetchAgent(id, silent) {
+  const w = WORKERS.find(x => x.id === id);
+  const dot = document.getElementById(`d-${id}`);
+  if (dot) dot.className = 'card-dot scan';
+  try {
+    const r = await fetch(w.endpoint, { mode: 'cors' });
+    if (!r.ok) throw new Error(`HTTP ${r.status}`);
+    const d = await r.json();
+    S.data[id] = d;
+    setCard(id, d, null);
+    if (!silent) stamp();
+    return d;
+  } catch (e) {
+    const msg = e.message.includes('Failed to fetch') || e.message.includes('NetworkError')
+      ? '/data endpoint not set up yet'
+      : e.message.slice(0, 60);
+    setCard(id, null, msg);
+    return null;
+  }
+}
+
+async function refreshAll() {
+  await Promise.allSettled(WORKERS.map(w => fetchAgent(w.id, true)));
+  stamp();
+  updateSysStatus();
+}
+
+function stamp() {
+  const t = new Date().toISOString().slice(11, 19);
+  document.getElementById('r-sweep').textContent = t + ' UTC';
+}
+
+function updateSysStatus() {
+  const allOk  = WORKERS.every(w => document.getElementById(`c-${w.id}`)?.classList.contains('status-ok'));
+  const anyErr = WORKERS.some(w  => document.getElementById(`c-${w.id}`)?.classList.contains('status-err'));
+  const dot = document.getElementById('sys-dot');
+  const txt = document.getElementById('sys-text');
+  if (anyErr) { dot.className = 's-dot warn'; txt.textContent = 'DEGRADED'; }
+  else if (allOk) { dot.className = 's-dot ok'; txt.textContent = 'NOMINAL'; }
+}
+
+// ════════════════════════════════════════════════════════════════════════
+// QUICK ACTIONS
+// ════════════════════════════════════════════════════════════════════════
+function renderQuickActions() {
+  window._qa = [
+    ...WORKERS.map(w => ({ label: `↺ ${w.name}`, fn: () => qaWorker(w) })),
+    { label: 'ALL STATUS',    fn: () => sendChat('Give me a full status summary for all workers.') },
+    { label: 'MORNING BRIEF', fn: () => sendChat('Summarize my morning briefing from Pulse.') },
+    { label: 'SPEND REPORT',  fn: () => sendChat('What is my total API spend today? Break it down.') },
+    { label: 'HEALTH CHECK',  fn: () => sendChat('Are all Centerpost endpoints responding? Any anomalies?') },
+  ];
+  document.getElementById('quick-row').innerHTML =
+    window._qa.map((a, i) => `<button class="chip" onclick="window._qa[${i}].fn()">${a.label}</button>`).join('');
+}
+
+async function qaWorker(w) {
+  addMsg('user', `Refresh ${w.name}`);
+  const d = await fetchAgent(w.id);
+  const fmt = w.parse(d);
+  await aiReply(d
+    ? `${w.name} refreshed. ${fmt.label}: ${fmt.primary}${fmt.lines.length ? '. ' + fmt.lines.slice(0, 2).join(' | ') : ''}`
+    : `${w.name} is not responding. The /data endpoint may need to be added to that worker.`
+  );
+}
+
+// ════════════════════════════════════════════════════════════════════════
+// CHAT
+// ════════════════════════════════════════════════════════════════════════
+function addMsg(role, text) {
+  const el = document.createElement('div');
+  el.className = `msg ${role === 'user' ? 'user' : 'ai'}`;
+  el.innerHTML = `
+    <div class="msg-who">${role === 'user' ? 'OPERATOR' : '> JARVIS'}</div>
+    <div class="msg-body">${text.replace(/\n/g, '<br>')}</div>`;
+  document.getElementById('chat-messages').appendChild(el);
+  el.scrollIntoView({ behavior: 'smooth', block: 'end' });
+  S.history.push({ role: role === 'user' ? 'user' : 'assistant', content: text });
+  return el;
+}
+
+async function aiReply(text) {
+  const el = addMsg('ai', '');
+  el.querySelector('.msg-body').classList.add('typing');
+  await new Promise(r => setTimeout(r, 350));
+  el.querySelector('.msg-body').classList.remove('typing');
+  el.querySelector('.msg-body').innerHTML = text.replace(/\n/g, '<br>');
+  if (S.voice) speak(text);
+}
+
+async function sendChat(override) {
+  const inp = document.getElementById('chat-in');
+  const msg = override || inp.value.trim();
+  if (!msg) return;
+  inp.value = '';
+  addMsg('user', msg);
+
+  const ctx = Object.entries(S.data).map(([id, d]) => {
+    const w = WORKERS.find(x => x.id === id);
+    return `${w?.name || id}: ${JSON.stringify(d)}`;
+  }).join('\n');
+
+  try {
+    const res = await fetch(JARVIS_ENDPOINT, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ message: msg, context: ctx, history: S.history.slice(-10) }),
+      mode: 'cors',
+    });
+    if (res.status === 404) {
+      await aiReply('JARVIS ops-chat endpoint not yet deployed. Add the /ops-chat route to the Jarvis worker to enable AI responses. Worker data and quick-refresh are functional.');
+    } else if (!res.ok) {
+      await aiReply(`Connection error: HTTP ${res.status}. Check CORS and worker deployment.`);
+    } else {
+      const d = await res.json();
+      await aiReply(d.reply || 'No response.');
+    }
+  } catch {
+    await aiReply('Unable to reach JARVIS. Ensure the /ops-chat endpoint is deployed and CORS headers include centerpost.app.');
+  }
+}
+
+// ════════════════════════════════════════════════════════════════════════
+// VOICE
+// ════════════════════════════════════════════════════════════════════════
+function toggleVoice() {
+  S.voice = !S.voice;
+  const btn = document.getElementById('voice-btn');
+  btn.textContent = S.voice ? '◉ VOICE ON' : '◉ VOICE';
+  btn.classList.toggle('on', S.voice);
+  if (S.voice) speak('JARVIS voice interface activated.');
+}
+
+function speak(text) {
+  if (!S.voice || !window.speechSynthesis) return;
+  speechSynthesis.cancel();
+  const u = new SpeechSynthesisUtterance(text);
+  const vs = speechSynthesis.getVoices();
+  const pick = vs.find(v => v.name.includes('Google UK English Male') || v.name.includes('Microsoft David') || v.name.includes('Daniel')) || vs.find(v => v.lang === 'en-GB') || vs.find(v => v.lang.startsWith('en'));
+  if (pick) u.voice = pick;
+  u.rate = 0.87; u.pitch = 0.76; u.volume = 0.88;
+  speechSynthesis.speak(u);
+}
+
+let recog;
+function toggleListen() {
+  const SR = window.SpeechRecognition || window.webkitSpeechRecognition;
+  if (!SR) { addMsg('ai', 'Speech recognition unavailable. Use Chrome or Edge for voice input.'); return; }
+  if (S.listening) { recog?.stop(); return; }
+  recog = new SR();
+  recog.onresult = e => { const t = e.results[0][0].transcript; document.getElementById('chat-in').value = t; sendChat(t); };
+  recog.onend = () => { S.listening = false; document.getElementById('mic-btn').classList.remove('active'); };
+  recog.start();
+  S.listening = true;
+  document.getElementById('mic-btn').classList.add('active');
+}
+
+// ════════════════════════════════════════════════════════════════════════
+// KEYBOARD
+// ════════════════════════════════════════════════════════════════════════
+document.addEventListener('keydown', e => {
+  if (e.key === 'Enter' && document.activeElement.id === 'chat-in') sendChat();
+  if (e.key === '/' && document.activeElement.tagName !== 'INPUT') {
+    e.preventDefault(); document.getElementById('chat-in').focus();
+  }
+});
+
+// ════════════════════════════════════════════════════════════════════════
+// BOOT
+// ════════════════════════════════════════════════════════════════════════
+(async function boot() {
+  initParticles();
+  initClock();
+  document.getElementById('reactor-wrap').innerHTML = buildReactor();
+  renderCards();
+  renderQuickActions();
+
+  if (window.speechSynthesis) {
+    speechSynthesis.getVoices();
+    speechSynthesis.addEventListener('voiceschanged', () => speechSynthesis.getVoices());
+  }
+
+  addMsg('ai', 'JARVIS OPERATIONS INTERFACE ONLINE.\nRefreshing worker telemetry — stand by.\n\nPress / to focus input · ↺ SWEEP to refresh all workers.');
+
+  await refreshAll();
+
+  const ok = WORKERS.filter(w => document.getElementById(`c-${w.id}`)?.classList.contains('status-ok'));
+  await aiReply(
+    ok.length === WORKERS.length
+      ? `All ${WORKERS.length} workers online. Systems nominal.`
+      : `${ok.length}/${WORKERS.length} workers responding. ${WORKERS.length - ok.length} endpoint(s) need /data setup. See the worker patch files.`
+  );
+})();
+</script>
+</body>
+</html>
