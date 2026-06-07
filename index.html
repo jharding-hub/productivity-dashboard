@@ -12347,6 +12347,24 @@ async function gcalPushAll(){
   for(var b=0;b<(state.tlBlocks||[]).length;b++){
     var blk = state.tlBlocks[b];
     if(!blk.date || !blk.time) continue;
+    // Dedup: if this block is linked to a task/subtask that was already pushed
+    // to Google on the same date (sections 1-3 above), skip it — pushing both
+    // creates two identical events when the due date matches the scheduled block date.
+    if(blk.linkedId && blk.linkedType){
+      var _dup=false;
+      if(blk.linkedType==='task'){
+        var _lt=(state.tasks||[]).find(function(x){return x.id===blk.linkedId;});
+        if(_lt&&_lt.gcalEventId&&_lt.due===blk.date)_dup=true;
+      }else if(blk.linkedType==='subtask'){
+        var _dupFound=false;
+        for(var _pi=0;_pi<(state.projects||[]).length&&!_dupFound;_pi++){
+          var _lp=state.projects[_pi];
+          var _ls=(_lp.subtasks||[]).find(function(x){return x.id===blk.linkedId;});
+          if(_ls&&_ls.gcalEventId&&_ls.due===blk.date){_dup=true;_dupFound=true;}
+        }
+      }
+      if(_dup)continue;
+    }
     var projName = '';
     if(blk.projectId){
       var bp = (state.projects||[]).find(function(p){return p.id===blk.projectId;});
