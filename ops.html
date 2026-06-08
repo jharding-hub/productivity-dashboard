@@ -228,6 +228,120 @@ body { background: var(--bg); color: var(--text); font-family: var(--mono); font
 /* ── RESPONSIVE ────────────────────────────────── */
 @media (max-width: 860px) { .panel-reactor { display: none; } }
 @media (max-width: 600px) { .agents-bar { flex-direction: column; } .agent-card { min-width: 0; } }
+
+/* ═══════════════════════════════════════════════════
+   ANALYTICS OVERLAY
+═══════════════════════════════════════════════════ */
+#analytics-overlay {
+  position: fixed; inset: 0; z-index: 50;
+  background: rgba(1,8,20,.97); backdrop-filter: blur(14px);
+  display: none; flex-direction: column;
+}
+#analytics-overlay.open { display: flex; }
+
+.an-hdr {
+  display: flex; align-items: center; gap: 14px; padding: 0 20px; height: 44px;
+  flex-shrink: 0; border-bottom: 1px solid var(--border);
+  background: rgba(3,15,34,.9);
+}
+.an-title { font-family: var(--orb); font-size: 13px; color: var(--cyan); letter-spacing: 4px; text-shadow: 0 0 12px var(--cyan-glow); }
+.an-sub   { font-size: 9px; color: var(--text-dim); letter-spacing: 2px; }
+.an-period-btns { display: flex; gap: 5px; margin-left: auto; }
+.an-period-btn {
+  padding: 3px 10px; font-family: var(--mono); font-size: 9px; letter-spacing: 2px;
+  background: none; border: 1px solid var(--border); border-radius: 3px;
+  color: var(--text-dim); cursor: pointer; transition: all .2s;
+}
+.an-period-btn.active { border-color: var(--cyan); color: var(--cyan); background: var(--cyan-dim); }
+.an-close-btn {
+  width: 28px; height: 28px; background: none; border: 1px solid var(--border); border-radius: 3px;
+  color: var(--text-dim); cursor: pointer; font-size: 14px;
+  display: flex; align-items: center; justify-content: center; transition: all .2s; margin-left: 8px;
+}
+.an-close-btn:hover { border-color: var(--red); color: var(--red); }
+
+.an-body { flex: 1; overflow-y: auto; padding: 22px 24px; }
+.an-body::-webkit-scrollbar { width: 3px; }
+.an-body::-webkit-scrollbar-thumb { background: var(--border); }
+
+/* section heading */
+.an-sh {
+  font-family: var(--orb); font-size: 9px; letter-spacing: 3px; color: var(--text-dim);
+  margin-bottom: 12px; padding-bottom: 6px; border-bottom: 1px solid var(--border);
+}
+.an-section { margin-bottom: 30px; }
+
+/* ── Summary row ── */
+.an-summary { display: grid; grid-template-columns: repeat(4,1fr); gap: 10px; margin-bottom: 28px; }
+.an-stat {
+  background: var(--surface); border: 1px solid var(--border); border-radius: 6px;
+  padding: 13px 15px; position: relative; overflow: hidden;
+}
+.an-stat::before {
+  content: ''; position: absolute; top: 0; left: 0; right: 0; height: 1px;
+  background: linear-gradient(90deg, transparent, var(--c, var(--cyan)), transparent); opacity: .45;
+}
+.an-stat-label { font-size: 8px; color: var(--text-dim); letter-spacing: 2px; margin-bottom: 4px; }
+.an-stat-val   { font-family: var(--orb); font-size: 24px; color: var(--text); line-height: 1; }
+.an-stat-val.sm{ font-size: 14px; padding-top: 5px; }
+.an-stat-hint  { font-size: 8px; color: var(--text-dim); margin-top: 3px; }
+
+/* ── Panel grid ── */
+.an-panel-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(150px,1fr)); gap: 9px; }
+.an-pc {
+  background: var(--surface); border: 1px solid var(--border); border-radius: 6px;
+  padding: 10px 12px; transition: border-color .2s;
+}
+.an-pc:hover { border-color: var(--border2); }
+.an-pc.unused { opacity: .5; }
+.an-pc-name  { font-size: 10px; color: var(--text); letter-spacing: .5px; margin-bottom: 4px; }
+.an-pc-count { font-family: var(--orb); font-size: 18px; line-height: 1.1; }
+.an-pc-bar   { height: 2px; background: var(--border); border-radius: 1px; margin: 7px 0 5px; }
+.an-pc-fill  { height: 100%; border-radius: 1px; transition: width .6s cubic-bezier(.4,0,.2,1); }
+.an-pc-badge { font-size: 8px; letter-spacing: 1.5px; }
+.an-pc-badge.on  { color: var(--green); }
+.an-pc-badge.off { color: var(--text-dim); }
+
+/* ── Tools chart ── */
+.an-tool-row { display: flex; align-items: center; gap: 10px; margin-bottom: 9px; }
+.an-tool-nm  { font-size: 10px; color: var(--text); width: 130px; flex-shrink: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.an-tool-bg  { flex: 1; height: 8px; background: var(--border); border-radius: 4px; overflow: hidden; }
+.an-tool-fill{ height: 100%; border-radius: 4px; transition: width .6s cubic-bezier(.4,0,.2,1); }
+.an-tool-ct  { font-family: var(--orb); font-size: 10px; color: var(--text-dim); width: 32px; text-align: right; flex-shrink: 0; }
+.an-tool-zero{ opacity: .4; }
+
+/* ── Daily chart ── */
+.an-daily-wrap { display: flex; align-items: flex-end; gap: 8px; height: 70px; }
+.an-dc { flex: 1; display: flex; flex-direction: column; align-items: center; gap: 4px; height: 100%; }
+.an-dc-barwrap { flex: 1; width: 100%; display: flex; align-items: flex-end; }
+.an-dc-bar { width: 100%; border-radius: 2px 2px 0 0; min-height: 2px; transition: height .5s ease; }
+.an-dc-bar.normal { background: rgba(0,212,255,.35); }
+.an-dc-bar.today  { background: var(--cyan); box-shadow: 0 0 10px var(--cyan-glow); }
+.an-dc-lbl { font-size: 8px; color: var(--text-dim); }
+
+/* ── Insights ── */
+.an-insights { display: grid; grid-template-columns: repeat(3,1fr); gap: 12px; }
+.an-ic {
+  background: var(--surface); border: 1px solid rgba(212,168,83,.2); border-radius: 6px;
+  padding: 13px 14px;
+}
+.an-ic-tag  { font-size: 8px; letter-spacing: 2px; color: var(--gold); margin-bottom: 7px; }
+.an-ic-text { font-size: 11px; color: var(--text); line-height: 1.55; }
+
+/* ── Empty / loading states ── */
+.an-empty {
+  text-align: center; padding: 70px 20px; color: var(--text-dim);
+}
+.an-empty-title { font-family: var(--orb); font-size: 13px; color: var(--text-dim); letter-spacing: 3px; margin-bottom: 14px; }
+.an-empty-body  { font-size: 11px; line-height: 1.9; }
+.an-loading-row { text-align: center; padding: 80px 0; font-size: 10px; letter-spacing: 3px; color: var(--text-dim); }
+
+/* ── Responsive ── */
+@media (max-width: 700px) {
+  .an-summary { grid-template-columns: repeat(2,1fr); }
+  .an-insights { grid-template-columns: 1fr; }
+}
+@media (max-width: 480px) { .an-summary { grid-template-columns: 1fr 1fr; } }
 </style>
 </head>
 <body>
@@ -243,6 +357,7 @@ body { background: var(--bg); color: var(--text); font-family: var(--mono); font
     </div>
     <div class="hdr-right">
       <div class="sys-indicator"><div class="s-dot ok" id="sys-dot"></div><span id="sys-text">NOMINAL</span></div>
+      <button class="ctrl-btn" onclick="openAnalytics()" style="border-color:rgba(212,168,83,.3);color:var(--gold)">⬡ ANALYTICS</button>
       <div id="clock">--:--:-- UTC</div>
     </div>
   </header>
@@ -300,6 +415,25 @@ body { background: var(--bg); color: var(--text); font-family: var(--mono); font
         </div>
       </div>
     </div>
+  </div>
+</div>
+
+<!-- ═══════════════════════════════════════════════════════════════
+     ANALYTICS OVERLAY
+════════════════════════════════════════════════════════════════ -->
+<div id="analytics-overlay">
+  <div class="an-hdr">
+    <span style="font-size:16px;color:var(--gold);margin-right:4px">⬡</span>
+    <div class="an-title">ANALYTICS COMMAND</div>
+    <div class="an-sub">USAGE INTELLIGENCE</div>
+    <div class="an-period-btns">
+      <button class="an-period-btn active" data-days="7" onclick="loadAnalytics(7)">7D</button>
+      <button class="an-period-btn" data-days="30" onclick="loadAnalytics(30)">30D</button>
+    </div>
+    <button class="an-close-btn" onclick="closeAnalytics()" title="Close">✕</button>
+  </div>
+  <div class="an-body">
+    <div id="an-content"><div class="an-loading-row">INITIALIZING…</div></div>
   </div>
 </div>
 
@@ -768,6 +902,272 @@ function toggleListen() {
   recog.start();
   S.listening = true;
   document.getElementById('mic-btn').classList.add('active');
+}
+
+// ════════════════════════════════════════════════════════════════════════
+// ANALYTICS
+// ════════════════════════════════════════════════════════════════════════
+const AN_ENDPOINT = 'https://centerpost-jarvis.medicjth.workers.dev';
+let anPeriod = 7;
+
+// Human-readable names for panel IDs used in index.html
+const PANEL_META = {
+  projects:  'Projects',
+  reminders: 'Reminders',
+  time:      'Focus Timer',
+  tasklist:  'Task List',
+  notes:     'Notes',
+  brain:     'Brain Dump',
+  routines:  'Routines',
+  wellness:  'Wellness',
+  decision:  'Decisions',
+  admin:     'Admin',
+  timeline:  'Timeline'
+};
+
+// Human-readable names for tool_use event IDs
+const TOOL_META = {
+  focus_timer:   'Focus Timer',
+  brain_dump:    'Brain Dump',
+  add_note:      'Add Note',
+  add_reminder:  'Add Reminder',
+  add_project:   'Add Project',
+  log_mood:      'Log Mood',
+  breathwork:    'Breathwork',
+  jarvis_ai:     'Jarvis AI',
+  task_complete: 'Task Complete',
+  task_add:      'Add Task',
+  routine_check: 'Routine Check',
+};
+
+function openAnalytics() {
+  document.getElementById('analytics-overlay').classList.add('open');
+  loadAnalytics(anPeriod);
+}
+function closeAnalytics() {
+  document.getElementById('analytics-overlay').classList.remove('open');
+}
+
+async function loadAnalytics(days) {
+  anPeriod = days;
+  document.querySelectorAll('.an-period-btn').forEach(b =>
+    b.classList.toggle('active', parseInt(b.dataset.days) === days)
+  );
+  document.getElementById('an-content').innerHTML = '<div class="an-loading-row">QUERYING ANALYTICS · STAND BY</div>';
+
+  try {
+    const res = await fetch(`${AN_ENDPOINT}/ops-analytics?days=${days}`, {
+      headers: { 'Origin': 'https://centerpost.app' }
+    });
+    if (!res.ok) throw new Error(`HTTP ${res.status}`);
+    const d = await res.json();
+    renderAnalytics(d);
+  } catch(e) {
+    document.getElementById('an-content').innerHTML = `
+      <div class="an-empty">
+        <div class="an-empty-title">ANALYTICS OFFLINE</div>
+        <div class="an-empty-body">
+          Error: ${e.message}<br><br>
+          Make sure ANALYTICS_KV is bound to the Jarvis worker<br>
+          and the worker has been redeployed.
+        </div>
+      </div>`;
+  }
+}
+
+function renderAnalytics(d) {
+  const today = new Date().toISOString().slice(0, 10);
+  const panels = d.panels || [];
+  const tools  = d.tools  || [];
+
+  if (d.totalEvents === 0) {
+    document.getElementById('an-content').innerHTML = `
+      <div class="an-empty">
+        <div class="an-empty-title">NO DATA YET</div>
+        <div class="an-empty-body">
+          Start using Centerpost normally — panel opens, tools, and<br>
+          feature activations are automatically tracked.<br><br>
+          Data will appear here after your first session.
+        </div>
+      </div>`;
+    return;
+  }
+
+  // ── helpers ──
+  function pctBar(count, max, color, extraClass) {
+    const w = max > 0 ? Math.round(count / max * 100) : 0;
+    return `<div class="an-pc-fill${extraClass?' '+extraClass:''}" style="width:${w}%;background:${color}"></div>`;
+  }
+
+  // ── Summary strip ──
+  let html = `
+  <div class="an-summary">
+    <div class="an-stat" style="--c:var(--cyan)">
+      <div class="an-stat-label">TOTAL INTERACTIONS</div>
+      <div class="an-stat-val">${d.totalEvents}</div>
+      <div class="an-stat-hint">last ${d.period}</div>
+    </div>
+    <div class="an-stat" style="--c:var(--green)">
+      <div class="an-stat-label">ACTIVE DAYS</div>
+      <div class="an-stat-val">${d.activeDays}</div>
+      <div class="an-stat-hint">of ${anPeriod} days</div>
+    </div>
+    <div class="an-stat" style="--c:var(--gold)">
+      <div class="an-stat-label">DAILY AVERAGE</div>
+      <div class="an-stat-val">${d.avgPerDay}</div>
+      <div class="an-stat-hint">interactions / day</div>
+    </div>
+    <div class="an-stat" style="--c:var(--amber)">
+      <div class="an-stat-label">TOP FEATURE</div>
+      <div class="an-stat-val sm">${d.topPanel || d.topTool || '—'}</div>
+      <div class="an-stat-hint">most opened</div>
+    </div>
+  </div>`;
+
+  // ── Panel usage grid ──
+  if (panels.length > 0 || Object.keys(PANEL_META).length > 0) {
+    const maxP = Math.max(...panels.map(p => p.count), 1);
+
+    // Merge tracked data with all known panels (show zeros for unused)
+    const seenIds = new Set(panels.map(p => p.id));
+    const allPanels = [...panels];
+    Object.keys(PANEL_META).forEach(id => {
+      if (!seenIds.has(id)) allPanels.push({ id, name: PANEL_META[id], count: 0 });
+    });
+    allPanels.sort((a, b) => b.count - a.count || a.name.localeCompare(b.name));
+
+    html += `<div class="an-section">
+      <div class="an-sh">PANEL USAGE — ${panels.filter(p=>p.count>0).length} active · ${allPanels.filter(p=>p.count===0).length} unused</div>
+      <div class="an-panel-grid">`;
+
+    allPanels.forEach(p => {
+      const name  = PANEL_META[p.id] || p.name || p.id;
+      const used  = p.count > 0;
+      const color = used ? 'var(--cyan)' : 'rgba(58,98,130,.5)';
+      html += `<div class="an-pc${used?'':' unused'}">
+        <div class="an-pc-name">${name}</div>
+        <div class="an-pc-count" style="color:${color}">${p.count}</div>
+        <div class="an-pc-bar">${pctBar(p.count, maxP, color)}</div>
+        <div class="an-pc-badge ${used?'on':'off'}">${used?'● ACTIVE':'○ UNUSED'}</div>
+      </div>`;
+    });
+    html += `</div></div>`;
+  }
+
+  // ── Tool activity bars ──
+  {
+    const seenToolIds = new Set(tools.map(t => t.id));
+    const allTools = [...tools];
+    Object.keys(TOOL_META).forEach(id => {
+      if (!seenToolIds.has(id)) allTools.push({ id, name: TOOL_META[id], count: 0 });
+    });
+    allTools.sort((a, b) => b.count - a.count);
+    const maxT = Math.max(...allTools.map(t => t.count), 1);
+
+    html += `<div class="an-section">
+      <div class="an-sh">TOOL ACTIVITY — sorted by usage</div>`;
+    allTools.forEach(t => {
+      const name  = TOOL_META[t.id] || t.name || t.id;
+      const used  = t.count > 0;
+      const color = used ? 'var(--gold)' : 'rgba(58,98,130,.4)';
+      const w     = maxT > 0 ? Math.round(t.count / maxT * 100) : 0;
+      html += `<div class="an-tool-row${used?'':' an-tool-zero'}">
+        <div class="an-tool-nm">${name}</div>
+        <div class="an-tool-bg"><div class="an-tool-fill" style="width:${w}%;background:${color}"></div></div>
+        <div class="an-tool-ct">${t.count}</div>
+      </div>`;
+    });
+    html += `</div>`;
+  }
+
+  // ── Daily activity histogram ──
+  if (d.daily && d.daily.length > 0) {
+    const maxDay = Math.max(...d.daily.map(x => x.count), 1);
+    const dayNames = ['SUN','MON','TUE','WED','THU','FRI','SAT'];
+    html += `<div class="an-section">
+      <div class="an-sh">DAILY ACTIVITY — last ${d.daily.length} days</div>
+      <div class="an-daily-wrap">`;
+    d.daily.forEach(day => {
+      const pct   = Math.max(Math.round(day.count / maxDay * 100), day.count > 0 ? 4 : 2);
+      const isNow = day.date === today;
+      const dObj  = new Date(day.date + 'T12:00:00Z');
+      const lbl   = isNow ? 'TODAY' : dayNames[dObj.getUTCDay()];
+      html += `<div class="an-dc" title="${day.date}: ${day.count} events">
+        <div class="an-dc-barwrap"><div class="an-dc-bar ${isNow?'today':'normal'}" style="height:${pct}%"></div></div>
+        <div class="an-dc-lbl">${lbl}</div>
+      </div>`;
+    });
+    html += `</div></div>`;
+  }
+
+  // ── AI Insights (async) ──
+  html += `<div class="an-section">
+    <div class="an-sh">AI INSIGHTS — JARVIS ANALYSIS</div>
+    <div id="an-insights" class="an-insights">
+      <div class="an-ic" style="grid-column:1/-1">
+        <div class="an-ic-tag">⬡ GENERATING</div>
+        <div class="an-ic-text" style="color:var(--text-dim)">Jarvis is analyzing usage patterns…</div>
+      </div>
+    </div>
+  </div>`;
+
+  document.getElementById('an-content').innerHTML = html;
+  generateInsights(d);
+}
+
+async function generateInsights(d) {
+  const panelSummary = (d.panels||[]).slice(0,5).map(p => `${PANEL_META[p.id]||p.name}: ${p.count} opens`).join(', ');
+  const unusedPanels = Object.keys(PANEL_META).filter(id => !(d.panels||[]).find(p=>p.id===id&&p.count>0)).map(id=>PANEL_META[id]);
+  const toolSummary  = (d.tools||[]).slice(0,5).map(t => `${TOOL_META[t.id]||t.name}: ${t.count} uses`).join(', ');
+  const unusedTools  = Object.keys(TOOL_META).filter(id => !(d.tools||[]).find(t=>t.id===id&&t.count>0)).map(id=>TOOL_META[id]);
+
+  const prompt = `Analyze Centerpost app usage data and return exactly 3 admin insights as a JSON array.
+
+Data (${d.period}):
+- Total events: ${d.totalEvents}
+- Active days: ${d.activeDays} of ${anPeriod}
+- Top panels: ${panelSummary || 'none yet'}
+- Unused panels: ${unusedPanels.join(', ') || 'none'}
+- Top tools: ${toolSummary || 'none yet'}
+- Unused tools: ${unusedTools.join(', ') || 'none'}
+
+Return ONLY a raw JSON array (no markdown). Each object must have:
+- "tag": 2-3 uppercase words (e.g. "HIGH ENGAGEMENT", "LOW ADOPTION", "QUICK WIN")
+- "text": one specific actionable sentence for the developer (what to enhance, remove, or investigate)`;
+
+  try {
+    const res = await fetch(`${AN_ENDPOINT}/ops-chat`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        message: prompt,
+        context: 'You are Jarvis, admin analytics AI for Centerpost ADHD productivity app.',
+        history: []
+      })
+    });
+    if (!res.ok) throw new Error('HTTP ' + res.status);
+    const data = await res.json();
+    const clean = (data.reply || '').replace(/```json|```/g, '').trim();
+    const insights = JSON.parse(clean);
+    if (!Array.isArray(insights) || insights.length === 0) throw new Error('bad format');
+
+    const el = document.getElementById('an-insights');
+    if (!el) return;
+    el.innerHTML = insights.slice(0, 3).map(ins => `
+      <div class="an-ic">
+        <div class="an-ic-tag">⬡ ${(ins.tag||'INSIGHT').toUpperCase()}</div>
+        <div class="an-ic-text">${ins.text || ''}</div>
+      </div>`).join('');
+  } catch(e) {
+    const el = document.getElementById('an-insights');
+    if (el) el.innerHTML = `
+      <div class="an-ic" style="grid-column:1/-1">
+        <div class="an-ic-tag">⬡ NOTE</div>
+        <div class="an-ic-text" style="color:var(--text-dim)">
+          AI insights need a few sessions of data to be meaningful. Keep using Centerpost and check back.
+        </div>
+      </div>`;
+  }
 }
 
 // ════════════════════════════════════════════════════════════════════════
