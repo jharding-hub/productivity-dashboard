@@ -11895,6 +11895,7 @@ setTimeout(_initWakeWord,1500);
 var _jarvisVoiceEnabled=false;           // user-toggleable preference (persists); default OFF to prevent device issues
 var _jarvisVoiceSupported=!!window.speechSynthesis;
 var _jarvisCurrentUtterance=null;
+var _jarvisCurrentAudio=null;         // HTML Audio element for ElevenLabs TTS
 var _jarvisPreferredVoice=null;
 
 function _jarvisPickVoice(){
@@ -11931,55 +11932,56 @@ function _jarvisCleanForSpeech(text){
     .trim();
 }
 
-function _jarvisSpeak(text){
-  if(!_jarvisVoiceEnabled||!_jarvisVoiceSupported)return;
+async function _jarvisSpeak(text){
+  if(!_jarvisVoiceEnabled)return;
   var clean=_jarvisCleanForSpeech(text);
   if(!clean)return;
-  
-  // Cancel any in-flight utterance
-  try{window.speechSynthesis.cancel();}catch(e){}
-  
+
+  // Stop any in-flight audio before starting new utterance
+  _jarvisStopSpeaking();
+
   // Pause wake word during speech to avoid feedback loop
   var wakeWasActive=_wakeWordActive;
   if(wakeWasActive)_stopWakeWord();
-  
-  var u=new SpeechSynthesisUtterance(clean);
-  u.rate=1.05;       // slightly faster than default for snappier feel
-  u.pitch=1.0;
-  u.volume=1.0;
-  if(_jarvisPreferredVoice)u.voice=_jarvisPreferredVoice;
-  
+
   var voiceBtn=document.getElementById('jarvisVoiceBtn');
-  
-  u.onstart=function(){
-    if(voiceBtn)voiceBtn.classList.add('speaking');
-  };
-  u.onend=function(){
-    _jarvisCurrentUtterance=null;
+  if(voiceBtn)voiceBtn.classList.add('speaking');
+
+  var _done=function(){
+    _jarvisCurrentAudio=null;
     if(voiceBtn)voiceBtn.classList.remove('speaking');
-    // Resume wake word listener if it was active before speaking
-    if(wakeWasActive&&_wakeWordEnabled){
-      setTimeout(_startWakeWord,400);
-    }
-  };
-  u.onerror=function(e){
-    _jarvisCurrentUtterance=null;
-    if(voiceBtn)voiceBtn.classList.remove('speaking');
-    if(wakeWasActive&&_wakeWordEnabled){
-      setTimeout(_startWakeWord,400);
-    }
-  };
-  
-  _jarvisCurrentUtterance=u;
-  try{window.speechSynthesis.speak(u);}catch(err){
-    console.warn('[Jarvis voice] speak failed:',err);
     if(wakeWasActive&&_wakeWordEnabled)setTimeout(_startWakeWord,400);
+  };
+
+  try{
+    var res=await fetch('https://centerpost-jarvis.medicjth.workers.dev/ops-speak',{
+      method:'POST',
+      headers:{'Content-Type':'application/json'},
+      body:JSON.stringify({text:clean}),
+    });
+    if(!res.ok)throw new Error('HTTP '+res.status);
+    var blob=await res.blob();
+    var blobUrl=URL.createObjectURL(blob);
+    _jarvisCurrentAudio=new Audio(blobUrl);
+    _jarvisCurrentAudio.onended=function(){URL.revokeObjectURL(blobUrl);_done();};
+    _jarvisCurrentAudio.onerror=function(){URL.revokeObjectURL(blobUrl);_done();};
+    _jarvisCurrentAudio.play();
+  }catch(e){
+    console.warn('[Jarvis voice] ElevenLabs unavailable, falling back to browser TTS:',e.message);
+    if(!_jarvisVoiceSupported){_done();return;}
+    var u=new SpeechSynthesisUtterance(clean);
+    u.rate=1.05;u.pitch=1.0;u.volume=1.0;
+    if(_jarvisPreferredVoice)u.voice=_jarvisPreferredVoice;
+    u.onend=function(){_jarvisCurrentUtterance=null;_done();};
+    u.onerror=function(){_jarvisCurrentUtterance=null;_done();};
+    _jarvisCurrentUtterance=u;
+    try{window.speechSynthesis.speak(u);}catch(err){console.warn('[Jarvis voice] Browser TTS also failed:',err);_done();}
   }
 }
 
 function _jarvisStopSpeaking(){
-  if(!_jarvisVoiceSupported)return;
-  try{window.speechSynthesis.cancel();}catch(e){}
+  if(_jarvisCurrentAudio){_jarvisCurrentAudio.pause();_jarvisCurrentAudio=null;}
+  if(_jarvisVoiceSupported){try{window.speechSynthesis.cancel();}catch(e){}}
   _jarvisCurrentUtterance=null;
   var voiceBtn=document.getElementById('jarvisVoiceBtn');
   if(voiceBtn)voiceBtn.classList.remove('speaking');
@@ -11987,7 +11989,7 @@ function _jarvisStopSpeaking(){
 
 function toggleJarvisVoice(){
   // If currently speaking, stop and disable
-  if(_jarvisCurrentUtterance||(window.speechSynthesis&&window.speechSynthesis.speaking)){
+  if(_jarvisCurrentAudio||_jarvisCurrentUtterance||(window.speechSynthesis&&window.speechSynthesis.speaking)){
     _jarvisStopSpeaking();
     _jarvisVoiceEnabled=false;
   }else{
