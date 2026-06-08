@@ -266,10 +266,22 @@ body { background: var(--bg); color: var(--text); font-family: var(--mono); font
         <div class="r-stat-label">UPTIME</div>
         <div class="r-stat-value" id="r-uptime">00:00:00</div>
       </div>
+      <div class="r-stat" style="margin-top:8px;border-top:1px solid var(--border);padding-top:10px">
+        <div class="r-stat-label">SESSION · JARVIS</div>
+        <div class="r-stat-value" id="r-session" style="font-size:10px;line-height:1.7">—</div>
+      </div>
     </aside>
 
     <div class="panel-main">
       <div class="agents-bar" id="agents-bar"><!-- generated --></div>
+      <!-- Weekly spend chart — populated when Guardian data loads -->
+      <div id="usage-chart-bar" style="display:none;padding:10px 16px 8px;border-bottom:1px solid var(--border);background:rgba(2,10,22,.5)">
+        <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:6px">
+          <span style="font-size:9px;color:var(--text-dim);letter-spacing:2px">7-DAY SPEND</span>
+          <span id="r-week-total" style="font-family:var(--orb);font-size:10px;color:var(--gold)"></span>
+        </div>
+        <div id="usage-chart-svg"></div>
+      </div>
       <div class="chat-panel">
         <div class="chat-hdr">
           <div class="jarvis-label">JARVIS</div>
@@ -358,6 +370,7 @@ const S = {
   voice: false,
   listening: false,
   startTime: Date.now(),
+  session: { inputTokens: 0, outputTokens: 0, calls: 0 },
 };
 
 // ════════════════════════════════════════════════════════════════════════
@@ -529,6 +542,7 @@ async function fetchAgent(id, silent) {
     const d = await r.json();
     S.data[id] = d;
     setCard(id, d, null);
+    if (id === 'guardian') renderUsageChart();
     if (!silent) stamp();
     return d;
   } catch (e) {
@@ -558,6 +572,61 @@ function updateSysStatus() {
   const txt = document.getElementById('sys-text');
   if (anyErr) { dot.className = 's-dot warn'; txt.textContent = 'DEGRADED'; }
   else if (allOk) { dot.className = 's-dot ok'; txt.textContent = 'NOMINAL'; }
+}
+
+// ════════════════════════════════════════════════════════════════════════
+// USAGE TRACKING
+// ════════════════════════════════════════════════════════════════════════
+function updateSessionUI() {
+  const { inputTokens, outputTokens, calls } = S.session;
+  const tot = inputTokens + outputTokens;
+  // Haiku 4.5 pricing: $1.00/$5.00 per MTok
+  const est = (inputTokens / 1e6) * 1.00 + (outputTokens / 1e6) * 5.00;
+  const el = document.getElementById('r-session');
+  if (el) el.innerHTML =
+    `${calls} call${calls !== 1 ? 's' : ''}<br>` +
+    `${fmtTok(tot)} tok<br>` +
+    `~$${est.toFixed(5)}`;
+}
+
+function fmtTok(n) {
+  return n >= 1000 ? (n / 1000).toFixed(1) + 'K' : String(n);
+}
+
+function buildWeeklyChart(history7d) {
+  if (!history7d || history7d.length === 0) return '';
+  const max = Math.max(0.00001, ...history7d.map(d => d.totalUSD));
+  const W = 500, H = 68, gap = 4;
+  const barW = Math.floor((W - gap * (history7d.length - 1)) / history7d.length);
+  const maxBarH = H - 24;
+  let svg = '';
+  history7d.forEach((d, i) => {
+    const bh = Math.max(2, Math.round((d.totalUSD / max) * maxBarH));
+    const x  = i * (barW + gap);
+    const y  = H - bh - 16;
+    const isToday = i === history7d.length - 1;
+    const label = d.date.slice(5); // MM-DD
+    svg +=
+      `<rect x="${x}" y="${y}" width="${barW}" height="${bh}" fill="${isToday ? 'rgba(0,212,255,.75)' : 'rgba(0,212,255,.2)'}" rx="1"/>` +
+      (isToday ? `<rect x="${x}" y="${y}" width="${barW}" height="1.5" fill="rgba(0,212,255,.95)"/>` : '') +
+      `<text x="${x + barW/2}" y="${H - 2}" fill="rgba(0,212,255,.38)" font-size="8" text-anchor="middle" font-family="Share Tech Mono,monospace">${label}</text>` +
+      (d.totalUSD > 0 ? `<text x="${x + barW/2}" y="${y - 3}" fill="rgba(0,212,255,.6)" font-size="8" text-anchor="middle" font-family="Share Tech Mono,monospace">$${d.totalUSD.toFixed(4)}</text>` : '');
+  });
+  return `<svg viewBox="0 0 ${W} ${H}" width="100%" style="overflow:visible" xmlns="http://www.w3.org/2000/svg">${svg}</svg>`;
+}
+
+function renderUsageChart() {
+  const g = S.data.guardian;
+  if (!g || !g.history7d) return;
+  const bar = document.getElementById('usage-chart-bar');
+  const svgEl = document.getElementById('usage-chart-svg');
+  const tot = document.getElementById('r-week-total');
+  if (!bar || !svgEl) return;
+  const weekTotal = g.history7d.reduce((s, d) => s + d.totalUSD, 0) + (g.totalCostUSD || 0);
+  if (tot) tot.textContent = `7d: $${weekTotal.toFixed(4)}`;
+  const chart = buildWeeklyChart([...g.history7d, { date: g.date || 'Today', totalUSD: g.totalCostUSD || 0, anthropicUSD: 0 }]);
+  svgEl.innerHTML = chart;
+  bar.style.display = 'block';
 }
 
 // ════════════════════════════════════════════════════════════════════════
@@ -635,6 +704,12 @@ async function sendChat(override) {
     } else {
       const d = await res.json();
       await aiReply(d.reply || 'No response.');
+      if (d.usage) {
+        S.session.inputTokens  += d.usage.input_tokens  || 0;
+        S.session.outputTokens += d.usage.output_tokens || 0;
+        S.session.calls++;
+        updateSessionUI();
+      }
     }
   } catch {
     await aiReply('Unable to reach JARVIS. Ensure the /ops-chat endpoint is deployed and CORS headers include centerpost.app.');
