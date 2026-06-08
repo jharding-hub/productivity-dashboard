@@ -5740,13 +5740,14 @@ const CIRC=628.3; // 2 * PI * 100
 let breathVoice=null;
 let breathVoiceReady=false;
 let breathMuted=true;
-
+let _breathCurrentAudio=null;  // HTML Audio for ElevenLabs breathwork voice
 function toggleBreathMute(){
   breathMuted=!breathMuted;
   const btn=document.getElementById('breathMuteBtn');
   if(breathMuted){
     btn.textContent='\u{1F507} Voice Off';
     btn.classList.add('muted');
+    if(_breathCurrentAudio){_breathCurrentAudio.pause();_breathCurrentAudio=null;}
     try{speechSynthesis.cancel();}catch(e){}
   }else{
     btn.textContent='\u{1F50A} Voice On';
@@ -5776,17 +5777,33 @@ function initBreathVoice(){
   if(!breathVoiceReady) speechSynthesis.onvoiceschanged=pickVoice;
 }
 
-function speak(text){
-  if(!breathVoiceReady||!breathActive||breathMuted)return;
+async function speak(text){
+  if(!breathActive||breathMuted)return;
+  // Stop any in-flight breath audio
+  if(_breathCurrentAudio){_breathCurrentAudio.pause();_breathCurrentAudio=null;}
   try{
-    speechSynthesis.cancel();
-    const utt=new SpeechSynthesisUtterance(text);
-    if(breathVoice)utt.voice=breathVoice;
-    utt.rate=0.85;   // slightly slower — calm
-    utt.pitch=1.05;  // slightly higher — warm female
-    utt.volume=0.45; // low-moderate
-    speechSynthesis.speak(utt);
-  }catch(e){console.log('Speech error:',e);}
+    var res=await fetch('https://centerpost-jarvis.medicjth.workers.dev/ops-speak',{
+      method:'POST',headers:{'Content-Type':'application/json'},
+      body:JSON.stringify({text:text}),
+    });
+    if(!res.ok)throw new Error('HTTP '+res.status);
+    var blob=await res.blob();
+    var blobUrl=URL.createObjectURL(blob);
+    _breathCurrentAudio=new Audio(blobUrl);
+    _breathCurrentAudio.volume=0.5;
+    _breathCurrentAudio.onended=function(){URL.revokeObjectURL(blobUrl);_breathCurrentAudio=null;};
+    _breathCurrentAudio.onerror=function(){URL.revokeObjectURL(blobUrl);_breathCurrentAudio=null;};
+    _breathCurrentAudio.play();
+  }catch(e){
+    if(!breathVoiceReady)return;
+    try{
+      speechSynthesis.cancel();
+      const utt=new SpeechSynthesisUtterance(text);
+      if(breathVoice)utt.voice=breathVoice;
+      utt.rate=0.85;utt.pitch=1.05;utt.volume=0.45;
+      speechSynthesis.speak(utt);
+    }catch(e2){console.log('Speech error:',e2);}
+  }
 }
 
 
@@ -5933,6 +5950,7 @@ function startBreathwork(){
 function stopBreathwork(){
   breathActive=false;
   clearInterval(breathInterval);breathInterval=null;
+  if(_breathCurrentAudio){_breathCurrentAudio.pause();_breathCurrentAudio=null;}
   try{speechSynthesis.cancel();}catch(e){}
   const orb=document.getElementById('breathOrb');
   const glow=document.getElementById('breathOrbGlow');
