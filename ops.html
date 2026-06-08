@@ -652,15 +652,34 @@ function toggleVoice() {
   if (S.voice) speak('JARVIS voice interface activated.');
 }
 
-function speak(text) {
-  if (!S.voice || !window.speechSynthesis) return;
-  speechSynthesis.cancel();
-  const u = new SpeechSynthesisUtterance(text);
-  const vs = speechSynthesis.getVoices();
-  const pick = vs.find(v => v.name.includes('Google UK English Male') || v.name.includes('Microsoft David') || v.name.includes('Daniel')) || vs.find(v => v.lang === 'en-GB') || vs.find(v => v.lang.startsWith('en'));
-  if (pick) u.voice = pick;
-  u.rate = 0.87; u.pitch = 0.76; u.volume = 0.88;
-  speechSynthesis.speak(u);
+let _currentAudio = null;
+
+async function speak(text) {
+  if (!S.voice) return;
+  // Stop any currently playing audio
+  if (_currentAudio) { _currentAudio.pause(); _currentAudio = null; }
+
+  try {
+    const res = await fetch('https://centerpost-jarvis.medicjth.workers.dev/ops-speak', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ text }),
+      mode: 'cors',
+    });
+    if (!res.ok) throw new Error(`HTTP ${res.status}`);
+    const blob = await res.blob();
+    const url  = URL.createObjectURL(blob);
+    _currentAudio = new Audio(url);
+    _currentAudio.onended = () => { URL.revokeObjectURL(url); _currentAudio = null; };
+    _currentAudio.play();
+  } catch (e) {
+    console.warn('[JARVIS voice] ElevenLabs unavailable, falling back to browser TTS:', e.message);
+    if (!window.speechSynthesis) return;
+    speechSynthesis.cancel();
+    const u = new SpeechSynthesisUtterance(text);
+    u.rate = 0.87; u.pitch = 0.76; u.volume = 0.88;
+    speechSynthesis.speak(u);
+  }
 }
 
 let recog;
