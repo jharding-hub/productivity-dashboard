@@ -4368,6 +4368,7 @@ function timerHandleClick(){
 
 function startTimer(){
   if(timerRunning)return;
+  _trackEvent('tool_use','focus_timer','Focus Timer');
   stopAlarm();
   timerRunning=true;
   timerEndAt=Date.now()+(timerLeft*1000);
@@ -4474,7 +4475,7 @@ function stopAlarm(){
 }
 
 // PROJECTS
-function addProject(){const n=document.getElementById('newProjName').value.trim();if(!n)return;state.projects.push({id:'p'+Date.now(),name:n,due:document.getElementById('newProjDue').value,expanded:true,subtasks:[]});document.getElementById('newProjName').value='';document.getElementById('newProjDue').value='';save();renderProjects();renderTaskList();toast('Project added');}
+function addProject(){const n=document.getElementById('newProjName').value.trim();if(!n)return;state.projects.push({id:'p'+Date.now(),name:n,due:document.getElementById('newProjDue').value,expanded:true,subtasks:[]});document.getElementById('newProjName').value='';document.getElementById('newProjDue').value='';save();renderProjects();renderTaskList();toast('Project added');_trackEvent('tool_use','add_project','Add Project');}
 function deleteProject(id){if(!confirm('Delete project and all subtasks?'))return;state.projects=state.projects.filter(p=>p.id!==id);save();renderProjects();renderTaskList();}
 function toggleProjectExpand(id){
   const p=state.projects.find(p=>p.id===id);
@@ -4860,7 +4861,7 @@ function exportAllToICS(){const ev=[];state.projects.forEach(p=>{p.subtasks.filt
 function exportReminderICS(id){const r=state.reminders.find(r=>r.id===id);if(!r)return;showOutlookModal(r.text,r.date,r.time,'Reminder');}
 
 // BRAIN DUMP
-function handleDumpKey(e){if(e.key==='Enter'&&!e.shiftKey){e.preventDefault();const t=document.getElementById('brainDump').value.trim();if(!t)return;state.thoughts.push({id:'th'+Date.now(),text:t});document.getElementById('brainDump').value='';save();renderThoughts();}}
+function handleDumpKey(e){if(e.key==='Enter'&&!e.shiftKey){e.preventDefault();const t=document.getElementById('brainDump').value.trim();if(!t)return;state.thoughts.push({id:'th'+Date.now(),text:t});document.getElementById('brainDump').value='';save();renderThoughts();_trackEvent('tool_use','brain_dump','Brain Dump');}}
 function deleteThought(id){state.thoughts=state.thoughts.filter(t=>t.id!==id);save();renderThoughts();}
 function promoteThought(id){const th=state.thoughts.find(t=>t.id===id);if(!th)return;if(state.projects.length>0){const c=prompt('Promote to which project?\n\n'+state.projects.map((p,i)=>(i+1)+'. '+p.name).join('\n')+'\n\n(0 = reminders)','1');if(c===null)return;const idx=parseInt(c)-1;if(idx>=0&&idx<state.projects.length){state.projects[idx].subtasks.push({id:'st'+Date.now(),name:th.text,due:'',priority:'med',timeEst:'',done:false});deleteThought(id);renderProjects();renderTaskList();toast('Added to '+state.projects[idx].name);return;}}state.reminders.push({id:'rem'+Date.now(),text:th.text,date:'',time:''});deleteThought(id);renderReminders();toast('Moved to reminders');}
 function editThought(id,v){if(!v)return;const t=state.thoughts.find(t=>t.id===id);if(t)t.text=v;save();}
@@ -4923,7 +4924,7 @@ function startGuided(id){const t=wellnessTechniques.find(t=>t.id===id);if(!t||!t
 function stopGuided(){clearInterval(guidedInterval);guidedInterval=null;document.getElementById('guidedDisplay').classList.remove('active');}
 
 // NOTES
-function addNote(){const label=document.getElementById('newNoteLabel').value.trim();const body=document.getElementById('newNoteBody').value.trim();if(!label&&!body)return;const projVal=document.getElementById('newNoteProject').value;const projIds=projVal?projVal.split(',').filter(Boolean):[];const now=new Date();state.notes.push({id:'n'+Date.now(),label:label||'Untitled',body:body,projectId:projIds[0]||'',projectIds:projIds,created:now.toISOString(),date:now.toLocaleDateString('en-US',{month:'short',day:'numeric',year:'numeric'}),time:now.toLocaleTimeString('en-US',{hour:'numeric',minute:'2-digit'})});document.getElementById('newNoteLabel').value='';document.getElementById('newNoteBody').value='';document.getElementById('newNoteProject').value='';renderProjMultiPickerChips(document.getElementById('newNoteProjectPicker'));save();renderNotes();renderProjects();toast('Note added'+(projIds.length>1?' to '+projIds.length+' projects':''));}
+function addNote(){const label=document.getElementById('newNoteLabel').value.trim();const body=document.getElementById('newNoteBody').value.trim();if(!label&&!body)return;const projVal=document.getElementById('newNoteProject').value;const projIds=projVal?projVal.split(',').filter(Boolean):[];const now=new Date();state.notes.push({id:'n'+Date.now(),label:label||'Untitled',body:body,projectId:projIds[0]||'',projectIds:projIds,created:now.toISOString(),date:now.toLocaleDateString('en-US',{month:'short',day:'numeric',year:'numeric'}),time:now.toLocaleTimeString('en-US',{hour:'numeric',minute:'2-digit'})});document.getElementById('newNoteLabel').value='';document.getElementById('newNoteBody').value='';document.getElementById('newNoteProject').value='';renderProjMultiPickerChips(document.getElementById('newNoteProjectPicker'));save();renderNotes();renderProjects();toast('Note added'+(projIds.length>1?' to '+projIds.length+' projects':''));_trackEvent('tool_use','add_note','Add Note');}
 function deleteNote(id){state.notes=state.notes.filter(n=>n.id!==id);save();renderNotes();}
 function editNoteLabel(id,v){if(!v)return;const n=state.notes.find(n=>n.id===id);if(n){n.label=v;save();}}
 function editNoteBody(id,v){const n=state.notes.find(n=>n.id===id);if(n){n.body=v;save();}}
@@ -5344,6 +5345,7 @@ function logMoodEntry(){
   if(state.energy)entry.energy=state.energy;
   if(state.mood)entry.mood=state.mood;
   entry.ts=new Date().toISOString();
+  _trackEvent('tool_use','log_mood','Log Mood');
 }
 
 
@@ -5850,6 +5852,7 @@ function startBreathwork(){
   if(!id)return;
   const t=breathTechniques[id];
   breathActive=true;
+  _trackEvent('tool_use','breathwork','Breathwork');
   initBreathVoice();
 
   const isScan=(id==='scan');
@@ -6233,6 +6236,17 @@ function toggleExpand(btn){const panel=btn.closest('.panel');panel.classList.tog
 // ═══════════════════════════════════════
 var _panelOverlayCurrent=null;
 
+// ── Usage analytics — fire-and-forget to Jarvis /ops-track ──────────
+function _trackEvent(type,id,name){
+  try{
+    fetch('https://centerpost-jarvis.medicjth.workers.dev/ops-track',{
+      method:'POST',
+      headers:{'Content-Type':'application/json'},
+      body:JSON.stringify({type,id,name:name||id})
+    }).catch(function(){});
+  }catch(e){}
+}
+
 function openPanelOverlay(panelKey){
   var panel=document.querySelector('.panel[data-panel="'+panelKey+'"]');
   if(!panel)return;
@@ -6262,7 +6276,8 @@ function openPanelOverlay(panelKey){
   
   overlay.classList.add('open');
   _panelOverlayCurrent=panelKey;
-  
+  _trackEvent('panel_view',panelKey,panelKey);
+
   // Re-render to refresh content (some renderers depend on element visibility)
   if(panelKey==='projects'&&typeof renderProjects==='function')renderProjects();
   else if(panelKey==='reminders'&&typeof renderReminders==='function')renderReminders();
@@ -11199,6 +11214,7 @@ function _jarvisBuildBreakdownContext(scope){
 function openJarvisBreakdown(scope){
   // scope: 'projects' | 'tasks'
   _jarvisMode='breakdown:'+scope;
+  _trackEvent('tool_use','jarvis_ai','Jarvis AI');
   _jarvisHistory=[]; // start fresh — don't pollute breakdown with prior chat
 
   // Update panel chrome
