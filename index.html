@@ -845,6 +845,19 @@ body.standalone-pwa .mobile-home-header{padding-top:max(env(safe-area-inset-top)
 .panel-overlay-close:hover{background:var(--surface);color:var(--text);}
 .panel-overlay-body{flex:1;overflow-y:auto;padding:18px 20px;}
 .panel-overlay-body .panel{padding:0;border:none;background:transparent;animation:none;}
+/* ── Custom confirm dialog ─────────────────────────────────────────── */
+.confirm-dialog-panel{width:min(360px,86vw);padding:26px 24px 20px;text-align:center;}
+.confirm-dialog-icon{margin-bottom:10px;}
+.confirm-dialog-icon .ti{font-size:28px;color:var(--text-dim);font-style:normal;}
+.confirm-dialog-icon.cdx-destructive .ti{color:var(--red);}
+.confirm-dialog-icon.cdx-warn .ti{color:var(--orange);}
+.confirm-dialog-msg{font-size:14px;line-height:1.65;color:var(--text);margin-bottom:20px;white-space:pre-line;}
+.confirm-dialog-btns{display:flex;gap:8px;justify-content:center;flex-wrap:wrap;}
+.confirm-dialog-btns .btn{min-width:88px;}
+.btn-danger{background:var(--red-dim);border-color:var(--red);color:var(--red);}
+.btn-danger:hover{background:var(--red);color:#fff;}
+.btn-accent-solid{background:var(--accent-glow);border-color:var(--accent);color:var(--accent);}
+.btn-accent-solid:hover{background:var(--accent);color:var(--bg);}
 /* ── Notes panel: inline search controls in overlay header ───────── */
 .panel.panel-tile[data-panel="notes"] .notes-inline-search{display:none !important;}
 .panel:not(.panel-tile)[data-panel="notes"] .notes-inline-search{display:flex;gap:6px;align-items:center;flex:1;min-width:0;}
@@ -3423,6 +3436,20 @@ body[data-theme="storm-dark"] .tl-hour-label{
 </div>
 </div>
 
+<!-- CONFIRM DIALOG — replaces all native browser confirm() calls -->
+<div class="modal-blur-overlay" id="confirmDialog">
+<div class="modal-blur-backdrop" id="confirmDialogBd" onclick="_confirmCancel()"></div>
+<div class="modal-blur-panel confirm-dialog-panel">
+  <div class="confirm-dialog-icon" id="confirmDialogIcon"><i class="ti ti-help-circle" aria-hidden="true"></i></div>
+  <div class="confirm-dialog-msg" id="confirmDialogMsg"></div>
+  <div class="confirm-dialog-btns">
+    <button class="btn" id="confirmCancelBtn" onclick="_confirmCancel()">Cancel</button>
+    <button class="btn" id="confirmAltBtn" onclick="_confirmAlt()" style="display:none"></button>
+    <button class="btn btn-accent-solid" id="confirmOkBtn" onclick="_confirmDo()">Confirm</button>
+  </div>
+</div>
+</div>
+
 <!-- BREATHWORK MODAL -->
 <div class="modal-blur-overlay" id="breathworkModal">
 <div class="modal-blur-backdrop" onclick="closeBreathworkModal()"></div>
@@ -4578,7 +4605,7 @@ function stopAlarm(){
 
 // PROJECTS
 function addProject(){const n=document.getElementById('newProjName').value.trim();if(!n)return;state.projects.push({id:'p'+Date.now(),name:n,due:document.getElementById('newProjDue').value,expanded:true,subtasks:[]});document.getElementById('newProjName').value='';document.getElementById('newProjDue').value='';save();renderProjects();renderTaskList();_trackEvent('tool_use','add_project','Add Project');}
-function deleteProject(id){if(!confirm('Delete project and all subtasks?'))return;state.projects=state.projects.filter(p=>p.id!==id);save();renderProjects();renderTaskList();}
+function deleteProject(id){_confirm('Delete project and all subtasks?',function(){state.projects=state.projects.filter(p=>p.id!==id);save();renderProjects();renderTaskList();},{destructive:true,confirmText:'Delete'});}
 function toggleProjectExpand(id){
   const p=state.projects.find(p=>p.id===id);
   if(!p)return;
@@ -4621,8 +4648,7 @@ function markProjectComplete(pid,btnEl){
   }else{
     msg='Mark "'+p.name+'" complete?';
   }
-  if(!confirm(msg))return;
-  
+  _confirm(msg,function(){
   // Count completed tasks for this project (for the archive stats)
   var completedCount=(state.completedTasks||[]).filter(function(ct){
     return ct.projectId===p.id||(ct.projectIds&&ct.projectIds.indexOf(p.id)>=0)||(!ct.projectId&&ct.projectName===p.name);
@@ -4655,13 +4681,13 @@ function markProjectComplete(pid,btnEl){
   renderNotes();
   renderReminders();
   toast('\u2713 Project archived');
+  },{confirmText:'Mark Complete',icon:'ti-circle-check'});
 }
 
 function restoreProject(pid){
   var arch=(state.completedProjects||[]).find(function(cp){return cp.id===pid;});
   if(!arch)return;
-  if(!confirm('Restore "'+arch.name+'" to active projects?'))return;
-  
+  _confirm('Restore "'+arch.name+'" to active projects?',function(){
   // Restore as active project
   state.projects.push({
     id:arch.id,name:arch.name,due:arch.due||'',
@@ -4673,15 +4699,17 @@ function restoreProject(pid){
   renderProjects();
   renderTaskList();
   toast('Project restored');
+  },{confirmText:'Restore',icon:'ti-archive'});
 }
 
 function purgeCompletedProject(pid){
   var arch=(state.completedProjects||[]).find(function(cp){return cp.id===pid;});
   if(!arch)return;
-  if(!confirm('Permanently delete "'+arch.name+'" from the archive? This cannot be undone.'))return;
+  _confirm('Permanently delete "'+arch.name+'" from the archive? This cannot be undone.',function(){
   state.completedProjects=state.completedProjects.filter(function(cp){return cp.id!==pid;});
   save();
   renderProjects();
+  },{destructive:true,confirmText:'Delete Forever'});
 }
 
 function _toggleCompletedProjectsSection(){
@@ -5731,12 +5759,13 @@ async function adminToggleInviteCode(code,disable){
 
 async function adminDeleteInviteCode(code){
   if(!isAdmin||!db)return;
-  if(!confirm('Delete invite code "'+code+'"? Anyone who already used it keeps their account, but the code itself is removed.'))return;
-  try {
-    await db.collection('inviteCodes').doc(code).delete();
-    toast('Code '+code+' deleted');
-    renderInviteCodes();
-  } catch(e){toast('Failed: '+e.message);}
+  _confirm('Delete invite code "'+code+'"? Anyone who already used it keeps their account, but the code itself is removed.',async function(){
+    try {
+      await db.collection('inviteCodes').doc(code).delete();
+      toast('Code '+code+' deleted');
+      renderInviteCodes();
+    } catch(e){toast('Failed: '+e.message);}
+  },{destructive:true,confirmText:'Delete Code'});
 }
 
 async function adminCopyInviteCode(code){
@@ -5830,18 +5859,21 @@ async function adminResetPassword(email){
   try{await firebase.auth().sendPasswordResetEmail(email);toast('Password reset sent to '+email);}catch(e){toast('Error: '+e.message);}
 }
 async function adminMakeAdmin(uid){
-  if(!isAdmin||!confirm('Make this user an admin?'))return;
-  try{await db.collection('users').doc(uid).update({admin:true});toast('Admin granted');renderAdminPanel();}catch(e){toast('Error: '+e.message);}
+  if(!isAdmin)return;
+  _confirm('Make this user an admin?',async function(){
+    try{await db.collection('users').doc(uid).update({admin:true});toast('Admin granted');renderAdminPanel();}catch(e){toast('Error: '+e.message);}
+  },{confirmText:'Make Admin',icon:'ti-shield'});
 }
 async function adminDeleteUser(uid,email){
-  if(!isAdmin||!confirm('Delete user '+email+'? Their data will also be deleted.'))return;
-  try{
-    // Delete user data
-    await db.collection('users').doc(uid).collection('data').doc('dashboard').delete();
-    await db.collection('users').doc(uid).delete();
-    toast('User '+email+' deleted');
-    renderAdminPanel();
-  }catch(e){toast('Error: '+e.message);}
+  if(!isAdmin)return;
+  _confirm('Delete user '+email+'? Their data will also be deleted.',async function(){
+    try{
+      await db.collection('users').doc(uid).collection('data').doc('dashboard').delete();
+      await db.collection('users').doc(uid).delete();
+      toast('User '+email+' deleted');
+      renderAdminPanel();
+    }catch(e){toast('Error: '+e.message);}
+  },{destructive:true,confirmText:'Delete User'});
 }
 
 // ═══════════════════════════════════════
@@ -8088,6 +8120,46 @@ function ttReset(){
   var btn=document.getElementById('ttStartBtn');if(btn)btn.textContent='\u25B6';
 }
 
+// ── Custom confirm dialog — replaces all browser confirm() calls ──────
+var _confirmOnDo=null,_confirmOnAlt=null;
+function _confirm(msg,onDo,opts){
+  opts=opts||{};
+  _confirmOnDo=onDo||null;_confirmOnAlt=opts.onAlt||null;
+  var iconEl=document.getElementById('confirmDialogIcon');
+  var msgEl=document.getElementById('confirmDialogMsg');
+  var okBtn=document.getElementById('confirmOkBtn');
+  var altBtn=document.getElementById('confirmAltBtn');
+  var cancelBtn=document.getElementById('confirmCancelBtn');
+  var bd=document.getElementById('confirmDialogBd');
+  var iconName=opts.icon||(opts.destructive?'ti-alert-circle':'ti-help-circle');
+  iconEl.innerHTML='<i class="ti '+iconName+'" aria-hidden="true"></i>';
+  iconEl.className='confirm-dialog-icon'+(opts.destructive?' cdx-destructive':opts.warn?' cdx-warn':'');
+  msgEl.textContent=msg;
+  okBtn.textContent=opts.confirmText||(opts.destructive?'Delete':'Confirm');
+  okBtn.className='btn '+(opts.destructive?'btn-danger':'btn-accent-solid');
+  if(opts.altText){altBtn.textContent=opts.altText;altBtn.style.display='';}
+  else{altBtn.style.display='none';}
+  cancelBtn.style.display=opts.noCancel?'none':'';
+  bd.onclick=opts.noCancel?null:_confirmCancel;
+  document.getElementById('confirmDialog').classList.add('open');
+}
+function _confirmDo(){
+  document.getElementById('confirmDialog').classList.remove('open');
+  var cb=_confirmOnDo;_confirmOnDo=null;_confirmOnAlt=null;if(cb)cb();
+}
+function _confirmAlt(){
+  document.getElementById('confirmDialog').classList.remove('open');
+  var cb=_confirmOnAlt;_confirmOnDo=null;_confirmOnAlt=null;if(cb)cb();
+}
+function _confirmCancel(){
+  document.getElementById('confirmDialog').classList.remove('open');
+  _confirmOnDo=null;_confirmOnAlt=null;
+}
+// Wrapper for gcalDisconnect confirm (called from rendered HTML strings)
+function _confirmGcalDisconnect(){
+  _confirm('Disconnect Google Calendar? Synced events stay in Google but Centerpost will forget which ones it created.',gcalDisconnect,{confirmText:'Disconnect',icon:'ti-calendar-off'});
+}
+
 function openEnergyModal(){
   document.getElementById('energyModal').classList.add('open');
   _blurDashboard();
@@ -8417,11 +8489,12 @@ function renderJournalEntries(){
 }
 
 function deleteJournalEntry(id){
-  if(!confirm('Delete this journal entry? This cannot be undone.'))return;
-  state.journal=state.journal.filter(function(e){return e.id!==id;});
-  save();
-  document.getElementById('journalEntryCount').textContent=state.journal.length+' '+(state.journal.length===1?'entry':'entries');
-  renderJournalEntries();
+  _confirm('Delete this journal entry? This cannot be undone.',function(){
+    state.journal=state.journal.filter(function(e){return e.id!==id;});
+    save();
+    document.getElementById('journalEntryCount').textContent=state.journal.length+' '+(state.journal.length===1?'entry':'entries');
+    renderJournalEntries();
+  },{destructive:true,confirmText:'Delete'});
 }
 
 // ═══════════════════════════════════════
@@ -9579,13 +9652,13 @@ function handleWorkTodayClick(itemType,itemId,projectId){
   var existing=_findScheduledBlock(itemId);
   if(existing){
     var name=existing.name;
-    if(confirm('"'+name+'" is scheduled at '+_tlFmtTime(_tlParseTime(existing.time))+'.\n\nUnschedule it?')){
+    _confirm('"'+name+'" is scheduled at '+_tlFmtTime(_tlParseTime(existing.time))+'. Unschedule it?',function(){
       state.tlBlocks=(state.tlBlocks||[]).filter(function(b){return b.id!==existing.id;});
       save();
       renderProjects();renderTaskList();renderTimeline();
       if(typeof updateDayProgress==='function')updateDayProgress();
       toast('Unscheduled');
-    }
+    },{confirmText:'Unschedule',icon:'ti-calendar-x'});
     return;
   }
   
@@ -9701,13 +9774,11 @@ function confirmWorkToday(){
     var END_OF_DAY=20*60; // 8 PM
     if(endMin>END_OF_DAY){
       var endLabel=_tlFmtTime(endMin);
-      var msg='⚠ This block would end at '+endLabel+' — after 8pm.\n\n'
-        +'OK  →  Schedule today anyway\n'
-        +'Cancel  →  Push to tomorrow (same start time)';
-      if(!confirm(msg)){
-        _scheduleForTomorrow(timeVal,durVal);
-        return;
-      }
+      _confirm('This block would end at '+endLabel+' — after 8 PM.',
+        function(){_writeBlock(targetDate,timeVal,durVal);},
+        {confirmText:'Today Anyway',altText:'Push to Tomorrow',onAlt:function(){_scheduleForTomorrow(timeVal,durVal);},icon:'ti-clock-exclamation',warn:true}
+      );
+      return;
     }
   }
   
@@ -9821,13 +9892,14 @@ function editTimelineBlock(blockId){
 function deleteEditingBlock(){
   if(!_wtCurrentItem||!_wtCurrentItem._editBlockId)return;
   var blockName=_wtCurrentItem.name;
-  if(!confirm('Delete "'+blockName+'"?'))return;
-  var id=_wtCurrentItem._editBlockId;
-  state.tlBlocks=(state.tlBlocks||[]).filter(function(b){return b.id!==id;});
-  save();
-  closeWorkTodayModal();
-  renderProjects();renderTaskList();renderTimeline();
-  if(typeof updateDayProgress==='function')updateDayProgress();
+  _confirm('Delete "'+blockName+'"?',function(){
+    var id=_wtCurrentItem._editBlockId;
+    state.tlBlocks=(state.tlBlocks||[]).filter(function(b){return b.id!==id;});
+    save();
+    closeWorkTodayModal();
+    renderProjects();renderTaskList();renderTimeline();
+    if(typeof updateDayProgress==='function')updateDayProgress();
+  },{destructive:true,confirmText:'Delete'});
   toast('Deleted');
 }
 
@@ -10256,12 +10328,13 @@ function addTimelineBlock(){
 function deleteTimelineBlock(id){
   var block=(state.tlBlocks||[]).find(function(b){return b.id===id;});
   var blockName=block?block.name:'this block';
-  if(!confirm('Delete "'+blockName+'"?'))return;
-  state.tlBlocks=(state.tlBlocks||[]).filter(function(b){return b.id!==id;});
-  save();
-  renderProjects();renderTaskList();renderTimeline();
-  if(typeof updateDayProgress==='function')updateDayProgress();
-  toast('Deleted');
+  _confirm('Delete "'+blockName+'"?',function(){
+    state.tlBlocks=(state.tlBlocks||[]).filter(function(b){return b.id!==id;});
+    save();
+    renderProjects();renderTaskList();renderTimeline();
+    if(typeof updateDayProgress==='function')updateDayProgress();
+    toast('Deleted');
+  },{destructive:true,confirmText:'Delete'});
 }
 
 function clearTimelineBlocks(){
@@ -10269,11 +10342,12 @@ function clearTimelineBlocks(){
   var dayLabel=viewDate===todayStr()?'today':(viewDate===tomorrowStr()?'tomorrow':viewDate);
   var count=(state.tlBlocks||[]).filter(function(b){return b.date===viewDate;}).length;
   if(count===0){toast('No manual blocks to clear for '+dayLabel);return;}
-  if(!confirm('Delete all '+count+' manual blocks for '+dayLabel+'?'))return;
-  state.tlBlocks=(state.tlBlocks||[]).filter(function(b){return b.date!==viewDate;});
-  save();renderTimeline();
-  if(typeof updateDayProgress==='function')updateDayProgress();
-  toast('Manual blocks cleared');
+  _confirm('Delete all '+count+' manual blocks for '+dayLabel+'?',function(){
+    state.tlBlocks=(state.tlBlocks||[]).filter(function(b){return b.date!==viewDate;});
+    save();renderTimeline();
+    if(typeof updateDayProgress==='function')updateDayProgress();
+    toast('Manual blocks cleared');
+  },{destructive:true,confirmText:'Clear All'});
 }
 
 // ═══ Outlook .ics export ═══
@@ -10369,31 +10443,24 @@ function pushToGoogleCalendar(){
   // Sort by start time so tabs open in chronological order
   blocks.sort(function(a,b){return a.startMin-b.startMin;});
   
-  // Warn about multi-tab if more than one block
-  if(blocks.length>1){
-    var msg='Push '+blocks.length+' block(s) for '+dayLabel+' to Google Calendar?\n\n'
-      +'Each block opens in a new tab. Your browser may ask permission to open multiple tabs — allow it.\n\n'
-      +'For each tab, click "Save" in Google Calendar to add it.';
-    if(!confirm(msg))return;
-  }
-  
-  // Open tabs with small delay between each to reduce popup-blocker friction
-  var opened=0;
-  blocks.forEach(function(b,i){
+  // Open all blocks in tabs; show confirm when >1 tab will open
+  var _openGcalTabs=function(){
+    var opened=0;
+    blocks.forEach(function(b,i){
+      setTimeout(function(){
+        var w=window.open(_gcalUrl(b,viewDate),'_blank');
+        if(w)opened++;
+      },i*250);
+    });
     setTimeout(function(){
-      var w=window.open(_gcalUrl(b,viewDate),'_blank');
-      if(w)opened++;
-    },i*250);
-  });
-  
-  // Inform user after the open attempts complete
-  setTimeout(function(){
-    if(blocks.length===1){
-      toast('Opened in Google Calendar — click Save');
-    }else{
-      toast('Opened '+blocks.length+' tab(s) in Google Calendar');
-    }
-  },blocks.length*250+100);
+      toast(blocks.length===1?'Opened in Google Calendar — click Save':'Opened '+blocks.length+' tab(s) in Google Calendar — click Save in each');
+    },blocks.length*250+100);
+  };
+  if(blocks.length>1){
+    _confirm('Push '+blocks.length+' blocks for '+dayLabel+' to Google Calendar? Each block opens in a new tab — allow pop-ups if prompted.',_openGcalTabs,{confirmText:'Push All',icon:'ti-calendar-plus'});
+    return;
+  }
+  _openGcalTabs();
 }
 
 // Push a single block to Google Calendar (used from edit modal)
@@ -12786,7 +12853,7 @@ function _gcalRenderModal(){
     html += '<label class="gcal-toggle-row"><input type="checkbox" '+(state.gcal.autoPush?'checked':'')+' onchange="state.gcal.autoPush=this.checked;save();"><div class="gcal-toggle-label">Auto-push new items (experimental)<div class="gcal-toggle-hint">When ON, new tasks/subtasks/reminders with a date push automatically. Off by default — use the manual button until you trust it.</div></div></label>';
 
     html += '<div class="gcal-actions" style="margin-top:14px;">';
-    html += '<button class="gcal-btn danger" onclick="if(confirm(\'Disconnect Google Calendar? Synced events stay in Google but Centerpost will forget which ones it created.\'))gcalDisconnect()">Disconnect</button>';
+    html += '<button class="gcal-btn danger" onclick="_confirmGcalDisconnect()">Disconnect</button>';
     html += '</div>';
 
     html += '<div class="gcal-help">&#9881; <strong>What syncs:</strong> tasks, project subtasks, reminders, and timeline blocks with a date. Items without a date stay local. <br><br>&#128274; <strong>What doesn\'t sync:</strong> Brain Dump thoughts, notes, journal entries, mood/energy logs, wellness reflections, points/streaks.</div>';
