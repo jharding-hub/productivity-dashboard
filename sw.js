@@ -21,7 +21,7 @@
 //   marker — old clients will see the version change and force-update.
 // ═══════════════════════════════════════════════════════════════════════
 
-const CACHE_VERSION = 'centerpost-v6';
+const CACHE_VERSION = 'centerpost-v7';
 
 // Assets to pre-cache on install (offline-ready essentials).
 // Failures are tolerated individually — one missing icon won't break install.
@@ -35,6 +35,7 @@ const PRECACHE_ASSETS = [
   './kids-icon.png',
   './kids-icon-192.png',
   './kids-icon-512.png',
+  'https://cdn.jsdelivr.net/npm/@tabler/icons-webfont@3.0.0/dist/tabler-icons.min.css',
   'https://fonts.googleapis.com/css2?family=DM+Sans:ital,wght@0,400;0,500;0,600;0,700&family=Fraunces:ital,opsz,wght@0,9..144,400;0,9..144,600;0,9..144,700;1,9..144,400&display=swap',
   'https://fonts.googleapis.com/css2?family=Press+Start+2P&family=VT323&display=swap',
   'https://www.gstatic.com/firebasejs/10.12.0/firebase-app-compat.js',
