@@ -978,10 +978,10 @@ body.unlocked .date-editable{border-bottom-color:var(--border);}
 .st-btn.st-cal:hover{color:var(--blue);}.st-btn.st-del:hover{color:var(--red);}
 .subtask-add{display:flex;gap:6px;margin-top:8px;}
 .subtask-add input,.subtask-add select{flex:1;font-size:12px;padding:6px 8px;}
-.priority-dot{display:inline-block;width:7px;height:7px;border-radius:50%;margin-right:5px;vertical-align:middle;}
-.priority-dot.clickable{cursor:pointer;width:11px;height:11px;transition:transform 0.15s;border:1px solid rgba(255,255,255,0.2);}
-.priority-dot.clickable:hover{transform:scale(1.4);}
-.priority-high{background:var(--red);}.priority-med{background:var(--orange);}.priority-low{background:var(--blue);}
+.priority-dot{display:inline-block;width:2px;height:12px;border-radius:1px;margin-right:6px;vertical-align:middle;flex-shrink:0;}
+.priority-dot.clickable{cursor:pointer;width:2px;height:14px;transition:opacity .15s,transform .15s;}
+.priority-dot.clickable:hover{opacity:.6;transform:scaleY(1.25);}
+.priority-high{background:var(--red);}.priority-med{background:var(--orange);}.priority-low{background:var(--text-faint);}
 
 /* REMINDERS */
 .reminder-list{display:flex;flex-direction:column;gap:5px;overflow-y:auto;}
@@ -1362,11 +1362,36 @@ body.unlocked .date-editable{border-bottom-color:var(--border);}
 /* ENERGY & MOOD - compact */
 .em-row{display:flex;gap:8px;align-items:center;margin-bottom:8px;}
 .em-label{font-size:11px;color:var(--text-dim);min-width:50px;}
-.em-pills{display:flex;gap:4px;flex:1;flex-wrap:wrap;}
-.em-pill{background:var(--surface-raised);border:1px solid var(--border);color:var(--text-dim);padding:4px 10px;border-radius:20px;cursor:pointer;font-size:11px;font-family:inherit;transition:all 0.15s;display:inline-flex;align-items:center;gap:4px;white-space:nowrap;}
-.em-pill:hover{border-color:var(--accent-dim);color:var(--text);}
-.em-pill.selected{background:var(--accent-glow);border-color:var(--accent);color:var(--accent);font-weight:600;}
-.em-pill .em-ico{font-size:13px;}
+.em-pills{display:flex;gap:6px;flex:1;flex-wrap:wrap;}
+/* Option C capsule pills */
+.em-pill{background:transparent;border:1px solid transparent;color:var(--text-dim);padding:5px 10px 5px 7px;border-radius:6px;cursor:pointer;font-size:12px;font-family:inherit;font-weight:600;letter-spacing:.35px;transition:all .15s;display:inline-flex;align-items:center;gap:6px;white-space:nowrap;opacity:.45;}
+.em-pill:hover{opacity:.72;background:var(--surface-raised);border-color:var(--border);}
+.em-pill.selected{background:var(--surface-raised);border-color:var(--border-focus);color:var(--text);opacity:1;}
+.em-pill.selected::after{content:'✓';font-size:10px;margin-left:3px;opacity:.65;}
+.em-pill .em-ico{display:none;}
+/* color dot */
+.em-dot{width:6px;height:6px;border-radius:50%;flex-shrink:0;display:inline-block;}
+/* per-value dot colors */
+.em-pill[data-value="high"] .em-dot{background:var(--green);}
+.em-pill[data-value="good"] .em-dot{background:var(--teal);}
+.em-pill[data-value="low"] .em-dot{background:var(--accent);}
+.em-pill[data-value="crashed"] .em-dot{background:var(--red);}
+.em-pill[data-value="focused"] .em-dot{background:var(--blue);}
+.em-pill[data-value="scattered"] .em-dot{background:var(--purple);}
+.em-pill[data-value="anxious"] .em-dot{background:var(--orange);}
+.em-pill[data-value="calm"] .em-dot{background:var(--teal);}
+/* per-value selected tint */
+.em-pill.selected[data-value="high"]{border-color:var(--green-dim);color:var(--green);}
+.em-pill.selected[data-value="good"]{border-color:var(--teal-dim);color:var(--teal);}
+.em-pill.selected[data-value="low"]{border-color:var(--accent-glow);color:var(--accent);}
+.em-pill.selected[data-value="crashed"]{border-color:var(--red-dim);color:var(--red);}
+.em-pill.selected[data-value="focused"]{border-color:var(--blue-dim);color:var(--blue);}
+.em-pill.selected[data-value="scattered"]{border-color:var(--purple-dim);color:var(--purple);}
+.em-pill.selected[data-value="anxious"]{border-color:var(--orange-dim);color:var(--orange);}
+.em-pill.selected[data-value="calm"]{border-color:var(--teal-dim);color:var(--teal);}
+/* smaller variant inside timeline blocks */
+.time-block .em-pill{padding:3px 7px 3px 5px;font-size:10px;gap:4px;}
+.time-block .em-dot{width:5px;height:5px;}
 
 
 
@@ -3349,16 +3374,16 @@ body[data-theme="storm-dark"] .tl-hour-label{
   </div>
   <div class="modal-blur-body">
     <div class="em-row" style="margin-bottom:14px;"><span class="em-label" style="min-width:60px;font-size:13px;">Energy</span><div class="em-pills" id="energyPills">
-      <span class="em-pill" onclick="setEnergy(this,'high')"><span class="em-ico">&#9889;</span>High</span>
-      <span class="em-pill" onclick="setEnergy(this,'good')"><span class="em-ico">&#9728;&#65039;</span>Good</span>
-      <span class="em-pill" onclick="setEnergy(this,'low')"><span class="em-ico">&#127781;&#65039;</span>Low</span>
-      <span class="em-pill" onclick="setEnergy(this,'crashed')"><span class="em-ico">&#129707;</span>Crash</span>
+      <span class="em-pill" data-value="high" onclick="setEnergy(this,'high')"><span class="em-dot"></span>High</span>
+      <span class="em-pill" data-value="good" onclick="setEnergy(this,'good')"><span class="em-dot"></span>Good</span>
+      <span class="em-pill" data-value="low" onclick="setEnergy(this,'low')"><span class="em-dot"></span>Low</span>
+      <span class="em-pill" data-value="crashed" onclick="setEnergy(this,'crashed')"><span class="em-dot"></span>Crash</span>
     </div></div>
     <div class="em-row" style="margin-bottom:16px;"><span class="em-label" style="min-width:60px;font-size:13px;">Mood</span><div class="em-pills" id="moodPills">
-      <span class="em-pill" onclick="setMood(this,'focused')"><span class="em-ico">&#127919;</span>Focus</span>
-      <span class="em-pill" onclick="setMood(this,'scattered')"><span class="em-ico">&#127744;</span>Scatter</span>
-      <span class="em-pill" onclick="setMood(this,'anxious')"><span class="em-ico">&#128560;</span>Anxious</span>
-      <span class="em-pill" onclick="setMood(this,'calm')"><span class="em-ico">&#129496;</span>Calm</span>
+      <span class="em-pill" data-value="focused" onclick="setMood(this,'focused')"><span class="em-dot"></span>Focus</span>
+      <span class="em-pill" data-value="scattered" onclick="setMood(this,'scattered')"><span class="em-dot"></span>Scatter</span>
+      <span class="em-pill" data-value="anxious" onclick="setMood(this,'anxious')"><span class="em-dot"></span>Anxious</span>
+      <span class="em-pill" data-value="calm" onclick="setMood(this,'calm')"><span class="em-dot"></span>Calm</span>
     </div></div>
     <div id="stateAdvice"></div>
     <div style="display:flex;justify-content:flex-end;margin-top:10px;padding-top:10px;border-top:1px solid var(--border);">
