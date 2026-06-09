@@ -2994,7 +2994,7 @@ body[data-theme="storm-dark"] .tl-hour-label{
 <option value="priority">Sort: Priority</option>
 <option value="time">Sort: Time Needed</option>
 <option value="project">Sort: Project</option>
-<option value="due">Sort: Due Date</option>
+<option value="due" selected>Sort: Due Date</option>
 </select>
 <select id="tlFilterProj" onchange="renderTaskList()" style="width:auto;padding:3px 7px;font-size:11px;max-width:130px;">
 <option value="all">Projects</option>
@@ -4163,6 +4163,21 @@ function startRealtimeSync(){
     if(!doc.exists||!doc.data().state)return;
     try{
       const cloud=JSON.parse(doc.data().state);
+
+      // ── Preserve gcalEventIds from in-memory state ───────────────────────
+      // onSnapshot can fire with stale Firestore data while a gcalPushAll is
+      // in progress (debounced save hasn't committed yet). Without this guard,
+      // the cloud spread overwrites newly-set gcalEventIds → next push creates
+      // duplicate calendar events instead of updating existing ones.
+      var _gcalLocal={};
+      (state.tasks||[]).forEach(function(t){if(t.gcalEventId)_gcalLocal['t:'+t.id]=t.gcalEventId;});
+      (state.projects||[]).forEach(function(p){
+        if(p.gcalEventId)_gcalLocal['p:'+p.id]=p.gcalEventId;
+        (p.subtasks||[]).forEach(function(s){if(s.gcalEventId)_gcalLocal['s:'+s.id]=s.gcalEventId;});
+      });
+      (state.reminders||[]).forEach(function(r){if(r.gcalEventId)_gcalLocal['r:'+r.id]=r.gcalEventId;});
+      (state.tlBlocks||[]).forEach(function(b){if(b.gcalEventId)_gcalLocal['b:'+b.id]=b.gcalEventId;});
+
       // Preserve panel visibility/knownPanels from current session — these were
       // already initialized by initPanelVisibility() and must not be overwritten
       // by an onSnapshot firing with stale Firestore data (race condition fix)
@@ -4171,6 +4186,16 @@ function startRealtimeSync(){
       state={...state,...cloud};
       state.visiblePanels=Object.assign({},cloud.visiblePanels||{},localVP);
       state.knownPanels=localKP&&localKP.length>=(cloud.knownPanels||[]).length?localKP:cloud.knownPanels||localKP;
+
+      // Re-apply any gcalEventIds that were wiped by the cloud spread
+      (state.tasks||[]).forEach(function(t){if(!t.gcalEventId&&_gcalLocal['t:'+t.id])t.gcalEventId=_gcalLocal['t:'+t.id];});
+      (state.projects||[]).forEach(function(p){
+        if(!p.gcalEventId&&_gcalLocal['p:'+p.id])p.gcalEventId=_gcalLocal['p:'+p.id];
+        (p.subtasks||[]).forEach(function(s){if(!s.gcalEventId&&_gcalLocal['s:'+s.id])s.gcalEventId=_gcalLocal['s:'+s.id];});
+      });
+      (state.reminders||[]).forEach(function(r){if(!r.gcalEventId&&_gcalLocal['r:'+r.id])r.gcalEventId=_gcalLocal['r:'+r.id];});
+      (state.tlBlocks||[]).forEach(function(b){if(!b.gcalEventId&&_gcalLocal['b:'+b.id])b.gcalEventId=_gcalLocal['b:'+b.id];});
+
       renderProjects();renderReminders();renderThoughts();renderNotes();renderRoutines();renderTaskList();renderTimeline();
       applyPanelVisibility();
       showStateAdvice();updateWellnessVisibility();
@@ -4731,6 +4756,13 @@ function makeTimeClickable(el,currentVal,onSave){
   });
 }
 
+// Helper — projects sorted A→Z, used everywhere projects are listed
+function _sortedProjects(){
+  return state.projects.slice().sort(function(a,b){
+    return (a.name||'').toLowerCase().localeCompare((b.name||'').toLowerCase());
+  });
+}
+
 function renderProjects(){const el=document.getElementById('projectList');const today=todayStr();
 
 // Detect if we're rendering inside the overlay (panel-tile removed) vs the dashboard tile
@@ -4740,27 +4772,8 @@ var inOverlay=projPanel&&!projPanel.classList.contains('panel-tile');
 // "Show all" toggle — only applies on the dashboard tile, never in overlay
 var upcomingEl=document.getElementById('projUpcomingOnly');
 var showAll=!inOverlay&&upcomingEl&&upcomingEl.checked;
-var visibleProjects=state.projects;
-if(showAll){
-  // Sort all projects by priority of their highest-priority open subtask,
-  // then by closest due date as a tiebreaker. Projects with no subtasks
-  // or due dates sort to the bottom.
-  var PRI_RANK={high:0,med:1,medium:1,low:2};
-  visibleProjects=state.projects.slice().sort(function(a,b){
-    var aPri=Math.min.apply(null,(a.subtasks||[]).filter(function(s){return !s.done;}).map(function(s){return PRI_RANK[(s.priority||'med').toLowerCase()];}).concat([3]));
-    var bPri=Math.min.apply(null,(b.subtasks||[]).filter(function(s){return !s.done;}).map(function(s){return PRI_RANK[(s.priority||'med').toLowerCase()];}).concat([3]));
-    if(aPri!==bPri)return aPri-bPri;
-    // Tiebreak by project due date (earliest first; undated last)
-    var aDue=a.due||'9999-12-31';
-    var bDue=b.due||'9999-12-31';
-    return aDue.localeCompare(bDue);
-  });
-} else {
-  // Default: alphabetical by project name (case-insensitive)
-  visibleProjects=state.projects.slice().sort(function(a,b){
-    return (a.name||'').toLowerCase().localeCompare((b.name||'').toLowerCase());
-  });
-}
+// Always sort alphabetically regardless of showAll / overlay mode
+var visibleProjects=_sortedProjects();
 if(state.projects.length===0){el.innerHTML='<div class="empty-state">No projects yet.</div>'+_renderCompletedProjectsSection();document.getElementById('projCount').textContent='0';var emptyProjCompCount=(state.completedTasks||[]).filter(function(t){return t.source==='project';}).length;var emptyProjCompBadge=document.getElementById('projCompletedBadge');if(emptyProjCompBadge){emptyProjCompBadge.textContent='✓ '+emptyProjCompCount;emptyProjCompBadge.style.display=emptyProjCompCount>0?'inline-flex':'none';}updateNoteSelectors();if(typeof _updateTileSummaryProjects==='function')_updateTileSummaryProjects();return;}
 var pcpEl=document.getElementById('pc_projects');
 // Tile mode, unchecked — blank panel so add-form anchors to bottom
@@ -4863,7 +4876,7 @@ function exportReminderICS(id){const r=state.reminders.find(r=>r.id===id);if(!r)
 // BRAIN DUMP
 function handleDumpKey(e){if(e.key==='Enter'&&!e.shiftKey){e.preventDefault();const t=document.getElementById('brainDump').value.trim();if(!t)return;state.thoughts.push({id:'th'+Date.now(),text:t});document.getElementById('brainDump').value='';save();renderThoughts();_trackEvent('tool_use','brain_dump','Brain Dump');}}
 function deleteThought(id){state.thoughts=state.thoughts.filter(t=>t.id!==id);save();renderThoughts();}
-function promoteThought(id){const th=state.thoughts.find(t=>t.id===id);if(!th)return;if(state.projects.length>0){const c=prompt('Promote to which project?\n\n'+state.projects.map((p,i)=>(i+1)+'. '+p.name).join('\n')+'\n\n(0 = reminders)','1');if(c===null)return;const idx=parseInt(c)-1;if(idx>=0&&idx<state.projects.length){state.projects[idx].subtasks.push({id:'st'+Date.now(),name:th.text,due:'',priority:'med',timeEst:'',done:false});deleteThought(id);renderProjects();renderTaskList();toast('Added to '+state.projects[idx].name);return;}}state.reminders.push({id:'rem'+Date.now(),text:th.text,date:'',time:''});deleteThought(id);renderReminders();toast('Moved to reminders');}
+function promoteThought(id){const th=state.thoughts.find(t=>t.id===id);if(!th)return;if(state.projects.length>0){const sp=_sortedProjects();const c=prompt('Promote to which project?\n\n'+sp.map((p,i)=>(i+1)+'. '+p.name).join('\n')+'\n\n(0 = reminders)','1');if(c===null)return;const idx=parseInt(c)-1;if(idx>=0&&idx<sp.length){sp[idx].subtasks.push({id:'st'+Date.now(),name:th.text,due:'',priority:'med',timeEst:'',done:false});deleteThought(id);renderProjects();renderTaskList();toast('Added to '+sp[idx].name);return;}}state.reminders.push({id:'rem'+Date.now(),text:th.text,date:'',time:''});deleteThought(id);renderReminders();toast('Moved to reminders');}
 function editThought(id,v){if(!v)return;const t=state.thoughts.find(t=>t.id===id);if(t)t.text=v;save();}
 function renderThoughts(){document.getElementById('thoughtChips').innerHTML=state.thoughts.map(t=>'<div class="thought-chip"><span class="editable" id="tt_'+t.id+'">'+esc(t.text)+'</span><span class="chip-promote" onclick="promoteThought(\''+t.id+'\')">\u2197</span><span class="chip-x" onclick="deleteThought(\''+t.id+'\')">\u00D7</span></div>').join('');state.thoughts.forEach(t=>{const e=document.getElementById('tt_'+t.id);if(e)makeEditable(e,v=>editThought(t.id,v));});refreshEditables();}
 
@@ -4933,13 +4946,13 @@ function editNoteProjects(id,projIdsStr){const n=state.notes.find(n=>n.id===id);
 function autoResizeTextarea(ta){ta.style.height='auto';ta.style.height=ta.scrollHeight+'px';}
 function updateNoteSelectors(){
   // Filter dropdown for notes (still single-select)
-  const fOpts='<option value="all">All projects</option><option value="none">Untagged</option>'+state.projects.map(p=>'<option value="'+p.id+'">'+esc(p.name)+'</option>').join('');
+  const fOpts='<option value="all">All projects</option><option value="none">Untagged</option>'+_sortedProjects().map(p=>'<option value="'+p.id+'">'+esc(p.name)+'</option>').join('');
   document.getElementById('noteFilterProj').innerHTML=fOpts;
   // Filter dropdown for tasks (still single-select)
   var taskFilterEl=document.getElementById('tlFilterProj');
   if(taskFilterEl){
     var prevVal=taskFilterEl.value;
-    taskFilterEl.innerHTML='<option value="all">Projects</option>'+state.projects.map(function(p){return '<option value="'+p.id+'">'+esc(p.name)+'</option>';}).join('');
+    taskFilterEl.innerHTML='<option value="all">Projects</option>'+_sortedProjects().map(function(p){return '<option value="'+p.id+'">'+esc(p.name)+'</option>';}).join('');
     if(prevVal&&[].slice.call(taskFilterEl.options).some(function(o){return o.value===prevVal;}))taskFilterEl.value=prevVal;
   }
   // Render any open multi-pickers
@@ -5995,7 +6008,7 @@ function getAllTasks(){
 function renderTaskList(){
   var el=document.getElementById('taskListItems');if(!el)return;
   var all=getAllTasks();
-  var sortBy=document.getElementById('tlSortBy');var sort=sortBy?sortBy.value:'priority';
+  var sortBy=document.getElementById('tlSortBy');var sort=sortBy?sortBy.value:'due';
   var filterProj=document.getElementById('tlFilterProj');var filt=filterProj?filterProj.value:'all';
   var upcomingEl=document.getElementById('taskUpcomingOnly');
 
@@ -6216,14 +6229,14 @@ function updateTLProjectDropdowns(){
   var filt=document.getElementById('tlFilterProj');
   if(filt){
     var cur=filt.value;
-    filt.innerHTML='<option value="all">All Projects</option>'+state.projects.map(function(p){return '<option value="'+p.id+'">'+esc(p.name)+'</option>';}).join('');
+    filt.innerHTML='<option value="all">All Projects</option>'+_sortedProjects().map(function(p){return '<option value="'+p.id+'">'+esc(p.name)+'</option>';}).join('');
     filt.value=cur;
   }
   // Update add-task project dropdown
   var add=document.getElementById('tlNewProject');
   if(add){
     var cur2=add.value;
-    add.innerHTML='<option value="">No project</option><option value="__new__">+ New project...</option>'+state.projects.map(function(p){return '<option value="'+p.id+'">'+esc(p.name)+'</option>';}).join('');
+    add.innerHTML='<option value="">No project</option><option value="__new__">+ New project...</option>'+_sortedProjects().map(function(p){return '<option value="'+p.id+'">'+esc(p.name)+'</option>';}).join('');
     if(cur2&&cur2!=='__new__')add.value=cur2;
   }
 }
@@ -8004,9 +8017,9 @@ function _updateJournalMeta(){
 }
 
 function _populateJournalProjDropdowns(){
-  const opts='<option value="">No project tag</option>'+state.projects.map(p=>'<option value="'+p.id+'">'+esc(p.name)+'</option>').join('');
+  const opts='<option value="">No project tag</option>'+_sortedProjects().map(p=>'<option value="'+p.id+'">'+esc(p.name)+'</option>').join('');
   document.getElementById('journalProjTag').innerHTML=opts;
-  const fopts='<option value="all">All projects</option>'+state.projects.map(p=>'<option value="'+p.id+'">'+esc(p.name)+'</option>').join('');
+  const fopts='<option value="all">All projects</option>'+_sortedProjects().map(p=>'<option value="'+p.id+'">'+esc(p.name)+'</option>').join('');
   document.getElementById('journalFilterProj').innerHTML=fopts;
 }
 
