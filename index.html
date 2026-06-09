@@ -4956,9 +4956,14 @@ function editNoteProject(id,projId){const n=state.notes.find(n=>n.id===id);if(n)
 function editNoteProjects(id,projIdsStr){const n=state.notes.find(n=>n.id===id);if(n){var ids=projIdsStr?projIdsStr.split(',').filter(Boolean):[];n.projectIds=ids;n.projectId=ids[0]||'';save();renderProjects();}}
 function autoResizeTextarea(ta){ta.style.height='auto';ta.style.height=ta.scrollHeight+'px';}
 function updateNoteSelectors(){
-  // Filter dropdown for notes (still single-select)
+  // Filter dropdown for notes (still single-select) — preserve current selection
+  const noteFilterEl=document.getElementById('noteFilterProj');
+  const prevNoteFilter=noteFilterEl?noteFilterEl.value:'all';
   const fOpts='<option value="all">All projects</option><option value="none">Untagged</option>'+_sortedProjects().map(p=>'<option value="'+p.id+'">'+esc(p.name)+'</option>').join('');
-  document.getElementById('noteFilterProj').innerHTML=fOpts;
+  if(noteFilterEl){
+    noteFilterEl.innerHTML=fOpts;
+    if(prevNoteFilter&&[].slice.call(noteFilterEl.options).some(function(o){return o.value===prevNoteFilter;}))noteFilterEl.value=prevNoteFilter;
+  }
   // Filter dropdown for tasks (still single-select)
   var taskFilterEl=document.getElementById('tlFilterProj');
   if(taskFilterEl){
