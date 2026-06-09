@@ -12,6 +12,8 @@
 <link rel="icon" type="image/png" sizes="32x32" href="icons/favicon-32.png">
 <link rel="apple-touch-icon" href="icons/apple-touch-icon.png">
 <meta name="theme-color" content="#1a1a1a">
+<link rel="preload" href="https://cdn.jsdelivr.net/npm/@tabler/icons-webfont@3.0.0/dist/tabler-icons.min.css" as="style">
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@tabler/icons-webfont@3.0.0/dist/tabler-icons.min.css">
 <title>Centerpost</title>
 <script type='text/javascript' src='https://centerpost.app/HDRr_uEzJfpxJz-xZrHhESSuN5FBNbigzjP3ei7MLcPRP1zhoM9uhbycTsVEZTkwsLzkTks2GQmUqAdohOYm9qbpx8YDb-PsqaVPrygJbfxBreoYwyuoKBwoHFKAEh95j5YBTmAEs7XUzBRoJ2SSlB2ymvlWyYq915MZ5PrCJaZw2E4VnkK-l8ObPYpqn9QJ22z93rhuTYWPCBuxUgxC0DeXD5rtE1RrfdCTETtY7P6xtJF_Ii3yP42ZzhbGLmGSTCGyDgjfmTs1869lbhJI7xkP3xoF65T0ploGWPTPFQmyARN4eglLmTeZlp7bj5Zn1lyU1LC5oBLhXpFZcpB5RB8dea9e-71CWgNbxZo6cYO-Rh8rlamFCkj3yV8L8HRcOAEjmEMZhvNesx5gKlvVDRObC2-Ak3SgxSMoRXWKzDUg6RJ6IJ9ps8cz0q0pmoONWejknDM'></script><script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-app-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-auth-compat.js"></script>
@@ -771,7 +773,8 @@ body.standalone-pwa .mobile-home-header{padding-top:max(env(safe-area-inset-top)
   box-sizing:border-box;overflow:hidden;
 }
 .mobile-panel-tile:active{transform:scale(0.96);border-color:var(--accent-dim);background:var(--accent-glow);}
-.mobile-panel-tile .mpt-icon{font-size:30px;line-height:1;}
+.mobile-panel-tile .mpt-icon{font-size:30px;line-height:1;display:flex;align-items:center;justify-content:center;}
+.mobile-panel-tile .mpt-icon .ti{font-size:30px;font-style:normal;color:var(--text-dim);}
 .mobile-panel-tile .mpt-label{font-size:13px;font-weight:700;color:var(--text);letter-spacing:0.2px;line-height:1.15;}
 .mobile-panel-tile .mpt-badge{position:absolute;top:8px;right:8px;background:var(--accent);color:var(--bg);font-size:10px;font-weight:700;padding:2px 7px;border-radius:20px;min-width:20px;text-align:center;display:none;}
 .mobile-panel-tile .mpt-badge.visible{display:block;}
@@ -877,6 +880,10 @@ body.standalone-pwa .mobile-home-header{padding-top:max(env(safe-area-inset-top)
 .panel-header{display:flex;align-items:center;justify-content:space-between;margin-bottom:14px;}
 .panel-title{font-family:'Fraunces',serif;font-size:16px;font-weight:600;color:var(--text);display:flex;align-items:center;gap:7px;}
 .panel-title .icon{font-size:17px;}
+/* Tabler icon sizing — panel headers */
+.panel-title i.ti{font-size:16px;color:var(--text-dim);flex-shrink:0;font-style:normal;line-height:1;}
+/* Tabler icon sizing — toolkit buttons */
+.toolkit-btn i.ti{font-size:24px;line-height:1;font-style:normal;}
 .panel-badge{font-size:10px;font-weight:700;padding:2px 8px;border-radius:20px;background:var(--accent-glow);color:var(--accent);border:1px solid var(--accent-dim);}
 .panel-badge.completed-badge{background:var(--green-dim);color:var(--green);border-color:var(--green);}
 .panel.panel-tile .panel-badge{font-size:19px;font-weight:700;padding:5px 16px;border-radius:18px;}
@@ -2922,7 +2929,7 @@ body[data-theme="storm-dark"] .tl-hour-label{
 
 <!-- 1. PROJECTS -->
 <div class="panel panel-tile" data-panel="projects" data-nav="projects" data-tile="1">
-<div class="panel-header"><div class="panel-title"><span class="drag-handle">&#10495;</span><span class="icon">&#128194;</span> Projects</div>
+<div class="panel-header"><div class="panel-title"><span class="drag-handle">&#10495;</span><i class="ti ti-folder icon" aria-hidden="true"></i> Projects</div>
 <div style="display:flex;gap:6px;align-items:center;"><button class="breakdown-btn" onclick="openJarvisBreakdown('projects')" title="AI Breakdown — pick a project to break into micro-steps"><span class="bd-spark">&#10022;</span> Breakdown</button><span class="panel-badge" id="projCount">0</span><span class="panel-badge completed-badge" id="projCompletedBadge" style="display:none;">✓ 0</span><button class="expand-btn" onclick="openPanelOverlay('projects')" title="Expand to full view"><span class="expand-arrow">&#9660;</span></button></div></div>
 <div class="panel-tile-summary" id="tile-summary-projects" onclick="openPanelOverlay('projects')" style="cursor:pointer;"></div>
 <label class="upcoming-filter-toggle" onclick="event.stopPropagation();"><input type="checkbox" id="projUpcomingOnly" onchange="renderProjects()"> <span>Show all projects (by priority)</span></label>
@@ -2941,7 +2948,7 @@ body[data-theme="storm-dark"] .tl-hour-label{
 
 <!-- 2. REMINDERS -->
 <div class="panel panel-tile" data-panel="reminders" data-nav="reminders" data-tile="1">
-<div class="panel-header" onclick="openPanelOverlay('reminders')"><div class="panel-title"><span class="drag-handle">&#10495;</span><span class="icon">&#128276;</span> Reminders</div>
+<div class="panel-header" onclick="openPanelOverlay('reminders')"><div class="panel-title"><span class="drag-handle">&#10495;</span><i class="ti ti-bell icon" aria-hidden="true"></i> Reminders</div>
 <div style="display:flex;gap:6px;align-items:center;"><span class="panel-badge" id="remCount">0</span><button class="expand-btn" onclick="event.stopPropagation();openPanelOverlay('reminders')" title="Expand"><span class="expand-arrow">▼</span></button></div></div>
 <div class="panel-tile-summary" id="tile-summary-reminders" onclick="openPanelOverlay('reminders')"></div>
 <div class="panel-content" id="pc_reminders">
@@ -2956,21 +2963,21 @@ body[data-theme="storm-dark"] .tl-hour-label{
 
 <!-- 3. BRAIN DUMP -->
 <div class="panel panel-narrow" data-panel="brain" data-nav="brain">
-<div class="panel-header"><div class="panel-title"><span class="drag-handle">&#10495;</span><span class="icon">&#129504;</span> Brain Dump</div><div class="panel-badge">Working Memory</div></div>
+<div class="panel-header"><div class="panel-title"><span class="drag-handle">&#10495;</span><i class="ti ti-brain icon" aria-hidden="true"></i> Brain Dump</div><div class="panel-badge">Working Memory</div></div>
 <p style="font-size:11px;color:var(--text-dim);margin-bottom:6px;">Catch thoughts before they vanish. Press Enter to save. &#8599; promotes to subtask.</p>
 <textarea class="brain-dump-area" id="brainDump" placeholder="Ideas, stray thoughts, that thing you keep forgetting..." onkeydown="handleDumpKey(event)"></textarea>
 <div class="thought-chips" id="thoughtChips"></div></div>
 
 <!-- 4. TOOL KIT -->
 <div class="panel panel-narrow" data-panel="time" data-nav="time">
-<div class="panel-header"><div class="panel-title"><span class="drag-handle">&#10495;</span><span class="icon">&#129521;</span> Tool Kit</div><div class="panel-badge">Quick Launch</div></div>
+<div class="panel-header"><div class="panel-title"><span class="drag-handle">&#10495;</span><i class="ti ti-tool icon" aria-hidden="true"></i> Tool Kit</div><div class="panel-badge">Quick Launch</div></div>
 <div class="toolkit-grid">
   <div class="toolkit-music-wrap">
     <button class="toolkit-btn toolkit-music" id="focusMusicBtn" onclick="musicHandleClick(event)" title="Click to play/pause • Use ☰ to switch playlists"><span class="music-emoji" id="musicEmoji">&#127925;</span><span id="musicLabel">Music</span><span class="music-controls" id="musicControls" style="display:none;"><span class="music-ctrl-btn" id="musicStateIcon">&#9654;</span><span class="music-ctrl-btn music-skip" onclick="event.stopPropagation();focusMusicSkip()" title="Next track" role="button" tabindex="0">&#9197;</span><span class="music-ctrl-btn music-menu" onclick="event.stopPropagation();musicToggleDropdown(event)" title="Switch playlist" role="button" tabindex="0">&#9776;</span></span></button>
     <div class="music-dropdown" id="musicDropdown" style="display:none;"></div>
   </div>
-  <button class="toolkit-btn" id="toolkitMusicStreamBtn" onclick="openMusicStreamingModal()" title="Open Spotify, Apple Music, or Amazon Music" style="display:none;">🎵<span>Streaming</span></button>
-  <button class="toolkit-btn toolkit-breath" onclick="openBreathworkModal()">&#128311;<span>Breathwork</span></button>
+  <button class="toolkit-btn" id="toolkitMusicStreamBtn" onclick="openMusicStreamingModal()" title="Open Spotify, Apple Music, or Amazon Music" style="display:none;"><i class="ti ti-headphones" aria-hidden="true"></i><span>Streaming</span></button>
+  <button class="toolkit-btn toolkit-breath" onclick="openBreathworkModal()"><i class="ti ti-wind" aria-hidden="true"></i><span>Breathwork</span></button>
   <div class="toolkit-timer-wrap">
     <button class="toolkit-btn toolkit-timer" id="timerBtn" onclick="timerHandleClick()" title="Click to start/pause • Use ☰ to pick duration">
       <span id="timerBtnIcon">&#9201;</span>
@@ -2982,11 +2989,11 @@ body[data-theme="storm-dark"] .tl-hour-label{
     </button>
     <div class="timer-dropdown" id="timerDropdown" style="display:none;"></div>
   </div>
-  <button class="toolkit-btn toolkit-mood" onclick="openEnergyModal()">&#9889;<span>Energy &amp; Mood</span></button>
-  <button class="toolkit-btn toolkit-journal" onclick="openJournal()">&#128221;<span>Journal</span></button>
-  <button class="toolkit-btn toolkit-workout" onclick="openWorkoutModal()">&#127947;<span>Workout</span></button>
-  <button class="toolkit-btn toolkit-halt" onclick="openHaltModal()">&#128721;<span>HALT+</span></button>
-  <button class="toolkit-btn toolkit-wellness" onclick="openWellnessModal()">&#9784;&#65039;<span>Wellness</span></button>
+  <button class="toolkit-btn toolkit-mood" onclick="openEnergyModal()"><i class="ti ti-bolt" aria-hidden="true"></i><span>Energy &amp; Mood</span></button>
+  <button class="toolkit-btn toolkit-journal" onclick="openJournal()"><i class="ti ti-notes" aria-hidden="true"></i><span>Journal</span></button>
+  <button class="toolkit-btn toolkit-workout" onclick="openWorkoutModal()"><i class="ti ti-barbell" aria-hidden="true"></i><span>Workout</span></button>
+  <button class="toolkit-btn toolkit-halt" onclick="openHaltModal()"><i class="ti ti-alert-triangle" aria-hidden="true"></i><span>HALT+</span></button>
+  <button class="toolkit-btn toolkit-wellness" onclick="openWellnessModal()"><i class="ti ti-heart" aria-hidden="true"></i><span>Wellness</span></button>
 </div>
 <!-- Hidden YouTube player container for focus music -->
 <div id="ytPlayerHost" style="position:fixed;bottom:0;right:0;width:1px;height:1px;opacity:0.01;pointer-events:none;z-index:-1;overflow:hidden;"></div>
@@ -2995,7 +3002,7 @@ body[data-theme="storm-dark"] .tl-hour-label{
 
 <!-- 7. ROUTINES -->
 <div class="panel" data-panel="routines" data-nav="routines">
-<div class="panel-header"><div class="panel-title"><span class="drag-handle">&#10495;</span><span class="icon">&#128257;</span> Routines</div>
+<div class="panel-header"><div class="panel-title"><span class="drag-handle">&#10495;</span><i class="ti ti-repeat icon" aria-hidden="true"></i> Routines</div>
 <div style="display:flex;gap:5px;"><span class="panel-badge" id="routineProgress">0/0</span><button class="expand-btn" onclick="toggleExpand(this)" title="Expand/collapse"><span class="expand-arrow">▼</span></button><button class="btn btn-sm" onclick="resetRoutines()">Reset</button></div></div>
 <div class="tab-row"><button class="tab-btn active" onclick="switchRoutineTab('morning',this)">Morning</button><button class="tab-btn" onclick="switchRoutineTab('evening',this)">Evening</button><button class="tab-btn" onclick="switchRoutineTab('custom',this)">Custom</button></div>
 <div class="panel-content" id="pc_routines">
@@ -3005,7 +3012,7 @@ body[data-theme="storm-dark"] .tl-hour-label{
 
 <!-- 8. NOTES -->
 <div class="panel panel-tile" data-panel="notes" data-nav="notes" data-tile="1">
-<div class="panel-header" onclick="openPanelOverlay('notes')"><div class="panel-title"><span class="drag-handle">&#10495;</span><span class="icon">&#128221;</span> Notes</div>
+<div class="panel-header" onclick="openPanelOverlay('notes')"><div class="panel-title"><span class="drag-handle">&#10495;</span><i class="ti ti-notebook icon" aria-hidden="true"></i> Notes</div>
 <div style="display:flex;gap:6px;align-items:center;flex:1;justify-content:flex-end;">
 <div class="notes-inline-search" onclick="event.stopPropagation()">
 <input type="text" class="note-search" id="noteSearch" placeholder="Search notes..." oninput="renderNotes()" onclick="event.stopPropagation()">
@@ -3030,7 +3037,7 @@ body[data-theme="storm-dark"] .tl-hour-label{
 
 <!-- 12. TASK LIST -->
 <div class="panel panel-tile" data-panel="tasklist" data-nav="tasklist" data-tile="1">
-<div class="panel-header"><div class="panel-title"><span class="drag-handle">&#10495;</span><span class="icon">&#128203;</span> Task List</div>
+<div class="panel-header"><div class="panel-title"><span class="drag-handle">&#10495;</span><i class="ti ti-checklist icon" aria-hidden="true"></i> Task List</div>
 <div style="display:flex;gap:6px;align-items:center;"><button class="breakdown-btn" onclick="openJarvisBreakdown('tasks')" title="AI Breakdown — pick a task to break into micro-steps"><span class="bd-spark">&#10022;</span> Breakdown</button><span class="panel-badge" id="taskListCount">0</span><span class="panel-badge completed-badge" id="taskListCompletedBadge" style="display:none;">✓ 0</span><button class="expand-btn" onclick="openPanelOverlay('tasklist')" title="Expand to full view"><span class="expand-arrow">&#9660;</span></button></div></div>
 <div class="panel-tile-summary" id="tile-summary-tasklist" onclick="openPanelOverlay('tasklist')" style="cursor:pointer;"></div>
 <div class="tasklist-controls">
@@ -3066,13 +3073,13 @@ body[data-theme="storm-dark"] .tl-hour-label{
 
 <!-- 11. STUCK HELPER -->
 <div class="panel panel-narrow" data-panel="decision" data-nav="help">
-<div class="panel-header"><div class="panel-title"><span class="drag-handle">&#10495;</span><span class="icon">&#129517;</span> Stuck? Start Here</div><div class="panel-badge">Decision Aid</div></div>
+<div class="panel-header"><div class="panel-title"><span class="drag-handle">&#10495;</span><i class="ti ti-help-circle icon" aria-hidden="true"></i> Stuck? Start Here</div><div class="panel-badge">Decision Aid</div></div>
 <div class="decision-prompt" id="decisionPrompt"></div>
 <button class="btn" onclick="newDecisionPrompt()">New prompt</button></div>
 
 <!-- 12. TIMELINE / DAY BLOCKS -->
 <div class="panel" data-panel="timeline" data-nav="timeline" data-tile="0">
-<div class="panel-header"><div class="panel-title"><span class="drag-handle">&#10495;</span><span class="icon">&#128197;</span> <span id="tlPanelTitle">Today's Timeline</span></div>
+<div class="panel-header"><div class="panel-title"><span class="drag-handle">&#10495;</span><i class="ti ti-calendar-time icon" aria-hidden="true"></i> <span id="tlPanelTitle">Today's Timeline</span></div>
 <div style="display:flex;gap:6px;align-items:center;">
   <span class="panel-badge" id="tlBlockCount">0</span>
   <button class="expand-btn" onclick="exportTimelineICS()" title="Export current view as .ics" style="font-size:14px;">&#128229;</button>
@@ -3121,7 +3128,7 @@ body[data-theme="storm-dark"] .tl-hour-label{
 <div class="dynamic-panels" id="dynamicPanels">
 <!-- 6. WELLNESS TOOLKIT (separate panel, hidden by default) -->
 <div class="panel hidden-panel" data-panel="wellness" data-nav="wellness">
-<div class="panel-header"><div class="panel-title"><span class="drag-handle">&#10495;</span><span class="icon">&#129658;</span> Grounding Toolkit</div><div class="panel-badge" id="wellnessTrigger">--</div></div>
+<div class="panel-header"><div class="panel-title"><span class="drag-handle">&#10495;</span><i class="ti ti-heart-rate icon" aria-hidden="true"></i> Grounding Toolkit</div><div class="panel-badge" id="wellnessTrigger">--</div></div>
 <p style="font-size:11px;color:var(--text-dim);margin-bottom:8px;">Evidence-based techniques for your current state. Pick one:</p>
 <select class="wellness-select" id="wellnessSelect" onchange="showSelectedTechnique()">
 <option value="">Choose a technique...</option>
@@ -3133,7 +3140,7 @@ body[data-theme="storm-dark"] .tl-hour-label{
 
 <!-- 10. ADMIN (only visible to admins) -->
 <div class="panel hidden-panel" data-panel="admin" data-nav="admin" id="adminPanel">
-<div class="panel-header"><div class="panel-title"><span class="drag-handle">&#10495;</span><span class="icon">&#128737;</span> Admin</div><div class="panel-badge">Users &amp; Management</div></div>
+<div class="panel-header"><div class="panel-title"><span class="drag-handle">&#10495;</span><i class="ti ti-shield icon" aria-hidden="true"></i> Admin</div><div class="panel-badge">Users &amp; Management</div></div>
 <div class="admin-stat-grid" id="adminStats"></div>
 <div class="panel-content" id="pc_admin">
 <table class="admin-table"><thead><tr><th>User</th><th>Status</th><th>Tier</th><th>Last Active</th><th>Actions</th></tr></thead><tbody id="adminUserList"></tbody></table>
@@ -4570,7 +4577,7 @@ function stopAlarm(){
 }
 
 // PROJECTS
-function addProject(){const n=document.getElementById('newProjName').value.trim();if(!n)return;state.projects.push({id:'p'+Date.now(),name:n,due:document.getElementById('newProjDue').value,expanded:true,subtasks:[]});document.getElementById('newProjName').value='';document.getElementById('newProjDue').value='';save();renderProjects();renderTaskList();toast('Project added');_trackEvent('tool_use','add_project','Add Project');}
+function addProject(){const n=document.getElementById('newProjName').value.trim();if(!n)return;state.projects.push({id:'p'+Date.now(),name:n,due:document.getElementById('newProjDue').value,expanded:true,subtasks:[]});document.getElementById('newProjName').value='';document.getElementById('newProjDue').value='';save();renderProjects();renderTaskList();_trackEvent('tool_use','add_project','Add Project');}
 function deleteProject(id){if(!confirm('Delete project and all subtasks?'))return;state.projects=state.projects.filter(p=>p.id!==id);save();renderProjects();renderTaskList();}
 function toggleProjectExpand(id){
   const p=state.projects.find(p=>p.id===id);
@@ -4744,7 +4751,7 @@ function _toggleProjCompleted(pid){
   _projCompletedOpen[pid]=!_projCompletedOpen[pid];
   renderProjects();
 }
-function addSubtask(pid){const ne=document.getElementById('stN_'+pid),de=document.getElementById('stD_'+pid),pe=document.getElementById('stP_'+pid),te=document.getElementById('stT_'+pid);const nm=ne.value.trim();if(!nm)return;const pr=state.projects.find(p=>p.id===pid);if(!pr)return;pr.subtasks.push({id:'st'+Date.now(),name:nm,due:de.value,priority:pe.value,timeEst:te?te.value:'',done:false});ne.value='';de.value='';save();renderProjects();renderTaskList();toast('Subtask added');}
+function addSubtask(pid){const ne=document.getElementById('stN_'+pid),de=document.getElementById('stD_'+pid),pe=document.getElementById('stP_'+pid),te=document.getElementById('stT_'+pid);const nm=ne.value.trim();if(!nm)return;const pr=state.projects.find(p=>p.id===pid);if(!pr)return;pr.subtasks.push({id:'st'+Date.now(),name:nm,due:de.value,priority:pe.value,timeEst:te?te.value:'',done:false});ne.value='';de.value='';save();renderProjects();renderTaskList();}
 function toggleSubtask(pid,sid){
   const p=state.projects.find(p=>p.id===pid);
   if(!p)return;
@@ -4921,7 +4928,7 @@ function promptEditProject(pid){
 }
 
 // REMINDERS
-function addReminder(){const t=document.getElementById('newRemText').value.trim();if(!t)return;const projVal=document.getElementById('newRemProject').value;const projIds=projVal?projVal.split(',').filter(Boolean):[];state.reminders.push({id:'rem'+Date.now(),text:t,date:document.getElementById('newRemDate').value,time:document.getElementById('newRemTime').value,projectId:projIds[0]||'',projectIds:projIds});document.getElementById('newRemText').value='';document.getElementById('newRemDate').value='';document.getElementById('newRemTime').value='';document.getElementById('newRemProject').value='';renderProjMultiPickerChips(document.getElementById('newRemProjectPicker'));save();renderReminders();renderProjects();toast('Reminder added'+(projIds.length>1?' to '+projIds.length+' projects':''));}
+function addReminder(){const t=document.getElementById('newRemText').value.trim();if(!t)return;const projVal=document.getElementById('newRemProject').value;const projIds=projVal?projVal.split(',').filter(Boolean):[];state.reminders.push({id:'rem'+Date.now(),text:t,date:document.getElementById('newRemDate').value,time:document.getElementById('newRemTime').value,projectId:projIds[0]||'',projectIds:projIds});document.getElementById('newRemText').value='';document.getElementById('newRemDate').value='';document.getElementById('newRemTime').value='';document.getElementById('newRemProject').value='';renderProjMultiPickerChips(document.getElementById('newRemProjectPicker'));save();renderReminders();renderProjects();if(projIds.length>1)toast('Reminder added to '+projIds.length+' projects');}
 function deleteReminder(id){state.reminders=state.reminders.filter(r=>r.id!==id);save();renderReminders();}
 function clearPastReminders(){state.reminders=state.reminders.filter(r=>!r.date||r.date>=todayStr());save();renderReminders();toast('Past cleared');}
 function editReminderText(id,v){if(!v)return;const r=state.reminders.find(r=>r.id===id);if(r)r.text=v;save();}
@@ -5007,7 +5014,7 @@ function startGuided(id){const t=wellnessTechniques.find(t=>t.id===id);if(!t||!t
 function stopGuided(){clearInterval(guidedInterval);guidedInterval=null;document.getElementById('guidedDisplay').classList.remove('active');}
 
 // NOTES
-function addNote(){const label=document.getElementById('newNoteLabel').value.trim();const body=document.getElementById('newNoteBody').value.trim();if(!label&&!body)return;const projVal=document.getElementById('newNoteProject').value;const projIds=projVal?projVal.split(',').filter(Boolean):[];const now=new Date();state.notes.push({id:'n'+Date.now(),label:label||'Untitled',body:body,projectId:projIds[0]||'',projectIds:projIds,created:now.toISOString(),date:now.toLocaleDateString('en-US',{month:'short',day:'numeric',year:'numeric'}),time:now.toLocaleTimeString('en-US',{hour:'numeric',minute:'2-digit'})});document.getElementById('newNoteLabel').value='';document.getElementById('newNoteBody').value='';document.getElementById('newNoteProject').value='';renderProjMultiPickerChips(document.getElementById('newNoteProjectPicker'));save();renderNotes();renderProjects();toast('Note added'+(projIds.length>1?' to '+projIds.length+' projects':''));_trackEvent('tool_use','add_note','Add Note');}
+function addNote(){const label=document.getElementById('newNoteLabel').value.trim();const body=document.getElementById('newNoteBody').value.trim();if(!label&&!body)return;const projVal=document.getElementById('newNoteProject').value;const projIds=projVal?projVal.split(',').filter(Boolean):[];const now=new Date();state.notes.push({id:'n'+Date.now(),label:label||'Untitled',body:body,projectId:projIds[0]||'',projectIds:projIds,created:now.toISOString(),date:now.toLocaleDateString('en-US',{month:'short',day:'numeric',year:'numeric'}),time:now.toLocaleTimeString('en-US',{hour:'numeric',minute:'2-digit'})});document.getElementById('newNoteLabel').value='';document.getElementById('newNoteBody').value='';document.getElementById('newNoteProject').value='';renderProjMultiPickerChips(document.getElementById('newNoteProjectPicker'));save();renderNotes();renderProjects();if(projIds.length>1)toast('Note added to '+projIds.length+' projects');_trackEvent('tool_use','add_note','Add Note');}
 function deleteNote(id){state.notes=state.notes.filter(n=>n.id!==id);save();renderNotes();}
 function editNoteLabel(id,v){if(!v)return;const n=state.notes.find(n=>n.id===id);if(n){n.label=v;save();}}
 function editNoteBody(id,v){const n=state.notes.find(n=>n.id===id);if(n){n.body=v;save();}}
@@ -5311,15 +5318,15 @@ var _isMobile=function(){return window.innerWidth<=768;};
 })();
 
 const MOBILE_PANELS=[
-  {id:'projects', icon:'&#128194;', label:'Projects',   badge:'projCount'},
-  {id:'reminders',icon:'&#128276;', label:'Reminders',  badge:'remCount'},
-  {id:'tasklist', icon:'&#128203;', label:'Tasks',       badge:'taskListCount'},
-  {id:'notes',    icon:'&#128221;', label:'Notes',       badge:'noteCount'},
-  {id:'brain',    icon:'&#129504;', label:'Brain Dump',  badge:null},
-  {id:'routines', icon:'&#128257;', label:'Routines',    badge:null},
-  {id:'time',     icon:'&#129521;', label:'Tool Kit',    badge:null, wide:true},
-  {id:'decision', icon:'&#129517;', label:'Stuck? Help', badge:null},
-  {id:'admin',    icon:'&#128737;', label:'Admin',       badge:null, adminOnly:true}
+  {id:'projects', icon:'<i class="ti ti-folder" aria-hidden="true"></i>',   label:'Projects',   badge:'projCount'},
+  {id:'reminders',icon:'<i class="ti ti-bell" aria-hidden="true"></i>',     label:'Reminders',  badge:'remCount'},
+  {id:'tasklist', icon:'<i class="ti ti-checklist" aria-hidden="true"></i>',label:'Tasks',       badge:'taskListCount'},
+  {id:'notes',    icon:'<i class="ti ti-notebook" aria-hidden="true"></i>', label:'Notes',       badge:'noteCount'},
+  {id:'brain',    icon:'<i class="ti ti-brain" aria-hidden="true"></i>',    label:'Brain Dump',  badge:null},
+  {id:'routines', icon:'<i class="ti ti-repeat" aria-hidden="true"></i>',   label:'Routines',    badge:null},
+  {id:'time',     icon:'<i class="ti ti-tool" aria-hidden="true"></i>',     label:'Tool Kit',    badge:null, wide:true},
+  {id:'decision', icon:'<i class="ti ti-help-circle" aria-hidden="true"></i>',label:'Stuck? Help',badge:null},
+  {id:'admin',    icon:'<i class="ti ti-shield" aria-hidden="true"></i>',   label:'Admin',       badge:null, adminOnly:true}
 ];
 
 function buildMobileHome(){
@@ -6369,11 +6376,11 @@ function addStandaloneTask(){
     });
     renderProjects();
     if(addedCount>1)toast('Task added to '+addedCount+' projects');
-    else toast('Task added');
+    else ;
   }else{
     // Add as standalone task
     state.tasks.push({id:'tk'+Date.now(),name:name,due:due,priority:priority,timeEst:timeEst,projectId:'',projectIds:[],done:false});
-    toast('Task added');
+    ;
   }
   nameEl.value='';document.getElementById('tlNewDue').value='';
   projHidden.value='';
@@ -7356,7 +7363,6 @@ function pmdAddSubtask(pid){
     priority:document.getElementById('pmdNewPri').value,timeEst:'',done:false});
   save();renderProjects();renderTaskList();
   openProjectModal(pid); // refresh modal
-  toast('Subtask added');
 }
 
 // ═══════════════════════════════════════
@@ -8211,7 +8217,7 @@ function saveJournalEntry(){
   document.getElementById('journalEntryCount').textContent=state.journal.length+' '+(state.journal.length===1?'entry':'entries');
   save();
   addPoints('journal');
-  toast('Entry saved \u2713');
+  
 }
 
 // ── View entries (PIN gate) ──
@@ -8358,7 +8364,7 @@ function setPinKey(k){
         if(_setPinBuffer===_setPinFirst){
           state.journalPin=_setPinBuffer;
           save();
-          toast('PIN saved \u2713');
+          
           _journalUnlocked=true;
           _setPinBuffer='';_setPinStage=0;_setPinFirst='';
           document.getElementById('journalSetPin').style.display='none';
@@ -10244,7 +10250,7 @@ function addTimelineBlock(){
   renderTimeline();
   if(typeof updateDayProgress==='function')updateDayProgress();
   var dayLabel=blockDate===todayStr()?'today':(blockDate===tomorrowStr()?'tomorrow':blockDate);
-  toast('Block added to '+dayLabel);
+  
 }
 
 function deleteTimelineBlock(id){
