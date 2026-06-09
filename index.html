@@ -834,6 +834,13 @@ body.standalone-pwa .mobile-home-header{padding-top:max(env(safe-area-inset-top)
 .panel-overlay-close:hover{background:var(--surface);color:var(--text);}
 .panel-overlay-body{flex:1;overflow-y:auto;padding:18px 20px;}
 .panel-overlay-body .panel{padding:0;border:none;background:transparent;animation:none;}
+/* ── Notes panel: inline search controls in overlay header ───────── */
+.panel.panel-tile[data-panel="notes"] .notes-inline-search{display:none !important;}
+.panel:not(.panel-tile)[data-panel="notes"] .notes-inline-search{display:flex;gap:6px;align-items:center;flex:1;min-width:0;}
+.notes-inline-search .note-search{flex:1;min-width:80px;max-width:180px;padding:4px 8px;font-size:12px;border:1px solid var(--border);border-radius:4px;background:var(--surface-raised);color:var(--text);}
+.notes-inline-search select{max-width:130px;flex-shrink:0;}
+.panel:not(.panel-tile)[data-panel="notes"] .panel-header{border-bottom:1px solid var(--border);padding-bottom:8px;margin-bottom:2px;}
+.panel:not(.panel-tile)[data-panel="notes"] .notes-tile-badge,.panel:not(.panel-tile)[data-panel="notes"] .expand-btn{display:none !important;}
 .panel-overlay-body .panel-header .drag-handle{display:none;}
 .panel-overlay-body .panel-header .expand-btn{display:none;}
 .panel-overlay-body .panel-content{max-height:none !important;overflow:visible !important;}
@@ -2966,7 +2973,12 @@ body[data-theme="storm-dark"] .tl-hour-label{
 <!-- 8. NOTES -->
 <div class="panel panel-tile" data-panel="notes" data-nav="notes" data-tile="1">
 <div class="panel-header" onclick="openPanelOverlay('notes')"><div class="panel-title"><span class="drag-handle">&#10495;</span><span class="icon">&#128221;</span> Notes</div>
-<div style="display:flex;gap:6px;align-items:center;"><span class="panel-badge" id="noteCount">0</span><button class="expand-btn" onclick="event.stopPropagation();openPanelOverlay('notes')" title="Expand"><span class="expand-arrow">▼</span></button></div></div>
+<div style="display:flex;gap:6px;align-items:center;flex:1;justify-content:flex-end;">
+<div class="notes-inline-search" onclick="event.stopPropagation()">
+<input type="text" class="note-search" id="noteSearch" placeholder="Search notes..." oninput="renderNotes()" onclick="event.stopPropagation()">
+<select id="noteFilterProj" onchange="renderNotes()" onclick="event.stopPropagation()" style="width:auto;padding:4px 6px;font-size:11px;"><option value="all">All projects</option></select>
+</div>
+<span class="panel-badge notes-tile-badge" id="noteCount">0</span><button class="expand-btn" onclick="event.stopPropagation();openPanelOverlay('notes')" title="Expand"><span class="expand-arrow">▼</span></button></div></div>
 <div class="panel-tile-summary" id="tile-summary-notes" onclick="openPanelOverlay('notes')"></div>
 <div class="note-form tile-add-region">
 <input type="text" id="newNoteLabel" placeholder="Note label...">
@@ -2979,7 +2991,6 @@ body[data-theme="storm-dark"] .tl-hour-label{
 <div class="panel-content" id="pc_notes">
 <div class="notes-list" id="notesList"></div>
 </div>
-<div class="note-filter-row"><input type="text" class="note-search" id="noteSearch" placeholder="Search notes..." oninput="renderNotes()"><select id="noteFilterProj" onchange="renderNotes()" style="width:auto;padding:4px 8px;font-size:12px;"><option value="all">All projects</option></select></div>
 </div>
 
 
