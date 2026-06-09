@@ -829,6 +829,14 @@ body.standalone-pwa .mobile-home-header{padding-top:max(env(safe-area-inset-top)
 .panel-overlay-backdrop{position:absolute;inset:0;background:rgba(0,0,0,0.65);backdrop-filter:blur(6px);-webkit-backdrop-filter:blur(6px);}
 .panel-overlay-frame{position:absolute;top:5vh;left:50%;transform:translateX(-50%);width:min(900px,94vw);max-height:90vh;background:var(--surface);border:1px solid var(--border);border-radius:var(--radius);display:flex;flex-direction:column;box-shadow:0 20px 60px rgba(0,0,0,0.5);overflow:hidden;animation:panelOverlayPop 0.25s ease both;}
 .panel-overlay-header{display:flex;align-items:center;justify-content:space-between;padding:14px 20px;border-bottom:1px solid var(--border);background:var(--surface-raised);}
+/* ── Mood history modal ──────────────────────────────────────────── */
+.mh-period-row{display:flex;gap:8px;margin-bottom:14px;}
+.mh-period-btn{padding:5px 16px;font-size:12px;font-weight:600;border:1px solid var(--border);border-radius:20px;background:none;color:var(--text-dim);cursor:pointer;font-family:inherit;transition:all .15s;}
+.mh-period-btn.active{border-color:var(--accent);color:var(--accent);background:var(--accent-glow);}
+.mh-chart-wrap{width:100%;overflow:hidden;background:var(--surface-raised);border:1px solid var(--border);border-radius:8px;padding:8px 4px 4px;}
+.mh-legend{display:flex;align-items:center;gap:6px;margin-top:10px;font-size:12px;color:var(--text-dim);}
+.mh-leg-dot{display:inline-block;width:10px;height:10px;border-radius:50%;}
+.mh-no-data{text-align:center;padding:40px 20px;font-size:12px;color:var(--text-dim);line-height:1.7;}
 .panel-overlay-title{font-family:'Fraunces',serif;font-size:20px;font-weight:600;color:var(--text);display:flex;align-items:center;gap:10px;}
 .panel-overlay-close{background:none;border:none;color:var(--text-dim);font-size:22px;cursor:pointer;padding:4px 12px;border-radius:var(--radius-sm);line-height:1;transition:all 0.15s;}
 .panel-overlay-close:hover{background:var(--surface);color:var(--text);}
@@ -3353,6 +3361,32 @@ body[data-theme="storm-dark"] .tl-hour-label{
       <span class="em-pill" onclick="setMood(this,'calm')"><span class="em-ico">&#129496;</span>Calm</span>
     </div></div>
     <div id="stateAdvice"></div>
+    <div style="display:flex;justify-content:flex-end;margin-top:10px;padding-top:10px;border-top:1px solid var(--border);">
+      <button class="btn btn-sm" onclick="closeEnergyModal();openMoodHistory(7)" style="font-size:11px;display:flex;align-items:center;gap:5px;">📊 <span>Mood History</span></button>
+    </div>
+  </div>
+</div>
+</div>
+
+<!-- MOOD HISTORY MODAL -->
+<div class="modal-blur-overlay" id="moodHistoryModal">
+<div class="modal-blur-backdrop" onclick="closeMoodHistory()"></div>
+<div class="modal-blur-panel" style="width:min(640px,96vw);">
+  <div class="modal-blur-header">
+    <div class="modal-blur-title">📊 Mood &amp; Energy History</div>
+    <button class="modal-blur-close" onclick="closeMoodHistory()">&#10005;</button>
+  </div>
+  <div class="modal-blur-body">
+    <div class="mh-period-row">
+      <button class="mh-period-btn active" id="mhBtn7" onclick="renderMoodHistory(7)">7 Days</button>
+      <button class="mh-period-btn" id="mhBtn30" onclick="renderMoodHistory(30)">30 Days</button>
+    </div>
+    <div class="mh-chart-wrap" id="mhChartWrap"></div>
+    <div class="mh-legend">
+      <span class="mh-leg-dot" style="background:#d4a853"></span><span>Energy</span>
+      <span class="mh-leg-dot" style="background:#5f8fc7;margin-left:16px;"></span><span>Mood</span>
+    </div>
+    <div class="mh-no-data" id="mhNoData" style="display:none;">No mood data recorded yet. Use ⚡ Energy &amp; Mood to start tracking.</div>
   </div>
 </div>
 </div>
@@ -5365,6 +5399,98 @@ document.addEventListener('keydown',e=>{if(e.target.tagName==='INPUT'||e.target.
 // ═══════════════════════════════════════
 // MOOD/ENERGY LOGGING & TRENDS
 // ═══════════════════════════════════════
+
+// ── Mood & Energy History Chart ──────────────────────────────────────
+var _mhActivePeriod=7;
+function openMoodHistory(days){
+  _mhActivePeriod=days||7;
+  document.getElementById('moodHistoryModal').classList.add('open');
+  renderMoodHistory(_mhActivePeriod);
+}
+function closeMoodHistory(){document.getElementById('moodHistoryModal').classList.remove('open');}
+
+function renderMoodHistory(days){
+  _mhActivePeriod=days;
+  document.getElementById('mhBtn7').classList.toggle('active',days===7);
+  document.getElementById('mhBtn30').classList.toggle('active',days===30);
+
+  var ENERGY={high:4,good:3,low:2,crashed:1};
+  var MOOD={focused:4,calm:3,scattered:2,anxious:1};
+  var ELABELS={4:'High',3:'Good',2:'Low',1:'Crash'};
+  var MLABELS={4:'Focused',3:'Calm',2:'Scattered',1:'Anxious'};
+
+  var today=new Date();
+  var labels=[],eData=[],mData=[];
+  for(var i=days-1;i>=0;i--){
+    var d=new Date(today);d.setDate(d.getDate()-i);
+    var ds=d.toISOString().slice(0,10);
+    var entry=(state.moodLog||[]).find(function(e){return e.date===ds;});
+    labels.push(ds);
+    eData.push(entry&&entry.energy?ENERGY[entry.energy]:null);
+    mData.push(entry&&entry.mood?MOOD[entry.mood]:null);
+  }
+
+  var hasAny=eData.some(function(v){return v!==null;})||mData.some(function(v){return v!==null;});
+  document.getElementById('mhNoData').style.display=hasAny?'none':'block';
+  document.getElementById('mhChartWrap').style.display=hasAny?'block':'none';
+  if(!hasAny)return;
+
+  var W=580,H=200,padL=52,padR=12,padT=16,padB=38;
+  var cW=W-padL-padR,cH=H-padT-padB;
+  var n=days;
+  var stepX=n>1?cW/(n-1):cW;
+
+  function xp(i){return padL+i*stepX;}
+  function yp(v){return padT+cH-((v-1)/3)*cH;}
+
+  var svg='<svg viewBox="0 0 '+W+' '+H+'" xmlns="http://www.w3.org/2000/svg" style="width:100%;height:auto;display:block;">';
+
+  // Grid + y-axis labels
+  [1,2,3,4].forEach(function(v){
+    var y=yp(v);
+    svg+='<line x1="'+padL+'" y1="'+y+'" x2="'+(W-padR)+'" y2="'+y+'" stroke="rgba(128,128,128,0.15)" stroke-width="1"/>';
+    svg+='<text x="'+(padL-6)+'" y="'+(y+4)+'" text-anchor="end" font-size="9" fill="rgba(128,128,128,0.7)">'+ELABELS[v]+'</text>';
+  });
+
+  // Build path segments (energy)
+  var ePts=[];
+  eData.forEach(function(v,i){if(v!==null)ePts.push({x:xp(i),y:yp(v),i:i,v:v});});
+  for(var j=1;j<ePts.length;j++){
+    if(ePts[j].i-ePts[j-1].i<=1)
+      svg+='<line x1="'+ePts[j-1].x+'" y1="'+ePts[j-1].y+'" x2="'+ePts[j].x+'" y2="'+ePts[j].y+'" stroke="#d4a853" stroke-width="2.5" stroke-linecap="round" opacity="0.85"/>';
+  }
+  ePts.forEach(function(p){
+    svg+='<circle cx="'+p.x+'" cy="'+p.y+'" r="4.5" fill="#d4a853" stroke="var(--surface-raised)" stroke-width="2"><title>'+labels[p.i]+': '+ELABELS[p.v]+'</title></circle>';
+  });
+
+  // Build path segments (mood)
+  var mPts=[];
+  mData.forEach(function(v,i){if(v!==null)mPts.push({x:xp(i),y:yp(v),i:i,v:v});});
+  for(var k=1;k<mPts.length;k++){
+    if(mPts[k].i-mPts[k-1].i<=1)
+      svg+='<line x1="'+mPts[k-1].x+'" y1="'+mPts[k-1].y+'" x2="'+mPts[k].x+'" y2="'+mPts[k].y+'" stroke="#5f8fc7" stroke-width="2.5" stroke-linecap="round" opacity="0.85"/>';
+  }
+  mPts.forEach(function(p){
+    svg+='<circle cx="'+p.x+'" cy="'+p.y+'" r="4.5" fill="#5f8fc7" stroke="var(--surface-raised)" stroke-width="2"><title>'+labels[p.i]+': '+MLABELS[p.v]+'</title></circle>';
+  });
+
+  // X-axis labels
+  var step=days<=7?1:days<=14?2:Math.ceil(days/10);
+  labels.forEach(function(ds,i){
+    if(i%step===0||i===n-1){
+      var dObj=new Date(ds+'T12:00:00Z');
+      var lbl=i===n-1?'Today':(dObj.getUTCMonth()+1)+'/'+(dObj.getUTCDate());
+      svg+='<text x="'+xp(i)+'" y="'+(H-10)+'" text-anchor="middle" font-size="9" fill="rgba(128,128,128,0.7)">'+lbl+'</text>';
+      svg+='<line x1="'+xp(i)+'" y1="'+(H-padB+3)+'" x2="'+xp(i)+'" y2="'+(H-padB+8)+'" stroke="rgba(128,128,128,0.3)" stroke-width="1"/>';
+    }
+  });
+
+  // Today marker
+  svg+='<line x1="'+xp(n-1)+'" y1="'+padT+'" x2="'+xp(n-1)+'" y2="'+(H-padB)+'" stroke="#d4a853" stroke-width="1" stroke-dasharray="3,3" opacity="0.4"/>';
+
+  svg+='</svg>';
+  document.getElementById('mhChartWrap').innerHTML=svg;
+}
 
 function logMoodEntry(){
   if(!state.energy&&!state.mood)return;
