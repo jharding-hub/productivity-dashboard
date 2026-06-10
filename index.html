@@ -860,6 +860,70 @@ body.standalone-pwa .mobile-home-header{padding-top:max(env(safe-area-inset-top)
 .skel-line.sm{height:9px;}
 .skel-wrap{display:flex;flex-direction:column;gap:8px;padding:2px 0;}
 .skel-row-item{display:flex;align-items:center;gap:10px;padding:10px 12px;border:1px solid var(--border);border-radius:var(--radius-sm);}
+/* ── Brain Dump organizer ──────────────────────────────────────────── */
+.bd-organize-btn{display:flex;align-items:center;justify-content:center;gap:6px;width:100%;margin-top:8px;padding:8px 12px;background:linear-gradient(135deg,#5be8ff,#0ea5e9);color:#0a1218;border:1px solid #0ea5e9;border-radius:6px;font-size:12px;font-weight:700;letter-spacing:0.3px;cursor:pointer;font-family:inherit;transition:all 0.15s;}
+.bd-organize-btn:hover{filter:brightness(1.08);}
+.bd-organize-btn:disabled{opacity:0.5;cursor:not-allowed;}
+.bd-organize-btn .ti{font-size:15px;}
+/* ── Brain Dump organizer modal ──────────────────────────────────── */
+.bdo-panel{width:min(560px,94vw);max-height:88vh;display:flex;flex-direction:column;}
+.bdo-body{flex:1;overflow-y:auto;padding:4px 2px;}
+.bdo-status{display:flex;align-items:center;gap:10px;padding:24px 16px;font-size:13px;color:var(--text-dim);justify-content:center;}
+.bdo-spinner{width:16px;height:16px;border:2px solid var(--border);border-top-color:var(--accent);border-radius:50%;animation:bdo-spin 0.7s linear infinite;}
+@keyframes bdo-spin{to{transform:rotate(360deg);}}
+.bdo-section{margin-bottom:18px;}
+.bdo-section-label{font-size:10px;letter-spacing:2px;text-transform:uppercase;color:var(--text-dim);margin-bottom:8px;font-weight:700;}
+.bdo-item{display:flex;align-items:flex-start;gap:10px;padding:10px 12px;border:1px solid var(--border);border-radius:var(--radius-sm);margin-bottom:6px;background:var(--surface-raised);}
+.bdo-item-check{width:16px;height:16px;flex-shrink:0;margin-top:2px;cursor:pointer;accent-color:var(--accent);}
+.bdo-item-body{flex:1;min-width:0;}
+.bdo-item-text{font-size:13px;color:var(--text);line-height:1.4;}
+.bdo-item-dest{font-size:11px;color:var(--text-dim);margin-top:3px;display:flex;align-items:center;gap:5px;flex-wrap:wrap;}
+.bdo-dest-tag{display:inline-flex;align-items:center;gap:4px;font-size:10px;font-weight:700;letter-spacing:0.3px;padding:2px 7px;border-radius:4px;}
+.bdo-dest-tag.task{background:var(--accent-glow);color:var(--accent);}
+.bdo-dest-tag.note{background:rgba(95,143,199,0.15);color:var(--blue);}
+.bdo-dest-tag.project{background:rgba(107,171,115,0.15);color:var(--green);}
+.bdo-dest-tag.reminder{background:rgba(155,126,199,0.15);color:var(--purple);}
+.bdo-dest-tag.newproj{background:rgba(212,168,83,0.18);color:var(--accent);border:1px dashed var(--accent-dim);}
+.bdo-dest-select{font-size:11px;padding:2px 6px;background:var(--surface);border:1px solid var(--border);border-radius:6px;color:var(--text);max-width:170px;}
+.bdo-question{background:rgba(212,168,83,0.08);border:1px solid var(--accent-dim);border-radius:var(--radius-sm);padding:12px 14px;margin-bottom:10px;}
+.bdo-question-text{font-size:12px;color:var(--text);margin-bottom:8px;display:flex;align-items:flex-start;gap:7px;}
+.bdo-question-text .ti{color:var(--accent);font-size:15px;flex-shrink:0;margin-top:1px;}
+.bdo-question-opts{display:flex;gap:6px;flex-wrap:wrap;}
+.bdo-qopt{font-size:11px;padding:5px 11px;background:var(--surface-raised);border:1px solid var(--border);border-radius:6px;color:var(--text-dim);cursor:pointer;transition:all 0.15s;font-family:inherit;}
+.bdo-qopt:hover{border-color:var(--accent-dim);color:var(--text);}
+.bdo-qopt.selected{background:var(--accent-glow);border-color:var(--accent);color:var(--accent);font-weight:600;}
+.bdo-footer{display:flex;gap:8px;justify-content:flex-end;padding-top:14px;border-top:1px solid var(--border);margin-top:4px;}
+.bdo-empty{text-align:center;padding:30px 20px;font-size:13px;color:var(--text-dim);line-height:1.6;}
+.bd-org-panel{width:min(560px,94vw);max-height:88vh;display:flex;flex-direction:column;padding:0;}
+.bd-org-head{display:flex;align-items:center;gap:10px;padding:18px 22px 14px;border-bottom:1px solid var(--border);}
+.bd-org-head .ti{font-size:20px;color:var(--accent);}
+.bd-org-title{font-family:'Fraunces',serif;font-size:18px;font-weight:600;color:var(--text);flex:1;}
+.bd-org-body{flex:1;overflow-y:auto;padding:16px 22px;}
+.bd-org-foot{display:flex;gap:8px;justify-content:flex-end;padding:14px 22px;border-top:1px solid var(--border);background:var(--surface-raised);}
+.bd-org-status{font-size:12px;color:var(--text-dim);text-align:center;padding:30px 16px;line-height:1.7;}
+.bd-org-spin{display:inline-block;width:20px;height:20px;border:2px solid var(--border);border-top-color:var(--accent);border-radius:50%;animation:bd-spin 0.7s linear infinite;margin-bottom:12px;}
+@keyframes bd-spin{to{transform:rotate(360deg)}}
+/* question prompts */
+.bd-org-q{background:var(--surface-raised);border:1px solid var(--accent-dim);border-left:3px solid var(--accent);border-radius:6px;padding:12px 14px;margin-bottom:10px;}
+.bd-org-q-text{font-size:13px;color:var(--text);margin-bottom:9px;line-height:1.5;}
+.bd-org-q-thought{font-size:11px;color:var(--text-dim);font-style:italic;margin-bottom:9px;}
+.bd-org-q-opts{display:flex;flex-wrap:wrap;gap:6px;}
+.bd-org-q-opt{padding:5px 11px;font-size:12px;border:1px solid var(--border);border-radius:6px;background:var(--surface);color:var(--text-dim);cursor:pointer;font-family:inherit;transition:all 0.15s;}
+.bd-org-q-opt:hover{border-color:var(--accent-dim);color:var(--text);}
+.bd-org-q-opt.selected{background:var(--accent-glow);border-color:var(--accent);color:var(--accent);font-weight:600;}
+/* plan groups */
+.bd-org-group{margin-bottom:16px;}
+.bd-org-group-label{font-size:10px;letter-spacing:1.5px;text-transform:uppercase;color:var(--text-dim);font-weight:700;margin-bottom:8px;display:flex;align-items:center;gap:6px;}
+.bd-org-group-label .ti{font-size:13px;}
+.bd-org-item{display:flex;align-items:flex-start;gap:9px;background:var(--surface-raised);border:1px solid var(--border);border-radius:6px;padding:9px 12px;margin-bottom:6px;}
+.bd-org-item-check{width:16px;height:16px;border:1px solid var(--border);border-radius:4px;flex-shrink:0;margin-top:2px;cursor:pointer;display:flex;align-items:center;justify-content:center;font-size:11px;color:transparent;}
+.bd-org-item-check.on{background:var(--accent);border-color:var(--accent);color:var(--bg);}
+.bd-org-item-body{flex:1;min-width:0;}
+.bd-org-item-name{font-size:13px;color:var(--text);line-height:1.4;}
+.bd-org-item-meta{font-size:11px;color:var(--text-dim);margin-top:2px;}
+.bd-org-item-meta .ti{font-size:11px;vertical-align:-1px;}
+.bd-org-new-tag{font-size:9px;letter-spacing:0.5px;padding:1px 6px;border-radius:4px;background:var(--green-dim);color:var(--green);font-weight:700;margin-left:6px;}
+.bd-org-empty{text-align:center;color:var(--text-dim);font-size:13px;padding:30px 16px;line-height:1.7;}
 /* ── Custom confirm dialog ─────────────────────────────────────────── */
 .confirm-dialog-panel{width:min(360px,86vw);padding:26px 24px 20px;text-align:center;}
 .confirm-dialog-icon{margin-bottom:10px;}
@@ -3000,6 +3064,7 @@ body[data-theme="storm-dark"] .tl-hour-label{
 <div class="panel-header"><div class="panel-title"><span class="drag-handle">&#10495;</span><i class="ti ti-brain icon" aria-hidden="true"></i> Brain Dump</div><div class="panel-badge">Working Memory</div></div>
 <p style="font-size:11px;color:var(--text-dim);margin-bottom:6px;">Catch thoughts before they vanish. Press Enter to save. &#8599; promotes to subtask.</p>
 <textarea class="brain-dump-area" id="brainDump" placeholder="Ideas, stray thoughts, that thing you keep forgetting..." onkeydown="handleDumpKey(event)"></textarea>
+<button class="bd-organize-btn" id="bdOrganizeBtn" onclick="bdOrganize()"><i class="ti ti-sparkles" aria-hidden="true"></i> Organize with Axis</button>
 <div class="thought-chips" id="thoughtChips"></div></div>
 
 <!-- 4. TOOL KIT -->
@@ -3457,6 +3522,23 @@ body[data-theme="storm-dark"] .tl-hour-label{
 </div>
 </div>
 
+<!-- BRAIN DUMP ORGANIZER MODAL -->
+<div class="modal-blur-overlay" id="bdOrgModal">
+<div class="modal-blur-backdrop" onclick="bdOrgClose()"></div>
+<div class="modal-blur-panel bd-org-panel">
+  <div class="bd-org-head">
+    <i class="ti ti-sparkles" aria-hidden="true"></i>
+    <div class="bd-org-title">Organize Brain Dump</div>
+    <button class="modal-blur-close" onclick="bdOrgClose()">&#10005;</button>
+  </div>
+  <div class="bd-org-body" id="bdOrgBody"></div>
+  <div class="bd-org-foot" id="bdOrgFoot" style="display:none;">
+    <button class="btn" onclick="bdOrgClose()">Cancel</button>
+    <button class="btn btn-accent-solid" id="bdOrgApplyBtn" onclick="bdOrgApply()">Apply</button>
+  </div>
+</div>
+</div>
+
 <!-- CONFIRM DIALOG — replaces all native browser confirm() calls -->
 <div class="modal-blur-overlay" id="confirmDialog">
 <div class="modal-blur-backdrop" id="confirmDialogBd" onclick="_confirmCancel()"></div>
@@ -3467,6 +3549,24 @@ body[data-theme="storm-dark"] .tl-hour-label{
     <button class="btn" id="confirmCancelBtn" onclick="_confirmCancel()">Cancel</button>
     <button class="btn" id="confirmAltBtn" onclick="_confirmAlt()" style="display:none"></button>
     <button class="btn btn-accent-solid" id="confirmOkBtn" onclick="_confirmDo()">Confirm</button>
+  </div>
+</div>
+</div>
+
+<!-- BRAIN DUMP ORGANIZER MODAL -->
+<div class="modal-blur-overlay" id="bdOrganizeModal">
+<div class="modal-blur-backdrop" onclick="bdOrganizeClose()"></div>
+<div class="modal-blur-panel bdo-panel">
+  <div class="modal-blur-header">
+    <div class="modal-blur-title"><i class="ti ti-sparkles" aria-hidden="true" style="color:var(--accent);margin-right:6px;"></i>Organize Brain Dump</div>
+    <button class="modal-blur-close" onclick="bdOrganizeClose()">&#10005;</button>
+  </div>
+  <div class="bdo-body" id="bdoBody">
+    <div class="bdo-status"><div class="bdo-spinner"></div> Axis is reading your thoughts…</div>
+  </div>
+  <div class="bdo-footer" id="bdoFooter" style="display:none;">
+    <button class="btn" onclick="bdOrganizeClose()">Cancel</button>
+    <button class="btn btn-accent-solid" id="bdoApplyBtn" onclick="bdOrganizeApply()">Apply Organization</button>
   </div>
 </div>
 </div>
@@ -5004,6 +5104,278 @@ function handleDumpKey(e){if(e.key==='Enter'&&!e.shiftKey){e.preventDefault();co
 function deleteThought(id){state.thoughts=state.thoughts.filter(t=>t.id!==id);save();renderThoughts();}
 function promoteThought(id){const th=state.thoughts.find(t=>t.id===id);if(!th)return;if(state.projects.length>0){const sp=_sortedProjects();const c=prompt('Promote to which project?\n\n'+sp.map((p,i)=>(i+1)+'. '+p.name).join('\n')+'\n\n(0 = reminders)','1');if(c===null)return;const idx=parseInt(c)-1;if(idx>=0&&idx<sp.length){sp[idx].subtasks.push({id:'st'+Date.now(),name:th.text,due:'',priority:'med',timeEst:'',done:false});deleteThought(id);renderProjects();renderTaskList();toast('Added to '+sp[idx].name);return;}}state.reminders.push({id:'rem'+Date.now(),text:th.text,date:'',time:''});deleteThought(id);renderReminders();toast('Moved to reminders');}
 function editThought(id,v){if(!v)return;const t=state.thoughts.find(t=>t.id===id);if(t)t.text=v;save();}
+
+// ═══════════════════════════════════════════════════════════════════════════
+// BRAIN DUMP ORGANIZER — Axis sorts thoughts into projects/tasks/notes
+// ═══════════════════════════════════════════════════════════════════════════
+var _bdoPlan = null;  // current organization plan from Axis
+
+async function bdOrganize(){
+  // Capture any text still in the textarea as a thought first
+  var ta = document.getElementById('brainDump');
+  if(ta && ta.value.trim()){
+    state.thoughts.push({id:'th'+Date.now(),text:ta.value.trim()});
+    ta.value=''; save(); renderThoughts();
+  }
+
+  if(!state.thoughts || state.thoughts.length===0){
+    toast('Nothing to organize — add some thoughts first');
+    return;
+  }
+
+  var btn = document.getElementById('bdOrganizeBtn');
+  if(btn) btn.disabled = true;
+
+  // Open modal in loading state
+  document.getElementById('bdoBody').innerHTML='<div class="bdo-status"><div class="bdo-spinner"></div> Axis is reading your thoughts…</div>';
+  document.getElementById('bdoFooter').style.display='none';
+  document.getElementById('bdOrganizeModal').classList.add('open');
+
+  try {
+    var plan = await _bdoRequestPlan();
+    _bdoPlan = plan;
+    _bdoRenderPlan(plan);
+  } catch(e){
+    console.error('[bdo] organize error', e);
+    document.getElementById('bdoBody').innerHTML='<div class="bdo-empty">Axis couldn\'t organize right now.<br><span style="font-size:11px;">'+esc(e.message||'Unknown error')+'</span></div>';
+  } finally {
+    if(btn) btn.disabled = false;
+  }
+}
+
+async function _bdoRequestPlan(){
+  // Build context: thoughts + existing projects (names only) so Axis can match
+  var thoughts = state.thoughts.map(function(t){ return {id:t.id, text:t.text}; });
+  var projects = (state.projects||[]).map(function(p){ return p.name; });
+
+  var sys = 'You are Axis, organizing a brain dump for an ADHD user of the Centerpost productivity app. '
+    + 'Sort each thought into the best destination. Output ONLY raw JSON (no markdown, no code fences).\n\n'
+    + 'EXISTING PROJECTS: '+(projects.length?JSON.stringify(projects):'(none yet)')+'\n\n'
+    + 'For each thought decide a destination:\n'
+    + '- "task": an actionable to-do. If it clearly belongs to an existing project, set "project" to that exact name; otherwise leave project empty (standalone task).\n'
+    + '- "note": reference info, an idea, or something to remember (not actionable). Optionally tag an existing "project".\n'
+    + '- "reminder": time-sensitive, should resurface on a date.\n'
+    + '- "newproject": this thought implies a whole new project should exist. Put the project name in "newProjectName".\n\n'
+    + 'When you are NOT confident where something goes, DO NOT guess — add a clarifying question instead.\n\n'
+    + 'Return this exact JSON shape:\n'
+    + '{"items":[{"thoughtId":"<id>","text":"<original text>","dest":"task|note|reminder|newproject","project":"<existing project name or empty>","newProjectName":"<only if dest=newproject>","priority":"low|med|high"}],'
+    + '"questions":[{"thoughtId":"<id>","text":"<original thought>","question":"<short question>","options":["<opt1>","<opt2>","<opt3>"]}]}\n\n'
+    + 'Every thought must appear in EITHER items OR questions, never both. Keep questions rare — only for genuine ambiguity. Options should be concrete (e.g. project names or "Task vs Note").';
+
+  var userMsg = 'Organize these thoughts:\n'+JSON.stringify(thoughts);
+
+  var endpoint = JARVIS_PROXY_URL;
+  var res = await fetch(endpoint, {
+    method:'POST',
+    headers:{'Content-Type':'application/json'},
+    body:JSON.stringify({
+      model:'claude-haiku-4-5-20251001',
+      max_tokens:1500,
+      system:sys,
+      messages:[{role:'user',content:userMsg}]
+    })
+  });
+
+  var raw = await res.text();
+  if(!res.ok) throw new Error('HTTP '+res.status+' — '+raw.slice(0,120));
+
+  var data; try{ data=JSON.parse(raw); }catch(e){ throw new Error('Bad response from Axis'); }
+
+  // Extract text from Anthropic response shape
+  var txt='';
+  if(data.content && Array.isArray(data.content)){
+    txt = data.content.filter(function(b){return b.type==='text';}).map(function(b){return b.text;}).join('');
+  } else if(typeof data.reply==='string'){
+    txt = data.reply;
+  }
+  txt = txt.replace(/```json|```/g,'').trim();
+
+  var plan; try{ plan=JSON.parse(txt); }catch(e){ throw new Error('Axis returned unparseable plan'); }
+  if(!plan.items) plan.items=[];
+  if(!plan.questions) plan.questions=[];
+  return plan;
+}
+
+function _bdoRenderPlan(plan){
+  var body = document.getElementById('bdoBody');
+  var projects = (state.projects||[]).map(function(p){return p.name;});
+
+  if(plan.items.length===0 && plan.questions.length===0){
+    body.innerHTML='<div class="bdo-empty">Axis didn\'t find anything to organize.</div>';
+    return;
+  }
+
+  var html='';
+
+  // ── Clarifying questions first ──
+  if(plan.questions.length){
+    html+='<div class="bdo-section"><div class="bdo-section-label"><i class="ti ti-help-circle" aria-hidden="true"></i> Axis needs your input</div>';
+    plan.questions.forEach(function(q,qi){
+      html+='<div class="bdo-question" data-qi="'+qi+'">';
+      html+='<div class="bdo-question-text"><i class="ti ti-help-circle" aria-hidden="true"></i><div><em>"'+esc(q.text)+'"</em><br>'+esc(q.question)+'</div></div>';
+      html+='<div class="bdo-question-opts">';
+      (q.options||[]).forEach(function(opt,oi){
+        html+='<button class="bdo-qopt" onclick="_bdoAnswerQuestion('+qi+','+oi+',this)">'+esc(opt)+'</button>';
+      });
+      html+='</div></div>';
+    });
+    html+='</div>';
+  }
+
+  // ── Confident items, grouped by destination ──
+  if(plan.items.length){
+    html+='<div class="bdo-section"><div class="bdo-section-label">Proposed organization</div>';
+    plan.items.forEach(function(it,ii){
+      var destTag='';
+      if(it.dest==='newproject'){
+        destTag='<span class="bdo-dest-tag newproj"><i class="ti ti-folder-plus" aria-hidden="true"></i>New: '+esc(it.newProjectName||'Project')+'</span>';
+      }else if(it.dest==='task'){
+        destTag='<span class="bdo-dest-tag task"><i class="ti ti-checklist" aria-hidden="true"></i>Task</span>'+(it.project?' <span class="bdo-dest-tag project">'+esc(it.project)+'</span>':' <span style="color:var(--text-faint);">standalone</span>');
+      }else if(it.dest==='note'){
+        destTag='<span class="bdo-dest-tag note"><i class="ti ti-notebook" aria-hidden="true"></i>Note</span>'+(it.project?' <span class="bdo-dest-tag project">'+esc(it.project)+'</span>':'');
+      }else if(it.dest==='reminder'){
+        destTag='<span class="bdo-dest-tag reminder"><i class="ti ti-bell" aria-hidden="true"></i>Reminder</span>';
+      }
+      html+='<div class="bdo-item">';
+      html+='<input type="checkbox" class="bdo-item-check" checked data-ii="'+ii+'">';
+      html+='<div class="bdo-item-body"><div class="bdo-item-text">'+esc(it.text)+'</div><div class="bdo-item-dest">'+destTag+'</div></div>';
+      html+='</div>';
+    });
+    html+='</div>';
+  }
+
+  body.innerHTML=html;
+  document.getElementById('bdoFooter').style.display='flex';
+  _bdoUpdateApplyState();
+}
+
+// User answers a clarifying question → convert it into a plan item
+function _bdoAnswerQuestion(qi, oi, btnEl){
+  var q = _bdoPlan.questions[qi];
+  if(!q) return;
+  var answer = q.options[oi];
+
+  // Mark selected visually
+  var optsWrap = btnEl.parentElement;
+  optsWrap.querySelectorAll('.bdo-qopt').forEach(function(b){b.classList.remove('selected');});
+  btnEl.classList.add('selected');
+
+  // Interpret the answer into a destination
+  var projects = (state.projects||[]).map(function(p){return p.name;});
+  var newItem = {thoughtId:q.thoughtId, text:q.text, dest:'task', project:'', priority:'med'};
+
+  var ans = answer.toLowerCase();
+  if(ans.indexOf('note')>=0){ newItem.dest='note'; }
+  else if(ans.indexOf('reminder')>=0){ newItem.dest='reminder'; }
+  else if(ans.indexOf('new project')>=0||ans.indexOf('new:')>=0){ newItem.dest='newproject'; newItem.newProjectName=q.text.slice(0,40); }
+  else {
+    // Check if the answer matches an existing project name
+    var match = projects.find(function(p){ return ans.indexOf(p.toLowerCase())>=0; });
+    if(match){ newItem.dest='task'; newItem.project=match; }
+    else { newItem.dest='task'; }
+  }
+
+  // Store the resolved answer on the question, mark it answered
+  q._resolved = newItem;
+  _bdoUpdateApplyState();
+}
+
+function _bdoUpdateApplyState(){
+  // Apply button enabled only when every question has been answered
+  var unanswered = (_bdoPlan.questions||[]).filter(function(q){ return !q._resolved; }).length;
+  var btn = document.getElementById('bdoApplyBtn');
+  if(btn){
+    btn.disabled = unanswered>0;
+    btn.textContent = unanswered>0 ? 'Answer '+unanswered+' question'+(unanswered===1?'':'s')+' first' : 'Apply Organization';
+  }
+}
+
+function bdOrganizeApply(){
+  if(!_bdoPlan) return;
+
+  // Gather confident items whose checkbox is still checked
+  var checks = document.querySelectorAll('.bdo-item-check');
+  var keepIdx = {};
+  checks.forEach(function(c){ if(c.checked) keepIdx[c.dataset.ii]=true; });
+
+  var toApply = [];
+  (_bdoPlan.items||[]).forEach(function(it,ii){ if(keepIdx[ii]) toApply.push(it); });
+  // Add resolved questions
+  (_bdoPlan.questions||[]).forEach(function(q){ if(q._resolved) toApply.push(q._resolved); });
+
+  if(toApply.length===0){ toast('Nothing selected to apply'); return; }
+
+  var now = new Date();
+  var counts = {task:0,note:0,reminder:0,project:0};
+  var processedThoughtIds = [];
+
+  toApply.forEach(function(it){
+    processedThoughtIds.push(it.thoughtId);
+
+    if(it.dest==='newproject'){
+      var pname = it.newProjectName || it.text.slice(0,40);
+      // Reuse existing project of same name if it exists
+      var existing = (state.projects||[]).find(function(p){return p.name.toLowerCase()===pname.toLowerCase();});
+      if(existing){
+        existing.subtasks=existing.subtasks||[];
+        existing.subtasks.push({id:'st'+Date.now()+Math.random().toString(36).slice(2,6),name:it.text,due:'',priority:it.priority||'med',timeEst:'',done:false});
+      } else {
+        state.projects.push({id:'p'+Date.now()+Math.random().toString(36).slice(2,6),name:pname,due:'',expanded:true,subtasks:[{id:'st'+Date.now()+Math.random().toString(36).slice(2,6),name:it.text,due:'',priority:it.priority||'med',timeEst:'',done:false}]});
+        counts.project++;
+      }
+      counts.task++;
+    }
+    else if(it.dest==='task'){
+      if(it.project){
+        var proj = (state.projects||[]).find(function(p){return p.name.toLowerCase()===it.project.toLowerCase();});
+        if(proj){
+          proj.subtasks=proj.subtasks||[];
+          proj.subtasks.push({id:'st'+Date.now()+Math.random().toString(36).slice(2,6),name:it.text,due:'',priority:it.priority||'med',timeEst:'',done:false});
+        } else {
+          state.tasks=state.tasks||[];
+          state.tasks.push({id:'t'+Date.now()+Math.random().toString(36).slice(2,6),name:it.text,due:'',priority:it.priority||'med',timeEst:'',done:false});
+        }
+      } else {
+        state.tasks=state.tasks||[];
+        state.tasks.push({id:'t'+Date.now()+Math.random().toString(36).slice(2,6),name:it.text,due:'',priority:it.priority||'med',timeEst:'',done:false});
+      }
+      counts.task++;
+    }
+    else if(it.dest==='note'){
+      var pid='';
+      if(it.project){ var np=(state.projects||[]).find(function(p){return p.name.toLowerCase()===it.project.toLowerCase();}); if(np)pid=np.id; }
+      state.notes=state.notes||[];
+      state.notes.push({id:'n'+Date.now()+Math.random().toString(36).slice(2,6),label:it.text.slice(0,40),body:it.text,projectId:pid,projectIds:pid?[pid]:[],created:now.toISOString(),date:now.toLocaleDateString('en-US',{month:'short',day:'numeric',year:'numeric'}),time:now.toLocaleTimeString('en-US',{hour:'numeric',minute:'2-digit'})});
+      counts.note++;
+    }
+    else if(it.dest==='reminder'){
+      state.reminders=state.reminders||[];
+      state.reminders.push({id:'rem'+Date.now()+Math.random().toString(36).slice(2,6),text:it.text,date:'',time:'',projectId:'',projectIds:[]});
+      counts.reminder++;
+    }
+  });
+
+  // Remove processed thoughts from brain dump
+  state.thoughts = state.thoughts.filter(function(t){ return processedThoughtIds.indexOf(t.id)<0; });
+
+  save();
+  renderThoughts(); renderProjects(); renderTaskList(); renderNotes(); renderReminders();
+
+  var parts=[];
+  if(counts.task)parts.push(counts.task+' task'+(counts.task===1?'':'s'));
+  if(counts.note)parts.push(counts.note+' note'+(counts.note===1?'':'s'));
+  if(counts.reminder)parts.push(counts.reminder+' reminder'+(counts.reminder===1?'':'s'));
+  if(counts.project)parts.push(counts.project+' new project'+(counts.project===1?'':'s'));
+  toast('Organized into '+(parts.join(', ')||'nothing'));
+
+  bdOrganizeClose();
+}
+
+function bdOrganizeClose(){
+  document.getElementById('bdOrganizeModal').classList.remove('open');
+  _bdoPlan = null;
+}
+
 function renderThoughts(){document.getElementById('thoughtChips').innerHTML=state.thoughts.map(t=>'<div class="thought-chip"><span class="editable" id="tt_'+t.id+'">'+esc(t.text)+'</span><span class="chip-promote" onclick="promoteThought(\''+t.id+'\')">\u2197</span><span class="chip-x" onclick="deleteThought(\''+t.id+'\')">\u00D7</span></div>').join('');state.thoughts.forEach(t=>{const e=document.getElementById('tt_'+t.id);if(e)makeEditable(e,v=>editThought(t.id,v));});refreshEditables();}
 
 // ENERGY & MOOD
@@ -12436,6 +12808,9 @@ function _gcalInitTokenClient(){
     client_id: GOOGLE_CLIENT_ID,
     scope: GOOGLE_SCOPES,
     callback: function(resp){
+      // If a _gcalEnsureToken promise is waiting, route there.
+      if(_gcalInteractiveCb){ _gcalInteractiveCb(resp); return; }
+      // Otherwise this is an interactive gcalConnect() flow.
       if(resp.error){
         toast('Google auth: '+(resp.error_description||resp.error));
         _gcalSetSyncingUI(false);
@@ -12507,29 +12882,55 @@ function gcalDisconnect(){
 }
 
 // ── TOKEN HANDLING ─────────────────────────────────────────────────────────
-async function _gcalEnsureToken(){
+var _gcalTokenPromise = null;   // single in-flight token request
+var _gcalInteractiveCb = null;  // callback target for the active request
+
+async function _gcalEnsureToken(interactive){
   if(_gcalAccessToken && Date.now() < _gcalTokenExpiry) return true;
   if(!GOOGLE_CLIENT_ID) return false;
-  try {
-    await _gcalLoadGis();
-    if(!_gcalInitTokenClient()) return false;
-  } catch(e){ return false; }
-  // Silent re-auth attempt
-  return new Promise(function(resolve){
-    var origCb = _gcalTokenClient.callback;
-    _gcalTokenClient.callback = function(resp){
-      _gcalTokenClient.callback = origCb;
-      if(resp.error){ resolve(false); return; }
-      _gcalAccessToken = resp.access_token;
-      _gcalTokenExpiry = Date.now() + ((resp.expires_in||3600) * 1000) - 60000;
-      resolve(true);
-    };
-    _gcalTokenClient.requestAccessToken({ prompt: '' });
-  });
+
+  // If a token request is already in flight, await the same promise rather than
+  // starting a second one (which would clobber the callback and hang the first).
+  if(_gcalTokenPromise) return _gcalTokenPromise;
+
+  _gcalTokenPromise = (async function(){
+    try {
+      await _gcalLoadGis();
+      if(!_gcalInitTokenClient()) return false;
+    } catch(e){ console.warn('[gcal] GIS load failed', e); return false; }
+
+    return new Promise(function(resolve){
+      // Single shared callback — set once in _gcalInitTokenClient — routes here.
+      _gcalInteractiveCb = function(resp){
+        _gcalInteractiveCb = null;
+        if(resp && resp.access_token){
+          _gcalAccessToken = resp.access_token;
+          _gcalTokenExpiry = Date.now() + ((resp.expires_in||3600) * 1000) - 60000;
+          resolve(true);
+        } else {
+          console.warn('[gcal] token request failed', resp && (resp.error||resp));
+          resolve(false);
+        }
+      };
+      try {
+        // Empty prompt = silent if possible. On failure (common on Safari/iOS
+        // third-party cookie blocking) the caller falls back to interactive connect.
+        _gcalTokenClient.requestAccessToken({ prompt: interactive ? 'consent' : '' });
+      } catch(e){
+        console.warn('[gcal] requestAccessToken threw', e);
+        _gcalInteractiveCb = null;
+        resolve(false);
+      }
+    });
+  })();
+
+  var result = await _gcalTokenPromise;
+  _gcalTokenPromise = null;
+  return result;
 }
 
 // ── HTTP HELPER ────────────────────────────────────────────────────────────
-async function _gcalFetch(method, path, body){
+async function _gcalFetch(method, path, body, _isRetry){
   var ok = await _gcalEnsureToken();
   if(!ok){
     console.warn('[gcal] no valid token for '+method+' '+path);
@@ -12543,8 +12944,14 @@ async function _gcalFetch(method, path, body){
   try {
     var r = await fetch(GCAL_API_BASE+path, opts);
     if(r.status === 204) return {_deleted:true};
+    // Token rejected mid-flight — force one refresh and retry exactly once.
+    if(r.status === 401 && !_isRetry){
+      console.warn('[gcal] 401 — forcing token refresh and retrying once');
+      _gcalAccessToken = null; _gcalTokenExpiry = 0;
+      return _gcalFetch(method, path, body, true);
+    }
     var data = await r.json();
-    if(data.error){ console.warn('[gcal] '+method+' '+path, data.error); }
+    if(data.error){ console.warn('[gcal] '+method+' '+path, r.status, data.error); }
     return data;
   } catch(e){
     console.error('[gcal] fetch error', method, path, e);
@@ -12653,9 +13060,15 @@ async function gcalPushAll(){
     // Avoids grinding through N items that all return null on expired auth.
     var tokenOk = await _gcalEnsureToken();
     if(!tokenOk){
-      toast('Google session expired — re-authorize in Calendar settings');
-      openGcalModal();
-      return;
+      // Silent refresh failed (common on Safari/iOS). Trigger interactive consent.
+      toast('Google session expired — reconnecting…');
+      _gcalAccessToken = null; _gcalTokenExpiry = 0;
+      tokenOk = await _gcalEnsureToken(true);
+      if(!tokenOk){
+        toast('Could not reconnect to Google — open Calendar settings to re-authorize');
+        openGcalModal();
+        return;
+      }
     }
 
     // 1. Standalone tasks with due date (not done)
