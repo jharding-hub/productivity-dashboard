@@ -1034,7 +1034,7 @@ body.unlocked .date-editable{border-bottom-color:var(--border);}
 
 /* ═══ POINTS / REWARDS SYSTEM ═══ */
 .points-badge{display:inline-flex;align-items:center;gap:6px;padding:5px 12px;background:var(--surface-raised);border:1.5px solid var(--border);border-radius:var(--radius-sm);cursor:pointer;transition:all 0.2s;font-weight:600;user-select:none;}
-.points-badge:hover{transform:translateY(-1px);box-shadow:0 3px 8px rgba(0,0,0,0.25);}
+.points-badge:hover{border-color:var(--border-focus);}
 .points-badge-lg{padding:7px 15px;gap:8px;border-width:2px;border-radius:var(--radius);}
 .points-badge-lg .points-tier-icon{font-size:25px;}
 .points-badge-lg .points-value{font-size:20px;font-weight:700;}
@@ -1129,8 +1129,8 @@ body.unlocked .date-editable{border-bottom-color:var(--border);}
 .jarvis-fab > *{position:relative;z-index:2;}
 /* Inner core glow — uses text-shadow on the ✦ character */
 .jarvis-fab{text-shadow:0 0 8px #5be8ff,0 0 16px rgba(91,232,255,0.6);}
-.jarvis-fab:hover{transform:scale(1.08);box-shadow:0 0 0 1px rgba(91,232,255,0.6) inset,0 0 0 4px rgba(91,232,255,0.12) inset,0 0 24px rgba(91,232,255,0.6),0 4px 28px rgba(0,0,0,0.7);}
-.jarvis-fab.active{box-shadow:0 0 0 1px rgba(91,232,255,0.7) inset,0 0 0 4px rgba(91,232,255,0.15) inset,0 0 32px rgba(91,232,255,0.8),0 4px 32px rgba(0,0,0,0.7);}
+.jarvis-fab:hover{transform:scale(1.06);box-shadow:0 0 0 2px rgba(91,232,255,0.45) inset,0 4px 20px rgba(0,0,0,0.5);}
+.jarvis-fab.active{box-shadow:0 0 0 2px rgba(91,232,255,0.55) inset,0 4px 20px rgba(0,0,0,0.5);}
 .jarvis-fab.active::before{animation-duration:2.5s;border-top-color:#a4f3ff;}
 
 @keyframes jarvis-ring-spin{
@@ -1140,8 +1140,8 @@ body.unlocked .date-editable{border-bottom-color:var(--border);}
 
 /* Arc reactor pulse on idle */
 @keyframes jarvis-arc-pulse{
-  0%,100%{box-shadow:0 0 0 1px rgba(91,232,255,0.4) inset,0 0 0 4px rgba(91,232,255,0.08) inset,0 0 16px rgba(91,232,255,0.4),0 4px 24px rgba(0,0,0,0.6);}
-  50%{box-shadow:0 0 0 1px rgba(91,232,255,0.6) inset,0 0 0 4px rgba(91,232,255,0.15) inset,0 0 28px rgba(91,232,255,0.7),0 4px 24px rgba(0,0,0,0.6);}
+  0%,100%{box-shadow:0 0 0 1px rgba(91,232,255,0.3) inset,0 4px 20px rgba(0,0,0,0.5);}
+  50%{box-shadow:0 0 0 2px rgba(91,232,255,0.5) inset,0 4px 20px rgba(0,0,0,0.5);}
 }
 .jarvis-fab{animation:jarvis-arc-pulse 3.5s ease-in-out infinite;}
 
@@ -1277,7 +1277,7 @@ body.unlocked .date-editable{border-bottom-color:var(--border);}
 .jarvis-greeting{text-align:center;padding:16px 8px 8px;font-size:12px;color:var(--text-dim);font-style:italic;}
 /* ── BREAKDOWN button (lives in Projects + Tasks panel headers) ── */
 .breakdown-btn{background:linear-gradient(135deg,#5be8ff,#0ea5e9);color:#0a1218;border:1px solid #0ea5e9;border-radius:10px;padding:2px 8px;font-size:10px;font-weight:700;letter-spacing:0.3px;cursor:pointer;display:inline-flex;align-items:center;gap:3px;transition:all 0.15s;line-height:1.5;box-shadow:0 0 8px rgba(91,232,255,0.35);}
-.breakdown-btn:hover{background:linear-gradient(135deg,#7df0ff,#3ab8e0);border-color:#5be8ff;transform:translateY(-1px);box-shadow:0 2px 12px rgba(91,232,255,0.5);}
+.breakdown-btn:hover{background:linear-gradient(135deg,#7df0ff,#3ab8e0);border-color:#5be8ff;}
 .breakdown-btn:active{transform:translateY(0);}
 .breakdown-btn .bd-spark{font-size:11px;line-height:1;}
 /* When Jarvis is in Breakdown mode, color-shift the title */
@@ -1317,7 +1317,7 @@ body.unlocked .date-editable{border-bottom-color:var(--border);}
 .gcal-toggle-row input{margin:0;}
 .gcal-toggle-row .gcal-toggle-label{flex:1;color:var(--text);}
 .gcal-toggle-row .gcal-toggle-hint{font-size:11px;color:var(--text-dim);}
-.gcal-help{font-size:11px;color:var(--text-dim);line-height:1.5;padding:10px 12px;background:var(--surface-raised);border-radius:8px;border-left:3px solid #4a90e2;margin-top:12px;}
+.gcal-help{font-size:11px;color:var(--text-dim);line-height:1.5;padding:10px 12px;background:var(--surface-raised);border-radius:8px;border-left:3px solid var(--blue);margin-top:12px;}
 .gcal-help code{background:var(--surface);padding:1px 5px;border-radius:3px;font-size:10px;}
 /* External event in timeline (pulled from Google) */
 .tl-block.external-gcal{border-left-color:#4a90e2 !important;background:linear-gradient(90deg,rgba(74,144,226,0.18),rgba(74,144,226,0.06)) !important;}
@@ -1329,7 +1329,7 @@ body.unlocked .date-editable{border-bottom-color:var(--border);}
 .well-intro strong{color:var(--text);}
 .well-list{display:flex;flex-direction:column;gap:8px;}
 .well-item{background:var(--surface-raised);border:1px solid var(--border);border-radius:var(--radius-sm);overflow:hidden;transition:border-color 0.15s;}
-.well-item.has-note{border-left:3px solid #7fb3a0;}
+.well-item.has-note{border-left:3px solid var(--teal);}
 .well-item-header{display:flex;align-items:center;gap:10px;padding:10px 14px;cursor:pointer;user-select:none;}
 .well-item-header:hover{background:var(--surface-hover);}
 .well-icon{font-size:22px;flex-shrink:0;}
@@ -1721,6 +1721,10 @@ body[data-theme="storm-dark"] .tl-hour-label{
 .note-filter-row .note-search{flex:2;}
 .decision-prompt{background:var(--surface-raised);border:1px solid var(--border);border-radius:var(--radius-sm);padding:12px;font-size:13px;color:var(--text-dim);line-height:1.6;margin-bottom:8px;}
 .decision-prompt strong{color:var(--accent);font-weight:600;}
+/* State advice — 3 semantic levels instead of 5 inline colors */
+.state-advice{border-left:3px solid var(--accent);}
+.state-advice-positive{border-left-color:var(--green);}
+.state-advice-alert{border-left-color:var(--red);}
 .modal-overlay{position:fixed;inset:0;background:rgba(0,0,0,0.6);z-index:1100;display:none;align-items:center;justify-content:center;padding:20px;}
 .modal-overlay.show{display:flex;}
 .modal{background:var(--surface);border:1px solid var(--border);border-radius:var(--radius);padding:24px;max-width:480px;width:100%;max-height:80vh;overflow-y:auto;}
@@ -1853,7 +1857,7 @@ body[data-theme="storm-dark"] .tl-hour-label{
   font-family:inherit;font-size:12px;font-weight:600;color:var(--text);
   transition:all 0.15s;
 }
-.music-platform-btn:hover{transform:translateY(-2px);box-shadow:0 6px 20px rgba(0,0,0,0.2);}
+.music-platform-btn:hover{border-color:var(--border-focus);}
 .music-platform-btn.spotify:hover{border-color:#1db954;background:rgba(29,185,84,0.1);}
 .music-platform-btn.apple:hover{border-color:#fc3c44;background:rgba(252,60,68,0.1);}
 .music-platform-btn.amazon:hover{border-color:#00a8e0;background:rgba(0,168,224,0.1);}
@@ -2104,7 +2108,7 @@ body[data-theme="storm-dark"] .tl-hour-label{
 .landing-section-sub{font-size:16px;color:var(--text-dim);margin-bottom:48px;max-width:600px;line-height:1.5;}
 .feature-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:18px;}
 .feature-card{background:var(--surface);border:1px solid var(--border);border-radius:12px;padding:24px;transition:all 0.2s;}
-.feature-card:hover{border-color:rgba(91,232,255,0.3);transform:translateY(-2px);box-shadow:0 12px 32px rgba(0,0,0,0.3);}
+.feature-card:hover{border-color:rgba(91,232,255,0.3);}
 .feature-icon{width:42px;height:42px;background:rgba(91,232,255,0.1);border:1px solid rgba(91,232,255,0.25);border-radius:10px;display:flex;align-items:center;justify-content:center;font-size:22px;margin-bottom:14px;}
 .feature-name{font-family:'Fraunces',serif;font-size:18px;font-weight:600;color:var(--text);margin-bottom:6px;letter-spacing:-0.3px;}
 .feature-desc{font-size:13px;line-height:1.55;color:var(--text-dim);}
@@ -2152,7 +2156,7 @@ body[data-theme="storm-dark"] .tl-hour-label{
   .signin-card{padding:32px 24px;}
 }
 .customize-btn{background:none;border:1px solid var(--border);color:var(--text-faint);padding:3px 8px;border-radius:var(--radius-sm);cursor:pointer;font-size:11px;font-family:inherit;transition:all 0.15s;}
-.kids-launcher:hover{background:linear-gradient(135deg,#ffe060,#ff66bb) !important;border-color:#ffcc00 !important;color:#1a0033 !important;box-shadow:0 2px 14px rgba(255,204,0,0.45) !important;transform:translateY(-1px);}
+.kids-launcher:hover{background:linear-gradient(135deg,#ffe060,#ff66bb) !important;border-color:#ffcc00 !important;color:#1a0033 !important;}
 .howto-launcher:hover{background:linear-gradient(135deg,#7df0ff,#3ab8e0) !important;border-color:#5be8ff !important;color:#0a1218 !important;box-shadow:0 2px 12px rgba(91,232,255,0.5) !important;transform:translateY(-1px);}
 .customize-btn:hover{border-color:var(--accent-dim);color:var(--accent);}
 .customize-overlay{position:fixed;inset:0;background:rgba(0,0,0,0.6);z-index:300;display:none;align-items:center;justify-content:center;padding:20px;}
@@ -2504,7 +2508,7 @@ body[data-theme="storm-dark"] .tl-hour-label{
 .toolkit-grid .toolkit-btn:last-child:nth-child(odd){grid-column:1/-1;}
 .toolkit-btn{display:flex;flex-direction:column;align-items:center;justify-content:center;gap:7px;padding:18px 10px;border-radius:var(--radius-sm);border:1.5px solid var(--border);background:var(--surface-raised);cursor:pointer;font-family:inherit;font-size:22px;transition:all 0.18s;color:var(--text-dim);}
 .toolkit-btn span{font-size:12px;font-weight:600;letter-spacing:0.3px;}
-.toolkit-btn:hover{transform:translateY(-2px);box-shadow:0 4px 14px rgba(0,0,0,0.3);}
+.toolkit-btn:hover{border-color:var(--border-focus);background:var(--surface-hover);}
 .toolkit-breath:hover{border-color:var(--teal);color:var(--teal);background:var(--teal-dim);}
 .toolkit-timer:hover{border-color:var(--green);color:var(--green);background:var(--green-dim);}
 .toolkit-timer-wrap{position:relative;display:flex;}
@@ -4988,8 +4992,8 @@ function renderThoughts(){document.getElementById('thoughtChips').innerHTML=stat
 // ENERGY & MOOD
 function setEnergy(el,v){state.energy=v;document.querySelectorAll('#energyPills .em-pill').forEach(c=>c.classList.remove('selected'));el.classList.add('selected');logMoodEntry();save();showStateAdvice();updateWellnessVisibility();var today=_dayKey();if(state.points&&state.points.lastEnergyDate!==today){state.points.lastEnergyDate=today;save();addPoints('mood_energy',el);}}
 function setMood(el,v){state.mood=v;document.querySelectorAll('#moodPills .em-pill').forEach(c=>c.classList.remove('selected'));el.classList.add('selected');logMoodEntry();save();showStateAdvice();updateWellnessVisibility();var today=_dayKey();if(state.points&&state.points.lastMoodDate!==today){state.points.lastMoodDate=today;save();addPoints('mood_energy',el);}}
-const adviceMap={'high-focused':{t:'\u{1F525} Peak state \u2014 tackle your hardest task now.',c:'var(--green)'},'high-scattered':{t:'\u26A1 Energy but no focus. Start a Pomodoro.',c:'var(--orange)'},'high-anxious':{t:'\u{1F4A8} Burn off anxious energy with something physical.',c:'var(--orange)'},'high-calm':{t:'\u2728 Great for creative work or complex problems.',c:'var(--green)'},'good-focused':{t:'\u{1F44D} Solid state. Pick a medium-priority task.',c:'var(--green)'},'good-scattered':{t:'\u{1F4CB} List 3 things, do just the first one.',c:'var(--blue)'},'good-anxious':{t:'\u{1F4DD} Channel worry into a task with a clear endpoint.',c:'var(--blue)'},'good-calm':{t:'\u{1F33F} Good baseline. Handle routine tasks or admin.',c:'var(--green)'},'low-focused':{t:'\u{1F3AF} Low but present? Detail work \u2014 editing, reviewing.',c:'var(--blue)'},'low-scattered':{t:'\u{1FAE7} Not deep work time. 5-min break, then one tiny task.',c:'var(--purple)'},'low-anxious':{t:'\u{1F9CA} Pause. Check the Grounding Toolkit \u2192',c:'var(--purple)'},'low-calm':{t:'\u2601\uFE0F Rest state. Gentle tasks or a proper break.',c:'var(--blue)'},'crashed-focused':{t:'\u26A0\uFE0F Running on fumes. Only truly urgent items.',c:'var(--red)'},'crashed-scattered':{t:'\u{1F6D1} Brain needs a reset. Check the Grounding Toolkit \u2192',c:'var(--red)'},'crashed-anxious':{t:'\u{1FAC2} Hardest state. Grounding Toolkit first, then reassess.',c:'var(--red)'},'crashed-calm':{t:'\u{1F319} Depleted but peaceful. Gentle admin or rest.',c:'var(--purple)'}};
-function showStateAdvice(){const el=document.getElementById('stateAdvice');if(!state.energy||!state.mood){el.innerHTML='';return;}const k=state.energy+'-'+state.mood;const a=adviceMap[k];if(a)el.innerHTML='<div class="decision-prompt" style="border-left:3px solid '+a.c+';margin-bottom:0;">'+a.t+'</div>';}
+const adviceMap={'high-focused':{t:'\u{1F525} Peak state \u2014 tackle your hardest task now.',cls:'state-advice-positive'},'high-scattered':{t:'\u26A1 Energy but no focus. Start a Pomodoro.',cls:'state-advice'},'high-anxious':{t:'\u{1F4A8} Burn off anxious energy with something physical.',cls:'state-advice'},'high-calm':{t:'\u2728 Great for creative work or complex problems.',cls:'state-advice-positive'},'good-focused':{t:'\u{1F44D} Solid state. Pick a medium-priority task.',c:'var(--green)'},'good-scattered':{t:'\u{1F4CB} List 3 things, do just the first one.',cls:'state-advice'},'good-anxious':{t:'\u{1F4DD} Channel worry into a task with a clear endpoint.',c:'var(--blue)'},'good-calm':{t:'\u{1F33F} Good baseline. Handle routine tasks or admin.',c:'var(--green)'},'low-focused':{t:'\u{1F3AF} Low but present? Detail work \u2014 editing, reviewing.',c:'var(--blue)'},'low-scattered':{t:'\u{1FAE7} Not deep work time. 5-min break, then one tiny task.',cls:'state-advice-alert'},'low-anxious':{t:'\u{1F9CA} Pause. Check the Grounding Toolkit \u2192',c:'var(--purple)'},'low-calm':{t:'\u2601\uFE0F Rest state. Gentle tasks or a proper break.',c:'var(--blue)'},'crashed-focused':{t:'\u26A0\uFE0F Running on fumes. Only truly urgent items.',cls:'state-advice-alert'},'crashed-scattered':{t:'\u{1F6D1} Brain needs a reset. Check the Grounding Toolkit \u2192',cls:'state-advice-alert'},'crashed-anxious':{t:'\u{1FAC2} Hardest state. Grounding Toolkit first, then reassess.',c:'var(--red)'},'crashed-calm':{t:'\u{1F319} Depleted but peaceful. Gentle admin or rest.',cls:'state-advice'}};
+function showStateAdvice(){const el=document.getElementById('stateAdvice');if(!state.energy||!state.mood){el.innerHTML='';return;}const k=state.energy+'-'+state.mood;const a=adviceMap[k];if(a)el.innerHTML='<div class="decision-prompt state-advice '+(a.cls||'')+'">'+a.t+'</div>';}
 
 // WELLNESS TOOLKIT - conditional visibility
 const triggerStates=['low','crashed','anxious','scattered'];
@@ -11083,7 +11087,7 @@ setTimeout(checkShareTarget, 400); // slight delay so panels render first
     <button class="modal-blur-close" onclick="closeWorkTodayModal()">&#10005;</button>
   </div>
   <div class="modal-blur-body">
-    <div id="wtItemName" style="font-size:14px;font-weight:600;color:var(--text);margin-bottom:14px;padding:10px 12px;background:var(--surface-raised);border-radius:6px;border-left:3px solid #5be8ff;"></div>
+    <div id="wtItemName" style="font-size:14px;font-weight:600;color:var(--text);margin-bottom:14px;padding:10px 12px;background:var(--surface-raised);border-radius:6px;border-left:3px solid var(--teal);"></div>
     
     <div class="section-label" style="margin-bottom:6px;">Day</div>
     <div class="wt-day-toggle" id="wtDayToggle" style="display:flex;gap:0;margin-bottom:14px;border-radius:6px;overflow:hidden;border:1px solid var(--border);">
