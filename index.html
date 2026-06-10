@@ -5164,7 +5164,7 @@ async function _bdoRequestPlan(){
 
   var userMsg = 'Organize these thoughts:\n'+JSON.stringify(thoughts);
 
-  var endpoint = JARVIS_PROXY_URL;
+  var endpoint = (typeof JARVIS_PROXY_URL!=='undefined' && JARVIS_PROXY_URL) || 'https://centerpost-jarvis.medicjth.workers.dev';
   var res = await fetch(endpoint, {
     method:'POST',
     headers:{'Content-Type':'application/json'},
