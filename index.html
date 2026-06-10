@@ -845,6 +845,23 @@ body.standalone-pwa .mobile-home-header{padding-top:max(env(safe-area-inset-top)
 .panel-overlay-close:hover{background:var(--surface);color:var(--text);}
 .panel-overlay-body{flex:1;overflow-y:auto;padding:18px 20px;}
 .panel-overlay-body .panel{padding:0;border:none;background:transparent;animation:none;}
+/* ── Skeleton loading screens ─────────────────────────────────────── */
+@keyframes skel-shimmer{
+  0%{background-position:-500px 0}
+  100%{background-position:500px 0}
+}
+.skel{
+  background:linear-gradient(90deg,var(--surface-raised) 25%,var(--surface-hover) 50%,var(--surface-raised) 75%);
+  background-size:1000px 100%;
+  animation:skel-shimmer 1.4s infinite linear;
+  border-radius:3px;
+  display:block;
+}
+.skel-line{height:11px;}
+.skel-line.lg{height:15px;}
+.skel-line.sm{height:9px;}
+.skel-wrap{display:flex;flex-direction:column;gap:8px;padding:2px 0;}
+.skel-row-item{display:flex;align-items:center;gap:10px;padding:10px 12px;border:1px solid var(--border);border-radius:var(--radius-sm);}
 /* ── Custom confirm dialog ─────────────────────────────────────────── */
 .confirm-dialog-panel{width:min(360px,86vw);padding:26px 24px 20px;text-align:center;}
 .confirm-dialog-icon{margin-bottom:10px;}
@@ -2951,7 +2968,7 @@ body[data-theme="storm-dark"] .tl-hour-label{
 <div class="panel-tile-summary" id="tile-summary-projects" onclick="openPanelOverlay('projects')" style="cursor:pointer;"></div>
 <label class="upcoming-filter-toggle" onclick="event.stopPropagation();"><input type="checkbox" id="projUpcomingOnly" onchange="renderProjects()"> <span>Show all projects (by priority)</span></label>
 <div class="panel-content" id="pc_projects">
-<div class="project-list" id="projectList"></div>
+<div class="project-list" id="projectList"><div class="skel-wrap"><div class="skel-row-item" style="flex-direction:column;gap:6px;align-items:stretch;"><div class="skel skel-line lg" style="width:62%"></div><div class="skel skel-line sm" style="width:44%"></div></div><div class="skel-row-item" style="flex-direction:column;gap:6px;align-items:stretch;"><div class="skel skel-line lg" style="width:78%"></div><div class="skel skel-line sm" style="width:60%"></div></div><div class="skel-row-item" style="flex-direction:column;gap:6px;align-items:stretch;"><div class="skel skel-line lg" style="width:55%"></div><div class="skel skel-line sm" style="width:37%"></div></div></div></div>
 </div>
 <div class="tl-add-form tile-add-region">
 <div class="section-label">Add Project</div>
@@ -2969,7 +2986,7 @@ body[data-theme="storm-dark"] .tl-hour-label{
 <div style="display:flex;gap:6px;align-items:center;"><span class="panel-badge" id="remCount">0</span><button class="expand-btn" onclick="event.stopPropagation();openPanelOverlay('reminders')" title="Expand"><span class="expand-arrow">▼</span></button></div></div>
 <div class="panel-tile-summary" id="tile-summary-reminders" onclick="openPanelOverlay('reminders')"></div>
 <div class="panel-content" id="pc_reminders">
-<div class="reminder-list" id="reminderList"></div>
+<div class="reminder-list" id="reminderList"><div class="skel-wrap"><div class="skel-row-item"><div class="skel" style="width:22px;height:22px;border-radius:50%;flex-shrink:0;"></div><div style="flex:1;display:flex;flex-direction:column;gap:5px;"><div class="skel skel-line" style="width:68%"></div><div class="skel skel-line sm" style="width:42%"></div></div></div><div class="skel-row-item"><div class="skel" style="width:22px;height:22px;border-radius:50%;flex-shrink:0;"></div><div style="flex:1;display:flex;flex-direction:column;gap:5px;"><div class="skel skel-line" style="width:82%"></div><div class="skel skel-line sm" style="width:56%"></div></div></div><div class="skel-row-item"><div class="skel" style="width:22px;height:22px;border-radius:50%;flex-shrink:0;"></div><div style="flex:1;display:flex;flex-direction:column;gap:5px;"><div class="skel skel-line" style="width:58%"></div><div class="skel skel-line sm" style="width:32%"></div></div></div><div class="skel-row-item"><div class="skel" style="width:22px;height:22px;border-radius:50%;flex-shrink:0;"></div><div style="flex:1;display:flex;flex-direction:column;gap:5px;"><div class="skel skel-line" style="width:74%"></div><div class="skel skel-line sm" style="width:48%"></div></div></div></div></div>
 </div>
 <div class="tile-add-region">
 <div class="section-label" style="margin-top:10px;">Add Reminder</div>
@@ -3023,7 +3040,7 @@ body[data-theme="storm-dark"] .tl-hour-label{
 <div style="display:flex;gap:5px;"><span class="panel-badge" id="routineProgress">0/0</span><button class="expand-btn" onclick="toggleExpand(this)" title="Expand/collapse"><span class="expand-arrow">▼</span></button><button class="btn btn-sm" onclick="resetRoutines()">Reset</button></div></div>
 <div class="tab-row"><button class="tab-btn active" onclick="switchRoutineTab('morning',this)">Morning</button><button class="tab-btn" onclick="switchRoutineTab('evening',this)">Evening</button><button class="tab-btn" onclick="switchRoutineTab('custom',this)">Custom</button></div>
 <div class="panel-content" id="pc_routines">
-<div class="routine-list" id="routineList"></div>
+<div class="routine-list" id="routineList"><div class="skel-wrap"><div class="skel-row-item"><div class="skel" style="width:16px;height:16px;border-radius:3px;flex-shrink:0;"></div><div class="skel skel-line" style="width:55%;flex:1;"></div></div><div class="skel-row-item"><div class="skel" style="width:16px;height:16px;border-radius:3px;flex-shrink:0;"></div><div class="skel skel-line" style="width:70%;flex:1;"></div></div><div class="skel-row-item"><div class="skel" style="width:16px;height:16px;border-radius:3px;flex-shrink:0;"></div><div class="skel skel-line" style="width:48%;flex:1;"></div></div><div class="skel-row-item"><div class="skel" style="width:16px;height:16px;border-radius:3px;flex-shrink:0;"></div><div class="skel skel-line" style="width:62%;flex:1;"></div></div></div></div>
 </div>
 <div class="add-row" style="margin-top:6px;"><input type="text" id="newRoutineName" placeholder="Add routine item..."><button class="btn btn-accent btn-sm" onclick="addRoutine()">+</button></div></div>
 
@@ -3046,7 +3063,7 @@ body[data-theme="storm-dark"] .tl-hour-label{
 <button class="btn btn-accent" onclick="addNote()">Add Note</button>
 </div></div>
 <div class="panel-content" id="pc_notes">
-<div class="notes-list" id="notesList"></div>
+<div class="notes-list" id="notesList"><div class="skel-wrap"><div class="skel-row-item" style="flex-direction:column;gap:5px;align-items:stretch;"><div class="skel skel-line" style="width:52%"></div><div class="skel skel-line sm" style="width:82%"></div><div class="skel skel-line sm" style="width:66%"></div></div><div class="skel-row-item" style="flex-direction:column;gap:5px;align-items:stretch;"><div class="skel skel-line" style="width:52%"></div><div class="skel skel-line sm" style="width:82%"></div><div class="skel skel-line sm" style="width:66%"></div></div><div class="skel-row-item" style="flex-direction:column;gap:5px;align-items:stretch;"><div class="skel skel-line" style="width:52%"></div><div class="skel skel-line sm" style="width:82%"></div><div class="skel skel-line sm" style="width:66%"></div></div></div></div>
 </div>
 </div>
 
@@ -3070,7 +3087,7 @@ body[data-theme="storm-dark"] .tl-hour-label{
 <label class="upcoming-filter-toggle" onclick="event.stopPropagation();" style="margin-left:4px;"><input type="checkbox" id="taskUpcomingOnly" onchange="renderTaskList()"> <span style="font-size:11px;">Show all tasks</span></label>
 </div>
 <div class="panel-content" id="pc_tasklist">
-<div class="tl-list" id="taskListItems"></div>
+<div class="tl-list" id="taskListItems"><div class="skel-wrap"><div class="skel-row-item"><div class="skel" style="width:14px;height:14px;border-radius:50%;flex-shrink:0;"></div><div style="flex:1;display:flex;flex-direction:column;gap:4px;"><div class="skel skel-line" style="width:70%"></div><div class="skel skel-line sm" style="width:48%"></div></div><div class="skel skel-line sm" style="width:44px;flex-shrink:0;"></div></div><div class="skel-row-item"><div class="skel" style="width:14px;height:14px;border-radius:50%;flex-shrink:0;"></div><div style="flex:1;display:flex;flex-direction:column;gap:4px;"><div class="skel skel-line" style="width:55%"></div><div class="skel skel-line sm" style="width:33%"></div></div><div class="skel skel-line sm" style="width:44px;flex-shrink:0;"></div></div><div class="skel-row-item"><div class="skel" style="width:14px;height:14px;border-radius:50%;flex-shrink:0;"></div><div style="flex:1;display:flex;flex-direction:column;gap:4px;"><div class="skel skel-line" style="width:80%"></div><div class="skel skel-line sm" style="width:58%"></div></div><div class="skel skel-line sm" style="width:44px;flex-shrink:0;"></div></div><div class="skel-row-item"><div class="skel" style="width:14px;height:14px;border-radius:50%;flex-shrink:0;"></div><div style="flex:1;display:flex;flex-direction:column;gap:4px;"><div class="skel skel-line" style="width:65%"></div><div class="skel skel-line sm" style="width:43%"></div></div><div class="skel skel-line sm" style="width:44px;flex-shrink:0;"></div></div><div class="skel-row-item"><div class="skel" style="width:14px;height:14px;border-radius:50%;flex-shrink:0;"></div><div style="flex:1;display:flex;flex-direction:column;gap:4px;"><div class="skel skel-line" style="width:75%"></div><div class="skel skel-line sm" style="width:53%"></div></div><div class="skel skel-line sm" style="width:44px;flex-shrink:0;"></div></div></div></div>
 <div id="taskListCompleted"></div>
 </div>
 <div class="tl-add-form tile-add-region">
