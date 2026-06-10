@@ -801,7 +801,7 @@ body.standalone-pwa .mobile-home-header{padding-top:max(env(safe-area-inset-top)
 .panel.panel-tile .panel-header:hover{opacity:0.85;}
 .panel.panel-tile .panel-header .expand-btn .expand-arrow{transform:rotate(-90deg);}
 .panel.panel-tile .panel-tile-summary{display:flex;align-items:center;gap:6px;padding:6px 0 2px;font-size:13px;color:var(--text-dim);border-bottom:1px dashed var(--border);margin-bottom:6px;flex-wrap:wrap;}
-.panel.panel-tile .panel-tile-summary-pill{display:inline-flex;align-items:center;gap:4px;padding:3px 10px;background:var(--surface-raised);border-radius:12px;font-size:13px;font-weight:500;}
+.panel.panel-tile .panel-tile-summary-pill{display:inline-flex;align-items:center;gap:4px;padding:3px 10px;background:var(--surface-raised);border-radius:6px;font-size:13px;font-weight:500;}
 .panel.panel-tile .panel-tile-summary-pill.warn{color:var(--accent);background:rgba(212,168,83,0.12);}
 .panel.panel-tile .panel-tile-summary-pill.urgent{color:var(--red);font-weight:700;background:rgba(229,57,53,0.12);}
 
@@ -915,7 +915,8 @@ body.standalone-pwa .mobile-home-header{padding-top:max(env(safe-area-inset-top)
 .toolkit-btn i.ti{font-size:24px;line-height:1;font-style:normal;}
 .panel-badge{font-size:10px;font-weight:700;padding:2px 8px;border-radius:4px;background:var(--accent-glow);color:var(--accent);border:1px solid var(--accent-dim);}
 .panel-badge.completed-badge{background:var(--green-dim);color:var(--green);border-color:var(--green);}
-.panel.panel-tile .panel-badge{font-size:19px;font-weight:700;padding:5px 16px;border-radius:18px;}
+.panel.panel-tile .panel-badge{font-size:17px;font-weight:700;padding:4px 14px;border-radius:6px;background:var(--accent-glow);color:var(--accent);border:1px solid var(--accent-dim);}
+.panel.panel-tile .panel-badge.completed-badge{background:var(--green-dim);color:var(--green);border-color:var(--green);}
 .panel-content{flex:1;overflow-y:auto;overflow-x:hidden;scroll-behavior:smooth;position:relative;min-height:0;max-height:317px;}
 .panel.expanded .panel-content{max-height:none;}
 
@@ -983,7 +984,7 @@ body.unlocked .date-editable{border-bottom-color:var(--border);}
 
 /* Project summary block (shows in expanded area) */
 .proj-summary{display:flex;flex-wrap:wrap;gap:6px;padding:8px 12px;background:rgba(0,0,0,0.18);border-bottom:1px solid var(--border);}
-.proj-summary-pill{display:inline-flex;align-items:center;gap:5px;padding:3px 9px;background:var(--surface-raised);border:1px solid var(--border);border-radius:12px;font-size:11px;font-weight:600;color:var(--text-dim);}
+.proj-summary-pill{display:inline-flex;align-items:center;gap:5px;padding:3px 9px;background:var(--surface-raised);border:1px solid var(--border);border-radius:6px;font-size:11px;font-weight:600;color:var(--text-dim);}
 .proj-summary-pill .ps-num{color:var(--text);font-variant-numeric:tabular-nums;}
 .proj-summary-pill.ps-done{border-color:rgba(107,171,115,0.4);background:rgba(107,171,115,0.08);color:var(--green);cursor:pointer;}
 .proj-summary-pill.ps-done .ps-num{color:var(--green);}
@@ -1292,7 +1293,7 @@ body.unlocked .date-editable{border-bottom-color:var(--border);}
 .jarvis-send:disabled{background:var(--border);color:var(--text-faint);cursor:not-allowed;transform:none;}
 .jarvis-greeting{text-align:center;padding:16px 8px 8px;font-size:12px;color:var(--text-dim);font-style:italic;}
 /* ── BREAKDOWN button (lives in Projects + Tasks panel headers) ── */
-.breakdown-btn{background:linear-gradient(135deg,#5be8ff,#0ea5e9);color:#0a1218;border:1px solid #0ea5e9;border-radius:10px;padding:2px 8px;font-size:10px;font-weight:700;letter-spacing:0.3px;cursor:pointer;display:inline-flex;align-items:center;gap:3px;transition:all 0.15s;line-height:1.5;box-shadow:0 0 8px rgba(91,232,255,0.35);}
+.breakdown-btn{background:linear-gradient(135deg,#5be8ff,#0ea5e9);color:#0a1218;border:1px solid #0ea5e9;border-radius:6px;padding:3px 9px;font-size:10px;font-weight:700;letter-spacing:0.3px;cursor:pointer;display:inline-flex;align-items:center;gap:3px;transition:all 0.15s;line-height:1.5;}
 .breakdown-btn:hover{background:linear-gradient(135deg,#7df0ff,#3ab8e0);border-color:#5be8ff;}
 .breakdown-btn:active{transform:translateY(0);}
 .breakdown-btn .bd-spark{font-size:11px;line-height:1;}
