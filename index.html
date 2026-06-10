@@ -873,7 +873,8 @@ body.standalone-pwa .mobile-home-header{padding-top:max(env(safe-area-inset-top)
 .btn-danger:hover{background:var(--red);color:#fff;}
 .btn-accent-solid{background:var(--accent-glow);border-color:var(--accent);color:var(--accent);}
 .btn-accent-solid:hover{background:var(--accent);color:var(--bg);}
-/* ── Notes panel: inline search controls in overlay header ───────── */
+.panel.panel-tile[data-panel="tasklist"] .tasklist-controls{display:none;}
+/* Notes panel: inline search controls in overlay header */
 .panel.panel-tile[data-panel="notes"] .notes-inline-search{display:none !important;}
 .panel:not(.panel-tile)[data-panel="notes"] .notes-inline-search{display:flex;gap:6px;align-items:center;flex:1;min-width:0;}
 .notes-inline-search .note-search{flex:1;min-width:80px;max-width:180px;padding:4px 8px;font-size:12px;border:1px solid var(--border);border-radius:4px;background:var(--surface-raised);color:var(--text);}
@@ -6269,6 +6270,7 @@ function renderTaskList(){
     el.innerHTML='';
     if(pcEl){pcEl.style.flex='none';pcEl.style.minHeight='0';}
     document.getElementById('taskListCount').textContent=totalCount;
+    if(typeof _updateTileSummaryTasklist==='function')_updateTileSummaryTasklist();
     return;
   }
   
@@ -6544,9 +6546,14 @@ function closePanelOverlay(){
   // Refresh tile summaries
   updateAllTileSummaries();
   
-  // Re-render tile panels so blank/upcoming state is restored (not left showing overlay content)
+  // Re-render the closed panel so tile view is always fresh
   if(panelKey==='projects'&&typeof renderProjects==='function')renderProjects();
   else if(panelKey==='tasklist'&&typeof renderTaskList==='function')renderTaskList();
+  else if(panelKey==='notes'&&typeof renderNotes==='function')renderNotes();
+  else if(panelKey==='reminders'&&typeof renderReminders==='function')renderReminders();
+  else if(panelKey==='routines'&&typeof renderRoutines==='function')renderRoutines();
+  else if(panelKey==='brain'&&typeof renderThoughts==='function')renderThoughts();
+  else if(panelKey==='timeline'&&typeof renderTimeline==='function')renderTimeline();
 }
 
 // ESC key closes overlay
