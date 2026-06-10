@@ -969,7 +969,6 @@ body.standalone-pwa .mobile-home-header{padding-top:max(env(safe-area-inset-top)
 .bdo-section{margin-bottom:18px;}
 .bdo-section-label{font-size:10px;letter-spacing:2px;text-transform:uppercase;color:var(--text-dim);margin-bottom:8px;font-weight:700;}
 .bdo-item{display:flex;align-items:flex-start;gap:10px;padding:10px 12px;border:1px solid var(--border);border-radius:var(--radius-sm);margin-bottom:6px;background:var(--surface-raised);}
-.bdo-item-check{width:16px;height:16px;flex-shrink:0;margin-top:2px;cursor:pointer;accent-color:var(--accent);}
 .bdo-item-body{flex:1;min-width:0;}
 .bdo-item-text{font-size:13px;color:var(--text);line-height:1.4;}
 .bdo-item-dest{font-size:11px;color:var(--text-dim);margin-top:3px;display:flex;align-items:center;gap:5px;flex-wrap:wrap;}
@@ -987,6 +986,14 @@ body.standalone-pwa .mobile-home-header{padding-top:max(env(safe-area-inset-top)
 .bdo-qopt{font-size:11px;padding:5px 11px;background:var(--surface-raised);border:1px solid var(--border);border-radius:6px;color:var(--text-dim);cursor:pointer;transition:all 0.15s;font-family:inherit;}
 .bdo-qopt:hover{border-color:var(--accent-dim);color:var(--text);}
 .bdo-qopt.selected{background:var(--accent-glow);border-color:var(--accent);color:var(--accent);font-weight:600;}
+/* Per-item destination picker — Task / Note / Ignore */
+.bdo-iopt-row{display:flex;gap:5px;flex-wrap:wrap;margin-top:6px;}
+.bdo-iopt{font-size:11px;padding:4px 11px;border:1px solid var(--border);border-radius:4px;background:var(--surface);color:var(--text-dim);cursor:pointer;font-family:inherit;transition:all 0.12s;font-weight:500;}
+.bdo-iopt:hover{border-color:var(--border-focus);color:var(--text);}
+.bdo-iopt.sel-task{background:var(--accent-glow);border-color:var(--accent);color:var(--accent);font-weight:700;}
+.bdo-iopt.sel-note{background:rgba(107,155,229,0.12);border-color:var(--blue);color:var(--blue);font-weight:700;}
+.bdo-iopt.sel-ignore{background:rgba(220,80,80,0.10);border-color:var(--red);color:var(--red);font-weight:700;}
+.bdo-item.bdo-ignored .bdo-item-text{opacity:0.35;text-decoration:line-through;}
 .bdo-footer{display:flex;gap:8px;justify-content:flex-end;padding-top:14px;border-top:1px solid var(--border);margin-top:4px;}
 .bdo-empty{text-align:center;padding:30px 20px;font-size:13px;color:var(--text-dim);line-height:1.6;}
 .bd-org-panel{width:min(560px,94vw);max-height:88vh;display:flex;flex-direction:column;padding:0;}
@@ -5370,23 +5377,27 @@ function _bdoRenderPlan(plan){
     html+='</div>';
   }
 
-  // ── Confident items, grouped by destination ──
+  // ── Confident items, each with Task / Note / Ignore picker ──
   if(plan.items.length){
-    html+='<div class="bdo-section"><div class="bdo-section-label">Proposed organization</div>';
+    html+='<div class="bdo-section"><div class="bdo-section-label">Proposed organization — tap to change any</div>';
     plan.items.forEach(function(it,ii){
-      var destTag='';
-      if(it.dest==='newproject'){
-        destTag='<span class="bdo-dest-tag newproj"><i class="ti ti-folder-plus" aria-hidden="true"></i>New: '+esc(it.newProjectName||'Project')+'</span>';
-      }else if(it.dest==='task'){
-        destTag='<span class="bdo-dest-tag task"><i class="ti ti-checklist" aria-hidden="true"></i>Task</span>'+(it.project?' <span class="bdo-dest-tag project">'+esc(it.project)+'</span>':' <span style="color:var(--text-faint);">standalone</span>');
-      }else if(it.dest==='note'){
-        destTag='<span class="bdo-dest-tag note"><i class="ti ti-notebook" aria-hidden="true"></i>Note</span>'+(it.project?' <span class="bdo-dest-tag project">'+esc(it.project)+'</span>':'');
-      }else if(it.dest==='reminder'){
-        destTag='<span class="bdo-dest-tag reminder"><i class="ti ti-bell" aria-hidden="true"></i>Reminder</span>';
-      }
-      html+='<div class="bdo-item">';
-      html+='<input type="checkbox" class="bdo-item-check" checked data-ii="'+ii+'">';
-      html+='<div class="bdo-item-body"><div class="bdo-item-text">'+esc(it.text)+'</div><div class="bdo-item-dest">'+destTag+'</div></div>';
+      // Map Axis dest to one of the three user-facing choices for pre-selection
+      var presel = (it.dest==='task'||it.dest==='newproject') ? 'task' : (it.dest==='reminder' ? 'note' : 'note');
+      it._userDest = presel;  // default — user can override
+
+      var projLabel = it.project ? (' <span class="bdo-dest-tag project" style="font-size:10px;">'+esc(it.project)+'</span>') :
+                      (it.dest==='newproject' ? ' <span class="bdo-dest-tag newproj" style="font-size:10px;"><i class="ti ti-folder-plus" aria-hidden="true"></i> New: '+esc(it.newProjectName||'Project')+'</span>' : '');
+
+      html+='<div class="bdo-item" id="bdoi_'+ii+'">';
+      html+='<div class="bdo-item-body">';
+      html+='<div class="bdo-item-text">'+esc(it.text)+'</div>';
+      html+='<div class="bdo-iopt-row">';
+      html+='<button class="bdo-iopt'+(presel==='task'?' sel-task':'')+'" onclick="_bdoPickItemDest('+ii+',\'task\',this)"><i class="ti ti-checklist" aria-hidden="true"></i> Task</button>';
+      html+='<button class="bdo-iopt'+(presel==='note'?' sel-note':'')+'" onclick="_bdoPickItemDest('+ii+',\'note\',this)"><i class="ti ti-notebook" aria-hidden="true"></i> Note</button>';
+      html+='<button class="bdo-iopt" onclick="_bdoPickItemDest('+ii+',\'ignore\',this)">Ignore</button>';
+      if(projLabel) html+='<span style="margin-left:4px;display:inline-flex;align-items:center;">'+projLabel+'</span>';
+      html+='</div>';
+      html+='</div>';
       html+='</div>';
     });
     html+='</div>';
@@ -5438,16 +5449,31 @@ function _bdoUpdateApplyState(){
   }
 }
 
+function _bdoPickItemDest(ii, dest, btnEl){
+  var it = _bdoPlan && _bdoPlan.items[ii];
+  if(!it) return;
+  it._userDest = dest;
+  var card = document.getElementById('bdoi_'+ii);
+  if(card){
+    card.querySelectorAll('.bdo-iopt').forEach(function(b){
+      b.classList.remove('sel-task','sel-note','sel-ignore');
+    });
+    if(dest==='task') btnEl.classList.add('sel-task');
+    else if(dest==='note') btnEl.classList.add('sel-note');
+    else if(dest==='ignore') btnEl.classList.add('sel-ignore');
+    if(dest==='ignore') card.classList.add('bdo-ignored');
+    else card.classList.remove('bdo-ignored');
+  }
+}
+
 function bdOrganizeApply(){
   if(!_bdoPlan) return;
-
-  // Gather confident items whose checkbox is still checked
-  var checks = document.querySelectorAll('.bdo-item-check');
-  var keepIdx = {};
-  checks.forEach(function(c){ if(c.checked) keepIdx[c.dataset.ii]=true; });
-
+  // Gather items — use _userDest selection; skip anything set to 'ignore'
   var toApply = [];
-  (_bdoPlan.items||[]).forEach(function(it,ii){ if(keepIdx[ii]) toApply.push(it); });
+  (_bdoPlan.items||[]).forEach(function(it){
+    var dest = it._userDest || it.dest;
+    if(dest !== 'ignore') toApply.push(Object.assign({}, it, {dest: dest}));
+  });
   // Add resolved questions
   (_bdoPlan.questions||[]).forEach(function(q){ if(q._resolved) toApply.push(q._resolved); });
 
