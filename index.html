@@ -27,6 +27,9 @@
 body[data-theme="light"]{--bg:#f6f4f0;--surface:#ffffff;--surface-raised:#f0ede6;--surface-hover:#e8e4dc;--border:#d8d4ca;--border-focus:#b0aa9a;--text:#2a2822;--text-dim:#6a6558;--text-faint:#9a9488;--accent:#b08830;--accent-dim:#8a6a20;--accent-glow:rgba(176,136,48,0.12);}
 body[data-theme="light"] .header-center-title{color:#2a2822;text-shadow:0 1px 3px rgba(255,255,255,0.6);}
 body[data-theme="starry"]{--bg:#0a0e1a;--surface:#10152a;--surface-raised:#161c34;--surface-hover:#1c2440;--border:#1e2545;--border-focus:#3a3a6a;--text:#c8c0e8;--text-dim:#8a82b0;--text-faint:#5a5580;--accent:#7b68ee;--accent-dim:#5a48cc;--accent-glow:rgba(123,104,238,0.15);--red:#e06060;--green:#60c080;--blue:#5b9bd5;--teal:#5ba0c0;}
+body[data-theme="galaxy"]{--bg:#070512;--surface:#0e0a20;--surface-raised:#141030;--surface-hover:#1b1540;--border:#241b4a;--border-focus:#4a3a8a;--text:#d8d0f0;--text-dim:#9a8ec4;--text-faint:#5e5488;--accent:#c084fc;--accent-dim:#9a5ce0;--accent-glow:rgba(192,132,252,0.15);--red:#e06080;--green:#60c0a0;--blue:#6b9be5;--teal:#5bc0d0;--purple:#a78bfa;--orange:#f0a060;}
+body[data-theme="galaxy"] .header-center-title{color:#e0c8ff;text-shadow:0 0 14px rgba(192,132,252,0.55);}
+body[data-theme="galaxy"] .jarvis-fab{background:radial-gradient(circle at 50% 50%,#1e1048 0%,#0a0620 100%) !important;box-shadow:0 0 20px rgba(192,132,252,0.4) !important;}
 body[data-theme="starry"] .day-progress-bar{background:linear-gradient(to right,#8a5a6a 0%,#5a3060 8%,#2a1848 16%,#141030 28%,#0a0818 42%,#0a0818 58%,#141030 72%,#2a1848 84%,#5a3060 92%,#6a5a8a 100%);}
 body[data-theme="starry"] .header-center-title{color:#c8b8ff;text-shadow:0 0 12px rgba(123,104,238,0.5);}
 body[data-theme="starry"] .jarvis-fab{background:radial-gradient(circle at 50% 50%,#1a1040 0%,#0a0820 100%) !important;box-shadow:0 0 20px rgba(123,104,238,0.4) !important;}
@@ -265,9 +268,101 @@ body[data-theme="starry"] .panel{
   100%{transform:translate(var(--dx4,-14px),var(--dy4,-20px));}
 }
 
+/* ═══ GALAXY THEME — swirling galaxy + expanding star ═══════════════ */
+#galaxyLayer{position:fixed;inset:0;pointer-events:none;display:none;z-index:0;overflow:hidden;}
+body[data-theme="galaxy"] #galaxyLayer{display:block;}
+body[data-theme="galaxy"] .app-wrap{position:relative;z-index:1;}
+body[data-theme="galaxy"] .panel{
+  background:rgba(14,10,32,0.72) !important;
+  backdrop-filter:blur(4px);
+  -webkit-backdrop-filter:blur(4px);
+}
+.galaxy-swirl{
+  position:absolute;
+  top:50%;left:50%;
+  width:160vmax;height:160vmax;
+  margin:-80vmax 0 0 -80vmax;
+  border-radius:50%;
+  background:
+    conic-gradient(from 0deg,
+      transparent 0deg,
+      rgba(138,90,220,0.10) 30deg,
+      rgba(90,60,180,0.16) 60deg,
+      transparent 100deg,
+      transparent 140deg,
+      rgba(160,100,240,0.12) 175deg,
+      rgba(100,70,200,0.18) 210deg,
+      transparent 250deg,
+      transparent 290deg,
+      rgba(120,80,220,0.10) 320deg,
+      transparent 360deg);
+  filter:blur(30px);
+  animation:galaxy-rotate 120s linear infinite;
+  opacity:0.9;
+}
+.galaxy-swirl.arm2{
+  width:120vmax;height:120vmax;
+  margin:-60vmax 0 0 -60vmax;
+  background:
+    conic-gradient(from 90deg,
+      transparent 0deg,
+      rgba(80,140,255,0.07) 50deg,
+      rgba(140,90,230,0.10) 95deg,
+      transparent 150deg,
+      transparent 200deg,
+      rgba(200,120,255,0.08) 250deg,
+      transparent 310deg);
+  filter:blur(40px);
+  animation:galaxy-rotate-rev 180s linear infinite;
+}
+@keyframes galaxy-rotate{from{transform:rotate(0deg);}to{transform:rotate(360deg);}}
+@keyframes galaxy-rotate-rev{from{transform:rotate(360deg);}to{transform:rotate(0deg);}}
+.galaxy-core{
+  position:absolute;
+  top:38%;left:62%;
+  width:340px;height:340px;
+  margin:-170px 0 0 -170px;
+  border-radius:50%;
+  background:radial-gradient(circle,
+    rgba(255,250,240,0.85) 0%,
+    rgba(255,220,250,0.45) 12%,
+    rgba(220,160,255,0.28) 26%,
+    rgba(170,110,250,0.14) 44%,
+    rgba(120,80,220,0.06) 62%,
+    transparent 78%);
+  filter:blur(6px);
+  animation:star-expand 9s ease-in-out infinite alternate;
+}
+.galaxy-core::before,.galaxy-core::after{
+  content:'';
+  position:absolute;
+  top:50%;left:50%;
+  background:linear-gradient(to right,transparent,rgba(255,245,255,0.5),transparent);
+  filter:blur(1.5px);
+  animation:star-flare 9s ease-in-out infinite alternate;
+}
+.galaxy-core::before{width:280px;height:2px;margin:-1px 0 0 -140px;}
+.galaxy-core::after{width:2px;height:280px;margin:-140px 0 0 -1px;background:linear-gradient(to bottom,transparent,rgba(255,245,255,0.5),transparent);}
+@keyframes star-expand{
+  0%  {transform:scale(0.85);opacity:0.75;}
+  100%{transform:scale(1.35);opacity:1;}
+}
+@keyframes star-flare{
+  0%  {opacity:0.4;transform:scale(0.9);}
+  100%{opacity:0.9;transform:scale(1.25);}
+}
+.gstar{
+  position:absolute;
+  border-radius:50%;
+  background:#fff;
+  animation:star-twinkle var(--dur,3s) ease-in-out infinite alternate;
+}
+
 @media(prefers-reduced-motion:reduce){
   body[data-theme="starry"] #starryLayer{display:none;}
   body[data-theme="starry"] #firefliesLayer{display:none;}
+  body[data-theme="galaxy"] #galaxyLayer .galaxy-swirl,
+  body[data-theme="galaxy"] #galaxyLayer .galaxy-core{animation:none;}
 }
 body[data-theme="sunny"]{--bg:#e8f0fa;--surface:#ffffff;--surface-raised:#f0f4fa;--surface-hover:#dce8f4;--border:#c0d0e0;--border-focus:#8ab0d0;--text:#1a3050;--text-dim:#4a7090;--text-faint:#7aa0c0;--accent:#e07828;--accent-dim:#b86020;--accent-glow:rgba(224,120,40,0.12);--red:#d04040;--green:#2e8a66;}
 body[data-theme="sunny"] .header-center-title{color:#1a3050;text-shadow:0 1px 3px rgba(255,255,255,0.7);}
@@ -3033,6 +3128,7 @@ body[data-theme="storm-dark"] .tl-hour-label{
 <div id="emsFire"></div>
 <!-- Starry Night theme overlays -->
 <div id="starryLayer"></div>
+<div id="galaxyLayer"><div class="galaxy-swirl"></div><div class="galaxy-swirl arm2"></div><div class="galaxy-core"></div></div>
 <div id="firefliesLayer"></div>
 <!-- Storm theme overlays -->
 <div id="stormLayer"></div>
@@ -11018,7 +11114,8 @@ var THEMES=[
   {key:'police',name:'Police Dark',tier:'premium',bg:'#0a0c14',surface:'#101420',accent:'#3a7aee'},
   {key:'fire',name:'Fire Dark',tier:'premium',bg:'#120808',surface:'#1a0e0e',accent:'#e53935'},
   {key:'autumn',name:'Autumn Ember',tier:'premium',bg:'#f0ebe0',surface:'#faf5ec',accent:'#c06030'},
-  {key:'storm-dark',name:'Storm Dark',tier:'premium',bg:'#0c0f14',surface:'#111520',accent:'#7ab8e8'}
+  {key:'storm-dark',name:'Storm Dark',tier:'premium',bg:'#0c0f14',surface:'#111520',accent:'#7ab8e8'},
+  {key:'galaxy',name:'Galaxy',tier:'premium',bg:'#070512',surface:'#0e0a20',accent:'#c084fc'}
 ];
 // Build stamp — bump this on each deploy. Shown at the bottom of Settings so
 // you can confirm on any device exactly which build it's running.
@@ -11069,6 +11166,41 @@ function _emsUpdateOverlays(key){
   } else {
     _stormStop();
   }
+  if(key==='galaxy'){
+    _galaxyStart();
+  } else {
+    _galaxyStop();
+  }
+}
+
+// ── Galaxy: drifting dust stars around the spiral ─────────────────
+function _galaxyStart(){
+  var layer=document.getElementById('galaxyLayer');
+  if(!layer)return;
+  layer.querySelectorAll('.gstar').forEach(function(e){e.remove();});
+  // 140 stars across the whole viewport, varied size/brightness
+  for(var i=0;i<140;i++){
+    var s=document.createElement('div');
+    s.className='gstar';
+    var sz=_starryRand(0.7,2.6);
+    var top=_starryRand(0,100);
+    var left=_starryRand(0,100);
+    var dim=_starryRand(0.35,0.6);
+    var bright=_starryRand(0.75,1.0);
+    var dur=_starryRand(2.5,8);
+    var delay=_starryRand(0,6);
+    s.style.cssText=[
+      'width:'+sz+'px','height:'+sz+'px',
+      'top:'+top+'vh','left:'+left+'vw',
+      '--dim:'+dim,'--bright:'+bright,'--dur:'+dur+'s',
+      'animation-delay:'+delay+'s','opacity:'+dim
+    ].join(';');
+    layer.appendChild(s);
+  }
+}
+function _galaxyStop(){
+  var layer=document.getElementById('galaxyLayer');
+  if(layer)layer.querySelectorAll('.gstar').forEach(function(e){e.remove();});
 }
 
 // ── Starry Night: stars + fireflies ──────────────────────────────
