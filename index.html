@@ -1786,6 +1786,23 @@ body[data-theme="storm-dark"] .tl-hour-label{
 .note-label-input:focus{border-bottom-color:var(--accent);}
 .note-date{font-size:10px;color:var(--text-faint);white-space:nowrap;margin-top:2px;flex-shrink:0;}
 .note-body-input{font-size:13px;color:var(--text-dim);line-height:1.6;word-break:break-word;width:100%;background:transparent;border:none;border-bottom:1px dashed transparent;font-family:inherit;resize:none;outline:none;overflow:hidden;min-height:20px;padding:0;transition:border-color 0.15s;}
+/* ── Formatted (rendered markdown) note body ─────────────────────── */
+.note-body-rendered{font-size:13px;color:var(--text-dim);line-height:1.6;word-break:break-word;width:100%;cursor:text;}
+.note-body-rendered:empty{display:none;}
+.note-body-rendered strong{color:var(--text);font-weight:700;}
+.note-body-rendered em{font-style:italic;}
+.note-body-rendered h3{font-size:14px;font-weight:700;color:var(--text);margin:8px 0 4px;line-height:1.3;}
+.note-body-rendered h4{font-size:13px;font-weight:700;color:var(--text);margin:6px 0 3px;line-height:1.3;}
+.note-body-rendered ul{margin:4px 0 4px 0;padding-left:18px;}
+.note-body-rendered li{margin:2px 0;}
+.note-body-rendered a{color:var(--accent);text-decoration:underline;text-underline-offset:2px;word-break:break-all;}
+.note-body-rendered p{margin:4px 0;}
+.note-body-rendered p:first-child{margin-top:0;}
+.note-body-rendered p:last-child{margin-bottom:0;}
+.note-edit-toggle{font-size:10px;color:var(--text-faint);cursor:pointer;padding:2px 7px;border:1px solid var(--border);border-radius:4px;background:transparent;font-family:inherit;display:inline-flex;align-items:center;gap:4px;transition:all 0.15s;flex-shrink:0;}
+.note-edit-toggle:hover{border-color:var(--accent-dim);color:var(--accent);}
+.note-edit-toggle .ti{font-size:12px;}
+.note-fmt-hint{font-size:10px;color:var(--text-faint);margin-top:3px;line-height:1.4;}
 .note-body-input:hover{border-bottom-color:var(--border);}
 .note-body-input:focus{border-bottom-color:var(--accent);color:var(--text);}
 .note-footer{display:flex;align-items:center;gap:6px;margin-top:8px;flex-wrap:wrap;}
@@ -3122,6 +3139,7 @@ body[data-theme="storm-dark"] .tl-hour-label{
 <div class="note-form tile-add-region">
 <input type="text" id="newNoteLabel" placeholder="Short title...">
 <textarea class="note-textarea" id="newNoteBody" placeholder="Write your note..."></textarea>
+<div class="note-fmt-hint">Formatting: **bold** · *italic* · # Header · - bullet · [link](url)</div>
 <div class="note-form-row">
 <div class="proj-multi-picker" id="newNoteProjectPicker" data-target="newNoteProject" onclick="openProjMultiPicker(event,this)"><span class="proj-multi-placeholder">+ Tag projects (optional)</span></div>
 <input type="hidden" id="newNoteProject" value="">
@@ -5439,6 +5457,86 @@ function addNote(){const label=document.getElementById('newNoteLabel').value.tri
 function deleteNote(id){state.notes=state.notes.filter(n=>n.id!==id);save();renderNotes();}
 function editNoteLabel(id,v){if(!v)return;const n=state.notes.find(n=>n.id===id);if(n){n.label=v;save();}}
 function editNoteBody(id,v){const n=state.notes.find(n=>n.id===id);if(n){n.body=v;save();}}
+
+// ── Lightweight markdown renderer for note bodies ──────────────────────────
+// Supports: **bold**, *italic*, # / ## headers, - bullets, [text](url) links.
+// Always escapes HTML first, so user text can never inject markup.
+function _renderNoteMarkdown(text){
+  if(!text) return '';
+  // 1. Escape all HTML entities first (security + correctness)
+  var s = text.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+
+  var lines = s.split('\n');
+  var html = '';
+  var inList = false;
+
+  for(var i=0;i<lines.length;i++){
+    var line = lines[i];
+    var trimmed = line.trim();
+
+    // Bullets: "- " or "* " at line start
+    var bulletMatch = trimmed.match(/^[-*]\s+(.*)$/);
+    if(bulletMatch){
+      if(!inList){ html+='<ul>'; inList=true; }
+      html += '<li>'+_mdInline(bulletMatch[1])+'</li>';
+      continue;
+    } else if(inList){
+      html += '</ul>'; inList=false;
+    }
+
+    // Headers: ## or #
+    if(/^##\s+/.test(trimmed)){
+      html += '<h4>'+_mdInline(trimmed.replace(/^##\s+/,''))+'</h4>';
+    } else if(/^#\s+/.test(trimmed)){
+      html += '<h3>'+_mdInline(trimmed.replace(/^#\s+/,''))+'</h3>';
+    } else if(trimmed===''){
+      // blank line — paragraph break (skip; spacing handled by p margins)
+    } else {
+      html += '<p>'+_mdInline(line)+'</p>';
+    }
+  }
+  if(inList) html += '</ul>';
+  return html;
+}
+
+// Inline markdown: bold, italic, links. Operates on already-escaped text.
+function _mdInline(t){
+  // Links [text](url) — only http/https allowed
+  t = t.replace(/\[([^\]]+)\]\((https?:\/\/[^\s)]+)\)/g, function(m,txt,url){
+    return '<a href="'+url+'" target="_blank" rel="noopener noreferrer">'+txt+'</a>';
+  });
+  // Bold **text**
+  t = t.replace(/\*\*([^*]+)\*\*/g, '<strong>$1</strong>');
+  // Italic *text* (after bold so ** is consumed first)
+  t = t.replace(/(^|[^*])\*([^*]+)\*([^*]|$)/g, '$1<em>$2</em>$3');
+  return t;
+}
+
+// Toggle a single note between rendered view and raw edit mode
+function toggleNoteEdit(id){
+  var rendered = document.getElementById('nbr_'+id);
+  var editor = document.getElementById('nb_'+id);
+  var hint = document.getElementById('nbhint_'+id);
+  var toggle = document.getElementById('nbtoggle_'+id);
+  if(!editor) return;
+  var editing = editor.style.display !== 'none';
+  if(editing){
+    // Switching to view: save and re-render
+    editNoteBody(id, editor.value);
+    if(rendered){ rendered.innerHTML = _renderNoteMarkdown(editor.value); rendered.style.display=''; }
+    editor.style.display='none';
+    if(hint) hint.style.display='none';
+    if(toggle) toggle.innerHTML='<i class="ti ti-pencil" aria-hidden="true"></i>Edit';
+  } else {
+    // Switching to edit
+    if(rendered) rendered.style.display='none';
+    editor.style.display='';
+    editor.style.height='auto'; editor.style.height=editor.scrollHeight+'px';
+    editor.focus();
+    if(hint) hint.style.display='';
+    if(toggle) toggle.innerHTML='<i class="ti ti-check" aria-hidden="true"></i>Done';
+  }
+}
 function editNoteProject(id,projId){const n=state.notes.find(n=>n.id===id);if(n){n.projectId=projId;n.projectIds=projId?[projId]:[];save();renderNotes();renderProjects();}}
 function editNoteProjects(id,projIdsStr){const n=state.notes.find(n=>n.id===id);if(n){var ids=projIdsStr?projIdsStr.split(',').filter(Boolean):[];n.projectIds=ids;n.projectId=ids[0]||'';save();renderProjects();}}
 function autoResizeTextarea(ta){ta.style.height='auto';ta.style.height=ta.scrollHeight+'px';}
@@ -5653,9 +5751,12 @@ function renderNotes(){
     return '<div class="note-card">'+
       '<div class="note-header">'+
         '<input class="note-label-input" id="nl_'+n.id+'" value="'+esc(n.label)+'" placeholder="Short title..." />'+
+        '<button class="note-edit-toggle" id="nbtoggle_'+n.id+'" onclick="toggleNoteEdit(\''+n.id+'\')"><i class="ti ti-pencil" aria-hidden="true"></i>Edit</button>'+
         '<span class="note-date">'+n.date+' '+n.time+'</span>'+
       '</div>'+
-      '<textarea class="note-body-input" id="nb_'+n.id+'" placeholder="Write your note...">'+esc(n.body)+'</textarea>'+
+      '<div class="note-body-rendered" id="nbr_'+n.id+'" onclick="toggleNoteEdit(\''+n.id+'\')">'+_renderNoteMarkdown(n.body)+'</div>'+
+      '<textarea class="note-body-input" id="nb_'+n.id+'" placeholder="Write your note..." style="display:none;">'+esc(n.body)+'</textarea>'+
+      '<div class="note-fmt-hint" id="nbhint_'+n.id+'" style="display:none;">**bold** · *italic* · # Header · - bullet · [link](url)</div>'+
       '<div class="note-footer">'+
         '<div class="proj-multi-picker '+hasProjClass+'" id="npp_'+n.id+'" data-target="np_'+n.id+'" data-note-id="'+n.id+'" onclick="openProjMultiPicker(event,this)" style="font-size:11px;padding:3px 6px;min-height:24px;flex:1;">'+
           (pids.length===0?'<span class="proj-multi-placeholder">+ Tag projects</span>':projChips)+
@@ -5671,9 +5772,18 @@ function renderNotes(){
     if(li){li.addEventListener('blur',()=>editNoteLabel(n.id,li.value.trim()));}
     const bi=document.getElementById('nb_'+n.id);
     if(bi){
-      bi.style.height='auto';bi.style.height=bi.scrollHeight+'px';
       bi.addEventListener('input',()=>autoResizeTextarea(bi));
-      bi.addEventListener('blur',()=>editNoteBody(n.id,bi.value));
+      bi.addEventListener('blur',()=>{
+        editNoteBody(n.id,bi.value);
+        // Re-render the formatted view to reflect edits
+        var r=document.getElementById('nbr_'+n.id);
+        if(r)r.innerHTML=_renderNoteMarkdown(bi.value);
+      });
+    }
+    // Empty notes (e.g. just created) open directly in edit mode
+    const rEl=document.getElementById('nbr_'+n.id);
+    if(rEl && !(n.body||'').trim()){
+      toggleNoteEdit(n.id);
     }
     const ph=document.getElementById('np_'+n.id);
     if(ph){
