@@ -5258,25 +5258,59 @@ async function bdOrganize(){
 }
 
 async function _bdoRequestPlan(){
-  // Build context: thoughts + existing projects (names only) so Axis can match
-  var thoughts = state.thoughts.map(function(t){ return {id:t.id, text:t.text}; });
+  // ── Pre-process: split thoughts that contain multiple dash-prefixed lines ──
+  // A single brain dump entry like "- task one\n- task two\n- task three" should
+  // arrive at Haiku as three items, not one. We split here so Haiku doesn't have
+  // to infer structure from a wall of text.
+  var rawThoughts = state.thoughts;
+  var thoughts = [];
+  rawThoughts.forEach(function(t){
+    var text = (t.text||'').trim();
+    // Check if the text has 2+ lines starting with - or * (a list pasted in)
+    var lines = text.split('\n').map(function(l){return l.trim();}).filter(Boolean);
+    var bulletLines = lines.filter(function(l){return /^[-*]\s+/.test(l);});
+    if(bulletLines.length >= 2){
+      // Split into individual items, each inherits a derived id
+      bulletLines.forEach(function(l, i){
+        var clean = l.replace(/^[-*]\s+/,'').trim();
+        if(clean) thoughts.push({id: t.id+'_s'+i, text: clean, _parentId: t.id});
+      });
+      // Catch any non-bullet lines as a separate item (often context/title)
+      lines.filter(function(l){return !/^[-*]\s+/.test(l);}).forEach(function(l,i){
+        if(l.trim()) thoughts.push({id: t.id+'_h'+i, text: l.trim(), _parentId: t.id});
+      });
+    } else {
+      thoughts.push({id: t.id, text: text});
+    }
+  });
+
   var projects = (state.projects||[]).map(function(p){ return p.name; });
 
   var sys = 'You are Axis, organizing a brain dump for an ADHD user of the Centerpost productivity app. '
     + 'Sort each thought into the best destination. Output ONLY raw JSON (no markdown, no code fences).\n\n'
     + 'EXISTING PROJECTS: '+(projects.length?JSON.stringify(projects):'(none yet)')+'\n\n'
-    + 'For each thought decide a destination:\n'
-    + '- "task": an actionable to-do. If it clearly belongs to an existing project, set "project" to that exact name; otherwise leave project empty (standalone task).\n'
-    + '- "note": reference info, an idea, or something to remember (not actionable). Optionally tag an existing "project".\n'
-    + '- "reminder": time-sensitive, should resurface on a date.\n'
-    + '- "newproject": this thought implies a whole new project should exist. Put the project name in "newProjectName".\n\n'
-    + 'When you are NOT confident where something goes, DO NOT guess — add a clarifying question instead.\n\n'
+    + 'SPLITTING RULE (critical): If a single thought contains multiple distinct actions or facts '
+    + '(even on one line, separated by dashes or semicolons), output MULTIPLE items from it — '
+    + 'one per action. A thought like "call dispatch -email report -update chart" should produce '
+    + '3 separate task items, not 1. Short procedural steps that belong together can stay as one note.\n\n'
+    + 'DESTINATION RULES:\n'
+    + '- "task": an actionable to-do with a clear next action verb (call, email, submit, reset, update…). '
+    + 'Prefer task over note when there is any action to take. If it belongs to an existing project, '
+    + 'set "project" to that exact name.\n'
+    + '- "note": reference info, procedures, or context with NO clear single owner or deadline. '
+    + 'Step-by-step instructions that are reference material (not assigned to anyone) are notes.\n'
+    + '- "reminder": time-sensitive, needs to resurface on a specific date.\n'
+    + '- "newproject": implies a whole new project thread should exist.\n\n'
+    + 'BIAS TOWARD TASKS: When in doubt between task and note, choose task. '
+    + 'ADHD brains benefit from actionable items more than reference text.\n\n'
+    + 'When you are NOT confident, add a clarifying question instead of guessing.\n\n'
     + 'Return this exact JSON shape:\n'
-    + '{"items":[{"thoughtId":"<id>","text":"<original text>","dest":"task|note|reminder|newproject","project":"<existing project name or empty>","newProjectName":"<only if dest=newproject>","priority":"low|med|high"}],'
-    + '"questions":[{"thoughtId":"<id>","text":"<original thought>","question":"<short question>","options":["<opt1>","<opt2>","<opt3>"]}]}\n\n'
-    + 'Every thought must appear in EITHER items OR questions, never both. Keep questions rare — only for genuine ambiguity. Options should be concrete (e.g. project names or "Task vs Note").';
+    + '{"items":[{"thoughtId":"<id>","text":"<concise restatement>","dest":"task|note|reminder|newproject","project":"<project name or empty>","newProjectName":"<only if newproject>","priority":"low|med|high"}],'
+    + '"questions":[{"thoughtId":"<id>","text":"<original>","question":"<short question>","options":["<opt1>","<opt2>","<opt3>"]}]}\n\n'
+    + 'Every thought must appear in EITHER items OR questions. Keep questions rare. '
+    + 'Rephrase each item\'s text as a clean, concise action or title — remove filler words.';
 
-  var userMsg = 'Organize these thoughts:\n'+JSON.stringify(thoughts);
+  var userMsg = 'Organize these thoughts:\n'+JSON.stringify(thoughts.map(function(t){return {id:t.id,text:t.text};}));
 
   var endpoint = (typeof JARVIS_PROXY_URL!=='undefined' && JARVIS_PROXY_URL) || 'https://centerpost-jarvis.medicjth.workers.dev';
   var res = await fetch(endpoint, {
@@ -5284,7 +5318,7 @@ async function _bdoRequestPlan(){
     headers:{'Content-Type':'application/json'},
     body:JSON.stringify({
       model:'claude-haiku-4-5-20251001',
-      max_tokens:1500,
+      max_tokens:2000,
       system:sys,
       messages:[{role:'user',content:userMsg}]
     })
@@ -5469,8 +5503,15 @@ function bdOrganizeApply(){
     }
   });
 
-  // Remove processed thoughts from brain dump
-  state.thoughts = state.thoughts.filter(function(t){ return processedThoughtIds.indexOf(t.id)<0; });
+  // Remove processed thoughts — split sub-IDs (thoughtId_s0, _s1…) map back to parent
+  var parentIdsToRemove = {};
+  processedThoughtIds.forEach(function(id){
+    // Sub-thought id format: originalId_s0, originalId_h0 — strip the suffix
+    var parentId = id.replace(/_[sh]\d+$/, '');
+    parentIdsToRemove[parentId] = true;
+    parentIdsToRemove[id] = true; // also handle non-split ids directly
+  });
+  state.thoughts = state.thoughts.filter(function(t){ return !parentIdsToRemove[t.id]; });
 
   save();
   renderThoughts(); renderProjects(); renderTaskList(); renderNotes(); renderReminders();
