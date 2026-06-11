@@ -1,5 +1,5 @@
 // ═══════════════════════════════════════════════════════════════════════
-// Centerpost Service Worker — v6 (network-first HTML + background refresh)
+// Centerpost Service Worker — v9 (network-first HTML + background refresh)
 // ═══════════════════════════════════════════════════════════════════════
 //
 // STRATEGY
@@ -21,7 +21,7 @@
 //   marker — old clients will see the version change and force-update.
 // ═══════════════════════════════════════════════════════════════════════
 
-const CACHE_VERSION = 'centerpost-v8';
+const CACHE_VERSION = 'centerpost-v9';
 
 // Assets to pre-cache on install (offline-ready essentials).
 // Failures are tolerated individually — one missing icon won't break install.
