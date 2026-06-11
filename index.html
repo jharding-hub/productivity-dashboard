@@ -3843,11 +3843,11 @@ var currentUser=null;
 var isAdmin=false;
 var userProfile=null;
 
-// ─── TIER SYSTEM ─────────────────────────────────────────────────────────────
-// DEV_UID: your Firebase UID — the switcher badge only renders for this account
+// --- TIER SYSTEM -------------------------------------------------------------
+// DEV_UID: your Firebase UID -- the switcher badge only renders for this account
 var DEV_UID='s3c2jCHRkRWfxRAjJKoVVuL14aJ3';
 
-// ─── TIER CONFIG ────────────────────────────────────────────────────────────
+// --- TIER CONFIG ------------------------------------------------------------
 // Free → Pro → Premium → Legacy (admin-granted) → Owner (dev)
 // This is the single source of truth for all feature gating.
 var TIER_CONFIG={
@@ -3960,7 +3960,7 @@ function getTierConfig(){
 function applyTierGating(){
   var cfg=getTierConfig();
 
-  // ── Panels ──────────────────────────────────────────────────────────────────
+  // -- Panels ------------------------------------------------------------------
   document.querySelectorAll('.panel[data-panel]').forEach(function(panel){
     var key=panel.getAttribute('data-panel');
     if(key==='wellness'||key==='admin')return; // managed elsewhere
@@ -3975,7 +3975,7 @@ function applyTierGating(){
     }
   });
 
-  // ── Toolkit buttons ─────────────────────────────────────────────────────────
+  // -- Toolkit buttons ---------------------------------------------------------
   Object.keys(TOOLKIT_CLASS_MAP).forEach(function(key){
     var cls=TOOLKIT_CLASS_MAP[key];
     // music and timer are wrappers, find the button inside
@@ -3993,29 +3993,29 @@ function applyTierGating(){
     }
   });
 
-  // ── Voice input buttons ──────────────────────────────────────────────────────
+  // -- Voice input buttons ------------------------------------------------------
   document.querySelectorAll('.mic-btn').forEach(function(btn){
     btn.classList.toggle('tier-locked-btn',!cfg.voiceInput);
     btn.disabled=!cfg.voiceInput;
     btn.title=cfg.voiceInput?'Voice input':'Voice input (Pro)';
   });
 
-  // ── Completed history ────────────────────────────────────────────────────────
+  // -- Completed history --------------------------------------------------------
   document.querySelectorAll('.completed-projects-section,.completed-tasks-section,#taskListCompleted').forEach(function(el){
     el.style.display=cfg.completedHistory?'':'none';
   });
 
-  // ── Teacher Planner button (Legacy + Owner only) ─────────────────────────────
+  // -- Teacher Planner button (Legacy + Owner only) -----------------------------
   var teacherBtn=document.getElementById('teacherLauncherBtn');
   if(teacherBtn){
     var t=getActiveTier();
     teacherBtn.style.display=(t==='legacy'||t==='owner')?'':'none';
   }
 
-  // ── Dev switcher badge ───────────────────────────────────────────────────────
+  // -- Dev switcher badge -------------------------------------------------------
   _renderDevSwitcher();
 
-  // ── AI assistant (Axis FAB + Breakdown buttons) ─────────────────────────────
+  // -- AI assistant (Axis FAB + Breakdown buttons) -----------------------------
   var fab=document.getElementById('jarvisFab');
   if(fab){
     fab.style.display=cfg.aiAssistant===false?'none':'';
@@ -4024,7 +4024,7 @@ function applyTierGating(){
     b.style.display=cfg.aiAssistant===false?'none':'';
   });
 
-  // ── Music streaming button (only Owner/Legacy/Premium) ───────────────────────
+  // -- Music streaming button (only Owner/Legacy/Premium) -----------------------
   var musicBtn=document.getElementById('toolkitMusicStreamBtn');
   if(musicBtn)musicBtn.style.display=cfg.musicStreaming?'':'none';
 }
@@ -4084,7 +4084,7 @@ function _setDevTier(tier){
   if(m)m.classList.remove('open');
   if(typeof toast==='function')toast('Tier → '+TIER_CONFIG[tier].label);
 }
-// ─────────────────────────────────────────────────────────────────────────────
+// -----------------------------------------------------------------------------
 
 function showSetupForm(){
   document.getElementById('loginForm').style.display='none';
@@ -4106,7 +4106,7 @@ async function doSetup(){
   if(pass.length<6){err.textContent='Password must be at least 6 characters.';return;}
   try{
     const cred=await firebase.auth().createUserWithEmailAndPassword(email,pass);
-    // Write user profile — this user becomes admin
+    // Write user profile -- this user becomes admin
     await db.collection('users').doc(cred.user.uid).set({
       email:email,admin:true,disabled:false,
       createdAt:firebase.firestore.FieldValue.serverTimestamp(),
@@ -4177,7 +4177,7 @@ function hideApp(){
   if(gate)gate.scrollTop=0;
 }
 
-// ═══ Sign-in panel reveal (landing page → login modal) ═══
+// === Sign-in panel reveal (landing page → login modal) ===
 function showSigninPanel(){
   var ov=document.getElementById('signinOverlay');
   if(!ov)return;
@@ -4196,7 +4196,7 @@ function hideSigninPanel(){
   if(ov)ov.classList.remove('open');
 }
 
-// ═══ Sign-up panel ═══
+// === Sign-up panel ===
 function showSignupPanel(){
   var ov=document.getElementById('signupOverlay');
   if(!ov)return;
@@ -4228,7 +4228,7 @@ async function doSignup(){
   var pass=passEl.value||'';
   var passConfirm=passConfirmEl.value||'';
 
-  // ── Client-side validation ──
+  // -- Client-side validation --
   if(!inviteCode){errEl.textContent='Beta invite code is required.';return;}
   if(!email||email.indexOf('@')===-1){errEl.textContent='Please enter a valid email address.';return;}
   if(pass.length<6){errEl.textContent='Password must be at least 6 characters.';return;}
@@ -4239,7 +4239,7 @@ async function doSignup(){
   btn.textContent='Checking invite code...';
 
   try {
-    // ── Step 1: Validate invite code BEFORE creating account ──
+    // -- Step 1: Validate invite code BEFORE creating account --
     var codeRef=db.collection('inviteCodes').doc(inviteCode);
     var codeSnap=await codeRef.get();
     if(!codeSnap.exists){
@@ -4264,11 +4264,11 @@ async function doSignup(){
       btn.disabled=false;btn.textContent='Create Account';return;
     }
 
-    // ── Step 2: Create user account ──
+    // -- Step 2: Create user account --
     btn.textContent='Creating account...';
     var cred=await firebase.auth().createUserWithEmailAndPassword(email,pass);
 
-    // ── Step 3: Record code usage (best-effort; doesn't block account if it fails) ──
+    // -- Step 3: Record code usage (best-effort; doesn't block account if it fails) --
     try {
       await codeRef.update({
         used:firebase.firestore.FieldValue.increment(1),
@@ -4278,7 +4278,7 @@ async function doSignup(){
       });
     } catch(e){console.warn('[signup] code increment failed (non-fatal)',e);}
 
-    // ── Step 4: Tag profile with the code used (helps admin audit) ──
+    // -- Step 4: Tag profile with the code used (helps admin audit) --
     try {
       await db.collection('users').doc(cred.user.uid).set({
         invitedWith:inviteCode
@@ -4339,7 +4339,7 @@ function initAuthListener(){
           window._profileAccountTier=userProfile.accountTier||null;
           db.collection('users').doc(user.uid).update({lastActive:firebase.firestore.FieldValue.serverTimestamp()}).catch(function(){});
         }else{
-          // Profile missing — create one (non-admin by default)
+          // Profile missing -- create one (non-admin by default)
           await db.collection('users').doc(user.uid).set({
             email:user.email,admin:false,disabled:false,
             createdAt:firebase.firestore.FieldValue.serverTimestamp(),
@@ -4361,9 +4361,9 @@ function initAuthListener(){
 
 <!-- SCRIPT 2: FIREBASE — isolated so errors here cannot break auth or app -->
 <script>
-// ═══════════════════════════════════════════
+// ===========================================
 // FIREBASE CONFIG
-// ═══════════════════════════════════════════
+// ===========================================
 var firebaseConfig = {
   apiKey: "AIzaSyCgNToGWHbZI8s8OnhF1Z9l2BMXXtfHuC0",
   authDomain: "productivity-dashboard-f8488.firebaseapp.com",
@@ -4382,7 +4382,7 @@ try {
     console.log('Firebase connected');
     if(typeof initAuthListener==='function')initAuthListener();
   }else{
-    console.log('Firebase not configured — using local storage only');
+    console.log('Firebase not configured -- using local storage only');
   }
 } catch(e) { console.log('Firebase init error (app will work offline):', e); }
 </script>
@@ -4395,7 +4395,7 @@ let state={projects:[],reminders:[],thoughts:[],notes:[],moodLog:[],tasks:[],com
 // SYNC STATUS
 function setSyncStatus(status,label){const el=document.getElementById('syncStatus');if(!el)return;el.className='sync-status '+status;el.innerHTML='<span class="sync-dot"></span> '+label;}
 
-// SAVE — writes to localStorage + Firestore (per-user)
+// SAVE -- writes to localStorage + Firestore (per-user)
 let saveTimer=null;
 function save(){
   const uid=currentUser?currentUser.uid:'local';
@@ -4411,7 +4411,7 @@ function save(){
   },1000);
 }
 
-// LOAD — tries Firestore first, then localStorage (per-user)
+// LOAD -- tries Firestore first, then localStorage (per-user)
 async function load(){
   const uid=currentUser?currentUser.uid:'local';
   // Always load localStorage as baseline
@@ -4426,15 +4426,15 @@ async function load(){
       if(doc.exists&&doc.data().state){
         const cloud=JSON.parse(doc.data().state);
         if(cloud.projects||cloud.reminders||cloud.notes){
-          // ── SAFE MERGE ────────────────────────────────────────────────────
+          // -- SAFE MERGE ----------------------------------------------------
           // Spread cloud over local, then protect fields where local is more
           // current. CRITICAL: for every array field, if local has MORE items
-          // than cloud, keep local — this prevents an empty/partial cloud doc
+          // than cloud, keep local -- this prevents an empty/partial cloud doc
           // (e.g. from a save that fired before load completed) from wiping
           // good local data on the next load.
           var today=todayStr();
           var merged=Object.assign({},state,cloud);
-          // Protect lastRoutineReset — never let cloud roll it back to a past date
+          // Protect lastRoutineReset -- never let cloud roll it back to a past date
           if(state.lastRoutineReset===today){merged.lastRoutineReset=today;}
           if(state.lastRoutineReset===today&&cloud.lastRoutineReset!==today){
             merged.routines=state.routines;merged.lastRoutineReset=today;
@@ -4450,7 +4450,7 @@ async function load(){
         }
         setSyncStatus('synced','Synced');
       }else{
-        // First time or migration — also check old shared location
+        // First time or migration -- also check old shared location
         try{
           const oldDoc=await db.collection('dashboards').doc('957d52c2f223567f9e37f9121bb24f81ba916e3d1549fdfbc18c08cf7fe43c9f').get();
           if(oldDoc.exists&&oldDoc.data().state){
@@ -4494,13 +4494,13 @@ async function load(){
   if(!state.panelOrder.includes('admin'))state.panelOrder.push('admin');
   if(!state.panelOrder.includes('tasklist'))state.panelOrder.splice(state.panelOrder.indexOf('time')+1,0,'tasklist');
   state.projects.forEach(p=>{if(!p.subtasks)p.subtasks=[];if(p.expanded===undefined)p.expanded=true;});
-  // Ensure every panel already in panelOrder is "known" — prevents initPanelVisibility
+  // Ensure every panel already in panelOrder is "known" -- prevents initPanelVisibility
   // from treating previously-seen panels as new and hiding them on refresh
   if(!state.knownPanels) state.knownPanels=[];
   state.panelOrder.forEach(id=>{if(!state.knownPanels.includes(id))state.knownPanels.push(id);});
 }
 
-// REAL-TIME LISTENER — syncs changes from other devices (per-user)
+// REAL-TIME LISTENER -- syncs changes from other devices (per-user)
 var unsubscribe=null;
 function startRealtimeSync(){
   if(!firebaseReady||!db||!currentUser)return;
@@ -4510,7 +4510,7 @@ function startRealtimeSync(){
     try{
       const cloud=JSON.parse(doc.data().state);
 
-      // ── Preserve gcalEventIds from in-memory state ───────────────────────
+      // -- Preserve gcalEventIds from in-memory state -----------------------
       // onSnapshot can fire with stale Firestore data while a gcalPushAll is
       // in progress (debounced save hasn't committed yet). Without this guard,
       // the cloud spread overwrites newly-set gcalEventIds → next push creates
@@ -4524,7 +4524,7 @@ function startRealtimeSync(){
       (state.reminders||[]).forEach(function(r){if(r.gcalEventId)_gcalLocal['r:'+r.id]=r.gcalEventId;});
       (state.tlBlocks||[]).forEach(function(b){if(b.gcalEventId)_gcalLocal['b:'+b.id]=b.gcalEventId;});
 
-      // Preserve panel visibility/knownPanels from current session — these were
+      // Preserve panel visibility/knownPanels from current session -- these were
       // already initialized by initPanelVisibility() and must not be overwritten
       // by an onSnapshot firing with stale Firestore data (race condition fix)
       const localVP=state.visiblePanels;
@@ -4550,9 +4550,9 @@ function startRealtimeSync(){
   },err=>{console.log('Snapshot error:',err);setSyncStatus('error','Sync lost');});
 }
 
-// ═══════════════════════════════════════
+// =======================================
 // PANEL VISIBILITY / CUSTOMIZATION
-// ═══════════════════════════════════════
+// =======================================
 const ALL_PANELS=[
   {id:'projects',icon:'\u{1F4C2}',name:'Projects',desc:'Track projects with subtasks and due dates'},
   {id:'reminders',icon:'\u{1F514}',name:'Reminders',desc:'Date and time-based reminders'},
@@ -4661,9 +4661,9 @@ function initDragDrop(){document.querySelectorAll('.panel').forEach(panel=>{pane
 function updateClock(){const now=new Date();const t=now.toLocaleTimeString('en-US',{hour12:true});const clk=document.getElementById('clock');if(clk)clk.textContent=t;const cd=document.getElementById('clockDate');if(cd)cd.textContent=now.toLocaleDateString('en-US',{weekday:'long',year:'numeric',month:'long',day:'numeric'});const mhc=document.getElementById('mobileHomeClock');if(mhc)mhc.textContent=t;const hc=document.getElementById('headerClock');if(hc)hc.textContent=now.toLocaleTimeString('en-US',{hour:'numeric',minute:'2-digit',hour12:true});}
 
 // TIMER (with soft alarm)
-// ═══════════════════════════════════════
+// =======================================
 // FOCUS TIMER (inline button, no modal)
-// ═══════════════════════════════════════
+// =======================================
 const TIMER_PRESETS=[
   {label:'25 min',minutes:25,icon:'🎯'},
   {label:'15 min',minutes:15,icon:'⚡'},
@@ -4679,10 +4679,10 @@ let timerCurrentPresetIdx=0; // default 25 min
 
 function _timerFmtLabel(){
   if(!timerRunning&&timerLeft===timerTotal){
-    // Idle — just show preset name
+    // Idle -- just show preset name
     return TIMER_PRESETS[timerCurrentPresetIdx].label;
   }
-  // Counting down — show MM:SS
+  // Counting down -- show MM:SS
   var m=Math.floor(timerLeft/60),s=timerLeft%60;
   return String(m).padStart(2,'0')+':'+String(s).padStart(2,'0');
 }
@@ -5103,7 +5103,7 @@ function makeTimeClickable(el,currentVal,onSave){
   });
 }
 
-// Helper — projects sorted A→Z, used everywhere projects are listed
+// Helper -- projects sorted A→Z, used everywhere projects are listed
 function _sortedProjects(){
   return state.projects.slice().sort(function(a,b){
     return (a.name||'').toLowerCase().localeCompare((b.name||'').toLowerCase());
@@ -5116,14 +5116,14 @@ function renderProjects(){const el=document.getElementById('projectList');const 
 var projPanel=document.querySelector('.panel[data-panel="projects"]');
 var inOverlay=projPanel&&!projPanel.classList.contains('panel-tile');
 
-// "Show all" toggle — only applies on the dashboard tile, never in overlay
+// "Show all" toggle -- only applies on the dashboard tile, never in overlay
 var upcomingEl=document.getElementById('projUpcomingOnly');
 var showAll=!inOverlay&&upcomingEl&&upcomingEl.checked;
 // Always sort alphabetically regardless of showAll / overlay mode
 var visibleProjects=_sortedProjects();
 if(state.projects.length===0){el.innerHTML='<div class="empty-state">No projects yet.</div>'+_renderCompletedProjectsSection();document.getElementById('projCount').textContent='0';var emptyProjCompCount=(state.completedTasks||[]).filter(function(t){return t.source==='project';}).length;var emptyProjCompBadge=document.getElementById('projCompletedBadge');if(emptyProjCompBadge){emptyProjCompBadge.textContent='✓ '+emptyProjCompCount;emptyProjCompBadge.style.display=emptyProjCompCount>0?'inline-flex':'none';}updateNoteSelectors();if(typeof _updateTileSummaryProjects==='function')_updateTileSummaryProjects();return;}
 var pcpEl=document.getElementById('pc_projects');
-// Tile mode, unchecked — blank panel so add-form anchors to bottom
+// Tile mode, unchecked -- blank panel so add-form anchors to bottom
 if(!inOverlay&&!showAll){
   el.innerHTML='';
   if(pcpEl){pcpEl.style.flex='none';pcpEl.style.minHeight='0';}
@@ -5132,7 +5132,7 @@ if(!inOverlay&&!showAll){
   if(typeof _updateTileSummaryProjects==='function')_updateTileSummaryProjects();
   return;
 }
-// Checked but no projects exist — also blank (safety)
+// Checked but no projects exist -- also blank (safety)
 if(showAll&&visibleProjects.length===0){el.innerHTML='';if(pcpEl){pcpEl.style.flex='none';pcpEl.style.minHeight='0';}document.getElementById('projCount').textContent=state.projects.length;updateNoteSelectors();if(typeof _updateTileSummaryProjects==='function')_updateTileSummaryProjects();return;}
 if(pcpEl){pcpEl.style.flex='';pcpEl.style.minHeight='';}
 el.innerHTML=visibleProjects.map(p=>{const total=p.subtasks.length;const sorted=[...p.subtasks].sort((a,b)=>{if(a.due&&b.due)return a.due.localeCompare(b.due);if(a.due)return -1;if(b.due)return 1;return 0;});
@@ -5188,7 +5188,7 @@ state.projects.forEach(p=>{p.subtasks.forEach(st=>{const se=document.getElementB
 state.projects.forEach(p=>{const pde=document.getElementById('pd_'+p.id);if(pde)makeDateClickable(pde,p.due,v=>editProjectDue(p.id,v));p.subtasks.forEach(st=>{const sde=document.getElementById('sd_'+st.id);if(sde)makeDateClickable(sde,st.due,v=>editSubtaskDue(p.id,st.id,v));});});
 refreshEditables();updateNoteSelectors();if(typeof _updateTileSummaryProjects==='function')_updateTileSummaryProjects();}
 
-// Always-available project rename — uses a prompt so it works regardless of lock state
+// Always-available project rename -- uses a prompt so it works regardless of lock state
 function promptEditProject(pid){
   const p=state.projects.find(p=>p.id===pid);if(!p)return;
   const newName=prompt('Rename project:',p.name);
@@ -5225,9 +5225,9 @@ function deleteThought(id){state.thoughts=state.thoughts.filter(t=>t.id!==id);sa
 function promoteThought(id){const th=state.thoughts.find(t=>t.id===id);if(!th)return;if(state.projects.length>0){const sp=_sortedProjects();const c=prompt('Promote to which project?\n\n'+sp.map((p,i)=>(i+1)+'. '+p.name).join('\n')+'\n\n(0 = reminders)','1');if(c===null)return;const idx=parseInt(c)-1;if(idx>=0&&idx<sp.length){sp[idx].subtasks.push({id:'st'+Date.now(),name:th.text,due:'',priority:'med',timeEst:'',done:false});deleteThought(id);renderProjects();renderTaskList();toast('Added to '+sp[idx].name);return;}}state.reminders.push({id:'rem'+Date.now(),text:th.text,date:'',time:''});deleteThought(id);renderReminders();toast('Moved to reminders');}
 function editThought(id,v){if(!v)return;const t=state.thoughts.find(t=>t.id===id);if(t)t.text=v;save();}
 
-// ═══════════════════════════════════════════════════════════════════════════
-// BRAIN DUMP ORGANIZER — Axis sorts thoughts into projects/tasks/notes
-// ═══════════════════════════════════════════════════════════════════════════
+// ===========================================================================
+// BRAIN DUMP ORGANIZER -- Axis sorts thoughts into projects/tasks/notes
+// ===========================================================================
 var _bdoPlan = null;  // current organization plan from Axis
 
 async function bdOrganize(){
@@ -5239,7 +5239,7 @@ async function bdOrganize(){
   }
 
   if(!state.thoughts || state.thoughts.length===0){
-    toast('Nothing to organize — add some thoughts first');
+    toast('Nothing to organize -- add some thoughts first');
     return;
   }
 
@@ -5264,7 +5264,7 @@ async function bdOrganize(){
 }
 
 async function _bdoRequestPlan(){
-  // ── Pre-process: split thoughts that contain multiple dash-prefixed lines ──
+  // -- Pre-process: split thoughts that contain multiple dash-prefixed lines --
   // A single brain dump entry like "- task one\n- task two\n- task three" should
   // arrive at Haiku as three items, not one. We split here so Haiku doesn't have
   // to infer structure from a wall of text.
@@ -5296,7 +5296,7 @@ async function _bdoRequestPlan(){
     + 'Sort each thought into the best destination. Output ONLY raw JSON (no markdown, no code fences).\n\n'
     + 'EXISTING PROJECTS: '+(projects.length?JSON.stringify(projects):'(none yet)')+'\n\n'
     + 'SPLITTING RULE (critical): If a single thought contains multiple distinct actions or facts '
-    + '(even on one line, separated by dashes or semicolons), output MULTIPLE items from it — '
+    + '(even on one line, separated by dashes or semicolons), output MULTIPLE items from it -- '
     + 'one per action. A thought like "call dispatch -email report -update chart" should produce '
     + '3 separate task items, not 1. Short procedural steps that belong together can stay as one note.\n\n'
     + 'DESTINATION RULES:\n'
@@ -5314,7 +5314,7 @@ async function _bdoRequestPlan(){
     + '{"items":[{"thoughtId":"<id>","text":"<concise restatement>","dest":"task|note|reminder|newproject","project":"<project name or empty>","newProjectName":"<only if newproject>","priority":"low|med|high"}],'
     + '"questions":[{"thoughtId":"<id>","text":"<original>","question":"<short question>","options":["<opt1>","<opt2>","<opt3>"]}]}\n\n'
     + 'Every thought must appear in EITHER items OR questions. Keep questions rare. '
-    + 'Rephrase each item\'s text as a clean, concise action or title — remove filler words.';
+    + 'Rephrase each item\'s text as a clean, concise action or title -- remove filler words.';
 
   var userMsg = 'Organize these thoughts:\n'+JSON.stringify(thoughts.map(function(t){return {id:t.id,text:t.text};}));
 
@@ -5331,7 +5331,7 @@ async function _bdoRequestPlan(){
   });
 
   var raw = await res.text();
-  if(!res.ok) throw new Error('HTTP '+res.status+' — '+raw.slice(0,120));
+  if(!res.ok) throw new Error('HTTP '+res.status+' -- '+raw.slice(0,120));
 
   var data; try{ data=JSON.parse(raw); }catch(e){ throw new Error('Bad response from Axis'); }
 
@@ -5361,7 +5361,7 @@ function _bdoRenderPlan(plan){
 
   var html='';
 
-  // ── Clarifying questions first ──
+  // -- Clarifying questions first --
   if(plan.questions.length){
     html+='<div class="bdo-section"><div class="bdo-section-label"><i class="ti ti-help-circle" aria-hidden="true"></i> Axis needs your input</div>';
     plan.questions.forEach(function(q,qi){
@@ -5376,13 +5376,13 @@ function _bdoRenderPlan(plan){
     html+='</div>';
   }
 
-  // ── Confident items, each with Task / Note / Ignore picker ──
+  // -- Confident items, each with Task / Note / Ignore picker --
   if(plan.items.length){
-    html+='<div class="bdo-section"><div class="bdo-section-label">Proposed organization — tap to change any</div>';
+    html+='<div class="bdo-section"><div class="bdo-section-label">Proposed organization -- tap to change any</div>';
     plan.items.forEach(function(it,ii){
       // Map Axis dest to one of the three user-facing choices for pre-selection
       var presel = (it.dest==='task'||it.dest==='newproject') ? 'task' : (it.dest==='reminder' ? 'note' : 'note');
-      it._userDest = presel;  // default — user can override
+      it._userDest = presel;  // default -- user can override
 
       var projLabel = it.project ? (' <span class="bdo-dest-tag project" style="font-size:10px;">'+esc(it.project)+'</span>') :
                       (it.dest==='newproject' ? ' <span class="bdo-dest-tag newproj" style="font-size:10px;"><i class="ti ti-folder-plus" aria-hidden="true"></i> New: '+esc(it.newProjectName||'Project')+'</span>' : '');
@@ -5467,7 +5467,7 @@ function _bdoPickItemDest(ii, dest, btnEl){
 
 function bdOrganizeApply(){
   if(!_bdoPlan) return;
-  // Gather items — use _userDest selection; skip anything set to 'ignore'
+  // Gather items -- use _userDest selection; skip anything set to 'ignore'
   var toApply = [];
   (_bdoPlan.items||[]).forEach(function(it){
     var dest = it._userDest || it.dest;
@@ -5528,10 +5528,10 @@ function bdOrganizeApply(){
     }
   });
 
-  // Remove processed thoughts — split sub-IDs (thoughtId_s0, _s1…) map back to parent
+  // Remove processed thoughts -- split sub-IDs (thoughtId_s0, _s1…) map back to parent
   var parentIdsToRemove = {};
   processedThoughtIds.forEach(function(id){
-    // Sub-thought id format: originalId_s0, originalId_h0 — strip the suffix
+    // Sub-thought id format: originalId_s0, originalId_h0 -- strip the suffix
     var parentId = id.replace(/_[sh]\d+$/, '');
     parentIdsToRemove[parentId] = true;
     parentIdsToRemove[id] = true; // also handle non-split ids directly
@@ -5620,7 +5620,7 @@ function deleteNote(id){state.notes=state.notes.filter(n=>n.id!==id);save();rend
 function editNoteLabel(id,v){if(!v)return;const n=state.notes.find(n=>n.id===id);if(n){n.label=v;save();}}
 function editNoteBody(id,v){const n=state.notes.find(n=>n.id===id);if(n){n.body=v;save();}}
 
-// ── Lightweight markdown renderer for note bodies ──────────────────────────
+// -- Lightweight markdown renderer for note bodies --------------------------
 // Supports: **bold**, *italic*, # / ## headers, - bullets, [text](url) links.
 // Always escapes HTML first, so user text can never inject markup.
 function _renderNoteMarkdown(text){
@@ -5652,7 +5652,7 @@ function _renderNoteMarkdown(text){
     } else if(/^#\s+/.test(trimmed)){
       html += '<h3>'+_mdInline(trimmed.replace(/^#\s+/,''))+'</h3>';
     } else if(trimmed===''){
-      // blank line — paragraph break (skip; spacing handled by p margins)
+      // blank line -- paragraph break (skip; spacing handled by p margins)
     } else {
       html += '<p>'+_mdInline(line)+'</p>';
     }
@@ -5663,7 +5663,7 @@ function _renderNoteMarkdown(text){
 
 // Inline markdown: bold, italic, links. Operates on already-escaped text.
 function _mdInline(t){
-  // Links [text](url) — only http/https allowed
+  // Links [text](url) -- only http/https allowed
   t = t.replace(/\[([^\]]+)\]\((https?:\/\/[^\s)]+)\)/g, function(m,txt,url){
     return '<a href="'+url+'" target="_blank" rel="noopener noreferrer">'+txt+'</a>';
   });
@@ -5703,7 +5703,7 @@ function editNoteProject(id,projId){const n=state.notes.find(n=>n.id===id);if(n)
 function editNoteProjects(id,projIdsStr){const n=state.notes.find(n=>n.id===id);if(n){var ids=projIdsStr?projIdsStr.split(',').filter(Boolean):[];n.projectIds=ids;n.projectId=ids[0]||'';save();renderProjects();}}
 function autoResizeTextarea(ta){ta.style.height='auto';ta.style.height=ta.scrollHeight+'px';}
 function updateNoteSelectors(){
-  // Filter dropdown for notes (still single-select) — preserve current selection
+  // Filter dropdown for notes (still single-select) -- preserve current selection
   const noteFilterEl=document.getElementById('noteFilterProj');
   const prevNoteFilter=noteFilterEl?noteFilterEl.value:'all';
   const fOpts='<option value="all">All projects</option><option value="none">Untagged</option>'+_sortedProjects().map(p=>'<option value="'+p.id+'">'+esc(p.name)+'</option>').join('');
@@ -5725,9 +5725,9 @@ function updateNoteSelectors(){
   });
 }
 
-// ═══════════════════════════════════════
+// =======================================
 // MULTI-PROJECT PICKER
-// ═══════════════════════════════════════
+// =======================================
 function _getProjMultiSelected(picker){
   var hidden=document.getElementById(picker.dataset.target);
   if(!hidden||!hidden.value)return [];
@@ -5773,7 +5773,7 @@ function openProjMultiPicker(ev,picker){
   if(ev.target.classList.contains('proj-multi-chip-x'))return;
   if(ev.target.closest('.proj-multi-dropdown'))return;
   
-  // Close any other open dropdowns (now portaled to body — find globally)
+  // Close any other open dropdowns (now portaled to body -- find globally)
   document.querySelectorAll('.proj-multi-dropdown').forEach(function(d){
     if(d._owner!==picker)d.remove();
   });
@@ -5968,12 +5968,12 @@ function checkDailyRoutineReset(){
   // (sessionStorage survives tab focus/visibility changes but clears on true tab close)
   var ssKey='_routineResetDate';
   if(sessionStorage.getItem(ssKey)===today){
-    // Cloud state is stale — update it without wiping done-checkmarks
+    // Cloud state is stale -- update it without wiping done-checkmarks
     state.lastRoutineReset=today;
     save();
     return;
   }
-  // New calendar day — do the reset
+  // New calendar day -- do the reset
   ['morning','evening','custom'].forEach(tab=>{
     if(state.routines[tab])state.routines[tab].forEach(r=>r.done=false);
   });
@@ -5995,7 +5995,7 @@ const prompts=['<strong>Can\'t start?</strong> 2-minute rule: commit to just 2 m
 function newDecisionPrompt(){const el=document.getElementById('decisionPrompt');el.innerHTML=prompts[Math.floor(Math.random()*prompts.length)];el.style.animation='none';el.offsetHeight;el.style.animation='chipIn 0.3s ease';}
 
 // MOBILE
-// ─── MOBILE HOME TILE NAVIGATION ─────────────────────────────────────────
+// --- MOBILE HOME TILE NAVIGATION -----------------------------------------
 var _isMobile=function(){return window.innerWidth<=768;};
 
 // Detect standalone PWA mode (launched from home screen, not Safari)
@@ -6106,7 +6106,7 @@ window.addEventListener('resize',function(){
     var hdr=document.querySelector('.header');
     if(hdr)hdr.classList.remove('mobile-visible');
   } else {
-    // Going back to mobile — show home if no panel open
+    // Going back to mobile -- show home if no panel open
     var anyVisible=document.querySelector('.panel.mobile-visible');
     if(!anyVisible){showMobileHome();}
   }
@@ -6121,11 +6121,11 @@ function slugify(s){return s.toLowerCase().replace(/[^a-z0-9]+/g,'-').replace(/(
 function toast(msg){const el=document.getElementById('toast');el.textContent=msg;el.classList.add('show');setTimeout(()=>el.classList.remove('show'),2500);}
 document.addEventListener('keydown',e=>{if(e.target.tagName==='INPUT'||e.target.tagName==='TEXTAREA'||e.target.tagName==='SELECT'||e.target.isContentEditable)return;if(e.key==='b'||e.key==='B'){document.getElementById('brainDump').focus();e.preventDefault();}if(e.key==='s'||e.key==='S'){startTimer();e.preventDefault();}if(e.key==='p'||e.key==='P'){pauseTimer();e.preventDefault();}});
 
-// ═══════════════════════════════════════
+// =======================================
 // MOOD/ENERGY LOGGING & TRENDS
-// ═══════════════════════════════════════
+// =======================================
 
-// ── Mood & Energy History Chart ──────────────────────────────────────
+// -- Mood & Energy History Chart --------------------------------------
 var _mhActivePeriod=7;
 function openMoodHistory(days){
   _mhActivePeriod=days||7;
@@ -6231,9 +6231,9 @@ function logMoodEntry(){
 
 
 
-// ═══════════════════════════════════════
+// =======================================
 // ADMIN FUNCTIONS
-// ═══════════════════════════════════════
+// =======================================
 function showAdminPanel(){
   const ap=document.getElementById('adminPanel');
   if(!ap)return;
@@ -6318,7 +6318,7 @@ async function adminAddUser(){
   }catch(e){err.textContent=e.message;}
 }
 
-// ─── Legacy tier grant / revoke ───────────────────────────────────────────
+// --- Legacy tier grant / revoke -------------------------------------------
 async function adminGrantLegacy(uid){
   if(!isAdmin)return;
   try{
@@ -6336,9 +6336,9 @@ async function adminRevokeLegacy(uid){
   }catch(e){toast('Error: '+e.message);}
 }
 
-// ─── Music Streaming Modal ────────────────────────────────────────────────
+// --- Music Streaming Modal ------------------------------------------------
 // Opens the user's chosen platform in a new tab. No audio is streamed
-// through Centerpost — this sidesteps all copyright/licensing concerns.
+// through Centerpost -- this sidesteps all copyright/licensing concerns.
 // Only visible to Premium, Legacy, and Owner tiers.
 function openMusicStreamingModal(){
   var cfg=getTierConfig();
@@ -6368,7 +6368,7 @@ function launchMusicPlatform(platform){
 }
 // Codes live at /inviteCodes/{CODE} with fields: used, maxUses, note,
 // disabled, createdAt, createdBy, lastUsedAt, lastUsedBy, lastUsedEmail.
-// ═══════════════════════════════════════════════════════════════════════════
+// ===========================================================================
 function _generateRandomCode(len){
   // Avoid ambiguous chars: no 0/O, no 1/I/L
   var chars='ABCDEFGHJKMNPQRSTUVWXYZ23456789';
@@ -6470,7 +6470,7 @@ async function renderInviteCodes(){
       } else {
         statusBadge='<span class="admin-badge active">Active</span>';
       }
-      var note=d.note?esc(d.note):'<span style="color:var(--text-faint);">—</span>';
+      var note=d.note?esc(d.note):'<span style="color:var(--text-faint);">--</span>';
       rows.push(
         '<tr><td><code style="background:rgba(91,232,255,0.1);color:#5be8ff;padding:2px 8px;border-radius:4px;font-family:ui-monospace,monospace;font-size:12px;letter-spacing:1px;">'+esc(d.code||doc.id)+'</code></td>'+
         '<td>'+usesTxt+'</td>'+
@@ -6541,9 +6541,9 @@ async function adminDeleteUser(uid,email){
   },{destructive:true,confirmText:'Delete User'});
 }
 
-// ═══════════════════════════════════════
+// =======================================
 // BREATHWORK ENGINE
-// ═══════════════════════════════════════
+// =======================================
 const breathTechniques={
   box:{
     name:'Box Breathing (4-4-4-4)',
@@ -6641,7 +6641,7 @@ function toggleBreathMute(){
   }
 }
 
-// VOICE SETUP — warm female US English
+// VOICE SETUP -- warm female US English
 function initBreathVoice(){
   if(!('speechSynthesis' in window))return;
   function pickVoice(){
@@ -6693,7 +6693,7 @@ async function speak(text){
 }
 
 
-// ─── Breathwork: compute per-technique @keyframes and inject into <style id="breathKF"> ───
+// --- Breathwork: compute per-technique @keyframes and inject into <style id="breathKF"> ---
 function buildBreathKeyframes(t){
   const total=t.durations.reduce((a,b)=>a+b,0);
   const SMIN=0.35,SMAX=1.0;
@@ -6754,7 +6754,7 @@ function startBreathwork(){
   if(isScan){
     document.querySelectorAll('.scan-part').forEach(p=>p.classList.remove('scan-lit','scan-glow'));
   } else {
-    // Inject technique-specific @keyframes then apply CSS animation — zero rAF height writes
+    // Inject technique-specific @keyframes then apply CSS animation -- zero rAF height writes
     buildBreathKeyframes(t);
     const orb=document.getElementById('breathOrb');
     const glow=document.getElementById('breathOrbGlow');
@@ -6765,7 +6765,7 @@ function startBreathwork(){
     glow.style.animation=`breathGlow ${totalCycleSec}s linear ${t.cycles} forwards`;
   }
 
-  // ── Tick: updates TEXT only (countdown + phase label). No layout-triggering properties. ──
+  // -- Tick: updates TEXT only (countdown + phase label). No layout-triggering properties. --
   const SCAN_MAP={
     'Settle In':[],
     'Feet & Legs':['sp-lleg','sp-rleg','sp-lfoot','sp-rfoot'],
@@ -6817,7 +6817,7 @@ function startBreathwork(){
     const countDown=Math.ceil(remaining);
     const phaseKey=currentCycle+'-'+pi;
 
-    // textContent writes — safe, no layout reflow
+    // textContent writes -- safe, no layout reflow
     document.getElementById('breathPhase').textContent=t.phases[pi];
     document.getElementById('breathCount').textContent=countDown>0?countDown:'';
     document.getElementById('breathInstruction').textContent=t.cues[pi];
@@ -6851,9 +6851,9 @@ function stopBreathwork(){
 
 
 
-// ═══════════════════════════════════════
+// =======================================
 // TASK LIST
-// ═══════════════════════════════════════
+// =======================================
 const TIME_LABELS={'30':'30m','60':'1hr','90':'1.5hr','120':'2hr','180':'3hr','240':'4hr','360':'6hr','480':'8hr','720':'12hr','999':'4hr+'};
 function fmtTimeEst(v){return TIME_LABELS[v]||'';}
 const PRIORITY_ORDER={high:0,med:1,low:2};
@@ -6883,7 +6883,7 @@ function renderTaskList(){
   var filterProj=document.getElementById('tlFilterProj');var filt=filterProj?filterProj.value:'all';
   var upcomingEl=document.getElementById('taskUpcomingOnly');
 
-  // Detect overlay mode — skip blank-when-unchecked if expanded
+  // Detect overlay mode -- skip blank-when-unchecked if expanded
   var taskPanel=document.querySelector('.panel[data-panel="tasklist"]');
   var inOverlay=taskPanel&&!taskPanel.classList.contains('panel-tile');
   // "Show all" toggle: when checked on the tile, render every task using
@@ -6910,7 +6910,7 @@ function renderTaskList(){
   var today=new Date().toISOString().split('T')[0];
   var pcEl=document.getElementById('pc_tasklist');
   
-  // If unchecked and in tile mode — blank so add-form anchors at bottom
+  // If unchecked and in tile mode -- blank so add-form anchors at bottom
   if(!inOverlay&&!showAll){
     el.innerHTML='';
     if(pcEl){pcEl.style.flex='none';pcEl.style.minHeight='0';}
@@ -6919,7 +6919,7 @@ function renderTaskList(){
     return;
   }
   
-  // Checkbox is checked — show matching items or blank if none
+  // Checkbox is checked -- show matching items or blank if none
   if(all.length===0){
     el.innerHTML='';
     if(pcEl){pcEl.style.flex='none';pcEl.style.minHeight='0';}
@@ -7116,12 +7116,12 @@ function updateTLProjectDropdowns(){
 // PANEL EXPAND/COLLAPSE
 function toggleExpand(btn){const panel=btn.closest('.panel');panel.classList.toggle('expanded');checkOverflows();}
 
-// ═══════════════════════════════════════
+// =======================================
 // PANEL TILE / OVERLAY EXPANSION SYSTEM
-// ═══════════════════════════════════════
+// =======================================
 var _panelOverlayCurrent=null;
 
-// ── Usage analytics — fire-and-forget to Jarvis /ops-track ──────────
+// -- Usage analytics -- fire-and-forget to Jarvis /ops-track ----------
 function _trackEvent(type,id,name){
   try{
     fetch('https://centerpost-jarvis.medicjth.workers.dev/ops-track',{
@@ -7296,7 +7296,7 @@ const _origRenderRoutines=renderRoutines;renderRoutines=function(){_origRenderRo
 
 // INIT - called after auth
 
-// ─── SHARE TARGET HANDLER ───────────────────────────────────────────────────
+// --- SHARE TARGET HANDLER ---------------------------------------------------
 // Activated when the app is opened via the OS Share sheet (Android/Chrome PWA).
 // Reads ?share_text=, ?share_title=, ?share_url= from the URL and shows an
 // inbox banner so the user can route the content to Brain Dump or Notes.
@@ -7368,11 +7368,11 @@ function shareIntoReminder(){
   d.remove();
   toast('Added to Reminders ✓');
 }
-// ────────────────────────────────────────────────────────────────────────────
+// ----------------------------------------------------------------------------
 
-// ═══════════════════════════════════════
+// =======================================
 // VOICE INPUT
-// ═══════════════════════════════════════
+// =======================================
 var _micRec=null,_micBtn=null;
 function toggleMic(targetId,btnId){
   const btn=document.getElementById(btnId);
@@ -7415,9 +7415,9 @@ function stopMic(btnId){
   _micRec=null;_micBtn=null;
 }
 
-// ═══════════════════════════════════════
+// =======================================
 // BREATHWORK MODAL
-// ═══════════════════════════════════════
+// =======================================
 function _blurDashboard(){document.getElementById('dashboard').style.filter='blur(3px)';document.getElementById('dashboard').style.pointerEvents='none';}
 function _unblurDashboard(){document.getElementById('dashboard').style.filter='';document.getElementById('dashboard').style.pointerEvents='';}
 
@@ -7433,9 +7433,9 @@ function removeCompleted(id){
   save();renderTaskList();
 }
 
-// ═══════════════════════════════════════
-// WEATHER MODAL — NWS API (free, no key, CORS-open)
-// ═══════════════════════════════════════
+// =======================================
+// WEATHER MODAL -- NWS API (free, no key, CORS-open)
+// =======================================
 var _wxCache=null,_wxCacheTime=0;
 var WX_CACHE_MS=10*60*1000; // 10-minute cache
 
@@ -7599,9 +7599,9 @@ function _renderWeather(data){
 
 
 
-// ═══════════════════════════════════════
+// =======================================
 // RESTAURANT SPINNER
-// ═══════════════════════════════════════
+// =======================================
 var _spinRestaurants=[];
 var _spinAngle=0;
 var _spinAnimId=null;
@@ -7666,7 +7666,7 @@ function spinFetchAndBuild(){
   );
 }
 
-// ── Step 1: OpenStreetMap Overpass — precise location, finds local/independent places ──
+// -- Step 1: OpenStreetMap Overpass -- precise location, finds local/independent places --
 function _spinOverpassQuery(lat,lon){
   var amenityTag={sitdown:'restaurant',fastfood:'fast_food',coffee:'cafe'}[_spinFilters.type]||'restaurant';
   // Search 3km radius, return up to 30 nodes/ways, ask for center coords on ways
@@ -7684,7 +7684,7 @@ function _spinOverpassQuery(lat,lon){
     .then(function(data){
       var elements=data.elements||[];
       if(elements.length<3){
-        // Too sparse — fall back directly
+        // Too sparse -- fall back directly
         document.getElementById('spinStatus').textContent='OSM sparse here \u2014 using local data.';
         _spinRestaurants=_spinFallback();
         _spinBuildWheel();
@@ -7885,9 +7885,9 @@ function _spinShowResult(finalAngle){
 }
 
 
-// ═══════════════════════════════════════
+// =======================================
 // PROJECT DETAIL MODAL
-// ═══════════════════════════════════════
+// =======================================
 function openProjectModal(pid){
   var p=state.projects.find(function(pr){return pr.id===pid;});
   if(!p)return;
@@ -8021,7 +8021,7 @@ function closeProjectModal(){
   _unblurDashboard();
 }
 
-// Modal-aware priority cyclers — re-open the modal to refresh the view
+// Modal-aware priority cyclers -- re-open the modal to refresh the view
 function cycleSubtaskPriorityInModal(pid,sid,ev){
   if(ev)ev.stopPropagation();
   cycleSubtaskPriority(pid,sid,null);
@@ -8068,9 +8068,9 @@ function pmdAddSubtask(pid){
   openProjectModal(pid); // refresh modal
 }
 
-// ═══════════════════════════════════════
+// =======================================
 // HALT+ SENSORY CHECK
-// ═══════════════════════════════════════
+// =======================================
 var _haltChecked={};
 
 
@@ -8082,18 +8082,18 @@ const HALT_ITEMS=[
    action:'Even a small snack with protein stabilizes blood glucose and directly improves prefrontal cortex function. Dehydration of just 1% impairs attention and working memory. Water first, then food. Set a 5-minute timer, eat something, then return.'},
   {key:'A',letter:'A',icon:'&#128560;',label:'Anxious / Activated',
    question:'Is there background anxiety, worry, or anticipatory stress running right now?',
-   action:'Name what\'s circling: write one sentence in Brain Dump. Then try a Physiological Sigh (double inhale through nose, long exhale through mouth) — the fastest documented way to lower heart rate and cortisol. The anxiety may still be there, but it won\'t be running at full volume.'},
+   action:'Name what\'s circling: write one sentence in Brain Dump. Then try a Physiological Sigh (double inhale through nose, long exhale through mouth) -- the fastest documented way to lower heart rate and cortisol. The anxiety may still be there, but it won\'t be running at full volume.'},
   {key:'L',letter:'L',icon:'&#128338;',label:'Late / Behind',
    question:'Are you behind on something? Is time pressure creating a cognitive loop?',
-   action:'Lateness anxiety hijacks working memory. Write down the ONE thing you\'re behind on and just the next physical action. That offloads the loop from your brain to the page. If you\'re actually late — decide now: text ahead, or just go. Limbo is the most expensive mental state.'},
+   action:'Lateness anxiety hijacks working memory. Write down the ONE thing you\'re behind on and just the next physical action. That offloads the loop from your brain to the page. If you\'re actually late -- decide now: text ahead, or just go. Limbo is the most expensive mental state.'},
   {key:'T',letter:'T',icon:'&#128564;',label:'Tired',
    question:'How many hours of sleep last night? Is there accumulated fatigue this week?',
-   action:'If genuinely sleep-deprived, shift to maintenance tasks. A 10–20 minute nap (not longer — that causes grogginess) restores alertness more than caffeine without the crash. If napping isn\'t possible, cold water on your face or a 5-minute walk outside both produce measurable alertness improvements.'},
+   action:'If genuinely sleep-deprived, shift to maintenance tasks. A 10–20 minute nap (not longer -- that causes grogginess) restores alertness more than caffeine without the crash. If napping isn\'t possible, cold water on your face or a 5-minute walk outside both produce measurable alertness improvements.'},
   {key:'N',letter:'N+',icon:'&#128266;',label:'Noise / Sensory Load',
    question:'Is the environment louder, brighter, or more chaotic than your nervous system can filter?',
-   action:'ADHD brains have reduced sensory gating — you can\'t filter background inputs as efficiently. This isn\'t willpower. Options: headphones with brown noise, move to a quieter space, reduce screen brightness, or face away from visual chaos. The 15 seconds to put in headphones routinely doubles focus duration for sensory-sensitive people.'},
+   action:'ADHD brains have reduced sensory gating -- you can\'t filter background inputs as efficiently. This isn\'t willpower. Options: headphones with brown noise, move to a quieter space, reduce screen brightness, or face away from visual chaos. The 15 seconds to put in headphones routinely doubles focus duration for sensory-sensitive people.'},
   {key:'L2',letter:'+',icon:'&#128267;',label:'Low Energy State',
-   question:'Is your energy crashed or flat — no motivation, foggy, depleted (not just tired)?',
+   question:'Is your energy crashed or flat -- no motivation, foggy, depleted (not just tired)?',
    action:'If it\'s 2–4pm, this is likely your natural cortisol trough. A 10-minute walk outside resets the cortisol curve best. If persistent across the day, check Energy & Mood and consider the Wellness Toolkit next.'},
   {key:'T2',letter:'+',icon:'&#127777;',label:'Temperature',
    question:'Are you too hot or cold? Is the room temperature uncomfortable?',
@@ -8143,14 +8143,14 @@ function _updateHaltSummary(){
   if(checked===0){el.classList.remove('visible');el.textContent='';return;}
   el.classList.add('visible');
   var remaining=total-checked;
-  if(remaining===0){el.innerHTML='<strong style="color:var(--green);">&#10003; All items addressed.</strong> Physical/environmental state is clear. If still stuck, the issue is likely task initiation — try the Stuck? panel or Brain Dump.';}
+  if(remaining===0){el.innerHTML='<strong style="color:var(--green);">&#10003; All items addressed.</strong> Physical/environmental state is clear. If still stuck, the issue is likely task initiation -- try the Stuck? panel or Brain Dump.';}
   else{el.innerHTML='<strong>'+checked+' of '+total+' addressed.</strong> '+remaining+' item'+(remaining!==1?'s':'')+' still to check.';}
 }
 function haltReset(){_haltChecked={};_renderHalt();}
 
-// ═══════════════════════════════════════
+// =======================================
 // WELLNESS WHEEL (SAMHSA 8 Dimensions)
-// ═══════════════════════════════════════
+// =======================================
 const WELLNESS_DIMENSIONS=[
   {key:'emotional',name:'Emotional',icon:'\u{1F60C}',
    def:'Coping effectively with life and creating satisfying relationships. Includes engaging in self-care, managing stress, and acknowledging your feelings.'},
@@ -8283,12 +8283,12 @@ function _wellFormatDate(iso){
   return d.toLocaleDateString('en-US',{month:'short',day:'numeric'});
 }
 
-// ═══════════════════════════════════════
+// =======================================
 // TIME LEFT PRODUCTIVE WINDOW (5am–10pm)
-// ═══════════════════════════════════════
+// =======================================
 var TL_START_H=5,TL_END_H=20;
 function updateTimeLeft(){
-  // Text overlay removed — just update the day progress position
+  // Text overlay removed -- just update the day progress position
   updateDayProgress();
 }
 
@@ -8302,19 +8302,19 @@ function updateDayProgress(){
   
   var elapsed=0;
   if(nowMin<startMin){
-    // Before 5am — show at start, no indicator
+    // Before 5am -- show at start, no indicator
     elapsed=0;
     nowEl.style.left='0%';
     nowEl.style.display='none';
     nowEl.classList.remove('resting');
   }else if(nowMin>=endMin){
-    // After 8pm — full bar, moon at right edge (via CSS)
+    // After 8pm -- full bar, moon at right edge (via CSS)
     elapsed=100;
     nowEl.style.left='';   // CSS handles position via .resting rule
     nowEl.style.display='flex';
     nowEl.classList.add('resting');
   }else{
-    // During productive day — sun follows progress
+    // During productive day -- sun follows progress
     var elapsedMin=nowMin-startMin;
     elapsed=(elapsedMin/totalMin)*100;
     nowEl.style.left=elapsed+'%';
@@ -8327,12 +8327,12 @@ function updateDayProgress(){
   if(typeof renderBannerBlocks==='function')renderBannerBlocks();
 }
 
-// ═══════════════════════════════════════
+// =======================================
 // FOCUS MUSIC (YouTube IFrame API)
-// ═══════════════════════════════════════
-// ═══════════════════════════════════════
+// =======================================
+// =======================================
 // MUSIC PLAYER (YouTube IFrame API + Playlist Switcher)
-// ═══════════════════════════════════════
+// =======================================
 const MUSIC_PLAYLISTS=[
   {id:'PLeSVVJPLz73E_INwG2Oj5W_CG25Ac2t6l',name:'Rock Vibes',icon:'🤘'},
   {id:'PLeSVVJPLz73HAqvoVE-8litfOeQk6oQ8m',name:'Khruangbin',icon:'🎸'},
@@ -8502,9 +8502,9 @@ function _updateMusicUI(){
   }
 }
 
-// ═══════════════════════════════════════
+// =======================================
 // POINTS / REWARDS SYSTEM
-// ═══════════════════════════════════════
+// =======================================
 const TIER_THRESHOLDS=[
   {name:'bronze',label:'Bronze',icon:'🥉',min:0,max:100,color:'#cd7f32'},
   {name:'silver',label:'Silver',icon:'🥈',min:100,max:300,color:'#dadada'},
@@ -8685,7 +8685,7 @@ function renderPointsPopup(){
     progressLabel=(next.min-pts)+' to '+next.label+' '+next.icon;
   }else{
     progressPct=100;
-    progressLabel='Mythic — top tier!';
+    progressLabel='Mythic -- top tier!';
   }
   
   var html='<div class="points-popup-section">'
@@ -8759,9 +8759,9 @@ function _spawnBurst(parent,cx,cy,color){
   }
 }
 
-// ═══════════════════════════════════════
+// =======================================
 // TASK TIMER (elapsed stopwatch)
-// ═══════════════════════════════════════
+// =======================================
 var _ttRunning=false,_ttElapsed=0,_ttStart=null,_ttTick=null,_ttAwarded=false;
 function _ttFmt(ms){var s=Math.floor(ms/1000),h=Math.floor(s/3600);s=s%3600;var m=Math.floor(s/60);s=s%60;return (h<10?'0':'')+h+':'+(m<10?'0':'')+m+':'+(s<10?'0':'')+s;}
 function ttStart(){
@@ -8791,7 +8791,7 @@ function ttReset(){
   var btn=document.getElementById('ttStartBtn');if(btn)btn.textContent='\u25B6';
 }
 
-// ── Custom confirm dialog — replaces all browser confirm() calls ──────
+// -- Custom confirm dialog -- replaces all browser confirm() calls ------
 var _confirmOnDo=null,_confirmOnAlt=null;
 function _confirm(msg,onDo,opts){
   opts=opts||{};
@@ -8858,9 +8858,9 @@ function startBreathworkFromModal(){
   startBreathwork();
 }
 
-// ═══════════════════════════════════════
+// =======================================
 // TIMER MODAL
-// ═══════════════════════════════════════
+// =======================================
 function openTimerModal(){
   document.getElementById('timerModal').classList.add('open');
   _blurDashboard();
@@ -8883,9 +8883,9 @@ function _syncTimerPresetBtns(){
   });
 }
 
-// ═══════════════════════════════════════
+// =======================================
 // JOURNAL
-// ═══════════════════════════════════════
+// =======================================
 var _journalUnlocked=false;
 var _pinBuffer='';
 var _setPinBuffer='';
@@ -8963,7 +8963,7 @@ function saveJournalEntry(){
   
 }
 
-// ── View entries (PIN gate) ──
+// -- View entries (PIN gate) --
 function toggleJournalView(){
   const ev=document.getElementById('journalEntriesView');
   const compose=document.getElementById('journalCompose');
@@ -8976,7 +8976,7 @@ function toggleJournalView(){
       btn.classList.add('active');
       renderJournalEntries();
     } else if(!state.journalPin){
-      // No PIN set yet — prompt to create one
+      // No PIN set yet -- prompt to create one
       _showSetPin();
     } else {
       // Show PIN gate
@@ -8997,7 +8997,7 @@ function lockJournalEntries(){
   document.getElementById('journalViewToggle').classList.remove('active');
 }
 
-// ── PIN entry (verify) ──
+// -- PIN entry (verify) --
 function journalPinKey(k){
   const err=document.getElementById('journalPinError');
   if(k==='C'){_pinBuffer='';_renderPinDots('journalPinDots',0);err.textContent='';return;}
@@ -9010,7 +9010,7 @@ function journalPinKey(k){
       if(_pinBuffer===state.journalPin){
         _pinBuffer='';
         if(_changingPin){
-          // Old PIN confirmed — now let them set a new one
+          // Old PIN confirmed -- now let them set a new one
           _changingPin=false;
           // Restore the lock-gate labels for next time
           document.querySelector('#journalPinGate .journal-pin-title').textContent='Journal is locked';
@@ -9042,16 +9042,16 @@ function journalPinKey(k){
   }
 }
 
-// ── Change PIN (requires re-entering the current PIN) ──
+// -- Change PIN (requires re-entering the current PIN) --
 function changeJournalPin(){
   // SECURITY: require the user to re-enter their CURRENT PIN before they can
-  // set a new one — even though they're already in the unlocked view.
+  // set a new one -- even though they're already in the unlocked view.
   if(!_journalUnlocked){
     toast('Unlock the journal first');
     return;
   }
   if(!state.journalPin){
-    // No PIN yet — go straight to creating one
+    // No PIN yet -- go straight to creating one
     _showSetPin();
     return;
   }
@@ -9067,7 +9067,7 @@ function changeJournalPin(){
   _renderPinDots('journalPinDots',0);
 }
 
-// ── Set / change PIN ──
+// -- Set / change PIN --
 function showSetPinForm(){
   // Only allowed when there is NO existing PIN (first-time setup) or the
   // journal is already unlocked. Prevents bypassing an existing PIN.
@@ -9168,9 +9168,9 @@ function deleteJournalEntry(id){
   },{destructive:true,confirmText:'Delete'});
 }
 
-// ═══════════════════════════════════════
+// =======================================
 // WORKOUT MODAL
-// ═══════════════════════════════════════
+// =======================================
 function openWorkoutModal(){
   document.getElementById('workoutModal').classList.add('open');
   _blurDashboard();
@@ -9182,9 +9182,9 @@ function closeWorkoutModal(){
   _unblurDashboard();
 }
 
-// ═══════════════════════════════════════
+// =======================================
 // WORKOUT PANEL
-// ═══════════════════════════════════════
+// =======================================
 var WO_ACTIVE_DAY=null;
 
 const WO_DAYS=[
@@ -9197,11 +9197,11 @@ const WO_DAYS=[
   {label:'Sunday',type:'rest'}
 ];
 
-// ── Exercise database ──────────────────────────────────────────────────────
+// -- Exercise database ------------------------------------------------------
 const WO_EXERCISES={
   // HORIZONTAL PUSH
   db_bench:{name:'DB Bench Press',muscles:'Chest · Anterior Deltoid · Triceps',
-    steps:['Lie flat, feet on floor. Dumbbells at chest, palms forward.','Press upward until arms nearly locked, slight arc inward.','Lower slowly 2–3 s, feel chest stretch.','Shoulder blades pinched back throughout — no shrugging.'],
+    steps:['Lie flat, feet on floor. Dumbbells at chest, palms forward.','Press upward until arms nearly locked, slight arc inward.','Lower slowly 2–3 s, feel chest stretch.','Shoulder blades pinched back throughout -- no shrugging.'],
     tip:'Control the descent. If no bench, do floor press.',
     alts:['db_incline','db_floor_press','cable_chest','pushup_weighted','pec_deck','dips_chest','cable_crossover','smith_bench','chest_press_machine']},
   db_incline:{name:'Incline DB Press',muscles:'Upper Chest · Anterior Deltoid · Triceps',
@@ -9209,11 +9209,11 @@ const WO_EXERCISES={
     tip:'Upper chest is often underdeveloped. Go lighter than flat press.',
     alts:['db_bench','db_floor_press','cable_chest','pushup_weighted','pec_deck','dips_chest','cable_crossover','smith_bench','chest_press_machine']},
   db_floor_press:{name:'DB Floor Press',muscles:'Chest · Triceps',
-    steps:['Lie on floor, knees bent. DBs at chest, elbows on floor.','Press to full extension, squeeze chest at top.','Lower until elbows touch floor — that is the ROM.','Great option when bench is taken.'],
+    steps:['Lie on floor, knees bent. DBs at chest, elbows on floor.','Press to full extension, squeeze chest at top.','Lower until elbows touch floor -- that is the ROM.','Great option when bench is taken.'],
     tip:'Floor limits shoulder strain. Excellent for shoulder-sensitive days.',
     alts:['db_bench','db_incline','cable_chest','pushup_weighted','pec_deck','dips_chest','cable_crossover','smith_bench','chest_press_machine']},
   cable_chest:{name:'Cable Chest Fly',muscles:'Chest (inner) · Anterior Deltoid',
-    steps:['Cables at chest height, stand center, one foot forward.','Arms slightly bent — hug a tree arc.','Bring hands together, squeeze pec at end.','Open slowly, control the stretch.'],
+    steps:['Cables at chest height, stand center, one foot forward.','Arms slightly bent -- hug a tree arc.','Bring hands together, squeeze pec at end.','Open slowly, control the stretch.'],
     tip:'Lead with elbows, not hands. Keep bend consistent.',
     alts:['db_bench','db_incline','db_floor_press','pushup_weighted','pec_deck','dips_chest','cable_crossover','smith_bench','chest_press_machine']},
   pushup_weighted:{name:'Weighted Push-Up',muscles:'Chest · Triceps · Core',
@@ -9221,41 +9221,41 @@ const WO_EXERCISES={
     tip:'Backpack with books works if no vest or plates.',
     alts:['db_bench','db_incline','db_floor_press','cable_chest','pec_deck','dips_chest','cable_crossover','smith_bench','chest_press_machine']},
   pec_deck:{name:'Pec Deck Machine',muscles:'Chest (isolation) · Anterior Deltoid',
-    steps:['Adjust seat so handles are at chest height.','Grip handles, elbows bent ~90°.','Bring handles together in front of chest.','Open slowly — feel the stretch.'],
+    steps:['Adjust seat so handles are at chest height.','Grip handles, elbows bent ~90°.','Bring handles together in front of chest.','Open slowly -- feel the stretch.'],
     tip:'Machine keeps you in the groove. Great finishing move or when the free weights area is packed.',
     alts:['db_bench','db_incline','cable_chest','pushup_weighted','dips_chest','cable_crossover','smith_bench','chest_press_machine','db_floor_press']},
   dips_chest:{name:'Chest Dips (Weighted)',muscles:'Lower Chest · Triceps · Anterior Deltoid',
-    steps:['Grip parallel bars, lean torso forward ~30°.','Lower until upper arms parallel to floor.','Drive up, squeezing chest — slight forward lean maintained.','Add dip belt with plates as you progress.'],
+    steps:['Grip parallel bars, lean torso forward ~30°.','Lower until upper arms parallel to floor.','Drive up, squeezing chest -- slight forward lean maintained.','Add dip belt with plates as you progress.'],
     tip:'The forward lean is what makes it a chest dip vs tricep dip.',
     alts:['db_bench','db_incline','cable_chest','pushup_weighted','pec_deck','cable_crossover','smith_bench','chest_press_machine','db_floor_press']},
   cable_crossover:{name:'Cable Crossover',muscles:'Chest (full sweep) · Anterior Deltoid',
     steps:['High cables. Step forward, one foot staggered.','Pull handles down and in, crossing slightly at the bottom.','Squeeze hard at crossover point.','Return slowly to stretch.'],
-    tip:'Different angle than standard fly — great for the lower-chest sweep.',
+    tip:'Different angle than standard fly -- great for the lower-chest sweep.',
     alts:['db_bench','cable_chest','pec_deck','dips_chest','pushup_weighted','db_incline','db_floor_press','smith_bench','chest_press_machine']},
   smith_bench:{name:'Smith Machine Bench',muscles:'Chest · Triceps · Anterior Deltoid',
-    steps:['Lie on bench under Smith bar. Grip shoulder-width.','Unrack and lower to lower chest.','Press back up, lock out at top.','Fixed path reduces stabilizer demand — good for overload.'],
+    steps:['Lie on bench under Smith bar. Grip shoulder-width.','Unrack and lower to lower chest.','Press back up, lock out at top.','Fixed path reduces stabilizer demand -- good for overload.'],
     tip:'Good for going heavy when no spotter is available.',
     alts:['db_bench','db_incline','pec_deck','cable_chest','chest_press_machine','pushup_weighted','dips_chest','cable_crossover','db_floor_press']},
   chest_press_machine:{name:'Chest Press Machine',muscles:'Chest · Triceps · Anterior Deltoid',
-    steps:['Set seat so handles are at chest height.','Grip handles, elbows bent, pull shoulder blades back.','Press forward to full extension.','Control return — do not let the stack slam.'],
+    steps:['Set seat so handles are at chest height.','Grip handles, elbows bent, pull shoulder blades back.','Press forward to full extension.','Control return -- do not let the stack slam.'],
     tip:'Zero balance required. Great for focusing purely on pressing strength.',
     alts:['db_bench','db_incline','pec_deck','cable_chest','smith_bench','pushup_weighted','dips_chest','cable_crossover','db_floor_press']},
 
   // KNEE-DOMINANT / QUADS
   goblet_squat:{name:'Goblet Squat',muscles:'Quads · Glutes · Core',
     steps:['Hold one heavy DB at chest, cupping the top end.','Feet shoulder-width, toes slightly out.','Knees out as you sit straight down, chest tall.','Drive through heels, squeeze glutes at top.'],
-    tip:'The DB counterbalances you. Go heavy — it\'s stable.',
+    tip:'The DB counterbalances you. Go heavy -- it\'s stable.',
     alts:['db_front_squat','leg_press','hack_squat','box_squat','sumo_squat','smith_squat','walking_lunge','wall_sit','db_step_up_squat']},
   db_front_squat:{name:'DB Front Squat',muscles:'Quads · Glutes · Upper Back · Core',
-    steps:['DBs at shoulder height, elbows high.','Squat down keeping elbows up — forces upright torso.','Drive back up through heels.'],
+    steps:['DBs at shoulder height, elbows high.','Squat down keeping elbows up -- forces upright torso.','Drive back up through heels.'],
     tip:'Elbows high is the key cue. Cross arms to support DBs if wrists bother you.',
     alts:['goblet_squat','leg_press','hack_squat','box_squat','sumo_squat','smith_squat','walking_lunge','wall_sit','db_step_up_squat']},
   leg_press:{name:'Leg Press',muscles:'Quads · Glutes · Hamstrings',
-    steps:['Feet hip-width on platform. Knees ~90° when loaded.','Release safety and lower platform controlled.','Stop at 90° — knees don\'t collapse.','Press through heels, don\'t lock out.'],
+    steps:['Feet hip-width on platform. Knees ~90° when loaded.','Release safety and lower platform controlled.','Stop at 90° -- knees don\'t collapse.','Press through heels, don\'t lock out.'],
     tip:'Higher foot position = more glutes; lower = more quads.',
     alts:['goblet_squat','db_front_squat','hack_squat','box_squat','sumo_squat','smith_squat','walking_lunge','wall_sit','db_step_up_squat']},
   hack_squat:{name:'Hack Squat (DB)',muscles:'Quads (primary) · Glutes',
-    steps:['DBs at sides, heels elevated 1–2 in on a plate.','Squat straight down, torso upright.','Knees travel over toes — intended.','Drive through balls of feet.'],
+    steps:['DBs at sides, heels elevated 1–2 in on a plate.','Squat straight down, torso upright.','Knees travel over toes -- intended.','Drive through balls of feet.'],
     tip:'Heel elevation is the key for quad emphasis.',
     alts:['goblet_squat','db_front_squat','leg_press','box_squat','sumo_squat','smith_squat','walking_lunge','wall_sit','db_step_up_squat']},
   box_squat:{name:'Box Squat (DB)',muscles:'Glutes · Hamstrings · Quads',
@@ -9282,18 +9282,18 @@ const WO_EXERCISES={
     alts:['lat_pulldown','assisted_pullup','db_row','cable_row','t_bar_row','chest_supported_row','straight_arm_pulldown','ring_row','close_grip_pulldown']},
   lat_pulldown:{name:'Lat Pulldown',muscles:'Lats · Biceps · Rear Deltoid',
     steps:['Overhand, just outside shoulder width. Lean back 10–15°.','Drive elbows down to hips.','Pull to upper chest. Control return.'],
-    tip:'Focus on elbow path — lats pull the arm down.',
+    tip:'Focus on elbow path -- lats pull the arm down.',
     alts:['pullups','assisted_pullup','db_row','cable_row','t_bar_row','chest_supported_row','straight_arm_pulldown','ring_row','close_grip_pulldown']},
   assisted_pullup:{name:'Assisted Pull-Up',muscles:'Lats · Biceps · Core',
     steps:['Set assistance weight. Grip just outside shoulders.','Same motion: shoulder blades down, elbows to hips.','Lower slowly. Reduce assistance 5 lbs every 2–3 weeks.'],
     tip:'A progression tool. Track it and chip away.',
     alts:['pullups','lat_pulldown','db_row','cable_row','t_bar_row','chest_supported_row','straight_arm_pulldown','ring_row','close_grip_pulldown']},
   db_row:{name:'Single-Arm DB Row',muscles:'Lats · Rhomboids · Rear Delt · Biceps',
-    steps:['One hand and knee on bench. Row DB toward hip, not shoulder.','Elbow behind body at top — hold 1 s.','Lower slowly. Finish all reps one side, then switch.'],
+    steps:['One hand and knee on bench. Row DB toward hip, not shoulder.','Elbow behind body at top -- hold 1 s.','Lower slowly. Finish all reps one side, then switch.'],
     tip:'Pulling to the hip is key. Allows heavy loading with good form.',
     alts:['pullups','lat_pulldown','assisted_pullup','cable_row','t_bar_row','chest_supported_row','straight_arm_pulldown','ring_row','close_grip_pulldown']},
   cable_row:{name:'Seated Cable Row',muscles:'Lats · Rhomboids · Biceps · Rear Delt',
-    steps:['Low cable row. Feet on platform, knees slightly bent.','Retract shoulder blades before pulling.','Pull handle to lower abdomen, elbows close.','Control return — slight forward lean only.'],
+    steps:['Low cable row. Feet on platform, knees slightly bent.','Retract shoulder blades before pulling.','Pull handle to lower abdomen, elbows close.','Control return -- slight forward lean only.'],
     tip:'Keep torso upright. Leaning back makes it a lower-back exercise.',
     alts:['pullups','lat_pulldown','assisted_pullup','db_row','t_bar_row','chest_supported_row','straight_arm_pulldown','ring_row','close_grip_pulldown']},
   t_bar_row:{name:'T-Bar Row',muscles:'Lats · Rhomboids · Rear Delt · Biceps',
@@ -9301,11 +9301,11 @@ const WO_EXERCISES={
     tip:'One of the heaviest row variations. Great for thickness.',
     alts:['pullups','lat_pulldown','db_row','cable_row','assisted_pullup','chest_supported_row','straight_arm_pulldown','ring_row','close_grip_pulldown']},
   chest_supported_row:{name:'Chest-Supported DB Row',muscles:'Rhomboids · Rear Delt · Lats · Biceps',
-    steps:['Set incline bench to 30–45°. Lie chest-down, DBs hanging.','Row both DBs up toward hips simultaneously.','Squeeze shoulder blades together.','Lower slowly — full stretch.'],
+    steps:['Set incline bench to 30–45°. Lie chest-down, DBs hanging.','Row both DBs up toward hips simultaneously.','Squeeze shoulder blades together.','Lower slowly -- full stretch.'],
     tip:'Chest support eliminates lower-back fatigue. Pure back work.',
     alts:['pullups','lat_pulldown','db_row','cable_row','t_bar_row','assisted_pullup','straight_arm_pulldown','ring_row','close_grip_pulldown']},
   straight_arm_pulldown:{name:'Straight-Arm Pulldown',muscles:'Lats (isolation) · Core',
-    steps:['High cable, rope or straight bar. Arms nearly straight.','Pull bar down to thighs with a sweeping arc.','Feel the lat stretch at top — that\'s the money.','Return slowly.'],
+    steps:['High cable, rope or straight bar. Arms nearly straight.','Pull bar down to thighs with a sweeping arc.','Feel the lat stretch at top -- that\'s the money.','Return slowly.'],
     tip:'Pure lat isolation. Great as a warm-up or finishing move.',
     alts:['pullups','lat_pulldown','db_row','cable_row','t_bar_row','chest_supported_row','assisted_pullup','ring_row','close_grip_pulldown']},
   close_grip_pulldown:{name:'Close-Grip Pulldown',muscles:'Lats (lower) · Biceps',
@@ -9323,15 +9323,15 @@ const WO_EXERCISES={
     tip:'Hip hinge, not squat. Keep DBs close to legs.',
     alts:['leg_curl','good_morning','kb_swing','stiff_leg_dl','nordic_curl','hip_thrust','sumo_rdl','single_leg_rdl','cable_pull_through']},
   leg_curl:{name:'Lying Leg Curl',muscles:'Hamstrings (isolated)',
-    steps:['Face down, pad just above ankles.','Curl heels toward glutes, full ROM.','Hold 1 s at top.','Lower slowly — eccentric is key.'],
+    steps:['Face down, pad just above ankles.','Curl heels toward glutes, full ROM.','Hold 1 s at top.','Lower slowly -- eccentric is key.'],
     tip:'Standing single-leg cable curl is a great substitute.',
     alts:['rdl','good_morning','kb_swing','stiff_leg_dl','nordic_curl','hip_thrust','sumo_rdl','single_leg_rdl','cable_pull_through']},
   good_morning:{name:'Good Morning',muscles:'Hamstrings · Glutes · Lower Back',
-    steps:['Light DB at chest or bar across upper traps.','Feet hip-width, soft knee bend.','Hinge forward until torso near parallel — feel hamstring stretch.','Drive hips forward to return.'],
+    steps:['Light DB at chest or bar across upper traps.','Feet hip-width, soft knee bend.','Hinge forward until torso near parallel -- feel hamstring stretch.','Drive hips forward to return.'],
     tip:'GO LIGHT. This is a hamstring stretch strengthener, not a max effort move.',
     alts:['rdl','leg_curl','kb_swing','stiff_leg_dl','nordic_curl','hip_thrust','sumo_rdl','single_leg_rdl','cable_pull_through']},
   kb_swing:{name:'Kettlebell Swing',muscles:'Hamstrings · Glutes · Core · Shoulders',
-    steps:['KB between legs. Hike it back with a hip hinge.','Explosively snap hips forward.','Let momentum swing weight to chest height — arms guide only.','Control the hike back pattern.'],
+    steps:['KB between legs. Hike it back with a hip hinge.','Explosively snap hips forward.','Let momentum swing weight to chest height -- arms guide only.','Control the hike back pattern.'],
     tip:'Power comes entirely from the hip snap. Think "hip, not arms."',
     alts:['rdl','leg_curl','good_morning','stiff_leg_dl','nordic_curl','hip_thrust','sumo_rdl','single_leg_rdl','cable_pull_through']},
   stiff_leg_dl:{name:'Stiff-Leg Deadlift (DB)',muscles:'Hamstrings · Glutes · Lower Back',
@@ -9339,11 +9339,11 @@ const WO_EXERCISES={
     tip:'More hamstring stretch than RDL. Good for mobility gains.',
     alts:['rdl','leg_curl','good_morning','kb_swing','nordic_curl','hip_thrust','sumo_rdl','single_leg_rdl','cable_pull_through']},
   nordic_curl:{name:'Nordic Curl',muscles:'Hamstrings (eccentric, very high demand)',
-    steps:['Kneel on mat, feet anchored under a bench or bar.','Keep body straight hip-to-knee as you lower torso toward floor.','Lower as slowly as possible — use arms to catch if needed.','Pull back up using hamstrings (or push up from floor).'],
-    tip:'Regarded as one of the most effective hamstring exercises in sports science research. Very hard — start with negatives only.',
+    steps:['Kneel on mat, feet anchored under a bench or bar.','Keep body straight hip-to-knee as you lower torso toward floor.','Lower as slowly as possible -- use arms to catch if needed.','Pull back up using hamstrings (or push up from floor).'],
+    tip:'Regarded as one of the most effective hamstring exercises in sports science research. Very hard -- start with negatives only.',
     alts:['rdl','leg_curl','good_morning','kb_swing','stiff_leg_dl','hip_thrust','sumo_rdl','single_leg_rdl','cable_pull_through']},
   hip_thrust:{name:'Hip Thrust (DB or Barbell)',muscles:'Glutes (primary) · Hamstrings',
-    steps:['Sit with upper back against a bench. Bar or DB on hips.','Feet flat, knees ~90° at top.','Drive hips up until body is straight hip to shoulder.','Squeeze glutes hard at top for 1 s — lower controlled.'],
+    steps:['Sit with upper back against a bench. Bar or DB on hips.','Feet flat, knees ~90° at top.','Drive hips up until body is straight hip to shoulder.','Squeeze glutes hard at top for 1 s -- lower controlled.'],
     tip:'The single most effective glute exercise per EMG research (Contreras et al., 2015). Go heavy.',
     alts:['rdl','leg_curl','good_morning','kb_swing','stiff_leg_dl','nordic_curl','sumo_rdl','single_leg_rdl','cable_pull_through']},
   sumo_rdl:{name:'Sumo RDL (DB)',muscles:'Hamstrings · Glutes · Adductors',
@@ -9351,7 +9351,7 @@ const WO_EXERCISES={
     tip:'Wider stance shifts some load to adductors and changes glute activation angle.',
     alts:['rdl','leg_curl','good_morning','kb_swing','stiff_leg_dl','nordic_curl','hip_thrust','single_leg_rdl','cable_pull_through']},
   single_leg_rdl:{name:'Single-Leg RDL (DB)',muscles:'Hamstrings · Glutes · Balance · Core',
-    steps:['Hold one or two DBs. Stand on one leg, soft bend.','Hinge at hip, extending free leg behind you for balance.','Lower DB to mid-shin on standing leg side.','Drive back up — same hip hinges both ways.'],
+    steps:['Hold one or two DBs. Stand on one leg, soft bend.','Hinge at hip, extending free leg behind you for balance.','Lower DB to mid-shin on standing leg side.','Drive back up -- same hip hinges both ways.'],
     tip:'Outstanding for addressing leg imbalances. Balance will improve quickly.',
     alts:['rdl','leg_curl','good_morning','kb_swing','stiff_leg_dl','nordic_curl','hip_thrust','sumo_rdl','cable_pull_through']},
   cable_pull_through:{name:'Cable Pull-Through',muscles:'Glutes · Hamstrings · Lower Back',
@@ -9361,7 +9361,7 @@ const WO_EXERCISES={
 
   // UNILATERAL LOWER
   step_ups:{name:'Weighted Step-Ups',muscles:'Glutes · Quads · Hamstrings · Core',
-    steps:['DBs at sides. Box at knee height.','Entire foot on box — don\'t use trailing leg to push.','Drive through heel to step up, knee lifts opposite leg.','Step back down controlled. All reps one leg, then switch.'],
+    steps:['DBs at sides. Box at knee height.','Entire foot on box -- don\'t use trailing leg to push.','Drive through heel to step up, knee lifts opposite leg.','Step back down controlled. All reps one leg, then switch.'],
     tip:'Joe\'s favorite. Heel drive is everything.',
     alts:['reverse_lunge','split_squat','bulgarian_split','db_lateral_lunge','hip_thrust','curtsy_lunge','single_leg_rdl','walking_lunge','step_mill']},
   reverse_lunge:{name:'Reverse Lunge (DB)',muscles:'Glutes · Quads · Hamstrings · Balance',
@@ -9369,16 +9369,16 @@ const WO_EXERCISES={
     tip:'Easier on knees than forward lunge. Better glute activation.',
     alts:['step_ups','split_squat','bulgarian_split','db_lateral_lunge','hip_thrust','curtsy_lunge','single_leg_rdl','walking_lunge','step_mill']},
   split_squat:{name:'Split Squat (DB)',muscles:'Quads · Glutes · Hip Flexors',
-    steps:['Long split stance — front forward, back extended. DBs at sides.','Lower straight down until back knee near floor.','Front shin stays as vertical as possible.','All reps one side then switch.'],
-    tip:'Static stance — no movement. Purely a drop and drive.',
+    steps:['Long split stance -- front forward, back extended. DBs at sides.','Lower straight down until back knee near floor.','Front shin stays as vertical as possible.','All reps one side then switch.'],
+    tip:'Static stance -- no movement. Purely a drop and drive.',
     alts:['step_ups','reverse_lunge','bulgarian_split','db_lateral_lunge','hip_thrust','curtsy_lunge','single_leg_rdl','walking_lunge','step_mill']},
   bulgarian_split:{name:'Bulgarian Split Squat',muscles:'Glutes · Quads · Hip Flexors · Balance',
-    steps:['Rear foot on bench. DBs at sides.','Lower until front thigh parallel — front shin vertical at bottom.','Drive through front heel to return.','Go lighter than you think — this is brutal.'],
+    steps:['Rear foot on bench. DBs at sides.','Lower until front thigh parallel -- front shin vertical at bottom.','Drive through front heel to return.','Go lighter than you think -- this is brutal.'],
     tip:'Often called the king of lower body. Use Smith machine or TRX initially.',
     alts:['step_ups','reverse_lunge','split_squat','db_lateral_lunge','hip_thrust','curtsy_lunge','single_leg_rdl','walking_lunge','step_mill']},
   db_lateral_lunge:{name:'Lateral Lunge (DB)',muscles:'Glutes (lateral) · Adductors · Quads',
     steps:['DBs at sides. Wide step to one side, bend that knee.','Other leg stays straight. Sit into the hip.','Push through bent leg heel to return. Alternate.'],
-    tip:'Frontal plane movement — often neglected. Great complement to step-ups.',
+    tip:'Frontal plane movement -- often neglected. Great complement to step-ups.',
     alts:['step_ups','reverse_lunge','split_squat','bulgarian_split','hip_thrust','curtsy_lunge','single_leg_rdl','walking_lunge','step_mill']},
   curtsy_lunge:{name:'Curtsy Lunge (DB)',muscles:'Glutes (lateral) · Adductors · Quads',
     steps:['DBs at sides. Step one foot diagonally BEHIND and across.','Lower back knee toward floor in a curtsy pattern.','Drive through front heel to return.','Alternate sides.'],
@@ -9387,15 +9387,15 @@ const WO_EXERCISES={
 
   // SHOULDER / OVERHEAD PUSH
   db_shoulder_press:{name:'DB Shoulder Press',muscles:'Anterior & Lateral Delt · Triceps',
-    steps:['Seated or standing. DBs at shoulder height, palms forward.','Press upward — hands arc slightly inward at top.','Stop just before lockout.','Lower to shoulder height with control.'],
+    steps:['Seated or standing. DBs at shoulder height, palms forward.','Press upward -- hands arc slightly inward at top.','Stop just before lockout.','Lower to shoulder height with control.'],
     tip:'Seated with back support reduces lower-back strain.',
     alts:['arnold_press','lateral_raise','db_upright_row','machine_shoulder','cable_lateral','rear_delt_fly','db_front_raise','face_pull','overhead_press_machine']},
   arnold_press:{name:'Arnold Press',muscles:'All 3 Delt Heads · Triceps · Rotator Cuff',
-    steps:['Start with palms facing YOU at shoulder height.','Press and rotate — palms face FORWARD at top.','Reverse on the way down.','Rotation recruits all three delt heads.'],
-    tip:'Named after Arnold. Go slightly lighter — wider ROM.',
+    steps:['Start with palms facing YOU at shoulder height.','Press and rotate -- palms face FORWARD at top.','Reverse on the way down.','Rotation recruits all three delt heads.'],
+    tip:'Named after Arnold. Go slightly lighter -- wider ROM.',
     alts:['db_shoulder_press','lateral_raise','db_upright_row','machine_shoulder','cable_lateral','rear_delt_fly','db_front_raise','face_pull','overhead_press_machine']},
   lateral_raise:{name:'Lateral Raise (DB)',muscles:'Lateral Delt (isolated)',
-    steps:['Light DBs at sides, slight elbow bend.','Raise arms out to shoulder height — no higher.','Pause, lower over 3 s.','Lead with elbows, pinky slightly higher than thumb.'],
+    steps:['Light DBs at sides, slight elbow bend.','Raise arms out to shoulder height -- no higher.','Pause, lower over 3 s.','Lead with elbows, pinky slightly higher than thumb.'],
     tip:'Start at 8–15 lbs. Most people go too heavy and it becomes a trap shrug.',
     alts:['db_shoulder_press','arnold_press','db_upright_row','machine_shoulder','cable_lateral','rear_delt_fly','db_front_raise','face_pull','overhead_press_machine']},
   db_upright_row:{name:'DB Upright Row',muscles:'Lateral Delt · Upper Traps · Biceps',
@@ -9407,35 +9407,35 @@ const WO_EXERCISES={
     tip:'Fixed path. Good for overloading when shoulder stability is an issue.',
     alts:['db_shoulder_press','arnold_press','lateral_raise','db_upright_row','cable_lateral','rear_delt_fly','db_front_raise','face_pull','overhead_press_machine']},
   cable_lateral:{name:'Cable Lateral Raise',muscles:'Lateral Delt (constant tension)',
-    steps:['Single low cable, handle in outside hand.','Raise arm to shoulder height, arc slightly across body.','Control return — cable maintains tension at bottom.','Complete all reps, switch sides.'],
-    tip:'Cable provides tension at the bottom where DBs are easiest — better overall stimulus.',
+    steps:['Single low cable, handle in outside hand.','Raise arm to shoulder height, arc slightly across body.','Control return -- cable maintains tension at bottom.','Complete all reps, switch sides.'],
+    tip:'Cable provides tension at the bottom where DBs are easiest -- better overall stimulus.',
     alts:['db_shoulder_press','arnold_press','lateral_raise','machine_shoulder','rear_delt_fly','db_front_raise','face_pull','overhead_press_machine','db_upright_row']},
   rear_delt_fly:{name:'Rear Delt Fly (DB)',muscles:'Rear Deltoid · Rhomboids · Lower Traps',
-    steps:['Seated, lean forward until torso nearly parallel.','DBs hanging, slight elbow bend.','Raise arms out to sides — pinch shoulder blades.','Hold 1 s at top, lower slowly.'],
+    steps:['Seated, lean forward until torso nearly parallel.','DBs hanging, slight elbow bend.','Raise arms out to sides -- pinch shoulder blades.','Hold 1 s at top, lower slowly.'],
     tip:'Rear delts are chronically underdeveloped. Light weight, high reps.',
     alts:['db_shoulder_press','arnold_press','lateral_raise','machine_shoulder','cable_lateral','db_front_raise','face_pull','overhead_press_machine','db_upright_row']},
   overhead_press_machine:{name:'Overhead Press Machine',muscles:'Anterior & Lateral Delt · Triceps',
     steps:['Set seat. Grip handles at shoulder level.','Press overhead to near full extension.','Lower controlled.'],
-    tip:'Overhead press machines vary — some allow more freedom of movement than others.',
+    tip:'Overhead press machines vary -- some allow more freedom of movement than others.',
     alts:['db_shoulder_press','arnold_press','lateral_raise','machine_shoulder','cable_lateral','rear_delt_fly','db_front_raise','face_pull','db_upright_row']},
 
   // REAR DELT / ROTATOR CUFF
   face_pull:{name:'Face Pull',muscles:'Rear Deltoid · Rotator Cuff · Rear Traps',
-    steps:['High cable with rope attachment. Grab ends with palms down.','Pull rope toward face, elbows flare wide and high.','External rotate at end — elbows behind the rope at top.','Return slowly — this range of motion is rare and valuable.'],
+    steps:['High cable with rope attachment. Grab ends with palms down.','Pull rope toward face, elbows flare wide and high.','External rotate at end -- elbows behind the rope at top.','Return slowly -- this range of motion is rare and valuable.'],
     tip:'One of the best shoulder health exercises. Often called "the most important exercise you\'re not doing." 15–20 reps every session.',
     alts:['rear_delt_fly','lateral_raise','cable_lateral','machine_shoulder','db_upright_row','arnold_press','db_shoulder_press','ring_row','overhead_press_machine']},
 
   // TRICEPS
   db_tricep_ext:{name:'DB Tricep Extension (Overhead)',muscles:'Triceps (long head emphasis)',
-    steps:['Seated or standing. Hold one DB with both hands overhead.','Lower DB behind head, elbows pointing forward.','Press back up to full extension — squeeze triceps.','Keep elbows from flaring out.'],
-    tip:'Overhead position puts the long head of the tricep in a stretched position — highest growth stimulus.',
+    steps:['Seated or standing. Hold one DB with both hands overhead.','Lower DB behind head, elbows pointing forward.','Press back up to full extension -- squeeze triceps.','Keep elbows from flaring out.'],
+    tip:'Overhead position puts the long head of the tricep in a stretched position -- highest growth stimulus.',
     alts:['cable_pushdown','skull_crusher','close_grip_press','db_kickback','bench_dip','diamond_pushup','tricep_machine','cable_overhead_tri','dips_chest']},
   cable_pushdown:{name:'Cable Pushdown (Rope)',muscles:'Triceps (all heads)',
-    steps:['High cable, rope attachment. Elbows fixed at sides.','Push rope down and out — separate at bottom.','Full extension, squeeze triceps.','Control return — stop when forearms are parallel.'],
+    steps:['High cable, rope attachment. Elbows fixed at sides.','Push rope down and out -- separate at bottom.','Full extension, squeeze triceps.','Control return -- stop when forearms are parallel.'],
     tip:'Keep elbows pinned to sides throughout. If they drift forward, reduce weight.',
     alts:['db_tricep_ext','skull_crusher','close_grip_press','db_kickback','bench_dip','diamond_pushup','tricep_machine','cable_overhead_tri','dips_chest']},
   skull_crusher:{name:'Skull Crushers (DB)',muscles:'Triceps (all heads)',
-    steps:['Lie flat, DBs extended above chest.','Lower DBs toward temples by bending only at elbow.','Extend back up — keep upper arms vertical.'],
+    steps:['Lie flat, DBs extended above chest.','Lower DBs toward temples by bending only at elbow.','Extend back up -- keep upper arms vertical.'],
     tip:'Keep upper arms still. Only the forearms move. Go lighter than you think.',
     alts:['db_tricep_ext','cable_pushdown','close_grip_press','db_kickback','bench_dip','diamond_pushup','tricep_machine','cable_overhead_tri','dips_chest']},
   close_grip_press:{name:'Close-Grip DB Press',muscles:'Triceps · Chest (inner)',
@@ -9449,43 +9449,43 @@ const WO_EXERCISES={
 
   // BICEPS
   db_bicep_curl:{name:'DB Bicep Curl',muscles:'Biceps · Brachialis · Brachioradialis',
-    steps:['Stand or sit, DBs at sides, palms forward.','Curl both up simultaneously — elbows stay pinned to sides.','Squeeze biceps at top.','Lower slowly — 2–3 s.'],
-    tip:'Slow the lowering — the eccentric builds more muscle.',
+    steps:['Stand or sit, DBs at sides, palms forward.','Curl both up simultaneously -- elbows stay pinned to sides.','Squeeze biceps at top.','Lower slowly -- 2–3 s.'],
+    tip:'Slow the lowering -- the eccentric builds more muscle.',
     alts:['hammer_curl','incline_curl','concentration_curl','cable_curl','preacher_curl','db_21s','reverse_curl','cable_hammer_curl','machine_curl']},
   hammer_curl:{name:'Hammer Curl',muscles:'Brachialis · Biceps · Brachioradialis',
-    steps:['DBs at sides, palms facing each other (hammer grip).','Curl upward — no rotation.','Hold 1 s, lower slowly.'],
+    steps:['DBs at sides, palms facing each other (hammer grip).','Curl upward -- no rotation.','Hold 1 s, lower slowly.'],
     tip:'Brachialis sits under the bicep and when built, pushes the bicep up making your arm look bigger. Very underrated.',
     alts:['db_bicep_curl','incline_curl','concentration_curl','cable_curl','preacher_curl','db_21s','reverse_curl','cable_hammer_curl','machine_curl']},
   incline_curl:{name:'Incline DB Curl',muscles:'Biceps (long head peak)',
     steps:['Lie back on incline bench (45–60°). Arms hang behind body.','Curl DBs up without moving upper arms.','Full stretch at bottom is the key stimulus.'],
-    tip:'The incline position creates a unique stretch on the long head of the bicep — excellent for peak development.',
+    tip:'The incline position creates a unique stretch on the long head of the bicep -- excellent for peak development.',
     alts:['db_bicep_curl','hammer_curl','concentration_curl','cable_curl','preacher_curl','db_21s','reverse_curl','cable_hammer_curl','machine_curl']},
   concentration_curl:{name:'Concentration Curl',muscles:'Biceps (isolated peak)',
     steps:['Seated, lean forward, elbow braced against inner thigh.','Curl DB up fully, rotating wrist outward at top.','Lower fully.','Complete all reps one arm, then switch.'],
     tip:'Maximum isolation with zero body swing. Quality over quantity.',
     alts:['db_bicep_curl','hammer_curl','incline_curl','cable_curl','preacher_curl','db_21s','reverse_curl','cable_hammer_curl','machine_curl']},
   preacher_curl:{name:'Preacher Curl (DB or Cable)',muscles:'Biceps (lower/short head)',
-    steps:['Arms over preacher pad, elbows at edge of pad.','Curl up — full contraction.','Lower fully — critical to get the stretch.','Do not let elbows lift off pad.'],
+    steps:['Arms over preacher pad, elbows at edge of pad.','Curl up -- full contraction.','Lower fully -- critical to get the stretch.','Do not let elbows lift off pad.'],
     tip:'Eliminates any cheating. Great for adding lower bicep thickness.',
     alts:['db_bicep_curl','hammer_curl','incline_curl','cable_curl','concentration_curl','db_21s','reverse_curl','cable_hammer_curl','machine_curl']},
   cable_curl:{name:'Cable Curl',muscles:'Biceps (constant tension)',
-    steps:['Low cable, straight bar or EZ bar. Stand shoulder-width.','Curl up — keep elbows still.','Cable provides tension at the bottom where DBs are lightest.'],
+    steps:['Low cable, straight bar or EZ bar. Stand shoulder-width.','Curl up -- keep elbows still.','Cable provides tension at the bottom where DBs are lightest.'],
     tip:'Constant tension throughout the movement is the advantage over DBs.',
     alts:['db_bicep_curl','hammer_curl','incline_curl','concentration_curl','preacher_curl','db_21s','reverse_curl','cable_hammer_curl','machine_curl']},
 
   // DEADLIFT / HIP HINGE COMPOUND
   db_deadlift:{name:'DB Deadlift',muscles:'Hamstrings · Glutes · Lower Back · Quads · Traps',
-    steps:['DBs on floor outside feet. Hinge and grip.','Flat back, chest tall, hips above knees.','Drive through floor — hips and shoulders rise together.','Stand tall, squeeze glutes. Lower with control.'],
+    steps:['DBs on floor outside feet. Hinge and grip.','Flat back, chest tall, hips above knees.','Drive through floor -- hips and shoulders rise together.','Stand tall, squeeze glutes. Lower with control.'],
     tip:'Think "push the floor away" not "pull the weight up." Full compound movement.',
     alts:['rdl','hip_thrust','kb_swing','stiff_leg_dl','sumo_rdl','trap_bar_dl','good_morning','cable_pull_through','nordic_curl']},
   trap_bar_dl:{name:'Trap Bar Deadlift',muscles:'Quads · Glutes · Hamstrings · Lower Back',
-    steps:['Stand inside hex bar. Grip handles.','Hinge to grab, flat back, hips above knees.','Drive through floor simultaneously with hips and shoulders.','Lockout — squeeze glutes, stand tall.'],
+    steps:['Stand inside hex bar. Grip handles.','Hinge to grab, flat back, hips above knees.','Drive through floor simultaneously with hips and shoulders.','Lockout -- squeeze glutes, stand tall.'],
     tip:'Trap bar reduces lower back stress vs conventional. Higher quad involvement. Excellent for athletes.',
     alts:['db_deadlift','rdl','hip_thrust','kb_swing','stiff_leg_dl','sumo_rdl','good_morning','cable_pull_through','nordic_curl']},
 
-  // ── CORE (anti-extension, anti-rotation, anti-lateral flexion) ──
+  // -- CORE (anti-extension, anti-rotation, anti-lateral flexion) --
   plank:{name:'Plank',muscles:'Core (anti-extension) · Glutes · Shoulders',
-    steps:['Forearms on floor, elbows under shoulders. Feet hip-width.','Body straight line head to heels.','Squeeze glutes and brace abs hard — no sagging hips.','Breathe steadily. Hold for time.'],
+    steps:['Forearms on floor, elbows under shoulders. Feet hip-width.','Body straight line head to heels.','Squeeze glutes and brace abs hard -- no sagging hips.','Breathe steadily. Hold for time.'],
     tip:'Quality over duration. 30 seconds with perfect form beats 2 minutes with sagging hips. Progress by adding load (plate on back).',
     alts:['side_plank','dead_bug','pallof_press','ab_wheel','hanging_knee_raise','farmer_carry','suitcase_carry']},
   side_plank:{name:'Side Plank',muscles:'Obliques · QL · Glute Medius',
@@ -9493,7 +9493,7 @@ const WO_EXERCISES={
     tip:'Anti-lateral flexion is often neglected. Crucial for spine stability under one-sided loads (think patient carries).',
     alts:['plank','dead_bug','pallof_press','ab_wheel','hanging_knee_raise','suitcase_carry']},
   dead_bug:{name:'Dead Bug',muscles:'Deep Core · Transverse Abdominis · Hip Flexors',
-    steps:['Lie on back, arms straight up, knees over hips at 90°.','Press lower back into floor — maintain throughout.','Slowly extend opposite arm and leg toward floor.','Return controlled. Alternate sides.'],
+    steps:['Lie on back, arms straight up, knees over hips at 90°.','Press lower back into floor -- maintain throughout.','Slowly extend opposite arm and leg toward floor.','Return controlled. Alternate sides.'],
     tip:'Trains the core to resist extension under limb movement. Foundation for everything else. Slow is hard.',
     alts:['plank','side_plank','pallof_press','ab_wheel','hanging_knee_raise']},
   pallof_press:{name:'Pallof Press (Cable)',muscles:'Core (anti-rotation) · Obliques · Shoulders',
@@ -9501,32 +9501,32 @@ const WO_EXERCISES={
     tip:'The cable WANTS to twist you. Your job is to refuse. Single best anti-rotation exercise for occupational core strength.',
     alts:['plank','side_plank','dead_bug','ab_wheel','hanging_knee_raise','suitcase_carry']},
   ab_wheel:{name:'Ab Wheel Rollout',muscles:'Core · Lats · Shoulders · Hip Flexors',
-    steps:['Kneel on pad, grip ab wheel under shoulders.','Roll forward, extending arms — keep core braced, no back sag.','Roll only as far as you can without losing flat back.','Pull back using abs and lats.'],
+    steps:['Kneel on pad, grip ab wheel under shoulders.','Roll forward, extending arms -- keep core braced, no back sag.','Roll only as far as you can without losing flat back.','Pull back using abs and lats.'],
     tip:'Start kneeling, partial range. Build to full extension before attempting from feet. One of the hardest core exercises.',
     alts:['plank','side_plank','dead_bug','pallof_press','hanging_knee_raise']},
   hanging_knee_raise:{name:'Hanging Knee Raise',muscles:'Lower Abs · Hip Flexors · Grip',
-    steps:['Hang from pull-up bar, dead hang.','Knees up toward chest — curl pelvis at top.','Lower slowly, no swing.','Progress to straight leg raises.'],
+    steps:['Hang from pull-up bar, dead hang.','Knees up toward chest -- curl pelvis at top.','Lower slowly, no swing.','Progress to straight leg raises.'],
     tip:'The pelvic tilt at the top is what hits the abs. Just lifting knees without that = mostly hip flexor work.',
     alts:['plank','side_plank','dead_bug','pallof_press','ab_wheel']},
 
-  // ── LOADED CARRIES (occupational — grip + core + gait under load) ──
+  // -- LOADED CARRIES (occupational -- grip + core + gait under load) --
   farmer_carry:{name:'Farmer Carry',muscles:'Grip · Core · Traps · Forearms · Glutes',
     steps:['Heavy DBs or KBs at sides. Stand tall, shoulders pulled back.','Walk forward with normal gait. Do NOT shuffle.','Brace core, breathe steady. No side-bending.','Carry for distance or time.'],
     tip:'Single most occupationally relevant exercise for first responders. Pair patient transfers and gear carries with this. Start ~25% bodyweight per hand, build up.',
     alts:['suitcase_carry','overhead_carry','plank','side_plank','pallof_press']},
   suitcase_carry:{name:'Suitcase Carry',muscles:'Core (anti-lateral flexion) · Grip · Obliques · QL',
-    steps:['One heavy DB or KB in ONE hand. Other hand free.','Walk tall — do NOT let weighted side dip down.','Active brace against the asymmetric load.','Carry for distance, then switch sides.'],
+    steps:['One heavy DB or KB in ONE hand. Other hand free.','Walk tall -- do NOT let weighted side dip down.','Active brace against the asymmetric load.','Carry for distance, then switch sides.'],
     tip:'The unbalanced load forces obliques and QL to work hard. Direct training for one-sided carries like jump bags or scene gear.',
     alts:['farmer_carry','overhead_carry','side_plank','pallof_press','plank']},
   overhead_carry:{name:'Overhead Carry',muscles:'Shoulders · Core · Upper Back · Grip',
-    steps:['Press DB or KB overhead with one or both arms.','Lock arms out — bicep by ear.','Walk forward maintaining the lockout.','Tight core, ribs down, no arching back.'],
+    steps:['Press DB or KB overhead with one or both arms.','Lock arms out -- bicep by ear.','Walk forward maintaining the lockout.','Tight core, ribs down, no arching back.'],
     tip:'Tests shoulder stability and overhead mobility under fatigue. Start light. Excellent for overhead reach jobs (extrication, hose pulls).',
     alts:['farmer_carry','suitcase_carry','plank','pallof_press','db_shoulder_press']},
 
-  // ── CALVES ──
+  // -- CALVES --
   standing_calf_raise:{name:'Standing Calf Raise',muscles:'Gastrocnemius (upper calf)',
-    steps:['Stand on edge of step, balls of feet on edge, heels off.','Hold DBs at sides or use calf raise machine.','Lower heels below step level — feel stretch.','Press up onto toes hard, squeeze 1 sec at top.','Lower slowly.'],
-    tip:'Knee straight = gastroc (upper calf). Full ROM is key — most people barely move. Reps 10–15.',
+    steps:['Stand on edge of step, balls of feet on edge, heels off.','Hold DBs at sides or use calf raise machine.','Lower heels below step level -- feel stretch.','Press up onto toes hard, squeeze 1 sec at top.','Lower slowly.'],
+    tip:'Knee straight = gastroc (upper calf). Full ROM is key -- most people barely move. Reps 10–15.',
     alts:['seated_calf_raise','single_leg_calf_raise','walking_lunge','step_ups']},
   seated_calf_raise:{name:'Seated Calf Raise',muscles:'Soleus (lower calf)',
     steps:['Seated calf machine or DB on knees with feet on plate.','Knees bent 90° throughout.','Lower heels, stretch.','Press up onto toes, hold 1 sec.','Lower slowly.'],
@@ -9537,25 +9537,25 @@ const WO_EXERCISES={
     tip:'Catches and corrects side-to-side imbalances. Helps with ankle stability on uneven ground.',
     alts:['standing_calf_raise','seated_calf_raise','walking_lunge','step_ups']},
 
-  // ═══ BODY-PART SPLIT additions ══════════════════════════════════════
+  // === BODY-PART SPLIT additions ======================================
   cable_fly:{name:'Cable Fly (Chest)',muscles:'Pecs · Front Delts',
     steps:['Cables at upper position. Stand center, slight forward lean.','Grab handles, arms slightly bent, palms forward.','Bring hands together in front of chest in arc motion.','Squeeze pecs at midline. Slow return.'],
     tip:'Stretch is where the chest grows. Don\'t shortcut the lengthening phase.',
     alts:['db_fly','db_bench','db_incline','pec_deck','push_up']},
   db_fly:{name:'DB Fly',muscles:'Pecs · Front Delts',
-    steps:['Lie on bench, DBs above chest, slight elbow bend.','Lower DBs in wide arc, feeling chest stretch.','Bring DBs back up in same arc — don\'t bend elbows more at top.','Squeeze pecs together at top.'],
+    steps:['Lie on bench, DBs above chest, slight elbow bend.','Lower DBs in wide arc, feeling chest stretch.','Bring DBs back up in same arc -- don\'t bend elbows more at top.','Squeeze pecs together at top.'],
     tip:'Keep that slight elbow bend locked throughout. Going too heavy turns this into a press.',
     alts:['cable_fly','db_bench','db_incline','pec_deck','push_up']},
   pec_deck:{name:'Pec Deck Machine',muscles:'Pecs · Front Delts',
-    steps:['Set seat height — pads at chest level.','Press handles together with controlled arc.','Squeeze 1 sec at midline.','Slow return to stretched position.'],
+    steps:['Set seat height -- pads at chest level.','Press handles together with controlled arc.','Squeeze 1 sec at midline.','Slow return to stretched position.'],
     tip:'Fixed path makes this great for end-of-workout pump work when you\'re fatigued.',
     alts:['cable_fly','db_fly','db_bench','push_up']},
   skull_crusher:{name:'Skull Crusher (EZ Bar)',muscles:'Triceps (all heads)',
-    steps:['Lie on bench, EZ bar held overhead, arms vertical.','Lower bar to forehead by bending elbows only — upper arms stay vertical.','Press back up using triceps.','Lock out without moving upper arms.'],
+    steps:['Lie on bench, EZ bar held overhead, arms vertical.','Lower bar to forehead by bending elbows only -- upper arms stay vertical.','Press back up using triceps.','Lock out without moving upper arms.'],
     tip:'The "skull crusher" name is a warning. Control the descent. Elbows track inward slightly.',
     alts:['db_tricep_ext','tricep_pushdown','close_grip_bench','tricep_kickback','dip']},
   tricep_pushdown:{name:'Tricep Pushdown (Cable)',muscles:'Triceps (lateral head emphasis)',
-    steps:['Cable at top, rope or straight bar attachment.','Elbows pinned to sides throughout.','Push down until arms locked, squeeze 1 sec.','Slow return — feel stretch at top.'],
+    steps:['Cable at top, rope or straight bar attachment.','Elbows pinned to sides throughout.','Push down until arms locked, squeeze 1 sec.','Slow return -- feel stretch at top.'],
     tip:'Elbow position is everything. If they flare out, you\'re recruiting chest. Lock them at your sides.',
     alts:['skull_crusher','db_tricep_ext','close_grip_bench','tricep_kickback','dip']},
   tricep_kickback:{name:'Tricep Kickback (DB)',muscles:'Triceps · Rear Delt (stabilizer)',
@@ -9564,23 +9564,23 @@ const WO_EXERCISES={
     alts:['db_tricep_ext','tricep_pushdown','skull_crusher','close_grip_bench','dip']},
   close_grip_bench:{name:'Close-Grip Bench Press',muscles:'Triceps · Inner Chest',
     steps:['Bench press setup, hands ~shoulder-width (not narrower than that).','Lower bar to lower chest, elbows tucked.','Press back up driving through triceps.','Lock out elbows fully.'],
-    tip:'Don\'t go narrower than shoulder-width — wrist pain isn\'t worth it. Tucking elbows is what loads triceps.',
+    tip:'Don\'t go narrower than shoulder-width -- wrist pain isn\'t worth it. Tucking elbows is what loads triceps.',
     alts:['skull_crusher','db_tricep_ext','tricep_pushdown','dip','push_up']},
   dip:{name:'Dips (Triceps focus)',muscles:'Triceps · Lower Chest · Front Delts',
-    steps:['Dip bars, body upright (not leaning forward — that targets chest).','Lower until upper arms parallel to floor.','Press back up using triceps.','Lock out fully.'],
+    steps:['Dip bars, body upright (not leaning forward -- that targets chest).','Lower until upper arms parallel to floor.','Press back up using triceps.','Lock out fully.'],
     tip:'Upright torso = triceps. Leaning forward = chest. Pick your focus and commit.',
     alts:['close_grip_bench','tricep_pushdown','skull_crusher','db_tricep_ext','push_up']},
   lat_pulldown:{name:'Lat Pulldown (Cable)',muscles:'Lats · Biceps · Rear Delts',
-    steps:['Sit at machine, knees secured, wide grip on bar.','Lean back slightly, pull bar to upper chest.','Squeeze shoulder blades together at bottom.','Slow controlled return — full stretch at top.'],
+    steps:['Sit at machine, knees secured, wide grip on bar.','Lean back slightly, pull bar to upper chest.','Squeeze shoulder blades together at bottom.','Slow controlled return -- full stretch at top.'],
     tip:'Don\'t pull behind the neck (shoulder injury risk). Bar to upper chest is the safe target.',
     alts:['pullups','db_row','cable_row','straight_arm_pulldown']},
   straight_arm_pulldown:{name:'Straight-Arm Pulldown (Cable)',muscles:'Lats (isolation) · Long head triceps',
     steps:['Cable at top, slight forward lean, arms straight and pointed up.','Push bar down in arc to thighs, keeping arms straight.','Feel lats engage throughout.','Slow controlled return.'],
-    tip:'Pure lat isolation — no bicep recruitment. Great for end-of-back-day pump work.',
+    tip:'Pure lat isolation -- no bicep recruitment. Great for end-of-back-day pump work.',
     alts:['lat_pulldown','pullups','db_row','cable_row']},
   bent_over_row:{name:'Bent-Over Row (Barbell)',muscles:'Mid Back · Lats · Rear Delts',
     steps:['Hinge at hips with barbell, back flat, knees slightly bent.','Row bar to lower chest/upper abs.','Squeeze shoulder blades.','Slow return with control.'],
-    tip:'Bigger compound version of DB row. Form first, weight second — keep that flat back.',
+    tip:'Bigger compound version of DB row. Form first, weight second -- keep that flat back.',
     alts:['db_row','cable_row','lat_pulldown','pullups','t_bar_row']},
   t_bar_row:{name:'T-Bar Row',muscles:'Mid Back · Lats · Traps',
     steps:['Straddle T-bar or landmine, grip handles, hinge to row position.','Pull bar to chest, squeeze shoulder blades.','Slow return.','Keep back flat throughout.'],
@@ -9591,12 +9591,12 @@ const WO_EXERCISES={
     tip:'Hits brachialis, the muscle UNDER your biceps that pushes them up. Adds visible arm thickness.',
     alts:['db_bicep_curl','preacher_curl','cable_curl','concentration_curl','chin_up']},
   preacher_curl:{name:'Preacher Curl (DB or EZ Bar)',muscles:'Biceps (short head emphasis)',
-    steps:['Sit at preacher bench, upper arms on pad.','Curl weight up with strict form — no swinging.','Squeeze at top, slow eccentric.','Don\'t fully lock out at bottom (keep tension).'],
-    tip:'Eliminates body english. Pure bicep stretch and contraction. Don\'t go heavy — strict reps.',
+    steps:['Sit at preacher bench, upper arms on pad.','Curl weight up with strict form -- no swinging.','Squeeze at top, slow eccentric.','Don\'t fully lock out at bottom (keep tension).'],
+    tip:'Eliminates body english. Pure bicep stretch and contraction. Don\'t go heavy -- strict reps.',
     alts:['db_bicep_curl','hammer_curl','cable_curl','concentration_curl','chin_up']},
   cable_curl:{name:'Cable Curl',muscles:'Biceps · Forearms',
-    steps:['Cable at low pulley, straight bar or rope attachment.','Curl up with elbows pinned, palms up.','Squeeze hard at top — cables maintain tension here.','Slow return, controlled.'],
-    tip:'Constant tension throughout the rep — cables don\'t lose load at peak like dumbbells do.',
+    steps:['Cable at low pulley, straight bar or rope attachment.','Curl up with elbows pinned, palms up.','Squeeze hard at top -- cables maintain tension here.','Slow return, controlled.'],
+    tip:'Constant tension throughout the rep -- cables don\'t lose load at peak like dumbbells do.',
     alts:['db_bicep_curl','hammer_curl','preacher_curl','concentration_curl','chin_up']},
   concentration_curl:{name:'Concentration Curl (DB)',muscles:'Biceps (peak emphasis)',
     steps:['Sit, lean forward, DB in one hand, elbow braced against inner thigh.','Curl DB up with slow control.','Squeeze hard at top, slow descent.','Complete all reps, switch sides.'],
@@ -9607,29 +9607,29 @@ const WO_EXERCISES={
     tip:'More biceps than pull-ups. The "best bicep exercise nobody does" because it\'s hard. Add weight if you can do 10+.',
     alts:['pullups','db_bicep_curl','preacher_curl','hammer_curl','cable_curl']},
   rear_delt_fly:{name:'Rear Delt Fly (DB or Cable)',muscles:'Rear Delts · Mid Traps · Rhomboids',
-    steps:['Bent over (DB) or facing cable column with cables crossed at low pulley.','Arms slightly bent, lift weights out to sides — pinky up.','Squeeze shoulder blades at top.','Slow return.'],
+    steps:['Bent over (DB) or facing cable column with cables crossed at low pulley.','Arms slightly bent, lift weights out to sides -- pinky up.','Squeeze shoulder blades at top.','Slow return.'],
     tip:'Most people\'s rear delts are weak vs front. This evens you out and improves posture.',
     alts:['face_pull','reverse_pec_deck','db_row','cable_row']},
   reverse_pec_deck:{name:'Reverse Pec Deck',muscles:'Rear Delts · Mid Traps · Rhomboids',
     steps:['Sit facing the pec deck (reverse direction). Grip handles.','Pull handles out and back, squeezing shoulder blades.','Pause 1 sec at full contraction.','Slow controlled return.'],
-    tip:'Cleaner ROM than DB rear delt flies — machine doesn\'t cheat for you.',
+    tip:'Cleaner ROM than DB rear delt flies -- machine doesn\'t cheat for you.',
     alts:['rear_delt_fly','face_pull','db_row','cable_row']},
   front_raise:{name:'Front Raise (DB)',muscles:'Front Delts',
     steps:['DBs in front of thighs, arms straight.','Raise one or both up to shoulder height in front of body.','Slow controlled descent.','No swinging.'],
     tip:'Front delts already get hammered by bench/incline. One light set is plenty.',
     alts:['db_shoulder_press','lateral_raise','arnold_press']},
   arnold_press:{name:'Arnold Press (DB)',muscles:'All Three Delt Heads · Triceps',
-    steps:['Seated, DBs at shoulder height, palms facing you.','Press up while rotating palms to face forward at top.','Reverse motion on descent.','Smooth rotation throughout — no jerking.'],
+    steps:['Seated, DBs at shoulder height, palms facing you.','Press up while rotating palms to face forward at top.','Reverse motion on descent.','Smooth rotation throughout -- no jerking.'],
     tip:'Hits all three delt heads in one rep. Schwarzenegger\'s favorite for a reason.',
     alts:['db_shoulder_press','lateral_raise','front_raise']},
   shrug:{name:'DB Shrug',muscles:'Upper Traps',
     steps:['Heavy DBs at sides, arms straight, stand tall.','Lift shoulders straight up toward ears.','Hold 1 sec at top.','Slow descent. No rolling motion.'],
-    tip:'Don\'t roll the shoulders — pure vertical movement. Rolling is an old myth and risks the rotator cuff.',
+    tip:'Don\'t roll the shoulders -- pure vertical movement. Rolling is an old myth and risks the rotator cuff.',
     alts:['farmer_carry','db_row','db_shoulder_press']},
 
-  // ═══ BODYWEIGHT / HIIT track ════════════════════════════════════════
+  // === BODYWEIGHT / HIIT track ========================================
   push_up:{name:'Push-Up',muscles:'Chest · Triceps · Front Delts · Core',
-    steps:['Plank position, hands shoulder-width, body straight.','Lower chest to floor, elbows ~45° from torso.','Press back up to start.','Brace core throughout — no sagging hips.'],
+    steps:['Plank position, hands shoulder-width, body straight.','Lower chest to floor, elbows ~45° from torso.','Press back up to start.','Brace core throughout -- no sagging hips.'],
     tip:'Hands wider = more chest. Hands closer = more tricep (diamond). Both build the chest.',
     alts:['db_bench','db_incline','dip','incline_push_up','decline_push_up','diamond_push_up']},
   incline_push_up:{name:'Incline Push-Up',muscles:'Lower Chest · Triceps · Core',
@@ -9645,11 +9645,11 @@ const WO_EXERCISES={
     tip:'Tricep-dominant push-up variation. Hard. Build to it from regular push-ups.',
     alts:['push_up','decline_push_up','close_grip_bench','dip']},
   pike_push_up:{name:'Pike Push-Up',muscles:'Shoulders · Triceps · Upper Chest',
-    steps:['Push-up start, then pike hips up — body in inverted V.','Bend elbows, lower head toward floor between hands.','Press back up to pike position.','Higher feet = more shoulder load.'],
+    steps:['Push-up start, then pike hips up -- body in inverted V.','Bend elbows, lower head toward floor between hands.','Press back up to pike position.','Higher feet = more shoulder load.'],
     tip:'Bodyweight overhead press substitute. Building block toward handstand push-ups.',
     alts:['handstand_hold','push_up','decline_push_up','db_shoulder_press']},
   handstand_hold:{name:'Wall Handstand Hold',muscles:'Shoulders · Core · Wrists',
-    steps:['Hands on floor 6" from wall, kick up to handstand.','Heels touch wall, stack joints (wrists, elbows, shoulders, hips, ankles).','Push floor away — no shoulder shrug.','Hold for time.'],
+    steps:['Hands on floor 6" from wall, kick up to handstand.','Heels touch wall, stack joints (wrists, elbows, shoulders, hips, ankles).','Push floor away -- no shoulder shrug.','Hold for time.'],
     tip:'Build static strength before handstand push-ups. Quality holds > sloppy reps.',
     alts:['pike_push_up','db_shoulder_press','plank']},
   inverted_row:{name:'Inverted Row',muscles:'Mid Back · Lats · Rear Delts · Biceps',
@@ -9662,7 +9662,7 @@ const WO_EXERCISES={
     alts:['goblet_squat','jump_squat','pistol_progression','lunge_bw']},
   jump_squat:{name:'Jump Squat',muscles:'Quads · Glutes · Power · Calves',
     steps:['Descend into squat.','Explode up, jumping as high as possible.','Land softly, immediately descend into next rep.','Knees soft on landing.'],
-    tip:'Plyometric/HIIT staple. Land softly — joints take the brunt if you slap-land.',
+    tip:'Plyometric/HIIT staple. Land softly -- joints take the brunt if you slap-land.',
     alts:['bw_squat','goblet_squat','box_jump','jump_lunge','burpee']},
   pistol_progression:{name:'Pistol Squat Progression',muscles:'Quads · Glutes · Balance · Mobility',
     steps:['Stand on one leg, other leg extended forward.','Slowly descend by bending standing leg.','Use TRX or door frame for assist as needed.','Press back up, stay tall.'],
@@ -9674,7 +9674,7 @@ const WO_EXERCISES={
     alts:['reverse_lunge','split_squat','walking_lunge','bulgarian_split','jump_lunge']},
   jump_lunge:{name:'Jump Lunge (Plyometric)',muscles:'Quads · Glutes · Power · Cardio',
     steps:['Start in lunge position.','Jump explosively, switch legs mid-air.','Land in opposite lunge.','Continue alternating.'],
-    tip:'High demand. Keep that front shin vertical even when fatigued — that\'s when knees go bad.',
+    tip:'High demand. Keep that front shin vertical even when fatigued -- that\'s when knees go bad.',
     alts:['jump_squat','lunge_bw','box_jump','burpee']},
   glute_bridge:{name:'Glute Bridge',muscles:'Glutes · Hamstrings · Core',
     steps:['Lie on back, knees bent, feet flat on floor near butt.','Push through heels to lift hips up.','Squeeze glutes hard at top.','Slow descent.'],
@@ -9689,19 +9689,19 @@ const WO_EXERCISES={
     tip:'The classic full-body HIIT exercise. Drop the push-up if pace is the goal. 10 burpees = a serious minute.',
     alts:['mountain_climber','jump_squat','bear_crawl','jump_lunge']},
   mountain_climber:{name:'Mountain Climber',muscles:'Core · Cardio · Hip Flexors · Shoulders',
-    steps:['Plank position, hands under shoulders.','Drive one knee toward chest.','Switch legs quickly, like running in place.','Keep hips low — no piking up.'],
+    steps:['Plank position, hands under shoulders.','Drive one knee toward chest.','Switch legs quickly, like running in place.','Keep hips low -- no piking up.'],
     tip:'Cardio + core + shoulder stability all at once. Pace it like sprint intervals.',
     alts:['burpee','bear_crawl','plank','high_knees']},
   bear_crawl:{name:'Bear Crawl',muscles:'Core · Shoulders · Quads · Coordination',
-    steps:['Hands and feet on floor, knees hovering just off ground.','Crawl forward — opposite hand and foot move together.','Knees stay low (1-2" off floor).','Quick small steps.'],
+    steps:['Hands and feet on floor, knees hovering just off ground.','Crawl forward -- opposite hand and foot move together.','Knees stay low (1-2" off floor).','Quick small steps.'],
     tip:'Anti-rotation core work disguised as cardio. Looks easy until you try it.',
     alts:['mountain_climber','crab_walk','burpee','plank']},
   crab_walk:{name:'Crab Walk',muscles:'Shoulders · Triceps · Glutes · Core',
     steps:['Sit, hands behind you, feet flat in front.','Lift hips so body forms reverse plank.','Walk forward or backward.','Hips stay lifted throughout.'],
-    tip:'Hits triceps and posterior chain together — rare combo. Burns the back of the arms.',
+    tip:'Hits triceps and posterior chain together -- rare combo. Burns the back of the arms.',
     alts:['bear_crawl','plank','glute_bridge','dip']},
   high_knees:{name:'High Knees',muscles:'Cardio · Hip Flexors · Calves',
-    steps:['Stand tall, run in place.','Drive knees up toward chest — at least to belt height.','Pump arms.','Keep pace fast.'],
+    steps:['Stand tall, run in place.','Drive knees up toward chest -- at least to belt height.','Pump arms.','Keep pace fast.'],
     tip:'Easy HIIT warm-up or finisher. Tabata-style for 4 min wrecks the cardio system.',
     alts:['mountain_climber','burpee','jump_squat','jumping_jack']},
   jumping_jack:{name:'Jumping Jack',muscles:'Cardio · Shoulders · Calves',
@@ -9709,7 +9709,7 @@ const WO_EXERCISES={
     tip:'Warm-up classic. 30-60 sec gets the heart rate primed for harder intervals.',
     alts:['high_knees','mountain_climber','burpee','jump_squat']},
   box_jump:{name:'Box Jump',muscles:'Quads · Glutes · Power · Calves',
-    steps:['Stand in front of sturdy box (12-30" tall).','Quarter squat, swing arms back.','Explode up onto box, landing soft with quarter squat.','Step DOWN (don\'t jump down — protects knees).'],
+    steps:['Stand in front of sturdy box (12-30" tall).','Quarter squat, swing arms back.','Explode up onto box, landing soft with quarter squat.','Step DOWN (don\'t jump down -- protects knees).'],
     tip:'Step down every rep. Jumping down compounds knee load over reps and is the #1 box jump injury.',
     alts:['jump_squat','jump_lunge','burpee','step_ups']},
   jump_rope:{name:'Jump Rope',muscles:'Cardio · Calves · Coordination',
@@ -9721,13 +9721,13 @@ const WO_EXERCISES={
     tip:'Gymnastics staple. Foundation for advanced bodyweight skills. Lower back must stay glued to floor.',
     alts:['plank','dead_bug','hanging_knee_raise','ab_wheel']},
   
-  // ═══ HIIT PROTOCOL BLOCKS (treated as "exercises" so they fit the same UI) ═══
+  // === HIIT PROTOCOL BLOCKS (treated as "exercises" so they fit the same UI) ===
   tabata_burpees:{name:'Tabata Burpees (4 min)',muscles:'Full Body · Maximal Cardio',
-    steps:['Set a Tabata timer: 20 sec work / 10 sec rest, 8 rounds = 4 min total.','Burpees for the 20 sec all-out.','Rest fully for 10 sec.','Count total reps across rounds — aim to maintain.'],
+    steps:['Set a Tabata timer: 20 sec work / 10 sec rest, 8 rounds = 4 min total.','Burpees for the 20 sec all-out.','Rest fully for 10 sec.','Count total reps across rounds -- aim to maintain.'],
     tip:'Authentic Tabata is ALL OUT effort. If you can do more than 8-10 burpees per round, push harder. Track total reps weekly.',
     alts:['tabata_mountain_climbers','amrap_full_body','emom_squats']},
   tabata_mountain_climbers:{name:'Tabata Mountain Climbers (4 min)',muscles:'Core · Cardio',
-    steps:['20 sec all-out mountain climbers.','10 sec rest.','Repeat 8 rounds = 4 min total.','Count reps — both knees count as one rep.'],
+    steps:['20 sec all-out mountain climbers.','10 sec rest.','Repeat 8 rounds = 4 min total.','Count reps -- both knees count as one rep.'],
     tip:'Lower-impact Tabata option than burpees. Still wrecks the cardio system.',
     alts:['tabata_burpees','amrap_full_body','emom_squats']},
   emom_squats:{name:'EMOM Squats (10 min)',muscles:'Quads · Glutes · Conditioning',
@@ -9744,8 +9744,8 @@ const WO_EXERCISES={
     alts:['jump_rope','tabata_burpees','box_jump','emom_squats']}
 };
 
-// ── 3-Day Evidence-Based Whole-Body Program ───────────────────────────────
-// Basis: Schoenfeld et al. (2016) — twice-weekly frequency per muscle group optimal.
+// -- 3-Day Evidence-Based Whole-Body Program -------------------------------
+// Basis: Schoenfeld et al. (2016) -- twice-weekly frequency per muscle group optimal.
 // Each day trains upper AND lower body. Days alternate push/pull emphasis to allow recovery.
 const WO_PROGRAM=[
   {
@@ -9758,7 +9758,7 @@ const WO_PROGRAM=[
       {id:'step_ups',sets:'3×10 each',rest:'90 sec',note:'Unilateral quad/glute'},
       {id:'db_tricep_ext',sets:'3×12–15',rest:'60 sec',note:'Tricep long-head'},
       {id:'standing_calf_raise',sets:'3×12–15',rest:'45 sec',note:'Gastroc'},
-      {id:'plank',sets:'3×30–45 sec',rest:'45 sec',note:'Core finisher — anti-extension'}
+      {id:'plank',sets:'3×30–45 sec',rest:'45 sec',note:'Core finisher -- anti-extension'}
     ]
   },
   {
@@ -9771,7 +9771,7 @@ const WO_PROGRAM=[
       {id:'bulgarian_split',sets:'3×10 each',rest:'90 sec',note:'Unilateral posterior'},
       {id:'face_pull',sets:'3×15–20',rest:'60 sec',note:'Rear delt / rotator cuff'},
       {id:'db_bicep_curl',sets:'3×12–15',rest:'60 sec',note:'Bicep isolation'},
-      {id:'dead_bug',sets:'3×8 each side',rest:'45 sec',note:'Core finisher — deep core'}
+      {id:'dead_bug',sets:'3×8 each side',rest:'45 sec',note:'Core finisher -- deep core'}
     ]
   },
   {
@@ -9784,19 +9784,19 @@ const WO_PROGRAM=[
       {id:'hack_squat',sets:'3×12–15',rest:'90 sec',note:'Quad-dominant variation'},
       {id:'lateral_raise',sets:'3×12–15',rest:'60 sec',note:'Lateral delt isolation'},
       {id:'db_lateral_lunge',sets:'3×12 each',rest:'60 sec',note:'Frontal plane lower'},
-      {id:'farmer_carry',sets:'3×30–40 sec',rest:'60 sec',note:'Loaded carry — grip + core + occupational'}
+      {id:'farmer_carry',sets:'3×30–40 sec',rest:'60 sec',note:'Loaded carry -- grip + core + occupational'}
     ]
   }
 ];
 
-// ── BODY-PART SPLIT (Option 2: Chest/Tri · Back/Bi · Legs/Shoulders) ────────
+// -- BODY-PART SPLIT (Option 2: Chest/Tri · Back/Bi · Legs/Shoulders) --------
 // Evidence basis: Classic isolation-focused split for hypertrophy. Higher volume
 // per muscle on its dedicated day. Best when frequency-per-muscle isn't a priority
 // and you want focused exhaustion of one area at a time.
 const WO_PROGRAM_BODYSPLIT=[
   {
     day:'A',name:'Chest + Triceps',
-    rationale:'High-volume chest work paired with the muscle group most synergistic — triceps. Chest compounds first while fresh, then isolation work, then tricep finishers.',
+    rationale:'High-volume chest work paired with the muscle group most synergistic -- triceps. Chest compounds first while fresh, then isolation work, then tricep finishers.',
     exercises:[
       {id:'db_bench',sets:'4×8–10',rest:'90 sec',note:'Primary chest compound'},
       {id:'db_incline',sets:'3×10–12',rest:'90 sec',note:'Upper chest emphasis'},
@@ -9809,7 +9809,7 @@ const WO_PROGRAM_BODYSPLIT=[
   },
   {
     day:'B',name:'Back + Biceps',
-    rationale:'Vertical pull, horizontal pull, lat isolation, then bicep work. Back gets the priority — biceps are heavily involved already, so isolation comes last.',
+    rationale:'Vertical pull, horizontal pull, lat isolation, then bicep work. Back gets the priority -- biceps are heavily involved already, so isolation comes last.',
     exercises:[
       {id:'pullups',sets:'4×max',rest:'2 min',note:'Vertical pull priority'},
       {id:'bent_over_row',sets:'4×8–10',rest:'90 sec',note:'Heavy compound row'},
@@ -9822,7 +9822,7 @@ const WO_PROGRAM_BODYSPLIT=[
   },
   {
     day:'C',name:'Legs + Shoulders',
-    rationale:'Quad-dominant + hip-dominant lower work, then full shoulder rotation (front, side, rear delts). Most demanding day — leave it for when energy is highest.',
+    rationale:'Quad-dominant + hip-dominant lower work, then full shoulder rotation (front, side, rear delts). Most demanding day -- leave it for when energy is highest.',
     exercises:[
       {id:'goblet_squat',sets:'4×8–10',rest:'2 min',note:'Quad-dominant compound'},
       {id:'rdl',sets:'4×8–10',rest:'90 sec',note:'Posterior chain'},
@@ -9835,7 +9835,7 @@ const WO_PROGRAM_BODYSPLIT=[
   }
 ];
 
-// ── BODYWEIGHT / HIIT (Option 3: No gym, weighted vest optional) ────────────
+// -- BODYWEIGHT / HIIT (Option 3: No gym, weighted vest optional) ------------
 // Evidence basis: HIIT (Gibala et al., 2012) produces VO2 max gains equivalent to
 // continuous cardio in a fraction of the time. Strength block uses bodyweight
 // progressions (Calatayud et al., 2014) showing push-ups can match bench press
@@ -9850,7 +9850,7 @@ const WO_PROGRAM_BODYWEIGHT=[
       {id:'pike_push_up',sets:'3×8–12',rest:'60 sec',note:'Shoulder/overhead push'},
       {id:'diamond_push_up',sets:'3×8–12',rest:'45 sec',note:'Tricep focus'},
       {id:'plank',sets:'3×45–60 sec',rest:'30 sec',note:'Core anti-extension'},
-      {id:'tabata_burpees',sets:'1× 4 min',rest:'—',note:'HIIT finisher'}
+      {id:'tabata_burpees',sets:'1× 4 min',rest:'--',note:'HIIT finisher'}
     ]
   },
   {
@@ -9862,7 +9862,7 @@ const WO_PROGRAM_BODYWEIGHT=[
       {id:'single_leg_glute_bridge',sets:'3×10 each',rest:'45 sec',note:'Posterior chain isolation'},
       {id:'standing_calf_raise',sets:'3×15–25',rest:'30 sec',note:'Calves (bodyweight)'},
       {id:'hollow_hold',sets:'3×20–40 sec',rest:'30 sec',note:'Deep core static'},
-      {id:'sprint_intervals',sets:'1× 6–8 rounds',rest:'—',note:'HIIT finisher'}
+      {id:'sprint_intervals',sets:'1× 6–8 rounds',rest:'--',note:'HIIT finisher'}
     ]
   },
   {
@@ -9874,12 +9874,12 @@ const WO_PROGRAM_BODYWEIGHT=[
       {id:'inverted_row',sets:'3×10–15',rest:'45 sec',note:'Upper pull'},
       {id:'jump_squat',sets:'3×10–15',rest:'45 sec',note:'Lower explosive'},
       {id:'bear_crawl',sets:'3×30–45 sec',rest:'30 sec',note:'Anti-rotation core'},
-      {id:'amrap_full_body',sets:'1× 15 min',rest:'—',note:'Conditioning finisher'}
+      {id:'amrap_full_body',sets:'1× 15 min',rest:'--',note:'Conditioning finisher'}
     ]
   }
 ];
 
-// Track registry — all available program variations
+// Track registry -- all available program variations
 const WO_TRACKS={
   primary:{name:'Primary',icon:'💪',label:'Gym · Push/Pull/Full-body',program:WO_PROGRAM},
   bodysplit:{name:'Body Split',icon:'🏋️',label:'Gym · Chest+Tri / Back+Bi / Legs+Shoulders',program:WO_PROGRAM_BODYSPLIT},
@@ -9887,13 +9887,13 @@ const WO_TRACKS={
 };
 
 const WO_COOLDOWN=[
-  'Chest doorway stretch — 30 sec each side',
-  'Standing hamstring stretch — 30 sec each leg',
-  'Hip flexor lunge stretch — 30 sec each side',
-  'Lat stretch (hang or overhead reach) — 30 sec',
-  'Shoulder cross-body stretch — 30 sec each arm',
-  'Quad stretch standing — 30 sec each leg',
-  "Child's pose (back/hip opener) — 60 sec"
+  'Chest doorway stretch -- 30 sec each side',
+  'Standing hamstring stretch -- 30 sec each leg',
+  'Hip flexor lunge stretch -- 30 sec each side',
+  'Lat stretch (hang or overhead reach) -- 30 sec',
+  'Shoulder cross-body stretch -- 30 sec each arm',
+  'Quad stretch standing -- 30 sec each leg',
+  "Child's pose (back/hip opener) -- 60 sec"
 ];
 
 function renderWorkout(){
@@ -9904,7 +9904,7 @@ function renderWorkout(){
   var sel=document.getElementById('woDaySelect');
   if(sel){
     sel.innerHTML=WO_DAYS.map(function(d,i){
-      var typeLabel=d.type==='lift'?' — Weights':d.type==='walk'?' — Active Recovery':' — Rest';
+      var typeLabel=d.type==='lift'?' -- Weights':d.type==='walk'?' -- Active Recovery':' -- Rest';
       var star=i===todayIdx?' \u2605':'';
       return '<option value="'+i+'"'+(i===WO_ACTIVE_DAY?' selected':'')+'>'+d.label+typeLabel+star+'</option>';
     }).join('');
@@ -9927,8 +9927,8 @@ function _renderWalkDay(){
       icon:'&#127939;',name:'Walk',
       desc:'45 minutes at a conversational, Zone 2 pace (100–120 bpm). The gold standard for aerobic base building and active recovery.',
       options:[
-        'Flat neighborhood or trail — maintain easy breathing','Treadmill incline 3–5% for extra challenge without impact',
-        'Aim for 4,000–6,000 steps minimum','Swing your arms naturally — activates core and improves gait'
+        'Flat neighborhood or trail -- maintain easy breathing','Treadmill incline 3–5% for extra challenge without impact',
+        'Aim for 4,000–6,000 steps minimum','Swing your arms naturally -- activates core and improves gait'
       ]
     },
     hike:{
@@ -9936,21 +9936,21 @@ function _renderWalkDay(){
       desc:'45–60 minutes on uneven terrain. Improves balance, recruits stabilizers, and burns more calories than flat walking at the same pace.',
       options:[
         'Choose trails with moderate elevation change','Trekking poles reduce knee strain on descents',
-        'Uneven ground activates glutes and ankles differently than pavement','Watch footing — proprioception work is the bonus'
+        'Uneven ground activates glutes and ankles differently than pavement','Watch footing -- proprioception work is the bonus'
       ]
     },
     yoga:{
       icon:'&#129335;',name:'Yoga / Mobility',
       desc:'30–45 minutes of movement-based recovery. Targets the exact muscles loaded in your lifting sessions: hip flexors, hamstrings, lats, chest, and thoracic spine.',
       options:[
-        'Sun salutations × 5 — warm up the whole chain','Pigeon pose — 90 sec each side for hip flexors and glutes',
-        'Thread-the-needle — 60 sec each side for thoracic rotation','Downward dog — calf and hamstring lengthening',
-        'Child\'s pose wide — lat stretch','Cat-cow × 10 — spinal decompression after deadlifts'
+        'Sun salutations × 5 -- warm up the whole chain','Pigeon pose -- 90 sec each side for hip flexors and glutes',
+        'Thread-the-needle -- 60 sec each side for thoracic rotation','Downward dog -- calf and hamstring lengthening',
+        'Child\'s pose wide -- lat stretch','Cat-cow × 10 -- spinal decompression after deadlifts'
       ]
     }
   };
 
-  var html='<div class="wo-recovery-header">&#127807; '+dayName+' — Active Recovery</div>'
+  var html='<div class="wo-recovery-header">&#127807; '+dayName+' -- Active Recovery</div>'
     +'<div class="wo-activity-tabs">';
   ['walk','hike','yoga'].forEach(function(key){
     var a=activities[key];
@@ -9988,17 +9988,17 @@ function woSwitchActivity(btn,key){
   var activities={
     walk:{icon:'&#127939;',name:'Walk',
       desc:'45 minutes at a conversational, Zone 2 pace (100–120 bpm). The gold standard for aerobic base building and active recovery.',
-      options:['Flat neighborhood or trail — maintain easy breathing','Treadmill incline 3–5% for extra challenge without impact',
-        'Aim for 4,000–6,000 steps minimum','Swing your arms naturally — activates core and improves gait']},
+      options:['Flat neighborhood or trail -- maintain easy breathing','Treadmill incline 3–5% for extra challenge without impact',
+        'Aim for 4,000–6,000 steps minimum','Swing your arms naturally -- activates core and improves gait']},
     hike:{icon:'&#9968;',name:'Hike',
       desc:'45–60 minutes on uneven terrain. Improves balance, recruits stabilizers, and burns more calories than flat walking at the same pace.',
       options:['Choose trails with moderate elevation change','Trekking poles reduce knee strain on descents',
-        'Uneven ground activates glutes and ankles differently than pavement','Watch footing — proprioception work is the bonus']},
+        'Uneven ground activates glutes and ankles differently than pavement','Watch footing -- proprioception work is the bonus']},
     yoga:{icon:'&#129335;',name:'Yoga / Mobility',
       desc:'30–45 minutes of movement-based recovery. Targets the exact muscles loaded in your lifting sessions.',
-      options:['Sun salutations × 5 — warm up the whole chain','Pigeon pose — 90 sec each side for hip flexors and glutes',
-        'Thread-the-needle — 60 sec each side for thoracic rotation','Downward dog — calf and hamstring lengthening',
-        "Child's pose wide — lat stretch",'Cat-cow × 10 — spinal decompression after deadlifts']}
+      options:['Sun salutations × 5 -- warm up the whole chain','Pigeon pose -- 90 sec each side for hip flexors and glutes',
+        'Thread-the-needle -- 60 sec each side for thoracic rotation','Downward dog -- calf and hamstring lengthening',
+        "Child's pose wide -- lat stretch",'Cat-cow × 10 -- spinal decompression after deadlifts']}
   };
   var existing=btn.closest('.modal-blur-body').querySelector('.wo-activity-detail');
   if(existing){
@@ -10022,7 +10022,7 @@ function _renderLiftDay(){
   var program=WO_TRACKS[trackId].program;
   var prog=program[progIdx];
   
-  // ── Track selector at top ────────────────────────────────────────
+  // -- Track selector at top ----------------------------------------
   var html='<div class="wo-track-selector">'
     +'<div class="wo-track-label">Workout style:</div>'
     +'<div class="wo-track-buttons">';
@@ -10039,7 +10039,7 @@ function _renderLiftDay(){
   // Warmup
   html+='<div class="wo-section"><div class="wo-section-title">Warmup (10 min)</div>'
     +'<div class="wo-cooldown"><div class="wo-cooldown-item">'
-    +(trackId==='bodyweight'?'5 min easy jog or jumping jacks + dynamic stretches (leg swings, arm circles)':'Treadmill walk at warmup pace — 10 minutes')
+    +(trackId==='bodyweight'?'5 min easy jog or jumping jacks + dynamic stretches (leg swings, arm circles)':'Treadmill walk at warmup pace -- 10 minutes')
     +'</div></div></div>';
   
   html+='<div class="wo-day-rationale"><strong>Day '+prog.day+': '+prog.name+'</strong><br>'+prog.rationale+'</div>';
@@ -10048,7 +10048,7 @@ function _renderLiftDay(){
   html+='<div class="wo-section"><div class="wo-section-title">Today\'s Exercises</div>';
   prog.exercises.forEach(function(ex,idx){
     html+=_renderExercise(ex,'ex_'+idx);
-    if(idx<prog.exercises.length-1&&ex.rest!=='—'){
+    if(idx<prog.exercises.length-1&&ex.rest!=='--'){
       html+='<div style="text-align:center;padding:8px 0;"><span class="wo-rest-badge">&#9202; '+ex.rest+' rest</span></div>';
     }
   });
@@ -10090,7 +10090,7 @@ function _renderExercise(ex,slotId){
   return '<div class="wo-exercise">'
     +'<div class="wo-ex-top">'
     +'<select class="wo-ex-select" data-primary="'+ex.id+'" onchange="woExChanged(this)">'+opts+'</select>'
-    +'<button class="btn btn-sm wo-quicksub" onclick="woQuickSub(this)" title="Random alternative — for crowded gym or variety" style="font-size:11px;padding:3px 8px;flex-shrink:0;">&#127922;</button>'
+    +'<button class="btn btn-sm wo-quicksub" onclick="woQuickSub(this)" title="Random alternative -- for crowded gym or variety" style="font-size:11px;padding:3px 8px;flex-shrink:0;">&#127922;</button>'
     +'<button class="btn btn-sm" onclick="showExerciseInfo(this.closest(\'.wo-exercise\').querySelector(\'.wo-ex-select\').value)" style="font-size:11px;padding:3px 9px;flex-shrink:0;">&#9432; How-to</button>'
     +'</div>'
     +'<div class="wo-ex-note">'+ex.sets+' &bull; '+ex.note+'</div>'
@@ -10168,7 +10168,7 @@ function completeWorkout(type,dayIndex){
     var prog=WO_PROGRAM[dayIndex];
     workoutName='Day '+prog.day+': '+prog.name;
   }else if(type==='recovery'){
-    workoutName=dayLabel+' — Active Recovery';
+    workoutName=dayLabel+' -- Active Recovery';
   }
   
   var record={
@@ -10200,13 +10200,13 @@ function updateCompletedWorkoutsCounter(){
 
 
 
-// ═══════════════════════════════════════
-// TIMELINE + WORK-TODAY — at script scope so renderers and HTML onclick handlers can see them
-// ═══════════════════════════════════════
-// ═══════════════════════════════════════
-// TIMELINE PANEL — daily time-blocking
-// ═══════════════════════════════════════
-const TL_DAY_START_H=5;   // 5 AM — matches day-progress bar
+// =======================================
+// TIMELINE + WORK-TODAY -- at script scope so renderers and HTML onclick handlers can see them
+// =======================================
+// =======================================
+// TIMELINE PANEL -- daily time-blocking
+// =======================================
+const TL_DAY_START_H=5;   // 5 AM -- matches day-progress bar
 const TL_DAY_END_H=22;    // 10 PM
 const TL_HOUR_PX=52;      // px per hour
 const TL_COLOR_COUNT=8;   // palette size
@@ -10219,7 +10219,7 @@ function _tlProjectColor(projectId){
   return Math.abs(hash)%TL_COLOR_COUNT;
 }
 
-// ═══ WORK TODAY scheduling ═══
+// === WORK TODAY scheduling ===
 var _wtCurrentItem=null; // {type, id, projectId, name, defaultDuration}
 var _wtSelectedDay='today'; // 'today' or 'tomorrow'
 
@@ -10260,7 +10260,7 @@ function wtSetDay(day){
     var timeStr=(hh<10?'0':'')+hh+':'+(mm<10?'0':'')+mm;
     // Only auto-fill the suggestion if user hasn't manually changed it
     document.getElementById('wtTime').value=timeStr;
-    document.getElementById('wtSuggestion').textContent='💡 Suggested ('+day+'): '+_tlFmtTime(suggested)+' — first open slot';
+    document.getElementById('wtSuggestion').textContent='💡 Suggested ('+day+'): '+_tlFmtTime(suggested)+' -- first open slot';
     _wtUpdateConflicts();
   }
 }
@@ -10381,7 +10381,7 @@ function handleWorkTodayClick(itemType,itemId,projectId){
   document.getElementById('wtItemName').textContent=name;
   document.getElementById('wtTime').value=timeStr;
   document.getElementById('wtDuration').value=String(duration);
-  document.getElementById('wtSuggestion').textContent='💡 Suggested ('+_wtSelectedDay+'): '+_tlFmtTime(suggested)+' — first open slot';
+  document.getElementById('wtSuggestion').textContent='💡 Suggested ('+_wtSelectedDay+'): '+_tlFmtTime(suggested)+' -- first open slot';
   _wtUpdateConflicts();
   
   // Reset modal to standard "Schedule" button if it was previously in edit mode
@@ -10445,7 +10445,7 @@ function confirmWorkToday(){
     var END_OF_DAY=20*60; // 8 PM
     if(endMin>END_OF_DAY){
       var endLabel=_tlFmtTime(endMin);
-      _confirm('This block would end at '+endLabel+' — after 8 PM.',
+      _confirm('This block would end at '+endLabel+' -- after 8 PM.',
         function(){_writeBlock(targetDate,timeVal,durVal);},
         {confirmText:'Today Anyway',altText:'Push to Tomorrow',onAlt:function(){_scheduleForTomorrow(timeVal,durVal);},icon:'ti-clock-exclamation',warn:true}
       );
@@ -10477,7 +10477,7 @@ function _writeBlock(dateStr,timeVal,durVal){
       closeWorkTodayModal();
       renderProjects();renderTaskList();renderTimeline();
       if(typeof updateDayProgress==='function')updateDayProgress();
-      toast('Updated — '+_tlFmtTime(_tlParseTime(timeVal)));
+      toast('Updated -- '+_tlFmtTime(_tlParseTime(timeVal)));
       return;
     }
   }
@@ -10500,13 +10500,13 @@ function _writeBlock(dateStr,timeVal,durVal){
   if(typeof updateDayProgress==='function')updateDayProgress();
   var today=todayStr();
   if(dateStr===today){
-    toast('Scheduled today — '+_tlFmtTime(_tlParseTime(timeVal)));
+    toast('Scheduled today -- '+_tlFmtTime(_tlParseTime(timeVal)));
   }else{
-    toast('Pushed to tomorrow — '+_tlFmtTime(_tlParseTime(timeVal)));
+    toast('Pushed to tomorrow -- '+_tlFmtTime(_tlParseTime(timeVal)));
   }
 }
 
-// Edit an existing block — opens the Work Today modal pre-filled with block data
+// Edit an existing block -- opens the Work Today modal pre-filled with block data
 function editTimelineBlock(blockId){
   var block=(state.tlBlocks||[]).find(function(b){return b.id===blockId;});
   if(!block){toast('Block not found');return;}
@@ -10524,7 +10524,7 @@ function editTimelineBlock(blockId){
   document.getElementById('wtItemName').textContent=block.name;
   document.getElementById('wtTime').value=block.time;
   document.getElementById('wtDuration').value=String(block.duration);
-  document.getElementById('wtSuggestion').textContent='✏ Editing existing block — change time or duration, then Update';
+  document.getElementById('wtSuggestion').textContent='✏ Editing existing block -- change time or duration, then Update';
   
   // Show the delete button (added in edit mode)
   var modalBody=document.querySelector('#workTodayModal .modal-blur-body');
@@ -10574,7 +10574,7 @@ function deleteEditingBlock(){
   toast('Deleted');
 }
 
-// ═══ Drag-to-reschedule (works on both banner and timeline) ═══
+// === Drag-to-reschedule (works on both banner and timeline) ===
 var _tlDragInProgress=false;
 
 function _tlAttachDragHandlers(el,blockId,mode){
@@ -10589,7 +10589,7 @@ function _tlAttachDragHandlers(el,blockId,mode){
   el.addEventListener('pointerdown',function(e){
     if(e.button!==0&&e.pointerType==='mouse')return; // left button only for mouse
     // If pointerdown originated on the delete X (or any element marked as a control),
-    // bail out — let that element's own click handler fire normally.
+    // bail out -- let that element's own click handler fire normally.
     if(e.target&&e.target.closest&&e.target.closest('.tl-block-del'))return;
     blockRef=(state.tlBlocks||[]).find(function(b){return b.id===blockId;});
     if(!blockRef)return;
@@ -10657,7 +10657,7 @@ function _tlAttachDragHandlers(el,blockId,mode){
     el.classList.remove('dragging');
     
     if(pendingMin===null||pendingMin===initialStartMin){
-      // No real movement — re-render to clean up any partial visual changes
+      // No real movement -- re-render to clean up any partial visual changes
       renderTimeline();
       return;
     }
@@ -10715,7 +10715,7 @@ function renderBannerBlocks(){
     block.style.left=leftPct+'%';
     block.style.width=widthPct+'%';
     block.style.background=color;
-    block.title=b.name+' — '+_tlFmtTime(startMin)+' to '+_tlFmtTime(endMin)+' · drag to reschedule';
+    block.title=b.name+' -- '+_tlFmtTime(startMin)+' to '+_tlFmtTime(endMin)+' · drag to reschedule';
     block.dataset.blockId=b.id;
     _tlAttachDragHandlers(block,b.id,'banner');
     block.addEventListener('click',function(ev){
@@ -10758,14 +10758,14 @@ function _tlCollectBlocks(targetDate){
   // Returns array of block objects for the given date (defaults to today).
   // Sources: explicit tlBlocks (manual + scheduled-via-modal) take priority.
   // Auto-derivation from reminders/subtasks/tasks happens ONLY if no tlBlock
-  // already links to that item — prevents an item from showing on multiple
+  // already links to that item -- prevents an item from showing on multiple
   // days when its "official" schedule has been moved via the schedule modal.
   var today=targetDate||todayStr();
   var blocks=[];
   
   // Build set of all linkedIds across ALL tlBlocks (any date).
   // If a tlBlock anywhere points to a task/subtask, that tlBlock is the
-  // canonical scheduling for that item — skip auto-derivation entirely.
+  // canonical scheduling for that item -- skip auto-derivation entirely.
   var linkedIds={};
   (state.tlBlocks||[]).forEach(function(b){
     if(b.linkedId)linkedIds[b.linkedId]=true;
@@ -10781,7 +10781,7 @@ function _tlCollectBlocks(targetDate){
     }
   });
   
-  // 2. Reminders with date matching AND time set — auto-derive if no tlBlock links to it
+  // 2. Reminders with date matching AND time set -- auto-derive if no tlBlock links to it
   (state.reminders||[]).forEach(function(r){
     if(r.date===today&&r.time&&!linkedIds[r.id]){
       var projId=(r.projectIds&&r.projectIds[0])||r.projectId||'';
@@ -10792,7 +10792,7 @@ function _tlCollectBlocks(targetDate){
     }
   });
   
-  // 3. Subtasks with due matching AND time — auto-derive only if no tlBlock links to it
+  // 3. Subtasks with due matching AND time -- auto-derive only if no tlBlock links to it
   (state.projects||[]).forEach(function(p){
     (p.subtasks||[]).forEach(function(st){
       if(st.due===today&&st.time&&!linkedIds[st.id]){
@@ -10805,7 +10805,7 @@ function _tlCollectBlocks(targetDate){
     });
   });
   
-  // 4. Standalone tasks with due matching AND time — auto-derive only if no tlBlock links to it
+  // 4. Standalone tasks with due matching AND time -- auto-derive only if no tlBlock links to it
   (state.tasks||[]).forEach(function(t){
     if(!t.done&&t.due===today&&t.time&&!linkedIds[t.id]){
       var projId=t.projectId||(t.projectIds&&t.projectIds[0])||'';
@@ -10843,7 +10843,7 @@ function _tlBuildLegend(){
   el.innerHTML=html;
 }
 
-var _tlViewDay='today'; // 'today' or 'tomorrow' — controls which day the panel shows
+var _tlViewDay='today'; // 'today' or 'tomorrow' -- controls which day the panel shows
 
 function _tlViewDate(){
   return _tlViewDay==='tomorrow'?tomorrowStr():todayStr();
@@ -10884,7 +10884,7 @@ function renderTimeline(){
   }
   grid.innerHTML=html;
   
-  // Place "now" line — only when viewing today
+  // Place "now" line -- only when viewing today
   if(isToday){
     var now=new Date();
     var nowMin=now.getHours()*60+now.getMinutes();
@@ -11021,7 +11021,7 @@ function clearTimelineBlocks(){
   },{destructive:true,confirmText:'Clear All'});
 }
 
-// ═══ Outlook .ics export ═══
+// === Outlook .ics export ===
 function _icsEscape(s){
   return (s||'').replace(/\\/g,'\\\\').replace(/;/g,'\\;').replace(/,/g,'\\,').replace(/\n/g,'\\n');
 }
@@ -11070,15 +11070,15 @@ function exportTimelineICS(){
   a.download='centerpost-timeline-'+viewDate+'.ics';
   document.body.appendChild(a);a.click();document.body.removeChild(a);
   URL.revokeObjectURL(url);
-  toast('Downloaded .ics — drag into Outlook');
+  toast('Downloaded .ics -- drag into Outlook');
 }
 
 function connectOutlookGraph(){
-  toast('Outlook two-way sync requires Azure AD app setup — coming in next build');
+  toast('Outlook two-way sync requires Azure AD app setup -- coming in next build');
 }
 
-// ═══ Google Calendar push ═══
-// Uses Google Calendar's render URL — no API key, no auth setup required.
+// === Google Calendar push ===
+// Uses Google Calendar's render URL -- no API key, no auth setup required.
 // User just needs to be logged into their Google account in the browser.
 // Each block opens in a new tab pre-filled; user clicks "Save" to add it.
 function _pad2(n){return n<10?'0'+n:''+n;}
@@ -11124,11 +11124,11 @@ function pushToGoogleCalendar(){
       },i*250);
     });
     setTimeout(function(){
-      toast(blocks.length===1?'Opened in Google Calendar — click Save':'Opened '+blocks.length+' tab(s) in Google Calendar — click Save in each');
+      toast(blocks.length===1?'Opened in Google Calendar -- click Save':'Opened '+blocks.length+' tab(s) in Google Calendar -- click Save in each');
     },blocks.length*250+100);
   };
   if(blocks.length>1){
-    _confirm('Push '+blocks.length+' blocks for '+dayLabel+' to Google Calendar? Each block opens in a new tab — allow pop-ups if prompted.',_openGcalTabs,{confirmText:'Push All',icon:'ti-calendar-plus'});
+    _confirm('Push '+blocks.length+' blocks for '+dayLabel+' to Google Calendar? Each block opens in a new tab -- allow pop-ups if prompted.',_openGcalTabs,{confirmText:'Push All',icon:'ti-calendar-plus'});
     return;
   }
   _openGcalTabs();
@@ -11149,7 +11149,7 @@ function pushBlockToGoogle(blockId){
     source:block.linkedType||'manual'
   };
   window.open(_gcalUrl(blockData,block.date),'_blank');
-  toast('Opened in Google Calendar — click Save');
+  toast('Opened in Google Calendar -- click Save');
 }
 
 // Auto-refresh timeline every minute so the "now" line moves
@@ -11159,17 +11159,17 @@ setInterval(function(){
   if(el&&document.visibilityState==='visible')renderTimeline();
 },60000);
 
-// ═══════════════════════════════════════
+// =======================================
 // END TIMELINE
-// ═══════════════════════════════════════
+// =======================================
 
-// ═══════════════════════════════════════
+// =======================================
 // END TIMELINE
-// ═══════════════════════════════════════
+// =======================================
 
-// ═══════════════════════════════════════
+// =======================================
 // THEME SYSTEM
-// ═══════════════════════════════════════
+// =======================================
 var THEMES=[
   {key:'dark',name:'Dark',tier:'free',bg:'#1a1917',surface:'#242320',accent:'#d4a853'},
   {key:'light',name:'Light',tier:'free',bg:'#f6f4f0',surface:'#ffffff',accent:'#b08830'},
@@ -11183,7 +11183,7 @@ var THEMES=[
   {key:'storm-dark',name:'Storm Dark',tier:'premium',bg:'#0c0f14',surface:'#111520',accent:'#7ab8e8'},
   {key:'galaxy',name:'Galaxy',tier:'premium',bg:'#070512',surface:'#0e0a20',accent:'#c084fc'}
 ];
-// Build stamp — bump this on each deploy. Shown at the bottom of Settings so
+// Build stamp -- bump this on each deploy. Shown at the bottom of Settings so
 // you can confirm on any device exactly which build it's running.
 var APP_BUILD='2026.06.06b-beta';
 // BETA: ignore tier gating for themes (every theme selectable). Set to false
@@ -11214,7 +11214,7 @@ function applyTheme(key){
   _emsUpdateOverlays(key);
 }
 
-// ── Emergency theme overlays (fire = strobe+fire+embers, police = strobe) ──
+// -- Emergency theme overlays (fire = strobe+fire+embers, police = strobe) --
 var _emsEmberInterval=null;
 function _emsUpdateOverlays(key){
   if(key==='fire'){
@@ -11239,7 +11239,7 @@ function _emsUpdateOverlays(key){
   }
 }
 
-// ── Galaxy: drifting dust stars around the spiral ─────────────────
+// -- Galaxy: drifting dust stars around the spiral -----------------
 function _galaxyStart(){
   var layer=document.getElementById('galaxyLayer');
   if(!layer)return;
@@ -11269,7 +11269,7 @@ function _galaxyStop(){
   if(layer)layer.querySelectorAll('.gstar').forEach(function(e){e.remove();});
 }
 
-// ── Starry Night: stars + fireflies ──────────────────────────────
+// -- Starry Night: stars + fireflies ------------------------------
 var _starryActive=false;
 var _fireflyInterval=null;
 
@@ -11305,7 +11305,7 @@ function _spawnStars(){
     var sz=_starryRand(0.8,2.8);
     var top=_starryRand(0,60);
     var left=_starryRand(1,99);
-    var dim=_starryRand(0.45,0.70);      // never goes very dim — always visible
+    var dim=_starryRand(0.45,0.70);      // never goes very dim -- always visible
     var bright=_starryRand(0.82,1.0);    // peaks near full white
     var dur=_starryRand(2.5,7);
     var delay=_starryRand(0,6);
@@ -11348,7 +11348,7 @@ function _spawnFireflies(){
 function _spawnOneFirefly(layer){
   var f=document.createElement('div');
   f.className='firefly';
-  var sz=_starryRand(3,7);             // 3–7px — noticeably larger than stars
+  var sz=_starryRand(3,7);             // 3–7px -- noticeably larger than stars
   var top=_starryRand(10,85);          // anywhere in the bottom overlay
   var left=_starryRand(3,96);
   var pdur=_starryRand(2.2,5.0);       // pulse duration
@@ -11375,7 +11375,7 @@ function _spawnOneFirefly(layer){
   layer.appendChild(f);
 }
 
-// ── Storm theme: rain + lightning ────────────────────────────────
+// -- Storm theme: rain + lightning --------------------------------
 var _stormActive=false;
 var _stormRainInterval=null;
 var _stormRainStreaks=[];
@@ -11397,7 +11397,7 @@ function _spawnRain(){
   var layer=document.getElementById('stormLayer');
   if(!layer)return;
   // 140 streaks staggered across the first cycle, then loop indefinitely.
-  // No self-destruct timeout — the animation is infinite so streaks just keep falling.
+  // No self-destruct timeout -- the animation is infinite so streaks just keep falling.
   for(var i=0;i<140;i++){
     _spawnOneRainStreak(layer);
   }
@@ -11494,7 +11494,7 @@ function _applySavedTheme(){
 async function initApp(){
 await load();
 initPanelVisibility();applyPanelOrder();applyPanelVisibility();updateLockUI();updateClock();updateTimeLeft();setInterval(updateClock,1000);setInterval(updateTimeLeft,30000);updateTimerDisplay();renderPointsBadge();awardDailyLogin();
-// ── DAILY ROUTINE RESET — robust against tabs left open overnight ──
+// -- DAILY ROUTINE RESET -- robust against tabs left open overnight --
 // 1. Run once immediately after load so stale checks clear before the user sees them.
 // 2. Poll every 60s for the date change.
 // 3. Also re-check whenever the tab becomes visible again (handles iOS/PWA where
@@ -11508,15 +11508,15 @@ document.addEventListener('visibilitychange',function(){
 });
 window.addEventListener('focus',function(){ try { checkDailyRoutineReset(); } catch(e){} });
 
-// ── Reminder auto-schedule + popup (deferred so Firestore data is loaded) ──
+// -- Reminder auto-schedule + popup (deferred so Firestore data is loaded) --
 setTimeout(function(){
   try { autoScheduleTodayReminders(); } catch(e){console.warn('[reminders] auto-schedule failed',e);}
   try { checkAndShowReminderPopup(); } catch(e){console.warn('[reminders] popup failed',e);}
 },1500);
 
-// ═══════════════════════════════════════
+// =======================================
 // PULL-TO-REFRESH (mobile)
-// ═══════════════════════════════════════
+// =======================================
 (function(){
   var THRESHOLD=70;        // px to drag before refresh fires
   var MAX_PULL=120;        // max visual drag distance
@@ -11666,7 +11666,7 @@ if(state.mood){const c=document.querySelectorAll('#moodPills .em-pill');const m=
 showStateAdvice();updateWellnessVisibility();
 startRealtimeSync();
 showAdminPanel();
-// ─── Service Worker registration + one-time auto-reload on update ───
+// --- Service Worker registration + one-time auto-reload on update ---
 // When the SW updates (e.g. you ship a new sw.js or bump CACHE_VERSION),
 // `controllerchange` fires once a new SW takes control. We reload the
 // page so it picks up the latest index.html. Guarded by sessionStorage
@@ -11676,7 +11676,7 @@ if('serviceWorker' in navigator){
     .then(function(reg){
       // Force a check for updates on every page load (cheap, no-op if nothing changed)
       try { reg.update(); } catch(e) {}
-      // When a new SW is found, push it to activate ASAP — iOS PWAs otherwise
+      // When a new SW is found, push it to activate ASAP -- iOS PWAs otherwise
       // cling to the old worker (and old HTML) across warm resumes.
       reg.addEventListener('updatefound', function(){
         var nw=reg.installing;
@@ -11703,11 +11703,11 @@ if('serviceWorker' in navigator){
     window.location.reload();
   });
 }
-// ─── iOS: zoom back out when leaving a text field (no rotation needed) ───
+// --- iOS: zoom back out when leaving a text field (no rotation needed) ---
 // On iOS, focusing a field with font-size < 16px auto-zooms in and never
 // resets on blur. Keep that helpful zoom-in, but when focus leaves a field
-// (and no other field is focused) briefly clamp the viewport to scale 1.0 —
-// which snaps the page back out — then restore the zoomable viewport so
+// (and no other field is focused) briefly clamp the viewport to scale 1.0 --
+// which snaps the page back out -- then restore the zoomable viewport so
 // pinch-zoom and the next field's zoom-in still work.
 (function(){
   if(!('ontouchstart' in window))return;
@@ -11722,7 +11722,7 @@ if('serviceWorker' in navigator){
   document.addEventListener('focusout',function(e){
     if(!isField(e.target))return;
     setTimeout(function(){
-      if(isField(document.activeElement))return; // moved to another field — keep zoom
+      if(isField(document.activeElement))return; // moved to another field -- keep zoom
       vp.setAttribute('content',clamped);        // snap back out to scale 1.0
       setTimeout(function(){vp.setAttribute('content',zoomable);},350); // re-allow zoom
     },0);
@@ -11864,11 +11864,11 @@ setTimeout(checkShareTarget, 400); // slight delay so panels render first
 </body>
 <!-- JARVIS ENGINE -->
 <script>
-// ═══════════════════════════════════════
-// JARVIS — AI ASSISTANT
-// ═══════════════════════════════════════
+// =======================================
+// JARVIS -- AI ASSISTANT
+// =======================================
 
-// ── Proxy config ─────────────────────────────────────────────────────
+// -- Proxy config -----------------------------------------------------
 // After deploying your Cloudflare Worker, paste its URL here:
 //   e.g. 'https://centerpost-jarvis.YOUR-SUBDOMAIN.workers.dev'
 // Leave as empty string to attempt direct API call (works in claude.ai, blocked on GitHub Pages).
@@ -11886,7 +11886,7 @@ var JARVIS_SYSTEM=function(){
   var timeStr=today.toLocaleTimeString('en-US',{hour:'numeric',minute:'2-digit'});
   var todayKey=today.toISOString().slice(0,10);
 
-  // ── Build COMPLETE structured context ───────────────────────────
+  // -- Build COMPLETE structured context ---------------------------
   // Projects with all subtasks (full detail)
   var projects=(state.projects||[]).map(function(p){
     return {
@@ -12002,7 +12002,7 @@ var JARVIS_SYSTEM=function(){
     tier:_jarvisCurrentTier()
   };
 
-  // Timeline blocks — manually scheduled items (name, date, time, duration, project)
+  // Timeline blocks -- manually scheduled items (name, date, time, duration, project)
   // Include blocks from the past 24h through the next 14 days so Axis can read today's schedule
   var tlCutoffPast=new Date();tlCutoffPast.setDate(tlCutoffPast.getDate()-1);
   var tlCutoffPastStr=tlCutoffPast.toISOString().slice(0,10);
@@ -12043,26 +12043,26 @@ var JARVIS_SYSTEM=function(){
     points:pointsInfo
   };
 
-  // ── BREAKDOWN MODE: focused system prompt for AI task-breakdown ──
+  // -- BREAKDOWN MODE: focused system prompt for AI task-breakdown --
   if(_jarvisMode==='breakdown:projects'||_jarvisMode==='breakdown:tasks'){
     var ordered=_jarvisBuildBreakdownContext(_jarvisMode==='breakdown:projects'?'projects':'tasks');
     var scopeLabel=_jarvisMode==='breakdown:projects'?'project':'task';
-    return 'You are Axis in BREAKDOWN MODE inside Centerpost — a productivity dashboard built and used by Joe, a firefighter/paramedic with 30+ years experience and ADHD. It is now '+dateStr+', '+timeStr+'.\n\n'
+    return 'You are Axis in BREAKDOWN MODE inside Centerpost -- a productivity dashboard built and used by Joe, a firefighter/paramedic with 30+ years experience and ADHD. It is now '+dateStr+', '+timeStr+'.\n\n'
       +'Your single job: break a chosen '+scopeLabel+' into actionable micro-steps for an ADHD brain.\n\n'
       +'The user\'s items are listed below in suggested completion order: not-done before done; within not-done: overdue → today → tomorrow → later → undated; tiebreak by priority (high → med → low), then shorter time-estimate first to reduce initiation friction.\n\n'
       +'=== ITEMS IN COMPLETION ORDER ===\n'+ordered+'\n=== END ITEMS ===\n\n'
-      +'CRITICAL OUTPUT FORMAT: respond with ONLY a raw JSON object — no markdown fences. Format: {"reply":"...","actions":[]}. In breakdown mode you NEVER use actions — leave the array empty and put the breakdown inside reply.\n\n'
+      +'CRITICAL OUTPUT FORMAT: respond with ONLY a raw JSON object -- no markdown fences. Format: {"reply":"...","actions":[]}. In breakdown mode you NEVER use actions -- leave the array empty and put the breakdown inside reply.\n\n'
       +'When the user names or numbers an item, do this:\n'
       +'1. Acknowledge which one in ONE short line.\n'
       +'2. Produce 3–8 micro-steps in the order they should be done. Each step must be small enough to start in under 2 minutes.\n'
       +'3. Mark the very first step with "🚀 START HERE".\n'
       +'4. If any step would take more than 30 minutes, split it further.\n'
-      +'5. End with one line beginning "First physical action:" — what the user\'s hands should literally do right now (open a tab, pick up a phone, walk to a room, etc.).\n\n'
+      +'5. End with one line beginning "First physical action:" -- what the user\'s hands should literally do right now (open a tab, pick up a phone, walk to a room, etc.).\n\n'
       +'Style: no preambles, no "great choice," no over-explaining. Joe dislikes filler. Use \\n inside the reply string for line breaks. Number the steps 1. 2. 3. For subtasks of a step, indent with two spaces.\n\n'
       +'If the user types something that does not match any listed item, ask once for clarification and re-show the top 5 items by completion order.';
   }
 
-  return 'You are Axis, an AI assistant embedded in Centerpost — a personal ADHD-aware productivity dashboard built and used by Joe, a firefighter/paramedic with 30+ years experience, EMS leadership role at Fishers Public Safety, and college instructor in cognitive psychology / sensation & perception. He is ADHD with an ENFP profile.\n\nIt is now '+dateStr+', '+timeStr+'.\n\nYou have FULL access to the dashboard state below. Reference it precisely to answer questions about due dates, subtasks, projects, completed work, wellness reflections, routines, energy/mood, or anything else.\n\n=== DATA FIELD GUIDE ===\n- timelineBlocks = items manually scheduled on the TIMELINE PANEL (name, date, time, duration). Use THIS field for any question about the timeline, schedule, or blocked time. Do NOT substitute task due dates for timeline questions.\n- standaloneTasks / projects = task list and project subtasks. Use for task management questions.\n- upcomingReminders = reminders panel items.\n\n=== DASHBOARD STATE ===\n'+JSON.stringify(context,null,2)+'\n=== END STATE ===\n\nCRITICAL OUTPUT FORMAT: Respond with ONLY a raw JSON object. No markdown, no code fences, no explanation before or after. Format: {"reply":"...","actions":[]}\n\n=== RESPONSE STYLE RULES (STRICT — ADHD-OPTIMIZED) ===\n\n1. **Count questions get count-first replies.** When asked "how many" or for any count: give the NUMBER first, then a single short urgency flag if applicable, then offer to expand. Maximum 2 short sentences.\n   - Example query: "How many tasks do I have?"\n   - GOOD reply: "You have 14 open tasks. 3 are high priority and 2 are overdue. Want me to list them?"\n   - GOOD reply: "8 active projects. All on track. Want me to list them by due date?"\n   - BAD reply: "You currently have 14 open tasks across 5 projects. The high priority ones are [lists everything]..." — TOO MUCH UPFRONT.\n\n2. **List questions still default to a summary.** Even for "show me" or "what are", lead with a count + urgency summary, then offer to expand UNLESS the user explicitly said "list them all" or "show me each."\n   - "What\'s due this week?" → "6 items due this week, 2 today. Want the full list or just today\'s?"\n\n3. **Always end open-ended summary replies with an expansion offer** ("Want me to list them?", "Want details?", "Want today\'s breakdown?"). Phrase it naturally, not robotically.\n\n4. **If urgency flagging would clutter the reply, omit it.** No flag needed when nothing is high-priority and nothing is overdue.\n\n5. **Definitions of urgency flags:**\n   - "Overdue" = due date is BEFORE today\'s date '+todayKey+'.\n   - "High priority" = priority field === "high".\n   - "Due today" = due date === '+todayKey+'.\n\n6. **For action confirmations after add/complete/etc**: One short sentence. "Added \'Call dispatch\' as high priority, due tomorrow." No follow-up question needed.\n\n7. **For specific data lookups** (e.g. "when is X due", "what\'s the priority of Y"): Direct answer, no expansion offer.\n\n8. **Once the user confirms they want details**, THEN provide the full list — but still use compact formatting: each item on one line with priority/due in parentheses. Group by project or urgency if list >8 items.\n\n=== ACTION TYPES ===\n{"type":"add_task","name":"string","priority":"low|med|high","due":"YYYY-MM-DD or null"}\n{"type":"add_project","name":"string","due":"YYYY-MM-DD or null"}\n{"type":"add_subtask","projectName":"string","name":"string","priority":"low|med|high","due":"YYYY-MM-DD or null"}\n{"type":"add_note","label":"string","body":"string"}\n{"type":"add_reminder","text":"string","date":"YYYY-MM-DD or null","time":"HH:MM or null"}\n{"type":"complete_task","name":"string"}\n\nFor pure questions with no state changes, use actions:[]. Parse relative dates using today\'s date.\n\n=== TIMELINE READOUT FORMAT ===\nWhen the user asks what is on their timeline (any phrasing: \"what's on my timeline\", \"what do I have scheduled\", \"read my timeline\", \"what's tomorrow\", etc.) ALWAYS read out the full list of blocks directly. Do NOT use the count-first-then-offer pattern for timeline questions — just give the items. Format each entry as \"{time} — {name}\" only. Do NOT include duration, project, or priority unless the user explicitly asks. If there are no blocks, say so directly. Example reply: \"3 blocks tomorrow: 9:00 AM — Station meeting, 1:30 PM — Report writing, 3:00 PM — Training review.\"';
+  return 'You are Axis, an AI assistant embedded in Centerpost -- a personal ADHD-aware productivity dashboard built and used by Joe, a firefighter/paramedic with 30+ years experience, EMS leadership role at Fishers Public Safety, and college instructor in cognitive psychology / sensation & perception. He is ADHD with an ENFP profile.\n\nIt is now '+dateStr+', '+timeStr+'.\n\nYou have FULL access to the dashboard state below. Reference it precisely to answer questions about due dates, subtasks, projects, completed work, wellness reflections, routines, energy/mood, or anything else.\n\n=== DATA FIELD GUIDE ===\n- timelineBlocks = items manually scheduled on the TIMELINE PANEL (name, date, time, duration). Use THIS field for any question about the timeline, schedule, or blocked time. Do NOT substitute task due dates for timeline questions.\n- standaloneTasks / projects = task list and project subtasks. Use for task management questions.\n- upcomingReminders = reminders panel items.\n\n=== DASHBOARD STATE ===\n'+JSON.stringify(context,null,2)+'\n=== END STATE ===\n\nCRITICAL OUTPUT FORMAT: Respond with ONLY a raw JSON object. No markdown, no code fences, no explanation before or after. Format: {"reply":"...","actions":[]}\n\n=== RESPONSE STYLE RULES (STRICT -- ADHD-OPTIMIZED) ===\n\n1. **Count questions get count-first replies.** When asked "how many" or for any count: give the NUMBER first, then a single short urgency flag if applicable, then offer to expand. Maximum 2 short sentences.\n   - Example query: "How many tasks do I have?"\n   - GOOD reply: "You have 14 open tasks. 3 are high priority and 2 are overdue. Want me to list them?"\n   - GOOD reply: "8 active projects. All on track. Want me to list them by due date?"\n   - BAD reply: "You currently have 14 open tasks across 5 projects. The high priority ones are [lists everything]..." -- TOO MUCH UPFRONT.\n\n2. **List questions still default to a summary.** Even for "show me" or "what are", lead with a count + urgency summary, then offer to expand UNLESS the user explicitly said "list them all" or "show me each."\n   - "What\'s due this week?" → "6 items due this week, 2 today. Want the full list or just today\'s?"\n\n3. **Always end open-ended summary replies with an expansion offer** ("Want me to list them?", "Want details?", "Want today\'s breakdown?"). Phrase it naturally, not robotically.\n\n4. **If urgency flagging would clutter the reply, omit it.** No flag needed when nothing is high-priority and nothing is overdue.\n\n5. **Definitions of urgency flags:**\n   - "Overdue" = due date is BEFORE today\'s date '+todayKey+'.\n   - "High priority" = priority field === "high".\n   - "Due today" = due date === '+todayKey+'.\n\n6. **For action confirmations after add/complete/etc**: One short sentence. "Added \'Call dispatch\' as high priority, due tomorrow." No follow-up question needed.\n\n7. **For specific data lookups** (e.g. "when is X due", "what\'s the priority of Y"): Direct answer, no expansion offer.\n\n8. **Once the user confirms they want details**, THEN provide the full list -- but still use compact formatting: each item on one line with priority/due in parentheses. Group by project or urgency if list >8 items.\n\n=== ACTION TYPES ===\n{"type":"add_task","name":"string","priority":"low|med|high","due":"YYYY-MM-DD or null"}\n{"type":"add_project","name":"string","due":"YYYY-MM-DD or null"}\n{"type":"add_subtask","projectName":"string","name":"string","priority":"low|med|high","due":"YYYY-MM-DD or null"}\n{"type":"add_note","label":"string","body":"string"}\n{"type":"add_reminder","text":"string","date":"YYYY-MM-DD or null","time":"HH:MM or null"}\n{"type":"complete_task","name":"string"}\n\nFor pure questions with no state changes, use actions:[]. Parse relative dates using today\'s date.\n\n=== TIMELINE READOUT FORMAT ===\nWhen the user asks what is on their timeline (any phrasing: \"what's on my timeline\", \"what do I have scheduled\", \"read my timeline\", \"what's tomorrow\", etc.) ALWAYS read out the full list of blocks directly. Do NOT use the count-first-then-offer pattern for timeline questions -- just give the items. Format each entry as \"{time} -- {name}\" only. Do NOT include duration, project, or priority unless the user explicitly asks. If there are no blocks, say so directly. Example reply: \"3 blocks tomorrow: 9:00 AM -- Station meeting, 1:30 PM -- Report writing, 3:00 PM -- Training review.\"';
 };
 
 function _jarvisCurrentTier(){
@@ -12074,7 +12074,7 @@ function _jarvisCurrentTier(){
   return 'Bronze';
 }
 
-// ═══ BREAKDOWN MODE ═══
+// === BREAKDOWN MODE ===
 // Order items by suggested completion sequence:
 //   1. Not-done first (done items sink to bottom)
 //   2. Due bucket: overdue → today → tomorrow → later → undated
@@ -12126,7 +12126,7 @@ function _jarvisBuildBreakdownContext(scope){
   var mark=function(x){return x.done?'✓':'○';};
 
   if(scope==='projects'){
-    // Project objects need a 'due' alias for the sort helper (they use p.due directly — already matches)
+    // Project objects need a 'due' alias for the sort helper (they use p.due directly -- already matches)
     var projOrdered=_jarvisOrderByCompletion((state.projects||[]).map(function(p){
       // Project is "done" if all subtasks are done AND it has subtasks
       var allDone=(p.subtasks||[]).length>0&&(p.subtasks||[]).every(function(s){return s.done;});
@@ -12138,7 +12138,7 @@ function _jarvisBuildBreakdownContext(scope){
     out+='Projects (in suggested completion order):\n\n';
     projOrdered.forEach(function(po,i){
       var p=po._orig;
-      var dueTxt=p.due?' — due '+_jarvisFmtDate(p.due):'';
+      var dueTxt=p.due?' -- due '+_jarvisFmtDate(p.due):'';
       out+=(i+1)+'. '+mark(po)+' '+p.name+dueTxt+'\n';
       // Subtasks for this project, also ordered
       var subs=_jarvisOrderByCompletion(p.subtasks||[]);
@@ -12188,7 +12188,7 @@ function _jarvisBuildBreakdownContext(scope){
       if(t.priority&&t.priority!=='med')bits.push(t.priority);
       if(t.due)bits.push('due '+_jarvisFmtDate(t.due));
       var meta=bits.length?' ['+bits.join(' · ')+']':'';
-      var projTag=t._proj?' — '+t._proj:'';
+      var projTag=t._proj?' -- '+t._proj:'';
       out+=(i+1)+'. '+mark(t)+' '+t.name+projTag+meta+'\n';
     });
   }
@@ -12200,7 +12200,7 @@ function openJarvisBreakdown(scope){
   // scope: 'projects' | 'tasks'
   _jarvisMode='breakdown:'+scope;
   _trackEvent('tool_use','jarvis_ai','Jarvis AI');
-  _jarvisHistory=[]; // start fresh — don't pollute breakdown with prior chat
+  _jarvisHistory=[]; // start fresh -- don't pollute breakdown with prior chat
 
   // Update panel chrome
   var panel=document.getElementById('jarvisPanel');
@@ -12274,7 +12274,7 @@ function toggleJarvis(){
   if(fab)fab.classList.toggle('active',_jarvisOpen);
   if(tkBtn)tkBtn.classList.toggle('active',_jarvisOpen);
   if(!_jarvisOpen){
-    // Closing — reset breakdown mode so next open is clean chat
+    // Closing -- reset breakdown mode so next open is clean chat
     _jarvisExitBreakdownMode();
   }
   if(_jarvisOpen){
@@ -12432,7 +12432,7 @@ async function jarvisSend(){
     console.log('[Jarvis] HTTP',res.status,data);
     _jarvisHideThinking();
 
-    // ── HTTP-level errors ───────────────────────────────────────
+    // -- HTTP-level errors ---------------------------------------
     if(!res.ok){
       var statusMsg='HTTP '+res.status;
       var detail='';
@@ -12440,7 +12440,7 @@ async function jarvisSend(){
         // Worker error format: {error: "...", detail?: "..."}
         // Anthropic error format: {type:"error", error:{type:"...", message:"..."}}
         if(typeof data.error==='string'){
-          detail=data.error+(data.detail?' — '+data.detail:'');
+          detail=data.error+(data.detail?' -- '+data.detail:'');
         }else if(data.error.message){
           detail=(data.error.type?'['+data.error.type+'] ':'')+data.error.message;
         }
@@ -12468,7 +12468,7 @@ async function jarvisSend(){
       return;
     }
 
-    // ── Anthropic error response inside 200 OK (rare but possible) ─
+    // -- Anthropic error response inside 200 OK (rare but possible) -
     if(data&&data.type==='error'){
       var aErr=data.error||{};
       _jarvisAddMessage('assistant','API error ['+(aErr.type||'unknown')+']: '+(aErr.message||'unknown'));
@@ -12477,7 +12477,7 @@ async function jarvisSend(){
       return;
     }
 
-    // ── Extract message content ────────────────────────────────
+    // -- Extract message content --------------------------------
     var raw='';
     if(data&&data.content&&Array.isArray(data.content)&&data.content.length>0){
       // Join all text-type content blocks (model could return multiple)
@@ -12490,7 +12490,7 @@ async function jarvisSend(){
       return;
     }
 
-    // Parse JSON response — robustly extract the JSON object regardless of surrounding text
+    // Parse JSON response -- robustly extract the JSON object regardless of surrounding text
     var parsed;
     try{
       // Strategy 1: strip markdown fences, try direct parse
@@ -12534,7 +12534,7 @@ async function jarvisSend(){
   }
 }
 
-// ═══ VOICE INPUT ═══
+// === VOICE INPUT ===
 function jarvisToggleMic(){
   if(_jarvisListening){_jarvisStopMic();return;}
   var SR=window.SpeechRecognition||window.webkitSpeechRecognition;
@@ -12576,13 +12576,13 @@ function _jarvisStopMic(){
   if(btn)btn.classList.remove('listening');
 }
 
-// ═══════════════════════════════════════
-// ═══════════════════════════════════════════════════════════════════════
+// =======================================
+// =======================================================================
 // REMINDER POPUP + AUTO-SCHEDULE ON TIMELINE
 // Runs on app init and on visibility return (handles overnight).
-// ═══════════════════════════════════════════════════════════════════════
+// =======================================================================
 
-// ── 1. Auto-schedule today's reminders in the first open timeline slot ─
+// -- 1. Auto-schedule today's reminders in the first open timeline slot -
 function autoScheduleTodayReminders(){
   var today=todayStr();
   var rems=(state.reminders||[]).filter(function(r){
@@ -12637,7 +12637,7 @@ function autoScheduleTodayReminders(){
   if(typeof renderTimeline==='function')renderTimeline();
 }
 
-// ── 2. Today reminder popup ─────────────────────────────────────────────
+// -- 2. Today reminder popup ---------------------------------------------
 var _reminderPopupShownDate=null;
 
 function checkAndShowReminderPopup(){
@@ -12745,7 +12745,7 @@ function reminderPopupSnooze(id){
     r.time=newTime;
     r._dismissed=false;
     r._autoScheduled=false;
-    // Remove the old auto-scheduled block — new date might be different
+    // Remove the old auto-scheduled block -- new date might be different
     state.tlBlocks=(state.tlBlocks||[]).filter(function(b){return b.linkedId!==id;});
     save();
     if(typeof renderReminders==='function')renderReminders();
@@ -12755,11 +12755,11 @@ function reminderPopupSnooze(id){
   }
 }
 
-// WAKE WORD — "Hey Axis" (also accepts "Hey Jarvis" for legacy users)
-// ═══════════════════════════════════════
+// WAKE WORD -- "Hey Axis" (also accepts "Hey Jarvis" for legacy users)
+// =======================================
 var _wakeWordSR=null;
 var _wakeWordActive=false;       // currently armed and listening for wake word
-var _wakeWordEnabled=false;      // user-toggleable preference (persists); default OFF — continuous mic listening can cause issues on iOS/Safari
+var _wakeWordEnabled=false;      // user-toggleable preference (persists); default OFF -- continuous mic listening can cause issues on iOS/Safari
 var _wakeWordRetryTimer=null;
 var _wakeWordSupported=!!(window.SpeechRecognition||window.webkitSpeechRecognition);
 var WAKE_PHRASES=['hey axis','hi axis','hey, axis','okay axis','ok axis','axis','hey jarvis','hi jarvis','hey, jarvis','okay jarvis','ok jarvis','jarvis'];
@@ -12841,7 +12841,7 @@ function toggleWakeWord(){
   if(typeof save==='function')save();
   if(_wakeWordEnabled){
     _startWakeWord();
-    toast('Wake word enabled — say "Hey Axis"');
+    toast('Wake word enabled -- say "Hey Axis"');
   }else{
     _stopWakeWord();
     toast('Wake word disabled');
@@ -12856,7 +12856,7 @@ function _updateWakeWordUI(){
     btn.style.display='none';
     return;
   }
-  btn.title=_wakeWordEnabled?'Wake word ON ("Hey Axis") — tap to disable':'Wake word OFF — tap to enable';
+  btn.title=_wakeWordEnabled?'Wake word ON ("Hey Axis") -- tap to disable':'Wake word OFF -- tap to enable';
   btn.classList.toggle('enabled',_wakeWordEnabled);
   btn.classList.toggle('active',_wakeWordActive&&_wakeWordEnabled);
   btn.textContent=_wakeWordEnabled?'\u{1F3A4}':'\u{1F507}';
@@ -12870,7 +12870,7 @@ jarvisToggleMic=function(){
   _origJarvisToggleMic.apply(this,arguments);
 };
 
-// Tab visibility — pause when hidden, restart when visible
+// Tab visibility -- pause when hidden, restart when visible
 document.addEventListener('visibilitychange',function(){
   if(document.visibilityState==='hidden'){
     if(_wakeWordActive)_stopWakeWord();
@@ -12881,7 +12881,7 @@ document.addEventListener('visibilitychange',function(){
   }
 });
 
-// Init wake word on dashboard load — restore saved preference, auto-start if enabled
+// Init wake word on dashboard load -- restore saved preference, auto-start if enabled
 function _initWakeWord(){
   // Restore from persisted state
   if(state&&typeof state.jarvisWakeEnabled==='boolean'){
@@ -12908,9 +12908,9 @@ function _initWakeWord(){
 // Wait for state to be loaded before init
 setTimeout(_initWakeWord,1500);
 
-// ═══════════════════════════════════════
-// VOICE READBACK — TTS for Jarvis replies
-// ═══════════════════════════════════════
+// =======================================
+// VOICE READBACK -- TTS for Jarvis replies
+// =======================================
 var _jarvisVoiceEnabled=false;           // user-toggleable preference (persists); default OFF to prevent device issues
 var _jarvisVoiceSupported=!!window.speechSynthesis;
 var _jarvisCurrentUtterance=null;
@@ -13028,7 +13028,7 @@ function _updateVoiceUI(){
     btn.style.display='none';
     return;
   }
-  btn.title=_jarvisVoiceEnabled?'Voice readback ON — tap to mute':'Voice readback OFF — tap to enable';
+  btn.title=_jarvisVoiceEnabled?'Voice readback ON -- tap to mute':'Voice readback OFF -- tap to enable';
   btn.classList.toggle('enabled',_jarvisVoiceEnabled);
   btn.textContent=_jarvisVoiceEnabled?'\u{1F50A}':'\u{1F507}';
 }
@@ -13068,11 +13068,11 @@ function _initJarvisVoice(){
 }
 setTimeout(_initJarvisVoice,1500);
 
-// ═══════════════════════════════════════════════════════════════════════════
-// CALENDAR SYNC — Google Calendar (two-way) | Outlook pattern in OUTLOOK_NEXT.md
-// ═══════════════════════════════════════════════════════════════════════════
+// ===========================================================================
+// CALENDAR SYNC -- Google Calendar (two-way) | Outlook pattern in OUTLOOK_NEXT.md
+// ===========================================================================
 
-// ── CONFIG ─────────────────────────────────────────────────────────────────
+// -- CONFIG -----------------------------------------------------------------
 // PASTE YOUR OAUTH CLIENT ID HERE (from Google Cloud Console → Credentials)
 // It will look like: '123456789-abc.apps.googleusercontent.com'
 var GOOGLE_CLIENT_ID = '1065593793454-57q4unojejuafv4rihajmoas77ucr6q8.apps.googleusercontent.com';
@@ -13081,14 +13081,14 @@ var GOOGLE_SCOPES = 'https://www.googleapis.com/auth/calendar https://www.google
 var GCAL_CALENDAR_NAME = 'Centerpost';
 var GCAL_API_BASE = 'https://www.googleapis.com/calendar/v3';
 
-// ── INTERNAL STATE ─────────────────────────────────────────────────────────
+// -- INTERNAL STATE ---------------------------------------------------------
 var _gcalTokenClient = null;
 var _gcalAccessToken = null;
 var _gcalTokenExpiry = 0;
 var _gcalGisLoaded = false;
 var _gcalSyncing = false;
 
-// ── GIS BOOTSTRAP ──────────────────────────────────────────────────────────
+// -- GIS BOOTSTRAP ----------------------------------------------------------
 function _gcalLoadGis(){
   return new Promise(function(resolve, reject){
     if(window.google && window.google.accounts && window.google.accounts.oauth2){
@@ -13132,13 +13132,13 @@ function _gcalInitTokenClient(){
   return true;
 }
 
-// ── PUBLIC: CONNECT / DISCONNECT ───────────────────────────────────────────
+// -- PUBLIC: CONNECT / DISCONNECT -------------------------------------------
 async function gcalConnect(){
   try {
     _gcalSetSyncingUI(true);
     await _gcalLoadGis();
     if(!_gcalInitTokenClient()){ _gcalSetSyncingUI(false); return; }
-    // Interactive — prompts the user to pick account & grant consent
+    // Interactive -- prompts the user to pick account & grant consent
     _gcalTokenClient.requestAccessToken({ prompt: 'consent' });
   } catch(e){
     toast('Connect failed: '+e.message);
@@ -13189,7 +13189,7 @@ function gcalDisconnect(){
   toast('Disconnected from Google Calendar');
 }
 
-// ── TOKEN HANDLING ─────────────────────────────────────────────────────────
+// -- TOKEN HANDLING ---------------------------------------------------------
 var _gcalTokenPromise = null;   // single in-flight token request
 var _gcalInteractiveCb = null;  // callback target for the active request
 
@@ -13208,7 +13208,7 @@ async function _gcalEnsureToken(interactive){
     } catch(e){ console.warn('[gcal] GIS load failed', e); return false; }
 
     return new Promise(function(resolve){
-      // Single shared callback — set once in _gcalInitTokenClient — routes here.
+      // Single shared callback -- set once in _gcalInitTokenClient -- routes here.
       _gcalInteractiveCb = function(resp){
         _gcalInteractiveCb = null;
         if(resp && resp.access_token){
@@ -13237,7 +13237,7 @@ async function _gcalEnsureToken(interactive){
   return result;
 }
 
-// ── HTTP HELPER ────────────────────────────────────────────────────────────
+// -- HTTP HELPER ------------------------------------------------------------
 async function _gcalFetch(method, path, body, _isRetry){
   var ok = await _gcalEnsureToken();
   if(!ok){
@@ -13252,9 +13252,9 @@ async function _gcalFetch(method, path, body, _isRetry){
   try {
     var r = await fetch(GCAL_API_BASE+path, opts);
     if(r.status === 204) return {_deleted:true};
-    // Token rejected mid-flight — force one refresh and retry exactly once.
+    // Token rejected mid-flight -- force one refresh and retry exactly once.
     if(r.status === 401 && !_isRetry){
-      console.warn('[gcal] 401 — forcing token refresh and retrying once');
+      console.warn('[gcal] 401 -- forcing token refresh and retrying once');
       _gcalAccessToken = null; _gcalTokenExpiry = 0;
       return _gcalFetch(method, path, body, true);
     }
@@ -13267,7 +13267,7 @@ async function _gcalFetch(method, path, body, _isRetry){
   }
 }
 
-// ── CALENDAR MANAGEMENT ────────────────────────────────────────────────────
+// -- CALENDAR MANAGEMENT ----------------------------------------------------
 async function _gcalEnsureCalendar(){
   // Check existing
   if(state.gcal.calendarId){
@@ -13292,7 +13292,7 @@ async function _gcalEnsureCalendar(){
   return null;
 }
 
-// ── EVENT BUILDER ──────────────────────────────────────────────────────────
+// -- EVENT BUILDER ----------------------------------------------------------
 function _gcalPad2(n){ return n<10?'0'+n:''+n; }
 function _gcalBuildEvent(item){
   // item: {id, name, date, time?, durMin?, priority?, projectName?, kind, sourceId}
@@ -13300,7 +13300,7 @@ function _gcalBuildEvent(item){
   if(item.projectName) summary = '['+item.projectName+'] '+summary;
   if(item.priority === 'high' && summary.indexOf('[HIGH]')===-1) summary = '🔴 '+summary;
   var description = 'Centerpost ' + (item.kind || 'item');
-  if(item.projectName) description += ' — project: '+item.projectName;
+  if(item.projectName) description += ' -- project: '+item.projectName;
   if(item.priority) description += '\nPriority: '+item.priority;
   if(item.durMin) description += '\nTime estimate: '+item.durMin+' min';
   description += '\n\n(Synced from Centerpost)';
@@ -13337,7 +13337,7 @@ function _gcalBuildEvent(item){
   return ev;
 }
 
-// ── PUSH ───────────────────────────────────────────────────────────────────
+// -- PUSH -------------------------------------------------------------------
 async function _gcalPushItem(item){
   if(!state.gcal.connected || !item.date) return null;
   var calId = state.gcal.calendarId || await _gcalEnsureCalendar();
@@ -13363,17 +13363,17 @@ async function gcalPushAll(){
   var pushed = 0, failed = 0;
 
   try {
-    // ── Pre-flight auth check ────────────────────────────────────────────
+    // -- Pre-flight auth check --------------------------------------------
     // Validates / silently refreshes the access token ONCE before iterating.
     // Avoids grinding through N items that all return null on expired auth.
     var tokenOk = await _gcalEnsureToken();
     if(!tokenOk){
       // Silent refresh failed (common on Safari/iOS). Trigger interactive consent.
-      toast('Google session expired — reconnecting…');
+      toast('Google session expired -- reconnecting…');
       _gcalAccessToken = null; _gcalTokenExpiry = 0;
       tokenOk = await _gcalEnsureToken(true);
       if(!tokenOk){
-        toast('Could not reconnect to Google — open Calendar settings to re-authorize');
+        toast('Could not reconnect to Google -- open Calendar settings to re-authorize');
         openGcalModal();
         return;
       }
@@ -13463,14 +13463,14 @@ async function gcalPushAll(){
   }
 }
 
-// ── DELETE PROPAGATION ─────────────────────────────────────────────────────
+// -- DELETE PROPAGATION -----------------------------------------------------
 async function _gcalDeleteEvent(eventId){
   if(!state.gcal.connected || !eventId || !state.gcal.calendarId) return;
   await _gcalFetch('DELETE',
     '/calendars/'+encodeURIComponent(state.gcal.calendarId)+'/events/'+eventId);
 }
 
-// ── PULL ───────────────────────────────────────────────────────────────────
+// -- PULL -------------------------------------------------------------------
 async function gcalPullEvents(){
   if(!state.gcal.connected){ openGcalModal(); return; }
   if(_gcalSyncing) return;
@@ -13480,7 +13480,7 @@ async function gcalPullEvents(){
   try {
     var tokenOk = await _gcalEnsureToken();
     if(!tokenOk){
-      toast('Google session expired — re-authorize in Calendar settings');
+      toast('Google session expired -- re-authorize in Calendar settings');
       openGcalModal();
       return;
     }
@@ -13556,7 +13556,7 @@ function gcalEventsForDate(dateStr){
   });
 }
 
-// ── UI HELPERS ─────────────────────────────────────────────────────────────
+// -- UI HELPERS -------------------------------------------------------------
 function _gcalSetSyncingUI(on){
   var chip = document.getElementById('gcalStatusChip');
   if(chip) chip.classList.toggle('syncing', !!on);
@@ -13610,13 +13610,13 @@ function _gcalRenderModal(){
   if(state.gcal && state.gcal.connected){
     // Check whether the in-memory access token is still valid.
     // After a page refresh state.gcal.connected stays true but _gcalAccessToken
-    // is null — show a re-auth prompt rather than letting Push silently fail.
+    // is null -- show a re-auth prompt rather than letting Push silently fail.
     var sessionActive = _gcalAccessToken && Date.now() < _gcalTokenExpiry;
 
     if(!sessionActive){
       html += '<div class="gcal-status-row" style="border-left:3px solid var(--orange);padding-left:10px;">';
       html += '<span class="gcal-dot" style="background:var(--orange);"></span>';
-      html += '<div><strong>Session expired.</strong><br><span style="font-size:12px;color:var(--text-dim);">Your Google Calendar connection is saved but the session token needs to be refreshed. This happens after every page reload — tap Re-authorize to restore sync.</span></div></div>';
+      html += '<div><strong>Session expired.</strong><br><span style="font-size:12px;color:var(--text-dim);">Your Google Calendar connection is saved but the session token needs to be refreshed. This happens after every page reload -- tap Re-authorize to restore sync.</span></div></div>';
       html += '<dl class="gcal-info-grid"><dt>Account</dt><dd>'+(state.gcal.email||'(saved)')+'</dd>';
       html += '<dt>Calendar</dt><dd>'+GCAL_CALENDAR_NAME+'</dd>';
       html += '<dt>Last push</dt><dd>'+_gcalRelTime(state.gcal.lastPush)+'</dd></dl>';
@@ -13644,7 +13644,7 @@ function _gcalRenderModal(){
 
     html += '<label class="gcal-toggle-row"><input type="checkbox" '+(state.gcal.showExternal?'checked':'')+' onchange="state.gcal.showExternal=this.checked;save();_gcalUpdateUI();if(typeof renderTimeline===\'function\')renderTimeline();"><div class="gcal-toggle-label">Show external events in Timeline<div class="gcal-toggle-hint">Events from your primary Google Calendar that didn\'t originate in Centerpost.</div></div></label>';
 
-    html += '<label class="gcal-toggle-row"><input type="checkbox" '+(state.gcal.autoPush?'checked':'')+' onchange="state.gcal.autoPush=this.checked;save();"><div class="gcal-toggle-label">Auto-push new items (experimental)<div class="gcal-toggle-hint">When ON, new tasks/subtasks/reminders with a date push automatically. Off by default — use the manual button until you trust it.</div></div></label>';
+    html += '<label class="gcal-toggle-row"><input type="checkbox" '+(state.gcal.autoPush?'checked':'')+' onchange="state.gcal.autoPush=this.checked;save();"><div class="gcal-toggle-label">Auto-push new items (experimental)<div class="gcal-toggle-hint">When ON, new tasks/subtasks/reminders with a date push automatically. Off by default -- use the manual button until you trust it.</div></div></label>';
 
     html += '<div class="gcal-actions" style="margin-top:14px;">';
     html += '<button class="gcal-btn danger" onclick="_confirmGcalDisconnect()">Disconnect</button>';
@@ -13666,11 +13666,11 @@ setTimeout(function(){
   if(state && state.gcal) _gcalUpdateUI();
 }, 1500);
 
-// ═══════════════════════════════════════════════════════════════════════════
+// ===========================================================================
 // OPTIONAL: Auto-sync hooks. Disabled by default (state.gcal.autoPush=false).
 // When user enables autoPush, these wrappers push individual items on create.
 // Deletes always propagate when connected (independent of autoPush).
-// ═══════════════════════════════════════════════════════════════════════════
+// ===========================================================================
 
 // Wrap addStandaloneTask: auto-push the newly added task if enabled
 (function(){
@@ -13747,10 +13747,10 @@ setTimeout(function(){
   };
 })();
 
-// ═══════════════════════════════════════════════════════════════════════════
+// ===========================================================================
 // TIMELINE HOOK: inject external Google events into _tlCollectBlocks output.
 // We monkey-patch by wrapping the original and appending external events.
-// ═══════════════════════════════════════════════════════════════════════════
+// ===========================================================================
 (function(){
   if(typeof _tlCollectBlocks !== 'function') return;
   var _origCollect = _tlCollectBlocks;
