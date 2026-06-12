@@ -1905,6 +1905,11 @@ body[data-theme="storm-dark"] .tl-hour-label{
 .note-edit-toggle:hover{border-color:var(--accent-dim);color:var(--accent);}
 .note-edit-toggle .ti{font-size:12px;}
 .note-fmt-hint{font-size:10px;color:var(--text-faint);margin-top:3px;line-height:1.4;}
+.note-fmt-bar{display:flex;gap:4px;margin-top:4px;flex-wrap:wrap;}
+.note-fmt-btn{display:inline-flex;align-items:center;justify-content:center;min-width:28px;height:26px;padding:0 7px;font-size:12px;font-family:inherit;color:var(--text-dim);background:var(--surface-raised);border:1px solid var(--border);border-radius:6px;cursor:pointer;transition:background 0.12s,color 0.12s,border-color 0.12s;}
+.note-fmt-btn:hover{background:var(--surface-hover);color:var(--text);border-color:var(--border-focus);}
+.note-fmt-btn b{font-weight:700;}
+.note-fmt-btn i{font-style:italic;}
 .note-body-input:hover{border-bottom-color:var(--border);}
 .note-body-input:focus{border-bottom-color:var(--accent);color:var(--text);}
 .note-footer{display:flex;align-items:center;gap:6px;margin-top:8px;flex-wrap:wrap;}
@@ -3242,7 +3247,7 @@ body[data-theme="storm-dark"] .tl-hour-label{
 <div class="note-form tile-add-region">
 <input type="text" id="newNoteLabel" placeholder="Short title...">
 <textarea class="note-textarea" id="newNoteBody" placeholder="Write your note..."></textarea>
-<div class="note-fmt-hint">Formatting: **bold** · *italic* · # Header · - bullet · [link](url)</div>
+<div class="note-fmt-bar" role="toolbar" aria-label="Note formatting"><button type="button" class="note-fmt-btn" title="Bold" onclick="_noteFmt('newNoteBody','bold')"><b>B</b></button><button type="button" class="note-fmt-btn" title="Italic" onclick="_noteFmt('newNoteBody','italic')"><i>I</i></button><button type="button" class="note-fmt-btn" title="Header" onclick="_noteFmt('newNoteBody','header')">H</button><button type="button" class="note-fmt-btn" title="Bullet list" onclick="_noteFmt('newNoteBody','bullet')">&bull;</button><button type="button" class="note-fmt-btn" title="Link" onclick="_noteFmt('newNoteBody','link')">&#128279;</button></div>
 <div class="note-form-row">
 <div class="proj-multi-picker" id="newNoteProjectPicker" data-target="newNoteProject" onclick="openProjMultiPicker(event,this)"><span class="proj-multi-placeholder">+ Tag projects (optional)</span></div>
 <input type="hidden" id="newNoteProject" value="">
@@ -5615,6 +5620,7 @@ function startGuided(id){const t=wellnessTechniques.find(t=>t.id===id);if(!t||!t
 function stopGuided(){clearInterval(guidedInterval);guidedInterval=null;document.getElementById('guidedDisplay').classList.remove('active');}
 
 // NOTES
+function _noteFmt(targetId,kind){var ta=document.getElementById(targetId);if(!ta)return;var start=ta.selectionStart,end=ta.selectionEnd;var val=ta.value;var sel=val.slice(start,end);var before=val.slice(0,start),after=val.slice(end);var out,newStart,newEnd;switch(kind){case 'bold':{var t=sel||'bold text';out=before+'**'+t+'**'+after;newStart=before.length+2;newEnd=newStart+t.length;break;}case 'italic':{var t=sel||'italic text';out=before+'*'+t+'*'+after;newStart=before.length+1;newEnd=newStart+t.length;break;}case 'header':{var ls=before.lastIndexOf('\n')+1;var lineBefore=val.slice(0,ls),rest=val.slice(ls);out=lineBefore+'# '+rest;newStart=ls+2;newEnd=newStart+(sel?sel.length:rest.split('\n')[0].length);break;}case 'bullet':{var ls=before.lastIndexOf('\n')+1;var lineBefore=val.slice(0,ls),rest=val.slice(ls);out=lineBefore+'- '+rest;newStart=ls+2;newEnd=newStart+(sel?sel.length:rest.split('\n')[0].length);break;}case 'link':{var t=sel||'link text';out=before+'['+t+'](url)'+after;newStart=before.length+1;newEnd=newStart+t.length;break;}default:return;}ta.value=out;ta.focus();ta.setSelectionRange(newStart,newEnd);var ev=document.createEvent('Event');ev.initEvent('input',true,true);ta.dispatchEvent(ev);}
 function addNote(){const label=document.getElementById('newNoteLabel').value.trim();const body=document.getElementById('newNoteBody').value.trim();if(!label&&!body)return;const projVal=document.getElementById('newNoteProject').value;const projIds=projVal?projVal.split(',').filter(Boolean):[];const now=new Date();state.notes.push({id:'n'+Date.now(),label:label||'Untitled',body:body,projectId:projIds[0]||'',projectIds:projIds,created:now.toISOString(),date:now.toLocaleDateString('en-US',{month:'short',day:'numeric',year:'numeric'}),time:now.toLocaleTimeString('en-US',{hour:'numeric',minute:'2-digit'})});document.getElementById('newNoteLabel').value='';document.getElementById('newNoteBody').value='';document.getElementById('newNoteProject').value='';renderProjMultiPickerChips(document.getElementById('newNoteProjectPicker'));save();renderNotes();renderProjects();if(projIds.length>1)toast('Note added to '+projIds.length+' projects');_trackEvent('tool_use','add_note','Add Note');}
 function deleteNote(id){state.notes=state.notes.filter(n=>n.id!==id);save();renderNotes();}
 function editNoteLabel(id,v){if(!v)return;const n=state.notes.find(n=>n.id===id);if(n){n.label=v;save();}}
