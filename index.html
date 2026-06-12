@@ -5097,25 +5097,31 @@ function editReminderTime(id,v){const r=state.reminders.find(r=>r.id===id);if(r)
 function makeDateClickable(el,currentVal,onSave){
   el.addEventListener('click',function(e){
     e.stopPropagation();
+    if(el.querySelector('input.date-edit-input')) return;
     const inp=document.createElement('input');
     inp.type='date';inp.className='date-edit-input';
     inp.value=currentVal||'';
     el.innerHTML='';el.appendChild(inp);
     inp.focus();
-    inp.addEventListener('change',function(){onSave(inp.value);});
-    inp.addEventListener('blur',function(){onSave(inp.value);});
+    var committed=false;
+    function commit(){ if(committed) return; committed=true; onSave(inp.value); }
+    inp.addEventListener('blur',commit);
+    inp.addEventListener('keydown',function(ev){ if(ev.key==='Enter'){ ev.preventDefault(); inp.blur(); } });
   });
 }
 function makeTimeClickable(el,currentVal,onSave){
   el.addEventListener('click',function(e){
     e.stopPropagation();
+    if(el.querySelector('input.date-edit-input')) return;
     const inp=document.createElement('input');
     inp.type='time';inp.className='date-edit-input';inp.style.width='100px';
     inp.value=currentVal||'';
     el.innerHTML='';el.appendChild(inp);
     inp.focus();
-    inp.addEventListener('change',function(){onSave(inp.value);});
-    inp.addEventListener('blur',function(){onSave(inp.value);});
+    var committed=false;
+    function commit(){ if(committed) return; committed=true; onSave(inp.value); }
+    inp.addEventListener('blur',commit);
+    inp.addEventListener('keydown',function(ev){ if(ev.key==='Enter'){ ev.preventDefault(); inp.blur(); } });
   });
 }
 
