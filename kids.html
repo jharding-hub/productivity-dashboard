@@ -478,6 +478,27 @@ body.theme-starry{
   --header-font:'Press Start 2P',monospace;
   --body-font:'VT323',monospace;
 }
+
+body.theme-galaxy{
+  --bg:#050a18;
+  --surface:#0a1124;
+  --surface-light:#0f1832;
+  --border:#1c2a54;
+  --border-dark:#0a1226;
+  --primary:#4a90e8;
+  --secondary:#2f6fd0;
+  --accent:#4a90e8;
+  --success:#60c0a0;
+  --danger:#e06080;
+  --text:#cdd8f0;
+  --text-dim:#8696c0;
+  --shadow:#03060f;
+  --header-font:'Press Start 2P',monospace;
+  --body-font:'VT323',monospace;
+}
+#kidsGalaxyLayer{position:fixed;inset:0;z-index:0;pointer-events:none;display:none;overflow:hidden;}
+body.theme-galaxy #kidsGalaxyLayer{display:block;}
+#kidsGalaxyLayer canvas{position:absolute;inset:0;width:100%;height:100%;display:block;}
 body.theme-starry .app{background:transparent;}
 body.theme-starry .panel{
   background:rgba(16,21,42,0.68) !important;
@@ -1984,6 +2005,7 @@ body.theme-christmas #kidsSanta{
 .theme-option-storm{background:linear-gradient(160deg,#0c0f14 0%,#1a2838 60%,#2a3848 100%);color:#7ab8e8;}
 .theme-option-halloween{background:linear-gradient(160deg,#140a1e 0%,#3a2050 50%,#ff8a1e 100%);color:#f0d8b0;}
 .theme-option-christmas{background:linear-gradient(160deg,#0a1a24 0%,#1d4a3a 50%,#e8404a 100%);color:#eaf4f0;}
+.theme-option-galaxy{background:linear-gradient(160deg,#050a18 0%,#0f1832 55%,#4a90e8 100%);color:#cfe0ff;}
 
 /* ═══ PARENT SETTINGS MODAL ═══ */
 .parent-modal{
@@ -2137,6 +2159,7 @@ body.theme-critter::before,body.theme-candy::before{
 <div id="kidsLightningFlash"></div>
 <div id="kidsHalloweenLayer"></div>
 <div id="kidsChristmasLayer"></div>
+<div id="kidsGalaxyLayer"></div>
 <div id="kidsXmasLights"></div>
 <div id="kidsXmasLightsBottom"></div>
 <div id="kidsSanta">🛷🎅</div>
@@ -2389,6 +2412,10 @@ body.theme-critter::before,body.theme-candy::before{
         <div class="theme-swatch"><div class="swatch" style="background:#0a1a24"></div><div class="swatch" style="background:#e8404a"></div><div class="swatch" style="background:#2a9a50"></div><div class="swatch" style="background:#eaf4f0"></div></div>
         🎄 CHRISTMAS
       </button>
+      <button class="theme-option theme-option-galaxy" data-theme="galaxy" onclick="setTheme('galaxy')">
+        <div class="theme-swatch"><div class="swatch" style="background:#050a18"></div><div class="swatch" style="background:#4a90e8"></div><div class="swatch" style="background:#ffb46e"></div><div class="swatch" style="background:#cdd8f0"></div></div>
+        🌌 GALAXY
+      </button>
     </div>
   </div>
 </div>
@@ -2638,6 +2665,11 @@ function applyTheme(name){
   } else {
     _kidsChristmasStop();
   }
+  if(name==='galaxy'){
+    _kidsGalaxyStart();
+  } else {
+    _kidsGalaxyStop();
+  }
 }
 function setTheme(name){applyTheme(name);toast('Theme changed!');setTimeout(closeThemeModal,500);}
 
@@ -2681,6 +2713,104 @@ function _stopEmbers(){
 // ── STARRY NIGHT ────────────────────────────────────────────────
 var _kidsStarryActive=false;
 var _kidsFireflyInterval=null;
+
+// ═══ GALAXY THEME — dense flowing orbital trails (canvas) ═══
+var _kidsGalaxyAnim=null;
+function _kidsGalaxyStart(){
+  var layer=document.getElementById('kidsGalaxyLayer');
+  if(!layer)return;
+  if(_kidsGalaxyAnim)return;
+  var cv=document.getElementById('kidsGalaxyCanvas');
+  if(!cv){
+    cv=document.createElement('canvas');
+    cv.id='kidsGalaxyCanvas';
+    layer.appendChild(cv);
+  }
+  _kidsGalaxyAnim=_kidsGalaxyEngine(cv);
+}
+function _kidsGalaxyStop(){
+  if(_kidsGalaxyAnim){ _kidsGalaxyAnim.stop(); _kidsGalaxyAnim=null; }
+}
+function _kidsGalaxyEngine(cv){
+  var ctx=cv.getContext('2d');
+  var raf=null, running=true, W,H,cx,cy;
+  var dpr=Math.min(window.devicePixelRatio||1, 1.5);
+  var reduce=window.matchMedia&&window.matchMedia('(prefers-reduced-motion:reduce)').matches;
+  function size(){
+    W=window.innerWidth; H=window.innerHeight;
+    cv.width=Math.max(1,W*dpr); cv.height=Math.max(1,H*dpr);
+    ctx.setTransform(dpr,0,0,dpr,0,0);
+    cx=W*0.52; cy=H*0.46;
+  }
+  size(); window.addEventListener('resize', size);
+  var COLORS=[
+    [255,190,110],[255,170,80],[255,150,70],[255,120,70],
+    [255,210,150],[255,235,200],[255,160,90],[255,180,100],
+    [160,195,255],[200,220,255]
+  ];
+  var maxR=Math.max(W,H)*0.62;
+  var N=Math.max(260, Math.min(520, Math.floor((W*H)/3200)));
+  var DISK=0.46, DA=0.52, cosDA=Math.cos(DA), sinDA=Math.sin(DA);
+  var P=[];
+  for(var i=0;i<N;i++){
+    var r=Math.pow(Math.random(),0.62)*maxR;
+    var warm=Math.random()<0.9;
+    var ci=warm?Math.floor(Math.random()*8):8+Math.floor(Math.random()*2);
+    P.push({
+      r:r, e:Math.random()*0.5, w:Math.random()*Math.PI*2,
+      prec:(-0.0006 + Math.random()*0.0012),
+      th:Math.random()*Math.PI*2,
+      sp:(0.0007 + 0.9/(r+60)) * (0.7+Math.random()*0.6),
+      c:COLORS[ci], sz:0.5 + Math.random()*1.5, br:0.30 + Math.random()*0.55
+    });
+  }
+  var t0=performance.now();
+  function step(advance){
+    ctx.globalCompositeOperation='source-over';
+    ctx.fillStyle='rgba(8,5,14,0.115)';
+    ctx.fillRect(0,0,W,H);
+    ctx.globalCompositeOperation='lighter';
+    for(var i=0;i<P.length;i++){
+      var p=P[i];
+      if(advance){ p.th+=p.sp; p.w+=p.prec; }
+      var rad=p.r*(1-p.e*p.e)/(1+p.e*Math.cos(p.th-p.w));
+      var ex=Math.cos(p.th)*rad, ey=Math.sin(p.th)*rad*DISK;
+      var x=cx + ex*cosDA - ey*sinDA;
+      var y=cy + ex*sinDA + ey*cosDA;
+      var c=p.c;
+      ctx.fillStyle='rgba('+c[0]+','+c[1]+','+c[2]+','+p.br.toFixed(3)+')';
+      ctx.beginPath(); ctx.arc(x,y,p.sz,0,6.2832); ctx.fill();
+    }
+    var t=(performance.now()-t0)/1000;
+    var pulse=0.5+0.5*Math.sin(t*0.7);
+    var coreR=maxR*0.26;
+    var g=ctx.createRadialGradient(cx,cy,0,cx,cy,coreR);
+    g.addColorStop(0,'rgba(255,245,225,'+(0.42+pulse*0.12).toFixed(3)+')');
+    g.addColorStop(0.18,'rgba(255,205,150,0.22)');
+    g.addColorStop(0.5,'rgba(255,150,90,0.08)');
+    g.addColorStop(1,'rgba(255,120,70,0)');
+    ctx.fillStyle=g;
+    ctx.beginPath(); ctx.arc(cx,cy,coreR,0,6.2832); ctx.fill();
+    ctx.globalCompositeOperation='source-over';
+  }
+  function frame(){ if(!running)return; step(true); raf=requestAnimationFrame(frame); }
+  if(reduce){ for(var k=0;k<140;k++){ step(true); } running=false; }
+  else { for(var j=0;j<40;j++){ step(true); } frame(); }
+  function vis(){
+    if(reduce)return;
+    if(document.hidden){ running=false; if(raf)cancelAnimationFrame(raf); }
+    else if(!running){ running=true; frame(); }
+  }
+  document.addEventListener('visibilitychange', vis);
+  return { stop:function(){
+    running=false;
+    if(raf)cancelAnimationFrame(raf);
+    window.removeEventListener('resize', size);
+    document.removeEventListener('visibilitychange', vis);
+    try{ ctx.clearRect(0,0,W,H); }catch(e){}
+    if(cv&&cv.parentNode){ cv.parentNode.removeChild(cv); }
+  }};
+}
 
 function _kidsStarryStart(){
   if(_kidsStarryActive)return;
