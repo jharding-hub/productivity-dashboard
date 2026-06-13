@@ -77,6 +77,14 @@ body { background: var(--bg); color: var(--text); font-family: var(--mono); font
   margin-bottom: 18px;
 }
 .reactor-svg-wrap svg { width: 100%; height: 100%; overflow: visible; }
+.reactor-svg-wrap { position: relative; }
+.reactor-svg-wrap::before { content:""; position:absolute; inset:6%; border-radius:50%; border:1px solid var(--border2); box-shadow:0 0 18px var(--cyan-dim) inset; pointer-events:none; animation:blob-ring-spin 24s linear infinite; }
+.reactor-svg-wrap::after { content:""; position:absolute; inset:14%; border-radius:50%; border:1px dashed rgba(0,212,255,.18); pointer-events:none; animation:blob-ring-spin 38s linear infinite reverse; }
+@keyframes blob-ring-spin { to { transform:rotate(360deg); } }
+#blob-canvas { width: 100%; height: 100%; display: block; }
+.blob-state { position:absolute; left:50%; bottom:4px; transform:translateX(-50%); font-family:var(--orb); font-size:9px; letter-spacing:3px; color:var(--cyan); text-shadow:0 0 8px var(--cyan-glow); opacity:.75; pointer-events:none; transition:color .3s; }
+.blob-state.thinking { color:var(--gold); text-shadow:0 0 8px var(--gold); }
+.blob-state.listening { color:var(--green); text-shadow:0 0 8px var(--green); }
 
 .r-stat { width: 100%; text-align: center; margin-bottom: 10px; }
 .r-stat-label { font-size: 9px; color: var(--text-dim); letter-spacing: 2px; margin-bottom: 3px; }
@@ -84,6 +92,22 @@ body { background: var(--bg); color: var(--text); font-family: var(--mono); font
 
 /* ── AGENTS + CHAT ────────────────────────────── */
 .panel-main { flex: 1; display: flex; flex-direction: column; overflow: hidden; }
+.panel-analytics { width: 360px; flex-shrink: 0; display: flex; flex-direction: column; overflow: hidden; border-left: 1px solid var(--border); background: rgba(2,10,22,.45); }
+.an-rail-hdr { display: flex; align-items: center; gap: 8px; padding: 0 14px; height: 38px; flex-shrink: 0; border-bottom: 1px solid var(--border); background: rgba(1,12,26,.6); }
+.an-rail-title { font-family: var(--orb); font-size: 11px; letter-spacing: 3px; color: var(--gold); text-shadow: 0 0 8px var(--gold-dim); }
+.an-rail-hdr .an-period-btns { margin-left: auto; display: flex; gap: 4px; }
+.an-rail-refresh { background: none; border: 1px solid var(--border2); color: var(--cyan); width: 24px; height: 22px; border-radius: 4px; cursor: pointer; font-size: 12px; line-height: 1; transition: background .15s, color .15s; }
+.an-rail-refresh:hover { background: var(--cyan-dim); }
+.an-rail-body { flex: 1; overflow-y: auto; padding: 16px 14px; }
+.an-rail-body::-webkit-scrollbar { width: 3px; }
+.an-rail-body::-webkit-scrollbar-thumb { background: var(--border2); }
+/* analytics content fits a narrow rail */
+.panel-analytics .an-summary { grid-template-columns: repeat(2,1fr); gap: 8px; margin-bottom: 20px; }
+.panel-analytics .an-stat-val { font-size: 19px; }
+.panel-analytics .an-section { margin-bottom: 20px; }
+.panel-analytics .an-panel-grid { grid-template-columns: 1fr 1fr; }
+.panel-analytics .an-insights { grid-template-columns: 1fr; }
+@media (max-width: 1180px) { .panel-analytics { display: none; } }
 
 /* ── AGENT CARDS ──────────────────────────────── */
 .agents-bar {
@@ -232,12 +256,6 @@ body { background: var(--bg); color: var(--text); font-family: var(--mono); font
 /* ═══════════════════════════════════════════════════
    ANALYTICS OVERLAY
 ═══════════════════════════════════════════════════ */
-#analytics-overlay {
-  position: fixed; inset: 0; z-index: 50;
-  background: rgba(1,8,20,.97); backdrop-filter: blur(14px);
-  display: none; flex-direction: column;
-}
-#analytics-overlay.open { display: flex; }
 
 .an-hdr {
   display: flex; align-items: center; gap: 14px; padding: 0 20px; height: 44px;
@@ -357,14 +375,14 @@ body { background: var(--bg); color: var(--text); font-family: var(--mono); font
     </div>
     <div class="hdr-right">
       <div class="sys-indicator"><div class="s-dot ok" id="sys-dot"></div><span id="sys-text">NOMINAL</span></div>
-      <button class="ctrl-btn" onclick="openAnalytics()" style="border-color:rgba(212,168,83,.3);color:var(--gold)">⬡ ANALYTICS</button>
+      <button class="ctrl-btn" onclick="loadAnalytics(anPeriod)" style="border-color:rgba(212,168,83,.3);color:var(--gold)">⬡ REFRESH STATS</button>
       <div id="clock">--:--:-- UTC</div>
     </div>
   </header>
 
   <div class="main">
     <aside class="panel-reactor" id="panel-reactor">
-      <div class="reactor-svg-wrap" id="reactor-wrap"></div>
+      <div class="reactor-svg-wrap" id="reactor-wrap"><canvas id="blob-canvas"></canvas><div class="blob-state" id="blob-state">IDLE</div></div>
       <div class="r-stat">
         <div class="r-stat-label">OPERATOR</div>
         <div class="r-stat-value">J. HARDING</div>
@@ -415,25 +433,21 @@ body { background: var(--bg); color: var(--text); font-family: var(--mono); font
         </div>
       </div>
     </div>
-  </div>
-</div>
 
-<!-- ═══════════════════════════════════════════════════════════════
-     ANALYTICS OVERLAY
-════════════════════════════════════════════════════════════════ -->
-<div id="analytics-overlay">
-  <div class="an-hdr">
-    <span style="font-size:16px;color:var(--gold);margin-right:4px">⬡</span>
-    <div class="an-title">ANALYTICS COMMAND</div>
-    <div class="an-sub">USAGE INTELLIGENCE</div>
-    <div class="an-period-btns">
-      <button class="an-period-btn active" data-days="7" onclick="loadAnalytics(7)">7D</button>
-      <button class="an-period-btn" data-days="30" onclick="loadAnalytics(30)">30D</button>
-    </div>
-    <button class="an-close-btn" onclick="closeAnalytics()" title="Close">✕</button>
-  </div>
-  <div class="an-body">
-    <div id="an-content"><div class="an-loading-row">INITIALIZING…</div></div>
+    <aside class="panel-analytics" id="panel-analytics">
+      <div class="an-rail-hdr">
+        <span style="font-size:13px;color:var(--gold)">⬡</span>
+        <div class="an-rail-title">ANALYTICS</div>
+        <div class="an-period-btns">
+          <button class="an-period-btn active" data-days="7" onclick="loadAnalytics(7)">7D</button>
+          <button class="an-period-btn" data-days="30" onclick="loadAnalytics(30)">30D</button>
+        </div>
+        <button class="an-rail-refresh" onclick="loadAnalytics(anPeriod)" title="Refresh analytics">↺</button>
+      </div>
+      <div class="an-rail-body">
+        <div id="an-content"><div class="an-loading-row">INITIALIZING…</div></div>
+      </div>
+    </aside>
   </div>
 </div>
 
@@ -506,6 +520,179 @@ const S = {
   startTime: Date.now(),
   session: { inputTokens: 0, outputTokens: 0, calls: 0 },
 };
+
+// ════════════════════════════════════════════════════════════════════════
+// JARVIS ORB — WebGL plasma energy sphere (flowing fractal noise + rim glow)
+// States: 'idle' | 'thinking' | 'listening'. Reactive to mic level.
+// Falls back to a 2D glow if WebGL/shader is unavailable.
+// ════════════════════════════════════════════════════════════════════════
+var Blob = (function () {
+  var cv, gl, prog, raf = null, mode2d = false, ctx2d = null;
+  var state = 'idle', tStart = performance.now(), audioLevel = 0, targetAudio = 0;
+  var uRes, uTime, uIntensity, uAudio;
+  var analyser = null, audioData = null, audioCtx = null, micStream = null;
+
+  var VERT = [
+    'attribute vec2 a_pos;',
+    'void main(){ gl_Position = vec4(a_pos, 0.0, 1.0); }'
+  ].join('\n');
+
+  var FRAG = [
+    'precision highp float;',
+    'uniform vec2 u_res;',
+    'uniform float u_time;',
+    'uniform float u_intensity;',
+    'uniform float u_audio;',
+    'float hash(vec3 p){ p = fract(p*0.3183099 + 0.1); p *= 17.0; return fract(p.x*p.y*p.z*(p.x+p.y+p.z)); }',
+    'float noise(vec3 x){',
+    '  vec3 i = floor(x); vec3 f = fract(x); f = f*f*(3.0-2.0*f);',
+    '  return mix(mix(mix(hash(i+vec3(0.0,0.0,0.0)),hash(i+vec3(1.0,0.0,0.0)),f.x),',
+    '                 mix(hash(i+vec3(0.0,1.0,0.0)),hash(i+vec3(1.0,1.0,0.0)),f.x),f.y),',
+    '             mix(mix(hash(i+vec3(0.0,0.0,1.0)),hash(i+vec3(1.0,0.0,1.0)),f.x),',
+    '                 mix(hash(i+vec3(0.0,1.0,1.0)),hash(i+vec3(1.0,1.0,1.0)),f.x),f.y), f.z);',
+    '}',
+    'float fbm(vec3 p){ float v=0.0; float a=0.5; for(int i=0;i<5;i++){ v += a*noise(p); p*=2.02; a*=0.5; } return v; }',
+    'void main(){',
+    '  vec2 uv = (gl_FragCoord.xy - 0.5*u_res) / min(u_res.x,u_res.y);',
+    '  float r = length(uv);',
+    '  float radius = 0.36;',
+    '  float inside = 1.0 - smoothstep(radius*0.92, radius, r);',
+    '  float z = sqrt(max(0.0, 1.0 - (r/radius)*(r/radius)));',
+    '  vec3 sp = vec3(uv/radius, z);',
+    '  float t = u_time;',
+    '  float n = fbm(sp*2.0 + vec3(0.0,0.0,t*0.6));',
+    '  n = mix(n, fbm(sp*4.0 - vec3(t*0.4, t*0.2, 0.0)), 0.5);',
+    '  float fres = pow(1.0 - z, 3.0);',
+    '  float energy = (n*0.85 + fres*0.6 + u_audio*0.30) * u_intensity;',
+    '  energy *= inside;',
+    '  vec3 cyan = vec3(0.28,0.80,1.0);',
+    '  vec3 gold = vec3(0.86,0.68,0.34);',
+    '  vec3 col = mix(cyan, gold, smoothstep(0.60,1.0,energy));',
+    '  col = mix(col, vec3(1.0), smoothstep(1.05,1.6,energy));',
+    '  col *= energy;',
+    '  float halo = (1.0 - smoothstep(radius, radius*1.7, r)) * (1.0 - inside) * 0.16 * u_intensity;',
+    '  col += cyan * halo;',
+    '  float alpha = clamp(energy + halo, 0.0, 1.0);',
+    '  gl_FragColor = vec4(col, alpha);',
+    '}'
+  ].join('\n');
+
+  function compile(type, src) {
+    var s = gl.createShader(type);
+    gl.shaderSource(s, src); gl.compileShader(s);
+    if (!gl.getShaderParameter(s, gl.COMPILE_STATUS)) {
+      console.warn('[orb] shader compile failed:', gl.getShaderInfoLog(s));
+      return null;
+    }
+    return s;
+  }
+
+  function init(canvas) {
+    cv = canvas;
+    try {
+      gl = cv.getContext('webgl', { alpha: true, premultipliedAlpha: false, antialias: true })
+        || cv.getContext('experimental-webgl', { alpha: true, premultipliedAlpha: false });
+      if (!gl) throw new Error('no webgl');
+      var vs = compile(gl.VERTEX_SHADER, VERT), fs = compile(gl.FRAGMENT_SHADER, FRAG);
+      if (!vs || !fs) throw new Error('shader');
+      prog = gl.createProgram();
+      gl.attachShader(prog, vs); gl.attachShader(prog, fs); gl.linkProgram(prog);
+      if (!gl.getProgramParameter(prog, gl.LINK_STATUS)) throw new Error('link');
+      gl.useProgram(prog);
+      var buf = gl.createBuffer();
+      gl.bindBuffer(gl.ARRAY_BUFFER, buf);
+      gl.bufferData(gl.ARRAY_BUFFER, new Float32Array([-1,-1, 1,-1, -1,1, -1,1, 1,-1, 1,1]), gl.STATIC_DRAW);
+      var loc = gl.getAttribLocation(prog, 'a_pos');
+      gl.enableVertexAttribArray(loc);
+      gl.vertexAttribPointer(loc, 2, gl.FLOAT, false, 0, 0);
+      uRes = gl.getUniformLocation(prog, 'u_res');
+      uTime = gl.getUniformLocation(prog, 'u_time');
+      uIntensity = gl.getUniformLocation(prog, 'u_intensity');
+      uAudio = gl.getUniformLocation(prog, 'u_audio');
+      gl.enable(gl.BLEND);
+      gl.blendFunc(gl.SRC_ALPHA, gl.ONE_MINUS_SRC_ALPHA);
+      sizeCanvas();
+      window.addEventListener('resize', sizeCanvas);
+      loop();
+    } catch (e) {
+      console.warn('[orb] WebGL unavailable, using 2D fallback:', e.message);
+      mode2d = true; ctx2d = cv.getContext('2d');
+      sizeCanvas(); window.addEventListener('resize', sizeCanvas); loop2d();
+    }
+  }
+
+  function sizeCanvas() {
+    var box = cv.getBoundingClientRect();
+    var dpr = window.devicePixelRatio || 1;
+    cv.width = Math.max(1, box.width * dpr); cv.height = Math.max(1, box.height * dpr);
+    if (gl && !mode2d) gl.viewport(0, 0, cv.width, cv.height);
+    if (mode2d && ctx2d) ctx2d.setTransform(dpr, 0, 0, dpr, 0, 0);
+  }
+
+  function setState(s) { state = s; }
+
+  function intensityFor() {
+    if (state === 'thinking') return 1.15;
+    if (state === 'listening') { readAudio(); return 0.95; }
+    return 0.75;
+  }
+
+  async function startMic() {
+    try {
+      micStream = await navigator.mediaDevices.getUserMedia({ audio: true });
+      audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+      var src = audioCtx.createMediaStreamSource(micStream);
+      analyser = audioCtx.createAnalyser(); analyser.fftSize = 256;
+      audioData = new Uint8Array(analyser.frequencyBinCount);
+      src.connect(analyser);
+    } catch (e) {}
+  }
+  function stopMic() {
+    if (micStream) { micStream.getTracks().forEach(function (x) { x.stop(); }); micStream = null; }
+    if (audioCtx) { audioCtx.close().catch(function(){}); audioCtx = null; }
+    analyser = null; audioData = null; targetAudio = 0;
+  }
+  function readAudio() {
+    if (!analyser) return;
+    analyser.getByteFrequencyData(audioData);
+    var sum = 0; for (var i = 0; i < audioData.length; i++) sum += audioData[i];
+    targetAudio = Math.min(1, (sum / audioData.length) / 110);
+  }
+
+  function loop() {
+    var inten = intensityFor();
+    audioLevel += (targetAudio - audioLevel) * 0.18;
+    var time = (performance.now() - tStart) / 1000;
+    gl.uniform2f(uRes, cv.width, cv.height);
+    gl.uniform1f(uTime, time);
+    gl.uniform1f(uIntensity, inten);
+    gl.uniform1f(uAudio, audioLevel);
+    gl.clearColor(0, 0, 0, 0);
+    gl.clear(gl.COLOR_BUFFER_BIT);
+    gl.drawArrays(gl.TRIANGLES, 0, 6);
+    raf = requestAnimationFrame(loop);
+  }
+
+  // Minimal 2D fallback: pulsing radial glow, still state/audio aware
+  function loop2d() {
+    var box = cv.getBoundingClientRect(), W = box.width, H = box.height, cx = W/2, cy = H/2;
+    var inten = intensityFor();
+    audioLevel += (targetAudio - audioLevel) * 0.18;
+    var time = (performance.now() - tStart) / 1000;
+    var R = Math.min(W, H) * 0.34 * (1 + Math.sin(time*1.2)*0.04 + audioLevel*0.3);
+    ctx2d.clearRect(0, 0, W, H);
+    var g = ctx2d.createRadialGradient(cx, cy, 0, cx, cy, R);
+    g.addColorStop(0, 'rgba(255,255,255,' + (0.5*inten).toFixed(3) + ')');
+    g.addColorStop(0.4, 'rgba(72,204,255,' + (0.5*inten).toFixed(3) + ')');
+    g.addColorStop(0.8, 'rgba(212,168,83,' + (0.12*inten).toFixed(3) + ')');
+    g.addColorStop(1, 'rgba(72,204,255,0)');
+    ctx2d.fillStyle = g;
+    ctx2d.beginPath(); ctx2d.arc(cx, cy, R, 0, Math.PI*2); ctx2d.fill();
+    raf = requestAnimationFrame(loop2d);
+  }
+
+  return { init: init, setState: setState, startMic: startMic, stopMic: stopMic };
+})();
 
 // ════════════════════════════════════════════════════════════════════════
 // REACTOR SVG
@@ -810,6 +997,7 @@ async function aiReply(text) {
   el.querySelector('.msg-body').classList.remove('typing');
   el.querySelector('.msg-body').innerHTML = text.replace(/\n/g, '<br>');
   if (S.voice) speak(text);
+  if (!S.listening) setBlobState('idle');
 }
 
 async function sendChat(override) {
@@ -818,6 +1006,7 @@ async function sendChat(override) {
   if (!msg) return;
   inp.value = '';
   addMsg('user', msg);
+  setBlobState('thinking');
 
   const ctx = Object.entries(S.data).map(([id, d]) => {
     const w = WORKERS.find(x => x.id === id);
@@ -898,10 +1087,12 @@ function toggleListen() {
   if (S.listening) { recog?.stop(); return; }
   recog = new SR();
   recog.onresult = e => { const t = e.results[0][0].transcript; document.getElementById('chat-in').value = t; sendChat(t); };
-  recog.onend = () => { S.listening = false; document.getElementById('mic-btn').classList.remove('active'); };
+  recog.onend = () => { S.listening = false; document.getElementById('mic-btn').classList.remove('active'); Blob.stopMic(); setBlobState('idle'); };
   recog.start();
   S.listening = true;
   document.getElementById('mic-btn').classList.add('active');
+  setBlobState('listening');
+  Blob.startMic();
 }
 
 // ════════════════════════════════════════════════════════════════════════
@@ -940,13 +1131,8 @@ const TOOL_META = {
   routine_check: 'Routine Check',
 };
 
-function openAnalytics() {
-  document.getElementById('analytics-overlay').classList.add('open');
-  loadAnalytics(anPeriod);
-}
-function closeAnalytics() {
-  document.getElementById('analytics-overlay').classList.remove('open');
-}
+function openAnalytics() { loadAnalytics(anPeriod); }
+function closeAnalytics() { /* analytics is now docked in the dashboard rail */ }
 
 async function loadAnalytics(days) {
   anPeriod = days;
@@ -1183,12 +1369,21 @@ document.addEventListener('keydown', e => {
 // ════════════════════════════════════════════════════════════════════════
 // BOOT
 // ════════════════════════════════════════════════════════════════════════
+// Blob state helper -- updates animation + label
+function setBlobState(s){
+  Blob.setState(s);
+  var el=document.getElementById('blob-state');
+  if(el){ el.textContent=s.toUpperCase(); el.className='blob-state '+s; }
+}
+
 (async function boot() {
   initParticles();
   initClock();
-  document.getElementById('reactor-wrap').innerHTML = buildReactor();
+  Blob.init(document.getElementById('blob-canvas'));
+  setBlobState('idle');
   renderCards();
   renderQuickActions();
+  loadAnalytics(anPeriod);
 
   if (window.speechSynthesis) {
     speechSynthesis.getVoices();
