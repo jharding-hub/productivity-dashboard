@@ -3151,7 +3151,7 @@ body[data-theme="storm-dark"] .tl-hour-label{
 <div id="emsFire"></div>
 <!-- Starry Night theme overlays -->
 <div id="starryLayer"></div>
-<div id="galaxyLayer"><div class="galaxy-swirl"></div><div class="galaxy-swirl arm2"></div><div class="galaxy-core"></div></div>
+<div id="galaxyLayer"></div>
 <div id="firefliesLayer"></div>
 <!-- Storm theme overlays -->
 <div id="stormLayer"></div>
@@ -11370,34 +11370,128 @@ function _emsUpdateOverlays(key){
   }
 }
 
-// -- Galaxy: drifting dust stars around the spiral -----------------
+// -- Galaxy: dense flowing orbital trails (canvas) ----------------
+// Eccentric, slowly-precessing orbits around the core; trails emerge
+// from per-frame fade + additive blending. Warm amber/gold palette.
+var _galaxyAnim=null;
 function _galaxyStart(){
   var layer=document.getElementById('galaxyLayer');
   if(!layer)return;
-  layer.querySelectorAll('.gstar').forEach(function(e){e.remove();});
-  // 140 stars across the whole viewport, varied size/brightness
-  for(var i=0;i<140;i++){
-    var s=document.createElement('div');
-    s.className='gstar';
-    var sz=_starryRand(0.7,2.6);
-    var top=_starryRand(0,100);
-    var left=_starryRand(0,100);
-    var dim=_starryRand(0.35,0.6);
-    var bright=_starryRand(0.75,1.0);
-    var dur=_starryRand(2.5,8);
-    var delay=_starryRand(0,6);
-    s.style.cssText=[
-      'width:'+sz+'px','height:'+sz+'px',
-      'top:'+top+'vh','left:'+left+'vw',
-      '--dim:'+dim,'--bright:'+bright,'--dur:'+dur+'s',
-      'animation-delay:'+delay+'s','opacity:'+dim
-    ].join(';');
-    layer.appendChild(s);
+  if(_galaxyAnim){ return; } // already running
+  var cv=document.getElementById('galaxyCanvas');
+  if(!cv){
+    cv=document.createElement('canvas');
+    cv.id='galaxyCanvas';
+    cv.style.cssText='position:absolute;inset:0;width:100%;height:100%;display:block;';
+    layer.appendChild(cv);
   }
+  _galaxyAnim=_galaxyEngine(cv);
 }
 function _galaxyStop(){
+  if(_galaxyAnim){ _galaxyAnim.stop(); _galaxyAnim=null; }
   var layer=document.getElementById('galaxyLayer');
-  if(layer)layer.querySelectorAll('.gstar').forEach(function(e){e.remove();});
+  if(layer){ layer.querySelectorAll('.gstar').forEach(function(e){e.remove();}); }
+}
+
+function _galaxyEngine(cv){
+  var ctx=cv.getContext('2d');
+  var raf=null, running=true, W,H,cx,cy;
+  var dpr=Math.min(window.devicePixelRatio||1, 1.5);
+  var reduce=window.matchMedia&&window.matchMedia('(prefers-reduced-motion:reduce)').matches;
+
+  function size(){
+    W=window.innerWidth; H=window.innerHeight;
+    cv.width=Math.max(1,W*dpr); cv.height=Math.max(1,H*dpr);
+    ctx.setTransform(dpr,0,0,dpr,0,0);
+    cx=W*0.52; cy=H*0.46;
+  }
+  size();
+  window.addEventListener('resize', size);
+
+  var COLORS=[
+    [255,190,110],[255,170,80],[255,150,70],[255,120,70],
+    [255,210,150],[255,235,200],[255,160,90],[255,180,100],
+    [160,195,255],[200,220,255]  // sparse cool accents
+  ];
+  var maxR=Math.max(W,H)*0.62;
+  var N=Math.max(260, Math.min(520, Math.floor((W*H)/3200)));
+  var DISK=0.46;
+  var DA=0.52, cosDA=Math.cos(DA), sinDA=Math.sin(DA);
+  var P=[];
+  for(var i=0;i<N;i++){
+    var r=Math.pow(Math.random(),0.62)*maxR;
+    var warm=Math.random()<0.9;
+    var ci=warm?Math.floor(Math.random()*8):8+Math.floor(Math.random()*2);
+    P.push({
+      r:r, e:Math.random()*0.5, w:Math.random()*Math.PI*2,
+      prec:(-0.0006 + Math.random()*0.0012),
+      th:Math.random()*Math.PI*2,
+      sp:(0.0007 + 0.9/(r+60)) * (0.7+Math.random()*0.6),
+      c:COLORS[ci], sz:0.5 + Math.random()*1.5, br:0.30 + Math.random()*0.55
+    });
+  }
+
+  var t0=performance.now();
+  // one render step; `advance` moves the orbits forward
+  function step(advance){
+    ctx.globalCompositeOperation='source-over';
+    ctx.fillStyle='rgba(8,5,14,0.115)';
+    ctx.fillRect(0,0,W,H);
+    ctx.globalCompositeOperation='lighter';
+    for(var i=0;i<P.length;i++){
+      var p=P[i];
+      if(advance){ p.th+=p.sp; p.w+=p.prec; }
+      var rad=p.r*(1-p.e*p.e)/(1+p.e*Math.cos(p.th-p.w));
+      var ex=Math.cos(p.th)*rad, ey=Math.sin(p.th)*rad*DISK;
+      var x=cx + ex*cosDA - ey*sinDA;
+      var y=cy + ex*sinDA + ey*cosDA;
+      var c=p.c;
+      ctx.fillStyle='rgba('+c[0]+','+c[1]+','+c[2]+','+p.br.toFixed(3)+')';
+      ctx.beginPath(); ctx.arc(x,y,p.sz,0,6.2832); ctx.fill();
+    }
+    var t=(performance.now()-t0)/1000;
+    var pulse=0.5+0.5*Math.sin(t*0.7);
+    var coreR=maxR*0.26;
+    var g=ctx.createRadialGradient(cx,cy,0,cx,cy,coreR);
+    g.addColorStop(0,'rgba(255,245,225,'+(0.42+pulse*0.12).toFixed(3)+')');
+    g.addColorStop(0.18,'rgba(255,205,150,0.22)');
+    g.addColorStop(0.5,'rgba(255,150,90,0.08)');
+    g.addColorStop(1,'rgba(255,120,70,0)');
+    ctx.fillStyle=g;
+    ctx.beginPath(); ctx.arc(cx,cy,coreR,0,6.2832); ctx.fill();
+    ctx.globalCompositeOperation='source-over';
+  }
+
+  function frame(){
+    if(!running)return;
+    step(true);
+    raf=requestAnimationFrame(frame);
+  }
+
+  if(reduce){
+    // build a dense static field, then hold (no animation)
+    for(var k=0;k<140;k++){ step(true); }
+    running=false;
+  } else {
+    for(var j=0;j<40;j++){ step(true); } // prime so it opens already-rich
+    frame();
+  }
+
+  function vis(){
+    if(reduce)return;
+    if(document.hidden){ running=false; if(raf)cancelAnimationFrame(raf); }
+    else if(!running){ running=true; frame(); }
+  }
+  document.addEventListener('visibilitychange', vis);
+
+  return { stop:function(){
+    running=false;
+    if(raf)cancelAnimationFrame(raf);
+    window.removeEventListener('resize', size);
+    document.removeEventListener('visibilitychange', vis);
+    try{ ctx.clearRect(0,0,W,H); }catch(e){}
+    if(cv&&cv.parentNode){ cv.parentNode.removeChild(cv); }
+  }};
 }
 
 // -- Starry Night: stars + fireflies ------------------------------
