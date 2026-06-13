@@ -1,5 +1,5 @@
 // ═══════════════════════════════════════════════════════════════════════
-// Centerpost Service Worker — v12 (network-first HTML + background refresh)
+// Centerpost Service Worker — v13 (network-first HTML + background refresh)
 // ═══════════════════════════════════════════════════════════════════════
 //
 // STRATEGY
