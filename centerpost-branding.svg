@@ -1,0 +1,27 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="512" height="512" viewBox="0 0 512 512">
+  <rect width="512" height="512" rx="96" fill="#1a1a1a"/>
+  <!-- Centerpost text -->
+  <text x="256" y="80" font-family="Georgia,serif" font-size="52" font-weight="bold" text-anchor="middle" fill="#d4a853">Centerpost</text>
+  <!-- Spoke wheel centered vertically with room for text -->
+  <g transform="translate(256,272)" fill="none" stroke="#d4a853">
+    <!-- Outer ring -->
+    <circle cx="0" cy="0" r="150" stroke-width="7"/>
+    <!-- Inner hub ring -->
+    <circle cx="0" cy="0" r="42" stroke-width="6"/>
+    <!-- 8 spokes -->
+    <line x1="0" y1="-46" x2="0" y2="-146" stroke-width="8"/>
+    <line x1="32.5" y1="-32.5" x2="103.5" y2="-103.5" stroke-width="8"/>
+    <line x1="46" y1="0" x2="146" y2="0" stroke-width="8"/>
+    <line x1="32.5" y1="32.5" x2="103.5" y2="103.5" stroke-width="8"/>
+    <line x1="0" y1="46" x2="0" y2="146" stroke-width="8"/>
+    <line x1="-32.5" y1="32.5" x2="-103.5" y2="103.5" stroke-width="8"/>
+    <line x1="-46" y1="0" x2="-146" y2="0" stroke-width="8"/>
+    <line x1="-32.5" y1="-32.5" x2="-103.5" y2="-103.5" stroke-width="8"/>
+    <!-- Faint outer boundary -->
+    <circle cx="0" cy="0" r="162" stroke-width="1.5" opacity="0.3"/>
+  </g>
+  <!-- Center C -->
+  <text x="256" y="290" font-family="Georgia,serif" font-size="58" font-weight="bold" text-anchor="middle" fill="#d4a853">C</text>
+  <!-- Productivity text -->
+  <text x="256" y="476" font-family="Georgia,serif" font-size="48" font-weight="bold" text-anchor="middle" fill="#d4a853">Productivity</text>
+</svg>

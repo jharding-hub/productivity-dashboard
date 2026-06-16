@@ -1,0 +1,30 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="512" height="512" viewBox="0 0 512 512">
+  <rect width="512" height="512" rx="96" fill="#1a1a1a"/>
+  <g transform="translate(256,256)" fill="none" stroke="#d4a853">
+    <!-- Outer ring -->
+    <circle cx="0" cy="0" r="185" stroke-width="8"/>
+    <!-- Inner hub ring -->
+    <circle cx="0" cy="0" r="52" stroke-width="7"/>
+    <!-- 8 spokes connecting inner hub to outer ring -->
+    <!-- N -->
+    <line x1="0" y1="-56" x2="0" y2="-181" stroke-width="9"/>
+    <!-- NE -->
+    <line x1="39.6" y1="-39.6" x2="128" y2="-128" stroke-width="9"/>
+    <!-- E -->
+    <line x1="56" y1="0" x2="181" y2="0" stroke-width="9"/>
+    <!-- SE -->
+    <line x1="39.6" y1="39.6" x2="128" y2="128" stroke-width="9"/>
+    <!-- S -->
+    <line x1="0" y1="56" x2="0" y2="181" stroke-width="9"/>
+    <!-- SW -->
+    <line x1="-39.6" y1="39.6" x2="-128" y2="128" stroke-width="9"/>
+    <!-- W -->
+    <line x1="-56" y1="0" x2="-181" y2="0" stroke-width="9"/>
+    <!-- NW -->
+    <line x1="-39.6" y1="-39.6" x2="-128" y2="-128" stroke-width="9"/>
+    <!-- Faint outer boundary circle -->
+    <circle cx="0" cy="0" r="200" stroke-width="1.5" opacity="0.3"/>
+  </g>
+  <!-- Center C -->
+  <text x="256" y="276" font-family="Georgia,serif" font-size="72" font-weight="bold" text-anchor="middle" fill="#d4a853">C</text>
+</svg>
