@@ -1,0 +1,9997 @@
+// ═══════════════════════════════════════════════════════════════
+// Centerpost Legacy App — all script blocks from original index.html
+// ═══════════════════════════════════════════════════════════════
+
+// ── SCRIPT 1: AUTH ──────────────────────────────────────────────
+var currentUser=null;
+var isAdmin=false;
+var userProfile=null;
+
+// --- TIER SYSTEM -------------------------------------------------------------
+// DEV_UID: your Firebase UID -- the switcher badge only renders for this account
+var DEV_UID='s3c2jCHRkRWfxRAjJKoVVuL14aJ3';
+
+// --- TIER CONFIG ------------------------------------------------------------
+// Free → Pro → Premium → Legacy (admin-granted) → Owner (dev)
+// This is the single source of truth for all feature gating.
+var TIER_CONFIG={
+  free:{
+    label:'Free',
+    color:'#6b7280',
+    allowedThemeTiers:['free'],
+    // Free: basic panels only; no AI assistant, no Timeline, no Toolkit, no Brain Dump
+    panels:['projects','tasklist','notes','routines'],
+    maxProjects:3,
+    maxTasks:20,
+    maxNotes:10,
+    maxReminders:5,
+    toolkitAllowed:[],
+    voiceInput:false,
+    radar:false,
+    dataExport:false,
+    completedHistory:false,
+    brainDump:false,
+    routines:true,
+    decision:false,
+    aiAssistant:false,
+    musicStreaming:false,
+  },
+  pro:{
+    label:'Pro',
+    color:'#d4a853',
+    allowedThemeTiers:['free','pro'],
+    // Pro: adds Toolkit, Timeline, Reminders, Brain Dump, Decision
+    panels:['projects','reminders','notes','tasklist','timeline','brain','time','routines','decision'],
+    maxProjects:null,
+    maxTasks:null,
+    maxNotes:null,
+    maxReminders:null,
+    toolkitAllowed:['timer','breath','mood','journal','halt'],
+    voiceInput:true,
+    radar:true,
+    dataExport:true,
+    completedHistory:true,
+    brainDump:true,
+    routines:true,
+    decision:true,
+    aiAssistant:false,
+    musicStreaming:false,
+  },
+  premium:{
+    label:'Premium',
+    color:'#7c3aed',
+    allowedThemeTiers:['free','pro','premium'],
+    // Premium: all features + all themes
+    panels:['projects','reminders','notes','tasklist','timeline','brain','time','routines','decision','wellness'],
+    maxProjects:null,maxTasks:null,maxNotes:null,maxReminders:null,
+    toolkitAllowed:['music','breath','timer','mood','journal','workout','halt','wellness'],
+    voiceInput:true,radar:true,dataExport:true,completedHistory:true,
+    brainDump:true,routines:true,decision:true,
+    aiAssistant:true,
+    musicStreaming:true,
+  },
+  legacy:{
+    label:'Legacy',
+    color:'#059669',
+    // Legacy: all features, free, admin-granted only
+    allowedThemeTiers:['free','pro','premium'],
+    panels:['projects','reminders','notes','tasklist','timeline','brain','time','routines','decision','wellness'],
+    maxProjects:null,maxTasks:null,maxNotes:null,maxReminders:null,
+    toolkitAllowed:['music','breath','timer','mood','journal','workout','halt','wellness'],
+    voiceInput:true,radar:true,dataExport:true,completedHistory:true,
+    brainDump:true,routines:true,decision:true,
+    aiAssistant:true,
+    musicStreaming:true,
+  },
+  owner:{
+    label:'Owner',
+    color:'#e07828',
+    allowedThemeTiers:['free','pro','premium'],
+    panels:['projects','reminders','notes','tasklist','timeline','brain','time','routines','decision','wellness','admin'],
+    maxProjects:null,maxTasks:null,maxNotes:null,maxReminders:null,
+    toolkitAllowed:['music','breath','timer','mood','journal','workout','halt','wellness'],
+    voiceInput:true,radar:true,dataExport:true,completedHistory:true,
+    brainDump:true,routines:true,decision:true,
+    aiAssistant:true,
+    musicStreaming:true,
+  }
+};
+
+// Toolkit button → CSS class mapping
+var TOOLKIT_CLASS_MAP={
+  music:'toolkit-music',breath:'toolkit-breath',timer:'toolkit-timer',
+  mood:'toolkit-mood',journal:'toolkit-journal',workout:'toolkit-workout',
+  halt:'toolkit-halt',wellness:'toolkit-wellness'
+};
+
+function getActiveTier(){
+  // Dev override wins (allows testing from dev switcher)
+  var devOverride=localStorage.getItem('devTierOverride');
+  if(devOverride&&TIER_CONFIG[devOverride])return devOverride;
+  // Owner UID is always owner
+  if(currentUser&&currentUser.uid===DEV_UID)return'owner';
+  // Legacy tier: stored in Firestore profile as accountTier:'legacy'
+  if(currentUser&&window._profileAccountTier&&TIER_CONFIG[window._profileAccountTier])
+    return window._profileAccountTier;
+  // Default: owner for now (will map to signup tier when billing is live)
+  return'owner';
+}
+
+function getTierConfig(){
+  return TIER_CONFIG[getActiveTier()]||TIER_CONFIG.owner;
+}
+
+function applyTierGating(){
+  var cfg=getTierConfig();
+
+  // -- Panels ------------------------------------------------------------------
+  document.querySelectorAll('.panel[data-panel]').forEach(function(panel){
+    var key=panel.getAttribute('data-panel');
+    if(key==='wellness'||key==='admin')return; // managed elsewhere
+    var allowed=cfg.panels.indexOf(key)>=0;
+    if(!allowed){
+      panel.classList.add('tier-locked-panel');
+      panel.classList.remove('hidden-panel');
+      _injectPanelLockBadge(panel,key);
+    }else{
+      panel.classList.remove('tier-locked-panel');
+      _removePanelLockBadge(panel);
+    }
+  });
+
+  // -- Toolkit buttons ---------------------------------------------------------
+  Object.keys(TOOLKIT_CLASS_MAP).forEach(function(key){
+    var cls=TOOLKIT_CLASS_MAP[key];
+    // music and timer are wrappers, find the button inside
+    var el=document.querySelector('.toolkit-'+key+'-wrap .toolkit-btn')||document.querySelector('.'+cls);
+    if(!el)return;
+    var allowed=cfg.toolkitAllowed.indexOf(key)>=0;
+    el.classList.toggle('tier-locked-btn',!allowed);
+    // swap onclick so locked buttons show upgrade toast instead
+    if(!allowed){
+      el.setAttribute('data-original-onclick',el.getAttribute('onclick')||'');
+      el.setAttribute('onclick','_tierUpgradeToast()');
+    }else{
+      var orig=el.getAttribute('data-original-onclick');
+      if(orig){el.setAttribute('onclick',orig);el.removeAttribute('data-original-onclick');}
+    }
+  });
+
+  // -- Voice input buttons ------------------------------------------------------
+  document.querySelectorAll('.mic-btn').forEach(function(btn){
+    btn.classList.toggle('tier-locked-btn',!cfg.voiceInput);
+    btn.disabled=!cfg.voiceInput;
+    btn.title=cfg.voiceInput?'Voice input':'Voice input (Pro)';
+  });
+
+  // -- Completed history --------------------------------------------------------
+  document.querySelectorAll('.completed-projects-section,.completed-tasks-section,#taskListCompleted').forEach(function(el){
+    el.style.display=cfg.completedHistory?'':'none';
+  });
+
+  // -- Teacher Planner button (Legacy + Owner only) -----------------------------
+  var teacherBtn=document.getElementById('teacherLauncherBtn');
+  if(teacherBtn){
+    var t=getActiveTier();
+    teacherBtn.style.display=(t==='legacy'||t==='owner')?'':'none';
+  }
+
+  // -- Dev switcher badge -------------------------------------------------------
+  _renderDevSwitcher();
+
+  // -- AI assistant (Axis FAB + Breakdown buttons) -----------------------------
+  var fab=document.getElementById('jarvisFab');
+  if(fab){
+    fab.style.display=cfg.aiAssistant===false?'none':'';
+  }
+  document.querySelectorAll('.breakdown-btn').forEach(function(b){
+    b.style.display=cfg.aiAssistant===false?'none':'';
+  });
+
+  // -- Music streaming button (only Owner/Legacy/Premium) -----------------------
+  var musicBtn=document.getElementById('toolkitMusicStreamBtn');
+  if(musicBtn)musicBtn.style.display=cfg.musicStreaming?'':'none';
+}
+
+function _injectPanelLockBadge(panel,key){
+  if(panel.querySelector('.tier-lock-badge'))return;
+  var names={brain:'Brain Dump',time:'Tool Kit',routines:'Routines',decision:'Decision Support',timeline:'Timeline',reminders:'Reminders',wellness:'Wellness'};
+  var name=names[key]||key;
+  // Map panel to minimum tier required
+  var tierNeeded={brain:'Pro',time:'Pro',timeline:'Pro',reminders:'Pro',decision:'Pro',wellness:'Premium',admin:'Owner'};
+  var tier=tierNeeded[key]||'Pro';
+  var badge=document.createElement('div');
+  badge.className='tier-lock-badge';
+  badge.innerHTML='🔒 <strong>'+name+'</strong> requires '+tier+'. <button onclick="_tierUpgradeToast(\''+tier+'\')" class="tier-upgrade-btn">Upgrade to '+tier+'</button>';
+  panel.appendChild(badge);
+}
+
+function _removePanelLockBadge(panel){
+  var b=panel.querySelector('.tier-lock-badge');
+  if(b)b.parentNode.removeChild(b);
+}
+
+function _tierUpgradeToast(tier){
+  var t=tier||'Pro';
+  if(typeof toast==='function')toast('⚡ Upgrade to '+t+' to unlock this feature');
+}
+
+function _renderDevSwitcher(){
+  // Only render for the owner UID
+  if(!currentUser||currentUser.uid!==DEV_UID)return;
+  var existing=document.getElementById('devTierSwitcher');
+  if(existing)existing.parentNode.removeChild(existing);
+
+  var active=getActiveTier();
+  var cfg=getTierConfig();
+  var wrap=document.createElement('div');
+  wrap.id='devTierSwitcher';
+  wrap.innerHTML=
+    '<div class="dev-tier-badge" onclick="this.parentNode.querySelector(\'.dev-tier-menu\').classList.toggle(\'open\')">'+
+      '<span style="color:'+cfg.color+'">⬡</span> '+cfg.label+' <span style="font-size:9px;opacity:0.6;">DEV</span>'+
+    '</div>'+
+    '<div class="dev-tier-menu">'+
+      '<div class="dev-tier-menu-title">Simulate Tier</div>'+
+      Object.keys(TIER_CONFIG).map(function(k){
+        var t=TIER_CONFIG[k];
+        return '<button class="dev-tier-opt'+(k===active?' active':'')+'" onclick="_setDevTier(\''+k+'\')">'+
+          '<span style="color:'+t.color+'">⬡</span> '+t.label+'</button>';
+      }).join('')+
+    '</div>';
+  document.body.appendChild(wrap);
+}
+
+function _setDevTier(tier){
+  localStorage.setItem('devTierOverride',tier);
+  applyTierGating();
+  var m=document.querySelector('.dev-tier-menu');
+  if(m)m.classList.remove('open');
+  if(typeof toast==='function')toast('Tier → '+TIER_CONFIG[tier].label);
+}
+// -----------------------------------------------------------------------------
+
+function showSetupForm(){
+  document.getElementById('loginForm').style.display='none';
+  document.getElementById('setupForm').style.display='block';
+  document.getElementById('loginSub').textContent='Create the first admin account';
+}
+function showLoginForm(){
+  document.getElementById('loginForm').style.display='block';
+  document.getElementById('setupForm').style.display='none';
+  document.getElementById('loginSub').textContent='Sign in to your workspace';
+}
+
+async function doSetup(){
+  const email=document.getElementById('setupEmail').value.trim();
+  const pass=document.getElementById('setupPass').value;
+  const err=document.getElementById('setupError');
+  err.textContent='';
+  if(!email||!pass){err.textContent='Enter email and password.';return;}
+  if(pass.length<6){err.textContent='Password must be at least 6 characters.';return;}
+  try{
+    const cred=await firebase.auth().createUserWithEmailAndPassword(email,pass);
+    // Write user profile -- this user becomes admin
+    await db.collection('users').doc(cred.user.uid).set({
+      email:email,admin:true,disabled:false,
+      createdAt:firebase.firestore.FieldValue.serverTimestamp(),
+      lastActive:firebase.firestore.FieldValue.serverTimestamp()
+    });
+    // onAuthStateChanged will fire and handle the rest
+  }catch(e){err.textContent=e.message;}
+}
+
+async function doLogin(){
+  const email=document.getElementById('loginEmail').value.trim();
+  const pass=document.getElementById('loginPass').value;
+  const err=document.getElementById('loginError');
+  err.textContent='';
+  if(!email||!pass){err.textContent='Enter email and password.';return;}
+  try{
+    await firebase.auth().signInWithEmailAndPassword(email,pass);
+  }catch(e){
+    const msg=e.code==='auth/user-not-found'?'No account with that email. Ask your admin to create one.':
+              e.code==='auth/wrong-password'||e.code==='auth/invalid-credential'?'Incorrect password.':
+              e.code==='auth/invalid-email'?'Invalid email format.':
+              e.code==='auth/too-many-requests'?'Too many attempts. Try again later.':e.message;
+    err.textContent=msg;
+  }
+}
+
+async function doForgotPassword(){
+  const email=document.getElementById('loginEmail').value.trim();
+  const succ=document.getElementById('loginSuccess');
+  const err=document.getElementById('loginError');
+  err.textContent='';succ.textContent='';
+  if(!email){err.textContent='Enter your email first, then click Forgot password.';return;}
+  try{
+    await firebase.auth().sendPasswordResetEmail(email);
+    succ.textContent='Password reset email sent. Check your inbox.';
+  }catch(e){err.textContent=e.code==='auth/user-not-found'?'No account with that email.':e.message;}
+}
+
+function doLogout(){
+  firebase.auth().signOut();
+}
+
+function showApp(){
+  document.getElementById('loginGate').classList.add('hidden');
+  document.getElementById('appWrap').classList.add('visible');
+  document.getElementById('userEmail').textContent=currentUser.email;
+  // Close any open auth overlays
+  var ov=document.getElementById('signinOverlay');
+  if(ov)ov.classList.remove('open');
+  var ov2=document.getElementById('signupOverlay');
+  if(ov2)ov2.classList.remove('open');
+}
+function hideApp(){
+  document.getElementById('loginGate').classList.remove('hidden');
+  document.getElementById('appWrap').classList.remove('visible');
+  document.getElementById('loginError').textContent='';
+  document.getElementById('loginSuccess').textContent='';
+  document.getElementById('loginEmail').value='';
+  document.getElementById('loginPass').value='';
+  // Close auth overlays so the landing page is visible after logout
+  var ov=document.getElementById('signinOverlay');
+  if(ov)ov.classList.remove('open');
+  var ov2=document.getElementById('signupOverlay');
+  if(ov2)ov2.classList.remove('open');
+  showLoginForm();
+  // Scroll landing back to top
+  var gate=document.getElementById('loginGate');
+  if(gate)gate.scrollTop=0;
+}
+
+// === Sign-in panel reveal (landing page → login modal) ===
+function showSigninPanel(){
+  var ov=document.getElementById('signinOverlay');
+  if(!ov)return;
+  ov.classList.add('open');
+  // Clear any prior errors and focus email
+  document.getElementById('loginError').textContent='';
+  document.getElementById('loginSuccess').textContent='';
+  showLoginForm();
+  setTimeout(function(){
+    var em=document.getElementById('loginEmail');
+    if(em)em.focus();
+  },120);
+}
+function hideSigninPanel(){
+  var ov=document.getElementById('signinOverlay');
+  if(ov)ov.classList.remove('open');
+}
+
+// === Sign-up panel ===
+function showSignupPanel(){
+  var ov=document.getElementById('signupOverlay');
+  if(!ov)return;
+  ov.classList.add('open');
+  document.getElementById('signupError').textContent='';
+  document.getElementById('signupSuccess').textContent='';
+  setTimeout(function(){
+    var em=document.getElementById('signupEmail');
+    if(em)em.focus();
+  },120);
+}
+function hideSignupPanel(){
+  var ov=document.getElementById('signupOverlay');
+  if(ov)ov.classList.remove('open');
+}
+
+async function doSignup(){
+  var inviteEl=document.getElementById('signupInvite');
+  var emailEl=document.getElementById('signupEmail');
+  var passEl=document.getElementById('signupPass');
+  var passConfirmEl=document.getElementById('signupPassConfirm');
+  var errEl=document.getElementById('signupError');
+  var successEl=document.getElementById('signupSuccess');
+  var btn=document.getElementById('signupBtn');
+  errEl.textContent='';
+  successEl.textContent='';
+  var inviteCode=(inviteEl.value||'').trim().toUpperCase();
+  var email=(emailEl.value||'').trim();
+  var pass=passEl.value||'';
+  var passConfirm=passConfirmEl.value||'';
+
+  // -- Client-side validation --
+  if(!inviteCode){errEl.textContent='Beta invite code is required.';return;}
+  if(!email||email.indexOf('@')===-1){errEl.textContent='Please enter a valid email address.';return;}
+  if(pass.length<6){errEl.textContent='Password must be at least 6 characters.';return;}
+  if(pass!==passConfirm){errEl.textContent='Passwords do not match.';return;}
+  if(!firebaseReady){errEl.textContent='Service unavailable. Please try again.';return;}
+
+  btn.disabled=true;
+  btn.textContent='Checking invite code...';
+
+  try {
+    // -- Step 1: Validate invite code BEFORE creating account --
+    var codeRef=db.collection('inviteCodes').doc(inviteCode);
+    var codeSnap=await codeRef.get();
+    if(!codeSnap.exists){
+      errEl.textContent='That invite code isn\'t valid. Double-check the spelling.';
+      btn.disabled=false;btn.textContent='Create Account';return;
+    }
+    var codeData=codeSnap.data();
+    if(codeData.disabled){
+      errEl.textContent='That invite code has been disabled. Ask the developer for a new one.';
+      btn.disabled=false;btn.textContent='Create Account';return;
+    }
+    if(codeData.expiresAt){
+      var exp=codeData.expiresAt.toDate?codeData.expiresAt.toDate():new Date(codeData.expiresAt);
+      if(exp.getTime()<Date.now()){
+        errEl.textContent='That invite code has expired. Ask the developer for a new one.';
+        btn.disabled=false;btn.textContent='Create Account';return;
+      }
+    }
+    var usedSoFar=codeData.used||0;
+    if(codeData.maxUses && usedSoFar>=codeData.maxUses){
+      errEl.textContent='That invite code has reached its usage limit. Ask the developer for a new one.';
+      btn.disabled=false;btn.textContent='Create Account';return;
+    }
+
+    // -- Step 2: Create user account --
+    btn.textContent='Creating account...';
+    var cred=await firebase.auth().createUserWithEmailAndPassword(email,pass);
+
+    // -- Step 3: Record code usage (best-effort; doesn't block account if it fails) --
+    try {
+      await codeRef.update({
+        used:firebase.firestore.FieldValue.increment(1),
+        lastUsedAt:firebase.firestore.FieldValue.serverTimestamp(),
+        lastUsedBy:cred.user.uid,
+        lastUsedEmail:email
+      });
+    } catch(e){console.warn('[signup] code increment failed (non-fatal)',e);}
+
+    // -- Step 4: Tag profile with the code used (helps admin audit) --
+    try {
+      await db.collection('users').doc(cred.user.uid).set({
+        invitedWith:inviteCode
+      },{merge:true});
+    } catch(e){console.warn('[signup] profile tag failed (non-fatal)',e);}
+
+    // onAuthStateChanged fires next, takes user to dashboard
+    successEl.textContent='Account created! Loading your workspace...';
+    passEl.value='';
+    passConfirmEl.value='';
+    inviteEl.value='';
+  } catch(e) {
+    var msg=e.message||'Sign-up failed. Please try again.';
+    var code=e.code||'';
+    if(code==='auth/email-already-in-use')msg='That email is already registered. Try signing in instead.';
+    else if(code==='auth/invalid-email')msg='Please enter a valid email address.';
+    else if(code==='auth/weak-password')msg='Password is too weak. Use at least 6 characters.';
+    else if(code==='auth/operation-not-allowed')msg='Account creation is currently disabled. Contact the developer.';
+    else if(code==='auth/network-request-failed')msg='Network error. Check your connection and try again.';
+    else if(code==='permission-denied')msg='Couldn\'t verify the invite code. Make sure Firestore rules allow reading inviteCodes (see admin panel).';
+    errEl.textContent=msg;
+  } finally {
+    btn.disabled=false;
+    btn.textContent='Create Account';
+  }
+}
+// Close sign-in/sign-up modal on Escape
+document.addEventListener('keydown',function(e){
+  if(e.key==='Escape'){
+    var ov=document.getElementById('signinOverlay');
+    if(ov && ov.classList.contains('open'))hideSigninPanel();
+    var ov2=document.getElementById('signupOverlay');
+    if(ov2 && ov2.classList.contains('open'))hideSignupPanel();
+  }
+});
+
+function initAuthListener(){
+  // Make persistence explicit: user stays signed in across browser sessions
+  // until they click Sign Out. This is the Firebase default, but locking
+  // it in defensively prevents future SDK changes from regressing it.
+  try {
+    firebase.auth().setPersistence(firebase.auth.Auth.Persistence.LOCAL);
+  } catch(e){console.warn('[auth] setPersistence skipped',e);}
+  firebase.auth().onAuthStateChanged(async function(user){
+    if(user){
+      currentUser=user;
+      try{
+        const prof=await db.collection('users').doc(user.uid).get();
+        if(prof.exists){
+          userProfile=prof.data();
+          if(userProfile.disabled){
+            firebase.auth().signOut();
+            document.getElementById('loginError').textContent='Account disabled. Contact your admin.';
+            return;
+          }
+          isAdmin=userProfile.admin===true;
+          // Read account tier for Legacy assignment
+          window._profileAccountTier=userProfile.accountTier||null;
+          db.collection('users').doc(user.uid).update({lastActive:firebase.firestore.FieldValue.serverTimestamp()}).catch(function(){});
+        }else{
+          // Profile missing -- create one (non-admin by default)
+          await db.collection('users').doc(user.uid).set({
+            email:user.email,admin:false,disabled:false,
+            createdAt:firebase.firestore.FieldValue.serverTimestamp(),
+            lastActive:firebase.firestore.FieldValue.serverTimestamp()
+          });
+          userProfile={email:user.email,admin:false,disabled:false};
+          isAdmin=false;
+        }
+      }catch(e){console.log('Profile load error:',e);}
+      showApp();
+      if(typeof initApp==='function') await initApp();
+    }else{
+      currentUser=null;isAdmin=false;userProfile=null;
+      hideApp();
+    }
+  });
+}
+
+// ── SCRIPT 2: FIREBASE INIT ─────────────────────────────────────
+// ===========================================
+// FIREBASE CONFIG
+// ===========================================
+var firebaseConfig = CENTERPOST_FIREBASE_CONFIG;
+var db = null;
+var firebaseReady = false;
+try {
+  if(typeof firebase !== 'undefined' && firebaseConfig.apiKey !== "PASTE_YOUR_API_KEY"){
+    firebase.initializeApp(firebaseConfig);
+    db = firebase.firestore();
+    firebaseReady = true;
+    console.log('Firebase connected');
+    if(typeof initAuthListener==='function')initAuthListener();
+  }else{
+    console.log('Firebase not configured -- using local storage only');
+  }
+} catch(e) { console.log('Firebase init error (app will work offline):', e); }
+
+// ── SCRIPT 3: APP LOGIC ─────────────────────────────────────────
+// STATE
+var state={projects:[],reminders:[],thoughts:[],notes:[],moodLog:[],tasks:[],completedTasks:[],journal:[],journalPin:'',workoutLog:{},completedWorkouts:[],focusPlaylistId:null,points:{current:0,monthKey:'',lastTier:'bronze',totalsByDay:{},lastLoginDate:'',lifetimeTotal:0},routines:{morning:[{id:'m1',name:'Hydrate \u2014 glass of water',done:false},{id:'m2',name:"Review today's calendar",done:false},{id:'m3',name:'Pick top 3 priorities',done:false},{id:'m4',name:'Quick workspace tidy',done:false}],evening:[{id:'e1',name:'Review what got done today',done:false},{id:'e2',name:"Brain dump tomorrow's thoughts",done:false},{id:'e3',name:"Set out tomorrow's essentials",done:false},{id:'e4',name:'Wind-down activity',done:false}],custom:[]},currentRoutineTab:'morning',energy:null,mood:null,panelOrder:['projects','reminders','time','tasklist','notes','brain','routines','wellness','decision','admin'],panelsLocked:true,lastRoutineReset:null,visiblePanels:{},knownPanels:[]};
+
+// SYNC STATUS
+function setSyncStatus(status,label){const el=document.getElementById('syncStatus');if(!el)return;el.className='sync-status '+status;el.innerHTML='<span class="sync-dot"></span> '+label;}
+
+// SAVE -- writes to localStorage + Firestore (per-user)
+var saveTimer=null;
+function save(){
+  const uid=currentUser?currentUser.uid:'local';
+  try{localStorage.setItem('prodDash_'+uid,JSON.stringify(state));}catch(e){}
+  if(!firebaseReady||!db||!currentUser)return;
+  clearTimeout(saveTimer);
+  saveTimer=setTimeout(async()=>{
+    try{
+      setSyncStatus('syncing','Syncing...');
+      await db.collection('users').doc(currentUser.uid).collection('data').doc('dashboard').set({state:JSON.stringify(state),updated:firebase.firestore.FieldValue.serverTimestamp()});
+      setSyncStatus('synced','Synced');
+    }catch(e){console.log('Firestore save error:',e);setSyncStatus('error','Sync error');}
+  },1000);
+}
+
+// LOAD -- tries Firestore first, then localStorage (per-user)
+async function load(){
+  const uid=currentUser?currentUser.uid:'local';
+  // Always load localStorage as baseline
+  try{const s=localStorage.getItem('prodDash_'+uid);if(s){const p=JSON.parse(s);state={...state,...p};}}catch(e){}
+  // Also try old key for migration
+  if(uid!=='local'){try{const old=localStorage.getItem('prodDash_v1');if(old&&!localStorage.getItem('prodDash_'+uid)){const p=JSON.parse(old);state={...state,...p};console.log('Migrated from old local key');}}catch(e){}}
+  // Try Firestore
+  if(firebaseReady&&db&&currentUser){
+    try{
+      setSyncStatus('syncing','Loading...');
+      const doc=await db.collection('users').doc(currentUser.uid).collection('data').doc('dashboard').get();
+      if(doc.exists&&doc.data().state){
+        const cloud=JSON.parse(doc.data().state);
+        if(cloud.projects||cloud.reminders||cloud.notes){
+          // -- SAFE MERGE ----------------------------------------------------
+          // Spread cloud over local, then protect fields where local is more
+          // current. CRITICAL: for every array field, if local has MORE items
+          // than cloud, keep local -- this prevents an empty/partial cloud doc
+          // (e.g. from a save that fired before load completed) from wiping
+          // good local data on the next load.
+          var today=todayStr();
+          var merged=Object.assign({},state,cloud);
+          // Protect lastRoutineReset -- never let cloud roll it back to a past date
+          if(state.lastRoutineReset===today){merged.lastRoutineReset=today;}
+          if(state.lastRoutineReset===today&&cloud.lastRoutineReset!==today){
+            merged.routines=state.routines;merged.lastRoutineReset=today;
+          }
+          // For each array field, keep whichever side has more items.
+          ['projects','reminders','notes','tasks','thoughts','journal','moodLog','completedTasks','completedWorkouts'].forEach(function(key){
+            var localArr=state[key], cloudArr=cloud[key];
+            if(Array.isArray(localArr) && (!Array.isArray(cloudArr) || localArr.length>cloudArr.length)){
+              merged[key]=localArr;
+            }
+          });
+          state=merged;
+        }
+        setSyncStatus('synced','Synced');
+      }else{
+        // First time or migration -- also check old shared location
+        try{
+          const oldDoc=await db.collection('dashboards').doc('957d52c2f223567f9e37f9121bb24f81ba916e3d1549fdfbc18c08cf7fe43c9f').get();
+          if(oldDoc.exists&&oldDoc.data().state){
+            const oldData=JSON.parse(oldDoc.data().state);
+            if(oldData.projects||oldData.reminders){state={...state,...oldData};console.log('Migrated from old shared Firestore');}
+          }
+        }catch(me){console.log('Migration check:',me);}
+        // Push to new location
+        await db.collection('users').doc(currentUser.uid).collection('data').doc('dashboard').set({state:JSON.stringify(state),updated:firebase.firestore.FieldValue.serverTimestamp()});
+        setSyncStatus('synced','Synced');
+      }
+    }catch(e){console.log('Firestore load error:',e);setSyncStatus('error','Offline');}
+  }else{
+    setSyncStatus('offline','Local only');
+  }
+  // Ensure data integrity
+  if(!state.routines)state.routines={morning:[],evening:[],custom:[]};
+  if(!state.reminders)state.reminders=[];
+  if(!state.notes)state.notes=[];if(!state.moodLog)state.moodLog=[];if(!state.tasks)state.tasks=[];if(!state.visiblePanels)state.visiblePanels={};if(!state.knownPanels)state.knownPanels=[];
+  // Backfill any note missing a created timestamp (older notes) so sorts can't crash
+  state.notes.forEach(function(n){if(n&&!n.created)n.created=n.updated||n.date||new Date(0).toISOString();});
+  if(!state.journal)state.journal=[];if(!state.journalPin)state.journalPin='';
+  if(!state.workoutLog)state.workoutLog={};
+  if(!state.completedTasks)state.completedTasks=[];
+  if(!state.completedWorkouts)state.completedWorkouts=[];
+  if(state.focusPlaylistId===undefined)state.focusPlaylistId=null;
+  if(!state.points)state.points={current:0,monthKey:'',lastTier:'bronze',totalsByDay:{},lastLoginDate:'',lifetimeTotal:0};
+  if(!state.points.totalsByDay)state.points.totalsByDay={};
+  if(state.points.lifetimeTotal===undefined)state.points.lifetimeTotal=0;
+  if(!state.wellnessNotes)state.wellnessNotes={};
+  if(!state.completedProjects)state.completedProjects=[];
+  if(!state.gcal)state.gcal={connected:false,email:null,calendarId:null,autoPush:false,showExternal:true,lastPush:null,lastPull:null,pulledEvents:[]};
+  if(!state.panelOrder)state.panelOrder=['projects','reminders','time','tasklist','notes','brain','routines','wellness','decision','admin'];
+  // Remove legacy 'energy' panel id from any saved order
+  state.panelOrder=state.panelOrder.filter(id=>id!=='energy');
+  if(!state.panelOrder.includes('wellness'))state.panelOrder.splice(state.panelOrder.indexOf('time')+1,0,'wellness');
+  if(!state.panelOrder.includes('notes'))state.panelOrder.splice(state.panelOrder.indexOf('routines'),0,'notes');
+  // Migrate to new 3-column layout order if still using old order
+  const oldOrder='projects,reminders,brain,time';
+  if(state.panelOrder.join(',').startsWith(oldOrder)){state.panelOrder=['projects','reminders','time','tasklist','notes','brain','routines','wellness','decision','admin'];}
+  if(!state.panelOrder.includes('admin'))state.panelOrder.push('admin');
+  if(!state.panelOrder.includes('tasklist'))state.panelOrder.splice(state.panelOrder.indexOf('time')+1,0,'tasklist');
+  state.projects.forEach(p=>{if(!p.subtasks)p.subtasks=[];if(p.expanded===undefined)p.expanded=true;});
+  // Ensure every panel already in panelOrder is "known" -- prevents initPanelVisibility
+  // from treating previously-seen panels as new and hiding them on refresh
+  if(!state.knownPanels) state.knownPanels=[];
+  state.panelOrder.forEach(id=>{if(!state.knownPanels.includes(id))state.knownPanels.push(id);});
+}
+
+// REAL-TIME LISTENER -- syncs changes from other devices (per-user)
+var unsubscribe=null;
+function startRealtimeSync(){
+  if(!firebaseReady||!db||!currentUser)return;
+  if(unsubscribe)unsubscribe();
+  unsubscribe=db.collection('users').doc(currentUser.uid).collection('data').doc('dashboard').onSnapshot(doc=>{
+    if(!doc.exists||!doc.data().state)return;
+    try{
+      const cloud=JSON.parse(doc.data().state);
+
+      // -- Preserve gcalEventIds from in-memory state -----------------------
+      // onSnapshot can fire with stale Firestore data while a gcalPushAll is
+      // in progress (debounced save hasn't committed yet). Without this guard,
+      // the cloud spread overwrites newly-set gcalEventIds → next push creates
+      // duplicate calendar events instead of updating existing ones.
+      var _gcalLocal={};
+      (state.tasks||[]).forEach(function(t){if(t.gcalEventId)_gcalLocal['t:'+t.id]=t.gcalEventId;});
+      (state.projects||[]).forEach(function(p){
+        if(p.gcalEventId)_gcalLocal['p:'+p.id]=p.gcalEventId;
+        (p.subtasks||[]).forEach(function(s){if(s.gcalEventId)_gcalLocal['s:'+s.id]=s.gcalEventId;});
+      });
+      (state.reminders||[]).forEach(function(r){if(r.gcalEventId)_gcalLocal['r:'+r.id]=r.gcalEventId;});
+      (state.tlBlocks||[]).forEach(function(b){if(b.gcalEventId)_gcalLocal['b:'+b.id]=b.gcalEventId;});
+
+      // Preserve panel visibility/knownPanels from current session -- these were
+      // already initialized by initPanelVisibility() and must not be overwritten
+      // by an onSnapshot firing with stale Firestore data (race condition fix)
+      const localVP=state.visiblePanels;
+      const localKP=state.knownPanels;
+      state={...state,...cloud};
+      state.visiblePanels=Object.assign({},cloud.visiblePanels||{},localVP);
+      state.knownPanels=localKP&&localKP.length>=(cloud.knownPanels||[]).length?localKP:cloud.knownPanels||localKP;
+
+      // Re-apply any gcalEventIds that were wiped by the cloud spread
+      (state.tasks||[]).forEach(function(t){if(!t.gcalEventId&&_gcalLocal['t:'+t.id])t.gcalEventId=_gcalLocal['t:'+t.id];});
+      (state.projects||[]).forEach(function(p){
+        if(!p.gcalEventId&&_gcalLocal['p:'+p.id])p.gcalEventId=_gcalLocal['p:'+p.id];
+        (p.subtasks||[]).forEach(function(s){if(!s.gcalEventId&&_gcalLocal['s:'+s.id])s.gcalEventId=_gcalLocal['s:'+s.id];});
+      });
+      (state.reminders||[]).forEach(function(r){if(!r.gcalEventId&&_gcalLocal['r:'+r.id])r.gcalEventId=_gcalLocal['r:'+r.id];});
+      (state.tlBlocks||[]).forEach(function(b){if(!b.gcalEventId&&_gcalLocal['b:'+b.id])b.gcalEventId=_gcalLocal['b:'+b.id];});
+
+      renderProjects();renderReminders();renderThoughts();renderNotes();renderRoutines();renderTaskList();renderTimeline();
+      applyPanelVisibility();
+      showStateAdvice();updateWellnessVisibility();
+      setSyncStatus('synced','Synced');
+    }catch(e){console.log('Realtime sync error:',e);}
+  },err=>{console.log('Snapshot error:',err);setSyncStatus('error','Sync lost');});
+}
+
+// =======================================
+// PANEL VISIBILITY / CUSTOMIZATION
+// =======================================
+var ALL_PANELS=[
+  {id:'projects',icon:'\u{1F4C2}',name:'Projects',desc:'Track projects with subtasks and due dates'},
+  {id:'reminders',icon:'\u{1F514}',name:'Reminders',desc:'Date and time-based reminders'},
+  {id:'time',icon:'\u{1F9F0}',name:'Tool Kit',desc:'Breathwork, timer, energy/mood, and journal launcher'},
+  {id:'tasklist',icon:'\u{1F4CB}',name:'Task List',desc:'Unified view of all tasks sorted by priority or time'},
+  {id:'notes',icon:'\u{1F4DD}',name:'Notes',desc:'Labeled notes with project tags'},
+  {id:'brain',icon:'\u{1F9E0}',name:'Brain Dump',desc:'Capture fleeting thoughts'},
+  {id:'routines',icon:'\u{1F501}',name:'Routines',desc:'Morning, evening, and custom checklists'},
+  {id:'wellness',icon:'\u{1F9FA}',name:'Grounding Toolkit',desc:'Breathing and grounding techniques (auto-shows when needed)'},
+  {id:'decision',icon:'\u{1F9ED}',name:'Stuck? Start Here',desc:'Decision aid prompts'},
+  {id:'admin',icon:'\u{1F6E1}',name:'Admin Panel',desc:'User management (admin only)'}
+];
+function getPanelIds(){return ALL_PANELS.map(p=>p.id);}
+
+function initPanelVisibility(){
+  const ids=getPanelIds();
+  // Default all to visible if not set
+  ids.forEach(id=>{
+    if(state.visiblePanels[id]===undefined) state.visiblePanels[id]=true;
+  });
+  // Detect new panels the user hasn't seen
+  if(!state.knownPanels)state.knownPanels=[];
+  const newPanels=ids.filter(id=>!state.knownPanels.includes(id));
+  if(newPanels.length>0&&state.knownPanels.length>0){
+    // There are genuinely new panels (not first run)
+    newPanels.forEach(id=>{state.visiblePanels[id]=false;}); // default hidden, user opts in
+    toast('New panels available! Tap \u2699 Panels to activate.');
+  }
+  state.knownPanels=ids.slice();
+  save();
+}
+
+function applyPanelVisibility(){
+  document.querySelectorAll('.panel[data-panel]').forEach(p=>{
+    const id=p.dataset.panel;
+    if(id==='wellness'||id==='admin')return; // these have their own logic
+    if(state.visiblePanels[id]===false){
+      p.classList.add('user-hidden');
+    }else{
+      p.classList.remove('user-hidden');
+    }
+  });
+  // Rebuild mobile home tiles to reflect visibility changes
+  if(_isMobile())buildMobileHome();
+}
+
+function openCustomize(){
+  const el=document.getElementById('panelToggles');
+  const ids=getPanelIds();
+  const newPanels=ids.filter(id=>state.knownPanels&&!state.knownPanels.includes(id));
+  el.innerHTML=ALL_PANELS.filter(p=>{
+    if(p.id==='admin'&&!isAdmin)return false;
+    if(p.id==='wellness')return false; // wellness is auto-controlled
+    return true;
+  }).map(p=>{
+    const checked=state.visiblePanels[p.id]!==false;
+    const isNew=newPanels.includes(p.id);
+    return '<div class="panel-toggle"><span class="pt-icon">'+p.icon+'</span><div class="pt-info"><div class="pt-name">'+p.name+(isNew?'<span class="pt-new">NEW</span>':'')+'</div><div class="pt-desc">'+p.desc+'</div></div><label class="toggle-switch"><input type="checkbox" '+(checked?'checked':'')+' onchange="togglePanelVisibility(\''+p.id+'\',this.checked)"><span class="toggle-slider"></span></label></div>';
+  }).join('');
+  document.getElementById('customizeOverlay').classList.add('show');
+  var _cb=document.getElementById('custBuild');
+  if(_cb)_cb.textContent='Build '+APP_BUILD;
+}
+
+function closeCustomize(){
+  document.getElementById('customizeOverlay').classList.remove('show');
+}
+
+function togglePanelVisibility(id,visible){
+  state.visiblePanels[id]=visible;
+  save();
+  applyPanelVisibility();
+}
+
+function resetPanelVisibility(){
+  getPanelIds().forEach(id=>{state.visiblePanels[id]=true;});
+  save();
+  applyPanelVisibility();
+  openCustomize(); // refresh the modal toggles
+  toast('All panels visible');
+}
+
+// LOCK / UNLOCK
+function toggleLock(){state.panelsLocked=!state.panelsLocked;save();updateLockUI();}
+function updateLockUI(){const btn=document.getElementById('lockBtn');if(state.panelsLocked){btn.innerHTML='\u{1F512} Locked';btn.classList.remove('unlocked');document.body.classList.remove('unlocked');}else{btn.innerHTML='\u{1F513} Unlocked';btn.classList.add('unlocked');document.body.classList.add('unlocked');}document.querySelectorAll('.panel').forEach(p=>{p.draggable=!state.panelsLocked;});refreshEditables();}
+
+// INLINE EDITING - only works when unlocked
+function makeEditable(el,onSave){
+  el.classList.add('editable');
+  el.addEventListener('blur',function(){onSave(el.textContent.trim());});
+  el.addEventListener('keydown',function(e){if(e.key==='Enter'){e.preventDefault();el.blur();}if(e.key==='Escape')el.blur();});
+}
+function refreshEditables(){
+  // Editables are ALWAYS editable now. The "lock" only affects panel drag-drop, not content edits.
+  document.querySelectorAll('.editable').forEach(el=>{
+    el.setAttribute('contenteditable','true');
+  });
+}
+
+// DRAG & DROP
+var dragSrcPanel=null;
+function applyPanelOrder(){const dash=document.getElementById('dashboard');const panels={};dash.querySelectorAll('.panel').forEach(p=>{panels[p.dataset.panel]=p;});state.panelOrder.forEach(id=>{if(panels[id])dash.appendChild(panels[id]);});}
+function initDragDrop(){document.querySelectorAll('.panel').forEach(panel=>{panel.addEventListener('dragstart',e=>{if(state.panelsLocked){e.preventDefault();return;}dragSrcPanel=panel;panel.classList.add('dragging');e.dataTransfer.effectAllowed='move';e.dataTransfer.setData('text/plain',panel.dataset.panel);});panel.addEventListener('dragend',()=>{panel.classList.remove('dragging');document.querySelectorAll('.panel').forEach(p=>p.classList.remove('drag-over'));dragSrcPanel=null;});panel.addEventListener('dragover',e=>{if(state.panelsLocked)return;e.preventDefault();e.dataTransfer.dropEffect='move';if(panel!==dragSrcPanel)panel.classList.add('drag-over');});panel.addEventListener('dragleave',()=>{panel.classList.remove('drag-over');});panel.addEventListener('drop',e=>{e.preventDefault();panel.classList.remove('drag-over');if(!dragSrcPanel||dragSrcPanel===panel)return;const dash=document.getElementById('dashboard');const all=[...dash.querySelectorAll('.panel')];const fi=all.indexOf(dragSrcPanel);const ti=all.indexOf(panel);if(fi<ti)panel.after(dragSrcPanel);else panel.before(dragSrcPanel);state.panelOrder=[...dash.querySelectorAll('.panel')].map(p=>p.dataset.panel);save();toast('Panel moved');});});}
+
+// CLOCK
+function updateClock(){const now=new Date();const t=now.toLocaleTimeString('en-US',{hour12:true});const clk=document.getElementById('clock');if(clk)clk.textContent=t;const cd=document.getElementById('clockDate');if(cd)cd.textContent=now.toLocaleDateString('en-US',{weekday:'long',year:'numeric',month:'long',day:'numeric'});const mhc=document.getElementById('mobileHomeClock');if(mhc)mhc.textContent=t;const hc=document.getElementById('headerClock');if(hc)hc.textContent=now.toLocaleTimeString('en-US',{hour:'numeric',minute:'2-digit',hour12:true});}
+
+// TIMER (with soft alarm)
+// =======================================
+// FOCUS TIMER (inline button, no modal)
+// =======================================
+var TIMER_PRESETS=[
+  {label:'25 min',minutes:25,icon:'🎯'},
+  {label:'15 min',minutes:15,icon:'⚡'},
+  {label:'5 min break',minutes:5,icon:'☕'},
+  {label:'45 min',minutes:45,icon:'🔥'},
+  {label:'60 min',minutes:60,icon:'⏳'}
+];
+var timerTotal=25*60,timerLeft=25*60,timerInterval=null,timerRunning=false;
+var timerAlarmTimeout=null,audioCtx=null;
+var alarmOscillators=[],alarmGain=null,alarmPlaying=false;
+var timerEndAt=null;
+var timerCurrentPresetIdx=0; // default 25 min
+
+function _timerFmtLabel(){
+  if(!timerRunning&&timerLeft===timerTotal){
+    // Idle -- just show preset name
+    return TIMER_PRESETS[timerCurrentPresetIdx].label;
+  }
+  // Counting down -- show MM:SS
+  var m=Math.floor(timerLeft/60),s=timerLeft%60;
+  return String(m).padStart(2,'0')+':'+String(s).padStart(2,'0');
+}
+
+function updateTimerDisplay(){
+  var lbl=document.getElementById('timerBtnLabel');
+  var icon=document.getElementById('timerStateIcon');
+  var btn=document.getElementById('timerBtn');
+  var ctrls=document.getElementById('timerControls');
+  if(!lbl)return;
+
+  lbl.textContent=_timerFmtLabel();
+
+  // Show controls once timer has been used
+  if(ctrls)ctrls.style.display=(timerRunning||timerLeft<timerTotal)?'inline-flex':'none';
+
+  // State icon: ⏸ when running, ▶ when paused
+  if(icon)icon.textContent=timerRunning?'\u23F8':'\u25B6';
+
+  // Green tint when running
+  if(btn)btn.classList.toggle('timer-running',timerRunning);
+
+  if(timerLeft<=0&&timerRunning){
+    timerRunning=false;clearInterval(timerInterval);timerInterval=null;timerEndAt=null;
+    if(btn)btn.classList.remove('timer-running');
+    if(ctrls)ctrls.style.display='none';
+    if(lbl)lbl.textContent='Done!';
+    playAlarm();
+    toast('\u23F0 Focus session complete! +3 pts');
+    addPoints('timer',document.getElementById('timerBtn'));
+    timerAlarmTimeout=setTimeout(function(){
+      stopAlarm();
+      timerLeft=timerTotal;
+      updateTimerDisplay();
+    },12000);
+  }
+}
+
+function _tickTimer(){
+  if(timerEndAt!==null){
+    timerLeft=Math.max(0,Math.round((timerEndAt-Date.now())/1000));
+  }
+  updateTimerDisplay();
+}
+
+function timerHandleClick(){
+  // If dropdown is open, close it
+  var dd=document.getElementById('timerDropdown');
+  if(dd&&dd.style.display==='block'){dd.style.display='none';return;}
+  // Otherwise toggle play/pause
+  if(timerRunning){pauseTimer();}
+  else{startTimer();}
+}
+
+function startTimer(){
+  if(timerRunning)return;
+  _trackEvent('tool_use','focus_timer','Focus Timer');
+  stopAlarm();
+  timerRunning=true;
+  timerEndAt=Date.now()+(timerLeft*1000);
+  timerInterval=setInterval(_tickTimer,500);
+  updateTimerDisplay();
+}
+
+function pauseTimer(){
+  if(!timerRunning)return;
+  if(timerEndAt!==null)timerLeft=Math.max(0,Math.round((timerEndAt-Date.now())/1000));
+  timerRunning=false;timerEndAt=null;
+  clearInterval(timerInterval);timerInterval=null;
+  updateTimerDisplay();
+}
+
+function resetTimer(){
+  pauseTimer();stopAlarm();
+  timerLeft=timerTotal;timerEndAt=null;
+  updateTimerDisplay();
+}
+
+function timerToggleDropdown(){
+  var dd=document.getElementById('timerDropdown');
+  if(!dd)return;
+  if(dd.style.display==='block'){dd.style.display='none';return;}
+
+  var html=TIMER_PRESETS.map(function(p,i){
+    var cur=i===timerCurrentPresetIdx;
+    return '<div class="timer-dropdown-item'+(cur?' current':'')+'" onclick="event.stopPropagation();timerSelectPreset('+i+')">'
+      +'<span class="td-icon">'+p.icon+'</span>'
+      +'<span class="td-name">'+p.label+'</span>'
+      +(cur?'<span class="td-check">&#9654; set</span>':'')
+      +'</div>';
+  }).join('');
+  dd.innerHTML=html;
+  dd.style.display='block';
+
+  setTimeout(function(){
+    var handler=function(e){
+      var wrap=document.querySelector('.toolkit-timer-wrap');
+      if(!wrap||!wrap.contains(e.target)){
+        dd.style.display='none';
+        document.removeEventListener('click',handler);
+      }
+    };
+    document.addEventListener('click',handler);
+  },10);
+}
+
+function timerSelectPreset(idx){
+  var dd=document.getElementById('timerDropdown');
+  if(dd)dd.style.display='none';
+  timerCurrentPresetIdx=idx;
+  pauseTimer();stopAlarm();
+  timerTotal=TIMER_PRESETS[idx].minutes*60;
+  timerLeft=timerTotal;timerEndAt=null;
+  updateTimerDisplay();
+  // Auto-start immediately after selecting
+  startTimer();
+}
+
+// Keep these for any legacy calls
+function setTimerPreset(){
+  var v=parseInt(document.getElementById('timerPreset').value);
+  timerTotal=v*60;timerLeft=timerTotal;timerEndAt=null;
+  pauseTimer();stopAlarm();updateTimerDisplay();
+}
+function setTimerPresetDirect(min,el){
+  timerTotal=min*60;timerLeft=timerTotal;timerEndAt=null;
+  pauseTimer();stopAlarm();updateTimerDisplay();
+}
+function openTimerModal(){timerToggleDropdown();}
+function closeTimerModal(){}
+
+// Reconcile after sleep/tab switch
+document.addEventListener('visibilitychange',function(){
+  if(document.visibilityState==='visible'&&timerRunning&&timerEndAt!==null){
+    timerLeft=Math.max(0,Math.round((timerEndAt-Date.now())/1000));
+    updateTimerDisplay();
+  }
+});
+
+// SOFT ALARM (Web Audio)
+function playAlarm(){
+  if(alarmPlaying)return;
+  try{
+    if(!audioCtx)audioCtx=new(window.AudioContext||window.webkitAudioContext)();
+    alarmPlaying=true;
+    alarmGain=audioCtx.createGain();alarmGain.gain.value=0;alarmGain.connect(audioCtx.destination);
+    function chime(freq,st,dur){var osc=audioCtx.createOscillator(),env=audioCtx.createGain();osc.type='sine';osc.frequency.value=freq;osc.connect(env);env.connect(alarmGain);env.gain.setValueAtTime(0,st);env.gain.linearRampToValueAtTime(0.12,st+dur*0.3);env.gain.linearRampToValueAtTime(0.08,st+dur*0.7);env.gain.linearRampToValueAtTime(0,st+dur);osc.start(st);osc.stop(st+dur);alarmOscillators.push(osc);}
+    alarmGain.gain.setValueAtTime(0,audioCtx.currentTime);alarmGain.gain.linearRampToValueAtTime(0.35,audioCtx.currentTime+0.5);
+    var t=audioCtx.currentTime;
+    chime(523.25,t,1.2);chime(659.25,t+0.6,1.2);
+    chime(523.25,t+3,1.2);chime(659.25,t+3.6,1.2);
+    chime(523.25,t+6,1.2);chime(659.25,t+6.6,1.2);chime(783.99,t+7.2,1.8);
+    chime(523.25,t+10,2.0);
+    setTimeout(function(){stopAlarm();},13000);
+  }catch(e){console.log('Alarm error:',e);}
+}
+function stopAlarm(){
+  alarmPlaying=false;clearTimeout(timerAlarmTimeout);
+  try{alarmOscillators.forEach(function(o){try{o.stop();}catch(e){}});alarmOscillators=[];
+  if(alarmGain)try{alarmGain.gain.setValueAtTime(0,audioCtx.currentTime);}catch(e){}}catch(e){}
+}
+
+// PROJECTS
+function addProject(){const n=document.getElementById('newProjName').value.trim();if(!n)return;state.projects.push({id:'p'+Date.now(),name:n,due:document.getElementById('newProjDue').value,expanded:true,subtasks:[]});document.getElementById('newProjName').value='';document.getElementById('newProjDue').value='';save();renderProjects();renderTaskList();_trackEvent('tool_use','add_project','Add Project');}
+function deleteProject(id){_confirm('Delete project and all subtasks?',function(){state.projects=state.projects.filter(p=>p.id!==id);save();renderProjects();renderTaskList();},{destructive:true,confirmText:'Delete'});}
+function toggleProjectExpand(id){
+  const p=state.projects.find(p=>p.id===id);
+  if(!p)return;
+  p.expanded=!p.expanded;
+  // SURGICAL: just toggle the class on the existing DOM element instead of full re-render.
+  // Full re-render was resetting overlay scroll position and causing the expanded
+  // content to appear off-screen. This avoids the issue entirely.
+  // We still find the project card via its onclick attribute (matches the project id).
+  var allCards=document.querySelectorAll('.project-card');
+  var found=false;
+  allCards.forEach(function(card){
+    var hdr=card.querySelector('.proj-header');
+    if(hdr&&hdr.getAttribute('onclick')&&hdr.getAttribute('onclick').indexOf("'"+id+"'")>=0){
+      var area=card.querySelector('.subtask-area');
+      var arrow=card.querySelector('.proj-expand');
+      if(area)area.classList.toggle('open',p.expanded);
+      if(arrow)arrow.classList.toggle('open',p.expanded);
+      found=true;
+    }
+  });
+  // Persist to storage; if for some reason the card wasn't found in DOM, fall back to full re-render
+  save();
+  if(!found)renderProjects();
+}
+
+// Per-project "completed folder" expand state (memory only, doesn't persist)
+var _projCompletedOpen={};
+// Global "Completed Projects" section toggle (memory only)
+var _completedProjectsOpen=false;
+
+function markProjectComplete(pid,btnEl){
+  var p=state.projects.find(function(pr){return pr.id===pid;});
+  if(!p)return;
+  
+  // Always confirm before archiving
+  var activeCount=p.subtasks.length;
+  var msg;
+  if(activeCount>0){
+    msg='"'+p.name+'" still has '+activeCount+' active '+(activeCount===1?'task':'tasks')+'.\n\nMark project complete?';
+  }else{
+    msg='Mark "'+p.name+'" complete?';
+  }
+  _confirm(msg,function(){
+  // Count completed tasks for this project (for the archive stats)
+  var completedCount=(state.completedTasks||[]).filter(function(ct){
+    return ct.projectId===p.id||(ct.projectIds&&ct.projectIds.indexOf(p.id)>=0)||(!ct.projectId&&ct.projectName===p.name);
+  }).length;
+  var noteCount=(state.notes||[]).filter(function(n){return (n.projectIds&&n.projectIds.indexOf(p.id)>=0)||n.projectId===p.id;}).length;
+  
+  // Archive
+  if(!state.completedProjects)state.completedProjects=[];
+  state.completedProjects.unshift({
+    id:p.id,name:p.name,due:p.due||'',
+    completedTaskCount:completedCount,
+    activeTaskCountAtArchive:activeCount,
+    noteCount:noteCount,
+    archivedAt:new Date().toISOString(),
+    subtasks:p.subtasks.slice() // preserve any unfinished subtasks for restore
+  });
+  
+  // Clear any subtasks that were still pending (they go away with the project)
+  // Notes/reminders stay; their projectId reference will become orphaned but still searchable
+  
+  // Remove from active projects
+  state.projects=state.projects.filter(function(pr){return pr.id!==pid;});
+  
+  // Award points
+  addPoints('project',btnEl);
+  
+  save();
+  renderProjects();
+  renderTaskList();
+  renderNotes();
+  renderReminders();
+  toast('\u2713 Project archived');
+  },{confirmText:'Mark Complete',icon:'ti-circle-check'});
+}
+
+function restoreProject(pid){
+  var arch=(state.completedProjects||[]).find(function(cp){return cp.id===pid;});
+  if(!arch)return;
+  _confirm('Restore "'+arch.name+'" to active projects?',function(){
+  // Restore as active project
+  state.projects.push({
+    id:arch.id,name:arch.name,due:arch.due||'',
+    expanded:false,
+    subtasks:arch.subtasks||[]
+  });
+  state.completedProjects=state.completedProjects.filter(function(cp){return cp.id!==pid;});
+  save();
+  renderProjects();
+  renderTaskList();
+  toast('Project restored');
+  },{confirmText:'Restore',icon:'ti-archive'});
+}
+
+function purgeCompletedProject(pid){
+  var arch=(state.completedProjects||[]).find(function(cp){return cp.id===pid;});
+  if(!arch)return;
+  _confirm('Permanently delete "'+arch.name+'" from the archive? This cannot be undone.',function(){
+  state.completedProjects=state.completedProjects.filter(function(cp){return cp.id!==pid;});
+  save();
+  renderProjects();
+  },{destructive:true,confirmText:'Delete Forever'});
+}
+
+function _toggleCompletedProjectsSection(){
+  _completedProjectsOpen=!_completedProjectsOpen;
+  renderProjects();
+}
+
+function _renderCompletedProjectsSection(){
+  var arch=state.completedProjects||[];
+  if(arch.length===0)return '';
+  var html='<div class="completed-projects-section">';
+  html+='<div class="completed-projects-toggle'+(_completedProjectsOpen?' open':'')+'" onclick="_toggleCompletedProjectsSection()">'
+    +'<span class="cp-arrow">\u25B6</span>'
+    +'<span>\u2713 Completed Projects ('+arch.length+')</span>'
+    +'</div>';
+  html+='<div class="completed-projects-list'+(_completedProjectsOpen?' open':'')+'">';
+  arch.forEach(function(cp){
+    var when=cp.archivedAt?_wellFormatDate(cp.archivedAt):'';
+    var stats=[];
+    if(cp.completedTaskCount)stats.push(cp.completedTaskCount+' done');
+    if(cp.noteCount)stats.push(cp.noteCount+' note'+(cp.noteCount!==1?'s':''));
+    if(when)stats.push('archived '+when);
+    html+='<div class="completed-project-card">'
+      +'<span class="cp-name">'+esc(cp.name)+'</span>'
+      +(stats.length?'<span class="cp-stats">'+stats.join(' \u00b7 ')+'</span>':'')
+      +'<span class="cp-action cp-restore" onclick="restoreProject(\''+cp.id+'\')" title="Restore project">\u21BA</span>'
+      +'<span class="cp-action cp-purge" onclick="purgeCompletedProject(\''+cp.id+'\')" title="Permanently delete">\u2715</span>'
+      +'</div>';
+  });
+  html+='</div></div>';
+  return html;
+}
+
+function _renderProjSummary(p,activeTotal,noteCount,remCount,completedItems){
+  var compCount=completedItems.length;
+  var folderOpen=!!_projCompletedOpen[p.id];
+  var html='<div class="proj-summary">';
+  html+='<span class="proj-summary-pill">\u{1F4CB} <span class="ps-num">'+activeTotal+'</span> '+(activeTotal===1?'task':'tasks')+'</span>';
+  if(compCount>0){
+    html+='<span class="proj-summary-pill ps-done'+(folderOpen?' open':'')+'" onclick="event.stopPropagation();_toggleProjCompleted(\''+p.id+'\')">\u2713 <span class="ps-num">'+compCount+'</span> done <span class="ps-arrow">\u25B6</span></span>';
+  }else{
+    html+='<span class="proj-summary-pill">\u2713 <span class="ps-num">0</span> done</span>';
+  }
+  html+='<span class="proj-summary-pill">\u{1F4DD} <span class="ps-num">'+noteCount+'</span> '+(noteCount===1?'note':'notes')+'</span>';
+  html+='<span class="proj-summary-pill">\u{1F514} <span class="ps-num">'+remCount+'</span> '+(remCount===1?'reminder':'reminders')+'</span>';
+  html+='</div>';
+  // Completed folder body
+  if(compCount>0){
+    html+='<div class="proj-completed-folder'+(folderOpen?' open':'')+'" id="proj-comp-'+p.id+'"><div class="proj-completed-list">';
+    completedItems.slice(0,30).forEach(function(ct){
+      var when=ct.archivedAt?_wellFormatDate(ct.archivedAt):'';
+      html+='<div class="proj-completed-item">'
+        +'<span style="color:var(--green);">\u2713</span>'
+        +'<span class="proj-completed-name">'+esc(ct.name)+'</span>'
+        +(when?'<span class="proj-completed-date">'+when+'</span>':'')
+        +'</div>';
+    });
+    if(completedItems.length>30){
+      html+='<div class="proj-completed-empty">+ '+(completedItems.length-30)+' older completions</div>';
+    }
+    html+='</div></div>';
+  }
+  return html;
+}
+
+function _toggleProjCompleted(pid){
+  _projCompletedOpen[pid]=!_projCompletedOpen[pid];
+  renderProjects();
+}
+function addSubtask(pid){const ne=document.getElementById('stN_'+pid),de=document.getElementById('stD_'+pid),pe=document.getElementById('stP_'+pid),te=document.getElementById('stT_'+pid);const nm=ne.value.trim();if(!nm)return;const pr=state.projects.find(p=>p.id===pid);if(!pr)return;pr.subtasks.push({id:'st'+Date.now(),name:nm,due:de.value,priority:pe.value,timeEst:te?te.value:'',done:false});ne.value='';de.value='';save();renderProjects();renderTaskList();}
+function toggleSubtask(pid,sid){
+  const p=state.projects.find(p=>p.id===pid);
+  if(!p)return;
+  const s=p.subtasks.find(s=>s.id===sid);
+  if(!s)return;
+  // Capture source element for popup positioning
+  var srcEl=document.querySelector('.st-check[onclick*="'+sid+'"]');
+  // Archive completed subtask (single record per group)
+  if(!state.completedTasks)state.completedTasks=[];
+  state.completedTasks.unshift({
+    id:s.id,name:s.name,projectName:p.name,projectId:p.id,
+    archivedAt:new Date().toISOString(),source:'project'
+  });
+  if(state.completedTasks.length>100)state.completedTasks=state.completedTasks.slice(0,100);
+  // Remove from this project AND any other project containing a linked sibling
+  if(s.linkGroupId){
+    state.projects.forEach(function(pr){
+      pr.subtasks=pr.subtasks.filter(function(x){return x.linkGroupId!==s.linkGroupId;});
+    });
+  }else{
+    p.subtasks=p.subtasks.filter(x=>x.id!==sid);
+  }
+  addPoints('subtask',srcEl);
+  save();renderProjects();renderTaskList();
+}
+function deleteSubtask(pid,sid){const p=state.projects.find(p=>p.id===pid);if(p)p.subtasks=p.subtasks.filter(s=>s.id!==sid);save();renderProjects();renderTaskList();}
+
+// Cycle priority low → med → high → low on click. Works for subtasks.
+function cycleSubtaskPriority(pid,sid,ev){
+  if(ev){ev.stopPropagation();}
+  const p=state.projects.find(p=>p.id===pid);
+  const s=p&&p.subtasks.find(s=>s.id===sid);
+  if(!s)return;
+  const order=['low','med','high'];
+  const cur=order.indexOf((s.priority||'med').replace('medium','med'));
+  s.priority=order[(cur+1)%3];
+  save();renderProjects();renderTaskList();
+}
+// Cycle priority for a standalone task
+function cycleTaskPriority(id,ev){
+  if(ev){ev.stopPropagation();}
+  const t=(state.tasks||[]).find(t=>t.id===id);
+  if(!t)return;
+  const order=['low','med','high'];
+  const cur=order.indexOf((t.priority||'med').replace('medium','med'));
+  t.priority=order[(cur+1)%3];
+  save();renderTaskList();renderProjects();
+}
+function editProjectName(pid,v){if(!v)return;const p=state.projects.find(p=>p.id===pid);if(p)p.name=v;save();}
+function editSubtaskName(pid,sid,v){if(!v)return;const p=state.projects.find(p=>p.id===pid);const s=p&&p.subtasks.find(s=>s.id===sid);if(s)s.name=v;save();renderTaskList();}
+function editProjectDue(pid,v){const p=state.projects.find(p=>p.id===pid);if(p){p.due=v;save();renderProjects();}}
+function editSubtaskDue(pid,sid,v){const p=state.projects.find(p=>p.id===pid);const s=p&&p.subtasks.find(s=>s.id===sid);if(s){s.due=v;save();renderProjects();renderTaskList();var modalOpen=document.getElementById('projDetailModal').classList.contains('open');if(modalOpen)openProjectModal(pid);}}
+function editStandaloneTaskName(id,v){if(!v)return;var t=(state.tasks||[]).find(function(x){return x.id===id;});if(t){t.name=v;save();renderTaskList();var modalOpen=document.getElementById('projDetailModal').classList.contains('open');if(modalOpen&&t.projectId)openProjectModal(t.projectId);else if(modalOpen&&t.projectIds&&t.projectIds.length)openProjectModal(t.projectIds[0]);}}
+function editStandaloneTaskDue(id,v){var t=(state.tasks||[]).find(function(x){return x.id===id;});if(t){t.due=v;save();renderTaskList();var modalOpen=document.getElementById('projDetailModal').classList.contains('open');if(modalOpen&&t.projectId)openProjectModal(t.projectId);else if(modalOpen&&t.projectIds&&t.projectIds.length)openProjectModal(t.projectIds[0]);}}
+function editReminderDate(id,v){const r=state.reminders.find(r=>r.id===id);if(r){r.date=v;save();renderReminders();}}
+function editReminderTime(id,v){const r=state.reminders.find(r=>r.id===id);if(r){r.time=v;save();renderReminders();}}
+function makeDateClickable(el,currentVal,onSave){
+  el.addEventListener('click',function(e){
+    e.stopPropagation();
+    if(el.querySelector('input.date-edit-input')) return;
+    const inp=document.createElement('input');
+    inp.type='date';inp.className='date-edit-input';
+    inp.value=currentVal||'';
+    el.innerHTML='';el.appendChild(inp);
+    inp.focus();
+    var committed=false;
+    function commit(){ if(committed) return; committed=true; onSave(inp.value); }
+    inp.addEventListener('blur',commit);
+    inp.addEventListener('keydown',function(ev){ if(ev.key==='Enter'){ ev.preventDefault(); inp.blur(); } });
+  });
+}
+function makeTimeClickable(el,currentVal,onSave){
+  el.addEventListener('click',function(e){
+    e.stopPropagation();
+    if(el.querySelector('input.date-edit-input')) return;
+    const inp=document.createElement('input');
+    inp.type='time';inp.className='date-edit-input';inp.style.width='100px';
+    inp.value=currentVal||'';
+    el.innerHTML='';el.appendChild(inp);
+    inp.focus();
+    var committed=false;
+    function commit(){ if(committed) return; committed=true; onSave(inp.value); }
+    inp.addEventListener('blur',commit);
+    inp.addEventListener('keydown',function(ev){ if(ev.key==='Enter'){ ev.preventDefault(); inp.blur(); } });
+  });
+}
+
+// Helper -- projects sorted A→Z, used everywhere projects are listed
+function _sortedProjects(){
+  return state.projects.slice().sort(function(a,b){
+    return (a.name||'').toLowerCase().localeCompare((b.name||'').toLowerCase());
+  });
+}
+
+function renderProjects(){const el=document.getElementById('projectList');const today=todayStr();
+
+// Detect if we're rendering inside the overlay (panel-tile removed) vs the dashboard tile
+var projPanel=document.querySelector('.panel[data-panel="projects"]');
+var inOverlay=projPanel&&!projPanel.classList.contains('panel-tile');
+
+// "Show all" toggle -- only applies on the dashboard tile, never in overlay
+var upcomingEl=document.getElementById('projUpcomingOnly');
+var showAll=!inOverlay&&upcomingEl&&upcomingEl.checked;
+// Always sort alphabetically regardless of showAll / overlay mode
+var visibleProjects=_sortedProjects();
+if(state.projects.length===0){el.innerHTML='<div class="empty-state">No projects yet.</div>'+_renderCompletedProjectsSection();document.getElementById('projCount').textContent='0';var emptyProjCompCount=(state.completedTasks||[]).filter(function(t){return t.source==='project';}).length;var emptyProjCompBadge=document.getElementById('projCompletedBadge');if(emptyProjCompBadge){emptyProjCompBadge.textContent='✓ '+emptyProjCompCount;emptyProjCompBadge.style.display=emptyProjCompCount>0?'inline-flex':'none';}updateNoteSelectors();if(typeof _updateTileSummaryProjects==='function')_updateTileSummaryProjects();return;}
+var pcpEl=document.getElementById('pc_projects');
+// Tile mode, unchecked -- blank panel so add-form anchors to bottom
+if(!inOverlay&&!showAll){
+  el.innerHTML='';
+  if(pcpEl){pcpEl.style.flex='none';pcpEl.style.minHeight='0';}
+  document.getElementById('projCount').textContent=state.projects.length;
+  updateNoteSelectors();
+  if(typeof _updateTileSummaryProjects==='function')_updateTileSummaryProjects();
+  return;
+}
+// Checked but no projects exist -- also blank (safety)
+if(showAll&&visibleProjects.length===0){el.innerHTML='';if(pcpEl){pcpEl.style.flex='none';pcpEl.style.minHeight='0';}document.getElementById('projCount').textContent=state.projects.length;updateNoteSelectors();if(typeof _updateTileSummaryProjects==='function')_updateTileSummaryProjects();return;}
+if(pcpEl){pcpEl.style.flex='';pcpEl.style.minHeight='';}
+el.innerHTML=visibleProjects.map(p=>{const total=p.subtasks.length;const sorted=[...p.subtasks].sort((a,b)=>{if(a.due&&b.due)return a.due.localeCompare(b.due);if(a.due)return -1;if(b.due)return 1;return 0;});
+
+// Completed items for this project (by id or fallback to name match for older records)
+var projCompletedItems=(state.completedTasks||[]).filter(function(ct){
+  if(ct.projectId===p.id)return true;
+  if(ct.projectIds&&ct.projectIds.indexOf(p.id)>=0)return true;
+  // Backwards-compat: match by projectName for older archived items
+  if(!ct.projectId&&ct.projectName===p.name)return true;
+  return false;
+});
+
+// Linked items for this project
+var linkedTasks=(state.tasks||[]).filter(t=>(t.projectIds&&t.projectIds.indexOf(p.id)>=0)||t.projectId===p.id&&!t.done);
+var linkedNotes=(state.notes||[]).filter(n=>(n.projectIds&&n.projectIds.indexOf(p.id)>=0)||n.projectId===p.id);
+var linkedReminders=(state.reminders||[]).filter(r=>(r.projectIds&&r.projectIds.indexOf(p.id)>=0)||r.projectId===p.id);
+var linkedHtml='';
+if(linkedTasks.length||linkedNotes.length||linkedReminders.length){
+  linkedHtml='<div class="proj-linked">';
+  if(linkedTasks.length){
+    linkedHtml+='<div class="proj-linked-group"><span class="proj-linked-label">&#128203; Tasks</span>';
+    linkedHtml+=linkedTasks.map(t=>'<div class="proj-linked-item"><span class="priority-dot priority-'+( t.priority||'med')+'"></span>'+esc(t.name)+(t.due?'<span class="st-due">'+fmtDate(t.due)+'</span>':'')+'</div>').join('');
+    linkedHtml+='</div>';
+  }
+  if(linkedReminders.length){
+    linkedHtml+='<div class="proj-linked-group"><span class="proj-linked-label">&#128276; Reminders</span>';
+    linkedHtml+=linkedReminders.map(r=>'<div class="proj-linked-item">'+esc(r.text)+(r.date?'<span class="st-due">'+fmtDate(r.date)+'</span>':'')+'</div>').join('');
+    linkedHtml+='</div>';
+  }
+  if(linkedNotes.length){
+    linkedHtml+='<div class="proj-linked-group"><span class="proj-linked-label">&#128221; Notes</span>';
+    linkedHtml+=linkedNotes.map(n=>'<div class="proj-linked-item">'+esc(n.label||'Note')+(n.body?'<span class="proj-linked-preview">'+esc(n.body.substring(0,60))+(n.body.length>60?'\u2026':'')+'</span>':'')+'</div>').join('');
+    linkedHtml+='</div>';
+  }
+  linkedHtml+='</div>';
+}
+
+return '<div class="project-card"><div class="proj-header" onclick="openProjectModal(\''+p.id+'\')"><span class="proj-expand '+(p.expanded?'open':'')+'">\u25B6</span><div class="proj-info"><div class="proj-name-row"><span class="proj-name editable" id="pn_'+p.id+'">'+esc(p.name)+'</span><button class="proj-edit-btn" onclick="event.stopPropagation();promptEditProject(\''+p.id+'\')" title="Rename project">&#9998;</button></div><div class="proj-meta"><span>'+total+' subtask'+(total!==1?'s':'')+'</span>'+(linkedNotes.length?'<span>'+linkedNotes.length+' note'+(linkedNotes.length!==1?'s':'')+'</span>':'')+''+(linkedReminders.length?'<span>'+linkedReminders.length+' reminder'+(linkedReminders.length!==1?'s':'')+'</span>':'')+'</div></div><div style="display:flex;gap:4px;align-items:center;"><span class="wt-clock-btn '+(_isScheduledToday(p.id)?'scheduled':'')+'" onclick="event.stopPropagation();handleWorkTodayClick(\'project\',\''+p.id+'\',\''+p.id+'\')" title="Work on today" style="width:20px;height:20px;font-size:10px;">\u{1F4C5}</span><span class="st-btn st-cal" onclick="exportProjectICS(\''+p.id+'\')">\u{1F4C5}</span><button class="proj-complete-btn" onclick="event.stopPropagation();markProjectComplete(\''+p.id+'\',this)" title="Mark complete">\u2713</button><span class="proj-delete" onclick="deleteProject(\''+p.id+'\')">\u2715</span></div></div><div class="subtask-area '+(p.expanded?'open':'')+'"><div class="proj-due-display">'+(p.due?'<span class="date-editable" id="pd_'+p.id+'">Ends: '+fmtDate(p.due)+'</span>':'<span class="date-editable" id="pd_'+p.id+'" style="color:var(--text-faint);">+ set end date</span>')+'</div>'+_renderProjSummary(p,total,linkedNotes.length,linkedReminders.length,projCompletedItems)+'<div class="subtask-list">'+(sorted.length===0?'<div class="empty-state" style="padding:10px;">No subtasks yet.</div>':sorted.map(st=>{return '<div class="subtask-item"><div class="st-check" onclick="toggleSubtask(\''+p.id+"','"+st.id+'\')"></div><span class="st-name editable" id="sn_'+st.id+'"><span class="priority-dot clickable priority-'+st.priority+'" onclick="event.stopPropagation();cycleSubtaskPriority(\''+p.id+"','"+st.id+'\',event)" title="Click to change priority"></span>'+esc(st.name)+'</span>'+(st.due?'<span class="st-due date-editable" id="sd_'+st.id+'">'+fmtDate(st.due)+'</span>':'<span class="st-due date-editable" id="sd_'+st.id+'" style="color:var(--text-faint);">+ date</span>')+'<div class="st-actions">'+(st.timeEst?'<span class="tl-time-badge">'+fmtTimeEst(st.timeEst)+'</span>':'')+'<span class="wt-clock-btn '+(_isScheduledToday(st.id)?'scheduled':'')+'" onclick="event.stopPropagation();handleWorkTodayClick(\'subtask\',\''+st.id+'\',\''+p.id+'\')" title="Work on today" style="width:18px;height:18px;font-size:9px;">\u{1F4C5}</span><span class="st-btn st-cal" onclick="exportSubtaskICS(\''+p.id+"','"+st.id+'\')">\u{1F4C5}</span><span class="st-btn st-del" onclick="deleteSubtask(\''+p.id+"','"+st.id+'\')">\u2715</span></div></div>';}).join(''))+'</div><div class="subtask-add"><input type="text" id="stN_'+p.id+'" placeholder="Next step..." onkeydown="if(event.key===\'Enter\')addSubtask(\''+p.id+'\')"><button class="mic-btn" id="stMic_'+p.id+'" onclick="toggleMic(\'stN_'+p.id+'\',\'stMic_'+p.id+'\')" title="Voice input">&#127908;</button><select id="stP_'+p.id+'"><option value="low">Low</option><option value="med" selected>Med</option><option value="high">High</option></select><select id="stT_'+p.id+'" class="time-est-select"><option value="">Time?</option><option value="30">30m</option><option value="60">1hr</option><option value="90">1.5hr</option><option value="120">2hr</option><option value="180">3hr</option><option value="240">4hr</option><option value="360">6hr</option><option value="480">8hr</option><option value="720">12hr</option></select><input type="date" id="stD_'+p.id+'"><button class="btn btn-accent btn-sm" onclick="addSubtask(\''+p.id+'\')">+</button></div></div></div>';}).join('');
+document.getElementById('projCount').textContent=state.projects.length;
+// Append "Completed Projects" section at the bottom of the projects list
+el.innerHTML+=_renderCompletedProjectsSection();
+// Update completed subtasks badge (green)
+var projCompCount=(state.completedTasks||[]).filter(function(t){return t.source==='project';}).length;
+var projCompBadge=document.getElementById('projCompletedBadge');
+if(projCompBadge){
+  projCompBadge.textContent='✓ '+projCompCount;
+  projCompBadge.style.display=projCompCount>0?'inline-flex':'none';
+}
+// Subtask name editing (still works when unlocked)
+state.projects.forEach(p=>{p.subtasks.forEach(st=>{const se=document.getElementById('sn_'+st.id);if(se)makeEditable(se,v=>{editSubtaskName(p.id,st.id,v.trim());});});});
+// Attach date editors
+state.projects.forEach(p=>{const pde=document.getElementById('pd_'+p.id);if(pde)makeDateClickable(pde,p.due,v=>editProjectDue(p.id,v));p.subtasks.forEach(st=>{const sde=document.getElementById('sd_'+st.id);if(sde)makeDateClickable(sde,st.due,v=>editSubtaskDue(p.id,st.id,v));});});
+refreshEditables();updateNoteSelectors();if(typeof _updateTileSummaryProjects==='function')_updateTileSummaryProjects();}
+
+// Always-available project rename -- uses a prompt so it works regardless of lock state
+function promptEditProject(pid){
+  const p=state.projects.find(p=>p.id===pid);if(!p)return;
+  const newName=prompt('Rename project:',p.name);
+  if(newName&&newName.trim()&&newName.trim()!==p.name){
+    p.name=newName.trim();save();renderProjects();renderTaskList();
+  }
+}
+
+// REMINDERS
+function addReminder(){const t=document.getElementById('newRemText').value.trim();if(!t)return;const projVal=document.getElementById('newRemProject').value;const projIds=projVal?projVal.split(',').filter(Boolean):[];state.reminders.push({id:'rem'+Date.now(),text:t,date:document.getElementById('newRemDate').value,time:document.getElementById('newRemTime').value,projectId:projIds[0]||'',projectIds:projIds});document.getElementById('newRemText').value='';document.getElementById('newRemDate').value='';document.getElementById('newRemTime').value='';document.getElementById('newRemProject').value='';renderProjMultiPickerChips(document.getElementById('newRemProjectPicker'));save();renderReminders();renderProjects();if(projIds.length>1)toast('Reminder added to '+projIds.length+' projects');}
+function deleteReminder(id){state.reminders=state.reminders.filter(r=>r.id!==id);save();renderReminders();}
+function clearPastReminders(){state.reminders=state.reminders.filter(r=>!r.date||r.date>=todayStr());save();renderReminders();toast('Past cleared');}
+function editReminderText(id,v){if(!v)return;const r=state.reminders.find(r=>r.id===id);if(r)r.text=v;save();}
+function renderReminders(){const el=document.getElementById('reminderList');const today=todayStr();const sorted=[...state.reminders].sort((a,b)=>{if(a.date&&b.date){const d=a.date.localeCompare(b.date);if(d!==0)return d;}if(a.date&&!b.date)return -1;if(!a.date&&b.date)return 1;if(a.time&&b.time)return a.time.localeCompare(b.time);return 0;});
+if(sorted.length===0){el.innerHTML='<div class="empty-state">No reminders.</div>';document.getElementById('remCount').textContent='0';if(typeof _updateTileSummaryReminders==='function')_updateTileSummaryReminders();return;}
+el.innerHTML=sorted.map(r=>{return '<div class="reminder-item"><span class="rem-icon">\u{1F535}</span><div class="rem-body"><div class="rem-text editable" id="rt_'+r.id+'">'+esc(r.text)+'</div><div class="rem-when">'+'<span class="date-editable" id="rd_'+r.id+'">'+(r.date?fmtDate(r.date):'+ set date')+'</span>'+(r.time?' at <span class="date-editable" id="rt2_'+r.id+'">'+fmtTime(r.time)+'</span>':' <span class="date-editable" id="rt2_'+r.id+'" style="color:var(--text-faint);">+ time</span>')+'</div></div><div style="display:flex;gap:2px;"><span class="st-btn st-cal" onclick="exportReminderICS(\''+r.id+'\')">\u{1F4C5}</span><span class="st-btn st-del" onclick="deleteReminder(\''+r.id+'\')">\u2715</span></div></div>';}).join('');
+document.getElementById('remCount').textContent=sorted.filter(r=>!r.date||r.date>=today).length;
+state.reminders.forEach(r=>{const e=document.getElementById('rt_'+r.id);if(e)makeEditable(e,v=>editReminderText(r.id,v));const rde=document.getElementById('rd_'+r.id);if(rde)makeDateClickable(rde,r.date,v=>editReminderDate(r.id,v));const rte=document.getElementById('rt2_'+r.id);if(rte)makeTimeClickable(rte,r.time,v=>editReminderTime(r.id,v));});refreshEditables();if(typeof _updateTileSummaryReminders==='function')_updateTileSummaryReminders();}
+
+// ICS
+function generateICS(events){let ics='BEGIN:VCALENDAR\r\nVERSION:2.0\r\nPRODID:-//Centerpost//EN\r\nCALSCALE:GREGORIAN\r\nMETHOD:PUBLISH\r\n';events.forEach(ev=>{const uid='cd-'+Date.now()+'-'+Math.random().toString(36).substr(2,8);const d=ev.date?ev.date.replace(/-/g,''):new Date().toISOString().split('T')[0].replace(/-/g,'');ics+='BEGIN:VEVENT\r\nUID:'+uid+'\r\nDTSTAMP:'+new Date().toISOString().replace(/[-:]/g,'').split('.')[0]+'Z\r\n';if(ev.time){const t=ev.time.replace(':','')+'00';ics+='DTSTART:'+d+'T'+t+'\r\n';const sm=parseInt(ev.time.split(':')[0])*60+parseInt(ev.time.split(':')[1])+60;ics+='DTEND:'+d+'T'+String(Math.floor(sm/60)).padStart(2,'0')+String(sm%60).padStart(2,'0')+'00\r\n';}else{ics+='DTSTART;VALUE=DATE:'+d+'\r\nDTEND;VALUE=DATE:'+d+'\r\n';}ics+='SUMMARY:'+icsEsc(ev.title)+'\r\n';if(ev.description)ics+='DESCRIPTION:'+icsEsc(ev.description)+'\r\n';ics+='BEGIN:VALARM\r\nTRIGGER:-PT15M\r\nACTION:DISPLAY\r\nDESCRIPTION:Reminder\r\nEND:VALARM\r\nEND:VEVENT\r\n';});ics+='END:VCALENDAR\r\n';return ics;}
+function icsEsc(s){return s.replace(/[,;\\]/g,c=>'\\'+c).replace(/\n/g,'\\n');}
+function downloadICS(fn,ics){const b=new Blob([ics],{type:'text/calendar;charset=utf-8'});const u=URL.createObjectURL(b);const a=document.createElement('a');a.href=u;a.download=fn;document.body.appendChild(a);a.click();document.body.removeChild(a);URL.revokeObjectURL(u);toast('\u{1F4C5} .ics downloaded');}
+function showOutlookModal(title,date,time,desc){const ics=generateICS([{title,date,time,description:desc}]);const d=date||todayStr(),t=time||'09:00';const si=d+'T'+t+':00';const sm=parseInt(t.split(':')[0])*60+parseInt(t.split(':')[1])+60;const ei=d+'T'+String(Math.floor(sm/60)).padStart(2,'0')+':'+String(sm%60).padStart(2,'0')+':00';const wurl='https://outlook.live.com/calendar/0/action/compose?subject='+encodeURIComponent(title)+'&startdt='+si+'&enddt='+ei+'&body='+encodeURIComponent(desc||'');const mc=document.getElementById('modalContent');mc.innerHTML='<h3>\u{1F4C5} Add to Outlook</h3><p><strong>'+esc(title)+'</strong><br>'+(date?fmtDate(date):'No date')+(time?' at '+fmtTime(time):'')+'</p><div class="modal-actions"><button class="btn btn-outlook" id="ocsDownload">\u2B07 Download .ics</button><a href="#" target="_blank" rel="noopener noreferrer" class="btn btn-outlook" id="ocsWeb" style="text-decoration:none;">\u{1F310} Outlook Web</a><button class="btn" id="ocsCancel">Cancel</button></div>';const dl=document.getElementById('ocsDownload');if(dl)dl.onclick=function(){downloadICS('event.ics',ics);closeModal();};const web=document.getElementById('ocsWeb');if(web){web.href=wurl;web.onclick=function(){closeModal();};}const cancel=document.getElementById('ocsCancel');if(cancel)cancel.onclick=closeModal;document.getElementById('modalOverlay').classList.add('show');}
+function closeModal(){document.getElementById('modalOverlay').classList.remove('show');}
+function exportSubtaskICS(pid,sid){const p=state.projects.find(p=>p.id===pid);const s=p&&p.subtasks.find(s=>s.id===sid);if(!s)return;showOutlookModal(s.name+' ['+p.name+']',s.due,null,'Project: '+p.name);}
+function exportProjectICS(pid){const p=state.projects.find(pr=>pr.id===pid);if(!p)return;const ev=p.subtasks.filter(s=>s.due&&!s.done).map(s=>({title:s.name+' ['+p.name+']',date:s.due,description:'Project: '+p.name}));if(ev.length===0){toast('No undone subtasks with dates.');return;}downloadICS(slugify(p.name)+'.ics',generateICS(ev));}
+function exportAllToICS(){const ev=[];state.projects.forEach(p=>{p.subtasks.filter(s=>s.due&&!s.done).forEach(s=>{ev.push({title:s.name+' ['+p.name+']',date:s.due,description:'Project: '+p.name});});});state.reminders.filter(r=>r.date).forEach(r=>{ev.push({title:r.text,date:r.date,time:r.time});});if(ev.length===0){toast('Nothing to export.');return;}downloadICS('productivity-dashboard-all.ics',generateICS(ev));}
+function exportReminderICS(id){const r=state.reminders.find(r=>r.id===id);if(!r)return;showOutlookModal(r.text,r.date,r.time,'Reminder');}
+
+// BRAIN DUMP
+function handleDumpKey(e){if(e.key==='Enter'&&!e.shiftKey){e.preventDefault();const t=document.getElementById('brainDump').value.trim();if(!t)return;state.thoughts.push({id:'th'+Date.now(),text:t});document.getElementById('brainDump').value='';save();renderThoughts();_trackEvent('tool_use','brain_dump','Brain Dump');}}
+function deleteThought(id){state.thoughts=state.thoughts.filter(t=>t.id!==id);save();renderThoughts();}
+function promoteThought(id){const th=state.thoughts.find(t=>t.id===id);if(!th)return;if(state.projects.length>0){const sp=_sortedProjects();const c=prompt('Promote to which project?\n\n'+sp.map((p,i)=>(i+1)+'. '+p.name).join('\n')+'\n\n(0 = reminders)','1');if(c===null)return;const idx=parseInt(c)-1;if(idx>=0&&idx<sp.length){sp[idx].subtasks.push({id:'st'+Date.now(),name:th.text,due:'',priority:'med',timeEst:'',done:false});deleteThought(id);renderProjects();renderTaskList();toast('Added to '+sp[idx].name);return;}}state.reminders.push({id:'rem'+Date.now(),text:th.text,date:'',time:''});deleteThought(id);renderReminders();toast('Moved to reminders');}
+function editThought(id,v){if(!v)return;const t=state.thoughts.find(t=>t.id===id);if(t)t.text=v;save();}
+
+// ===========================================================================
+// BRAIN DUMP ORGANIZER -- Axis sorts thoughts into projects/tasks/notes
+// ===========================================================================
+var _bdoPlan = null;  // current organization plan from Axis
+
+async function bdOrganize(){
+  // Capture any text still in the textarea as a thought first
+  var ta = document.getElementById('brainDump');
+  if(ta && ta.value.trim()){
+    state.thoughts.push({id:'th'+Date.now(),text:ta.value.trim()});
+    ta.value=''; save(); renderThoughts();
+  }
+
+  if(!state.thoughts || state.thoughts.length===0){
+    toast('Nothing to organize -- add some thoughts first');
+    return;
+  }
+
+  var btn = document.getElementById('bdOrganizeBtn');
+  if(btn) btn.disabled = true;
+
+  // Open modal in loading state
+  document.getElementById('bdoBody').innerHTML='<div class="bdo-status"><div class="bdo-spinner"></div> Axis is reading your thoughts…</div>';
+  document.getElementById('bdoFooter').style.display='none';
+  document.getElementById('bdOrganizeModal').classList.add('open');
+
+  try {
+    var plan = await _bdoRequestPlan();
+    _bdoPlan = plan;
+    _bdoRenderPlan(plan);
+  } catch(e){
+    console.error('[bdo] organize error', e);
+    document.getElementById('bdoBody').innerHTML='<div class="bdo-empty">Axis couldn\'t organize right now.<br><span style="font-size:11px;">'+esc(e.message||'Unknown error')+'</span></div>';
+  } finally {
+    if(btn) btn.disabled = false;
+  }
+}
+
+async function _bdoRequestPlan(){
+  // -- Pre-process: split thoughts that contain multiple dash-prefixed lines --
+  // A single brain dump entry like "- task one\n- task two\n- task three" should
+  // arrive at Haiku as three items, not one. We split here so Haiku doesn't have
+  // to infer structure from a wall of text.
+  var rawThoughts = state.thoughts;
+  var thoughts = [];
+  rawThoughts.forEach(function(t){
+    var text = (t.text||'').trim();
+    // Check if the text has 2+ lines starting with - or * (a list pasted in)
+    var lines = text.split('\n').map(function(l){return l.trim();}).filter(Boolean);
+    var bulletLines = lines.filter(function(l){return /^[-*]\s+/.test(l);});
+    if(bulletLines.length >= 2){
+      // Split into individual items, each inherits a derived id
+      bulletLines.forEach(function(l, i){
+        var clean = l.replace(/^[-*]\s+/,'').trim();
+        if(clean) thoughts.push({id: t.id+'_s'+i, text: clean, _parentId: t.id});
+      });
+      // Catch any non-bullet lines as a separate item (often context/title)
+      lines.filter(function(l){return !/^[-*]\s+/.test(l);}).forEach(function(l,i){
+        if(l.trim()) thoughts.push({id: t.id+'_h'+i, text: l.trim(), _parentId: t.id});
+      });
+    } else {
+      thoughts.push({id: t.id, text: text});
+    }
+  });
+
+  var projects = (state.projects||[]).map(function(p){ return p.name; });
+
+  var sys = 'You are Axis, organizing a brain dump for an ADHD user of the Centerpost productivity app. '
+    + 'Sort each thought into the best destination. Output ONLY raw JSON (no markdown, no code fences).\n\n'
+    + 'EXISTING PROJECTS: '+(projects.length?JSON.stringify(projects):'(none yet)')+'\n\n'
+    + 'SPLITTING RULE (critical): If a single thought contains multiple distinct actions or facts '
+    + '(even on one line, separated by dashes or semicolons), output MULTIPLE items from it -- '
+    + 'one per action. A thought like "call dispatch -email report -update chart" should produce '
+    + '3 separate task items, not 1. Short procedural steps that belong together can stay as one note.\n\n'
+    + 'DESTINATION RULES:\n'
+    + '- "task": an actionable to-do with a clear next action verb (call, email, submit, reset, update…). '
+    + 'Prefer task over note when there is any action to take. If it belongs to an existing project, '
+    + 'set "project" to that exact name.\n'
+    + '- "note": reference info, procedures, or context with NO clear single owner or deadline. '
+    + 'Step-by-step instructions that are reference material (not assigned to anyone) are notes.\n'
+    + '- "reminder": time-sensitive, needs to resurface on a specific date.\n'
+    + '- "newproject": implies a whole new project thread should exist.\n\n'
+    + 'BIAS TOWARD TASKS: When in doubt between task and note, choose task. '
+    + 'ADHD brains benefit from actionable items more than reference text.\n\n'
+    + 'When you are NOT confident, add a clarifying question instead of guessing.\n\n'
+    + 'Return this exact JSON shape:\n'
+    + '{"items":[{"thoughtId":"<id>","text":"<concise restatement>","dest":"task|note|reminder|newproject","project":"<project name or empty>","newProjectName":"<only if newproject>","priority":"low|med|high"}],'
+    + '"questions":[{"thoughtId":"<id>","text":"<original>","question":"<short question>","options":["<opt1>","<opt2>","<opt3>"]}]}\n\n'
+    + 'Every thought must appear in EITHER items OR questions. Keep questions rare. '
+    + 'Rephrase each item\'s text as a clean, concise action or title -- remove filler words.';
+
+  var userMsg = 'Organize these thoughts:\n'+JSON.stringify(thoughts.map(function(t){return {id:t.id,text:t.text};}));
+
+  var endpoint = (typeof JARVIS_PROXY_URL!=='undefined' && JARVIS_PROXY_URL) || '';
+  var res = await fetch(endpoint, {
+    method:'POST',
+    headers:{'Content-Type':'application/json'},
+    body:JSON.stringify({
+      model:'claude-haiku-4-5-20251001',
+      max_tokens:2000,
+      system:sys,
+      messages:[{role:'user',content:userMsg}]
+    })
+  });
+
+  var raw = await res.text();
+  if(!res.ok) throw new Error('HTTP '+res.status+' -- '+raw.slice(0,120));
+
+  var data; try{ data=JSON.parse(raw); }catch(e){ throw new Error('Bad response from Axis'); }
+
+  // Extract text from Anthropic response shape
+  var txt='';
+  if(data.content && Array.isArray(data.content)){
+    txt = data.content.filter(function(b){return b.type==='text';}).map(function(b){return b.text;}).join('');
+  } else if(typeof data.reply==='string'){
+    txt = data.reply;
+  }
+  txt = txt.replace(/```json|```/g,'').trim();
+
+  var plan; try{ plan=JSON.parse(txt); }catch(e){ throw new Error('Axis returned unparseable plan'); }
+  if(!plan.items) plan.items=[];
+  if(!plan.questions) plan.questions=[];
+  return plan;
+}
+
+function _bdoRenderPlan(plan){
+  var body = document.getElementById('bdoBody');
+  var projects = (state.projects||[]).map(function(p){return p.name;});
+
+  if(plan.items.length===0 && plan.questions.length===0){
+    body.innerHTML='<div class="bdo-empty">Axis didn\'t find anything to organize.</div>';
+    return;
+  }
+
+  var html='';
+
+  // -- Clarifying questions first --
+  if(plan.questions.length){
+    html+='<div class="bdo-section"><div class="bdo-section-label"><i class="ti ti-help-circle" aria-hidden="true"></i> Axis needs your input</div>';
+    plan.questions.forEach(function(q,qi){
+      html+='<div class="bdo-question" data-qi="'+qi+'">';
+      html+='<div class="bdo-question-text"><i class="ti ti-help-circle" aria-hidden="true"></i><div><em>"'+esc(q.text)+'"</em><br>'+esc(q.question)+'</div></div>';
+      html+='<div class="bdo-question-opts">';
+      (q.options||[]).forEach(function(opt,oi){
+        html+='<button class="bdo-qopt" onclick="_bdoAnswerQuestion('+qi+','+oi+',this)">'+esc(opt)+'</button>';
+      });
+      html+='</div></div>';
+    });
+    html+='</div>';
+  }
+
+  // -- Confident items, each with Task / Note / Ignore picker --
+  if(plan.items.length){
+    html+='<div class="bdo-section"><div class="bdo-section-label">Proposed organization -- tap to change any</div>';
+    plan.items.forEach(function(it,ii){
+      // Map Axis dest to one of the three user-facing choices for pre-selection
+      var presel = (it.dest==='task'||it.dest==='newproject') ? 'task' : (it.dest==='reminder' ? 'note' : 'note');
+      it._userDest = presel;  // default -- user can override
+
+      var projLabel = it.project ? (' <span class="bdo-dest-tag project" style="font-size:10px;">'+esc(it.project)+'</span>') :
+                      (it.dest==='newproject' ? ' <span class="bdo-dest-tag newproj" style="font-size:10px;"><i class="ti ti-folder-plus" aria-hidden="true"></i> New: '+esc(it.newProjectName||'Project')+'</span>' : '');
+
+      html+='<div class="bdo-item" id="bdoi_'+ii+'">';
+      html+='<div class="bdo-item-body">';
+      html+='<div class="bdo-item-text">'+esc(it.text)+'</div>';
+      html+='<div class="bdo-iopt-row">';
+      html+='<button class="bdo-iopt'+(presel==='task'?' sel-task':'')+'" onclick="_bdoPickItemDest('+ii+',\'task\',this)"><i class="ti ti-checklist" aria-hidden="true"></i> Task</button>';
+      html+='<button class="bdo-iopt'+(presel==='note'?' sel-note':'')+'" onclick="_bdoPickItemDest('+ii+',\'note\',this)"><i class="ti ti-notebook" aria-hidden="true"></i> Note</button>';
+      html+='<button class="bdo-iopt" onclick="_bdoPickItemDest('+ii+',\'ignore\',this)">Ignore</button>';
+      if(projLabel) html+='<span style="margin-left:4px;display:inline-flex;align-items:center;">'+projLabel+'</span>';
+      html+='</div>';
+      html+='</div>';
+      html+='</div>';
+    });
+    html+='</div>';
+  }
+
+  body.innerHTML=html;
+  document.getElementById('bdoFooter').style.display='flex';
+  _bdoUpdateApplyState();
+}
+
+// User answers a clarifying question → convert it into a plan item
+function _bdoAnswerQuestion(qi, oi, btnEl){
+  var q = _bdoPlan.questions[qi];
+  if(!q) return;
+  var answer = q.options[oi];
+
+  // Mark selected visually
+  var optsWrap = btnEl.parentElement;
+  optsWrap.querySelectorAll('.bdo-qopt').forEach(function(b){b.classList.remove('selected');});
+  btnEl.classList.add('selected');
+
+  // Interpret the answer into a destination
+  var projects = (state.projects||[]).map(function(p){return p.name;});
+  var newItem = {thoughtId:q.thoughtId, text:q.text, dest:'task', project:'', priority:'med'};
+
+  var ans = answer.toLowerCase();
+  if(ans.indexOf('note')>=0){ newItem.dest='note'; }
+  else if(ans.indexOf('reminder')>=0){ newItem.dest='reminder'; }
+  else if(ans.indexOf('new project')>=0||ans.indexOf('new:')>=0){ newItem.dest='newproject'; newItem.newProjectName=q.text.slice(0,40); }
+  else {
+    // Check if the answer matches an existing project name
+    var match = projects.find(function(p){ return ans.indexOf(p.toLowerCase())>=0; });
+    if(match){ newItem.dest='task'; newItem.project=match; }
+    else { newItem.dest='task'; }
+  }
+
+  // Store the resolved answer on the question, mark it answered
+  q._resolved = newItem;
+  _bdoUpdateApplyState();
+}
+
+function _bdoUpdateApplyState(){
+  // Apply button enabled only when every question has been answered
+  var unanswered = (_bdoPlan.questions||[]).filter(function(q){ return !q._resolved; }).length;
+  var btn = document.getElementById('bdoApplyBtn');
+  if(btn){
+    btn.disabled = unanswered>0;
+    btn.textContent = unanswered>0 ? 'Answer '+unanswered+' question'+(unanswered===1?'':'s')+' first' : 'Apply Organization';
+  }
+}
+
+function _bdoPickItemDest(ii, dest, btnEl){
+  var it = _bdoPlan && _bdoPlan.items[ii];
+  if(!it) return;
+  it._userDest = dest;
+  var card = document.getElementById('bdoi_'+ii);
+  if(card){
+    card.querySelectorAll('.bdo-iopt').forEach(function(b){
+      b.classList.remove('sel-task','sel-note','sel-ignore');
+    });
+    if(dest==='task') btnEl.classList.add('sel-task');
+    else if(dest==='note') btnEl.classList.add('sel-note');
+    else if(dest==='ignore') btnEl.classList.add('sel-ignore');
+    if(dest==='ignore') card.classList.add('bdo-ignored');
+    else card.classList.remove('bdo-ignored');
+  }
+}
+
+function bdOrganizeApply(){
+  if(!_bdoPlan) return;
+  // Gather items -- use _userDest selection; skip anything set to 'ignore'
+  var toApply = [];
+  (_bdoPlan.items||[]).forEach(function(it){
+    var dest = it._userDest || it.dest;
+    if(dest !== 'ignore') toApply.push(Object.assign({}, it, {dest: dest}));
+  });
+  // Add resolved questions
+  (_bdoPlan.questions||[]).forEach(function(q){ if(q._resolved) toApply.push(q._resolved); });
+
+  if(toApply.length===0){ toast('Nothing selected to apply'); return; }
+
+  var now = new Date();
+  var counts = {task:0,note:0,reminder:0,project:0};
+  var processedThoughtIds = [];
+
+  toApply.forEach(function(it){
+    processedThoughtIds.push(it.thoughtId);
+
+    if(it.dest==='newproject'){
+      var pname = it.newProjectName || it.text.slice(0,40);
+      // Reuse existing project of same name if it exists
+      var existing = (state.projects||[]).find(function(p){return p.name.toLowerCase()===pname.toLowerCase();});
+      if(existing){
+        existing.subtasks=existing.subtasks||[];
+        existing.subtasks.push({id:'st'+Date.now()+Math.random().toString(36).slice(2,6),name:it.text,due:'',priority:it.priority||'med',timeEst:'',done:false});
+      } else {
+        state.projects.push({id:'p'+Date.now()+Math.random().toString(36).slice(2,6),name:pname,due:'',expanded:true,subtasks:[{id:'st'+Date.now()+Math.random().toString(36).slice(2,6),name:it.text,due:'',priority:it.priority||'med',timeEst:'',done:false}]});
+        counts.project++;
+      }
+      counts.task++;
+    }
+    else if(it.dest==='task'){
+      if(it.project){
+        var proj = (state.projects||[]).find(function(p){return p.name.toLowerCase()===it.project.toLowerCase();});
+        if(proj){
+          proj.subtasks=proj.subtasks||[];
+          proj.subtasks.push({id:'st'+Date.now()+Math.random().toString(36).slice(2,6),name:it.text,due:'',priority:it.priority||'med',timeEst:'',done:false});
+        } else {
+          state.tasks=state.tasks||[];
+          state.tasks.push({id:'t'+Date.now()+Math.random().toString(36).slice(2,6),name:it.text,due:'',priority:it.priority||'med',timeEst:'',done:false});
+        }
+      } else {
+        state.tasks=state.tasks||[];
+        state.tasks.push({id:'t'+Date.now()+Math.random().toString(36).slice(2,6),name:it.text,due:'',priority:it.priority||'med',timeEst:'',done:false});
+      }
+      counts.task++;
+    }
+    else if(it.dest==='note'){
+      var pid='';
+      if(it.project){ var np=(state.projects||[]).find(function(p){return p.name.toLowerCase()===it.project.toLowerCase();}); if(np)pid=np.id; }
+      state.notes=state.notes||[];
+      state.notes.push({id:'n'+Date.now()+Math.random().toString(36).slice(2,6),label:it.text.slice(0,40),body:it.text,projectId:pid,projectIds:pid?[pid]:[],created:now.toISOString(),date:now.toLocaleDateString('en-US',{month:'short',day:'numeric',year:'numeric'}),time:now.toLocaleTimeString('en-US',{hour:'numeric',minute:'2-digit'})});
+      counts.note++;
+    }
+    else if(it.dest==='reminder'){
+      state.reminders=state.reminders||[];
+      state.reminders.push({id:'rem'+Date.now()+Math.random().toString(36).slice(2,6),text:it.text,date:'',time:'',projectId:'',projectIds:[]});
+      counts.reminder++;
+    }
+  });
+
+  // Remove processed thoughts -- split sub-IDs (thoughtId_s0, _s1…) map back to parent
+  var parentIdsToRemove = {};
+  processedThoughtIds.forEach(function(id){
+    // Sub-thought id format: originalId_s0, originalId_h0 -- strip the suffix
+    var parentId = id.replace(/_[sh]\d+$/, '');
+    parentIdsToRemove[parentId] = true;
+    parentIdsToRemove[id] = true; // also handle non-split ids directly
+  });
+  state.thoughts = state.thoughts.filter(function(t){ return !parentIdsToRemove[t.id]; });
+
+  save();
+  renderThoughts(); renderProjects(); renderTaskList(); renderNotes(); renderReminders();
+
+  var parts=[];
+  if(counts.task)parts.push(counts.task+' task'+(counts.task===1?'':'s'));
+  if(counts.note)parts.push(counts.note+' note'+(counts.note===1?'':'s'));
+  if(counts.reminder)parts.push(counts.reminder+' reminder'+(counts.reminder===1?'':'s'));
+  if(counts.project)parts.push(counts.project+' new project'+(counts.project===1?'':'s'));
+  toast('Organized into '+(parts.join(', ')||'nothing'));
+
+  bdOrganizeClose();
+}
+
+function bdOrganizeClose(){
+  document.getElementById('bdOrganizeModal').classList.remove('open');
+  _bdoPlan = null;
+}
+
+function renderThoughts(){document.getElementById('thoughtChips').innerHTML=state.thoughts.map(t=>'<div class="thought-chip"><span class="editable" id="tt_'+t.id+'">'+esc(t.text)+'</span><span class="chip-promote" onclick="promoteThought(\''+t.id+'\')">\u2197</span><span class="chip-x" onclick="deleteThought(\''+t.id+'\')">\u00D7</span></div>').join('');state.thoughts.forEach(t=>{const e=document.getElementById('tt_'+t.id);if(e)makeEditable(e,v=>editThought(t.id,v));});refreshEditables();}
+
+// ENERGY & MOOD
+function setEnergy(el,v){state.energy=v;document.querySelectorAll('#energyPills .em-pill').forEach(c=>c.classList.remove('selected'));el.classList.add('selected');logMoodEntry();save();showStateAdvice();updateWellnessVisibility();var today=_dayKey();if(state.points&&state.points.lastEnergyDate!==today){state.points.lastEnergyDate=today;save();addPoints('mood_energy',el);}}
+function setMood(el,v){state.mood=v;document.querySelectorAll('#moodPills .em-pill').forEach(c=>c.classList.remove('selected'));el.classList.add('selected');logMoodEntry();save();showStateAdvice();updateWellnessVisibility();var today=_dayKey();if(state.points&&state.points.lastMoodDate!==today){state.points.lastMoodDate=today;save();addPoints('mood_energy',el);}}
+var adviceMap={'high-focused':{t:'\u{1F525} Peak state \u2014 tackle your hardest task now.',cls:'state-advice-positive'},'high-scattered':{t:'\u26A1 Energy but no focus. Start a Pomodoro.',cls:'state-advice'},'high-anxious':{t:'\u{1F4A8} Burn off anxious energy with something physical.',cls:'state-advice'},'high-calm':{t:'\u2728 Great for creative work or complex problems.',cls:'state-advice-positive'},'good-focused':{t:'\u{1F44D} Solid state. Pick a medium-priority task.',c:'var(--green)'},'good-scattered':{t:'\u{1F4CB} List 3 things, do just the first one.',cls:'state-advice'},'good-anxious':{t:'\u{1F4DD} Channel worry into a task with a clear endpoint.',c:'var(--blue)'},'good-calm':{t:'\u{1F33F} Good baseline. Handle routine tasks or admin.',c:'var(--green)'},'low-focused':{t:'\u{1F3AF} Low but present? Detail work \u2014 editing, reviewing.',c:'var(--blue)'},'low-scattered':{t:'\u{1FAE7} Not deep work time. 5-min break, then one tiny task.',cls:'state-advice-alert'},'low-anxious':{t:'\u{1F9CA} Pause. Check the Grounding Toolkit \u2192',c:'var(--purple)'},'low-calm':{t:'\u2601\uFE0F Rest state. Gentle tasks or a proper break.',c:'var(--blue)'},'crashed-focused':{t:'\u26A0\uFE0F Running on fumes. Only truly urgent items.',cls:'state-advice-alert'},'crashed-scattered':{t:'\u{1F6D1} Brain needs a reset. Check the Grounding Toolkit \u2192',cls:'state-advice-alert'},'crashed-anxious':{t:'\u{1FAC2} Hardest state. Grounding Toolkit first, then reassess.',c:'var(--red)'},'crashed-calm':{t:'\u{1F319} Depleted but peaceful. Gentle admin or rest.',cls:'state-advice'}};
+function showStateAdvice(){const el=document.getElementById('stateAdvice');if(!state.energy||!state.mood){el.innerHTML='';return;}const k=state.energy+'-'+state.mood;const a=adviceMap[k];if(a)el.innerHTML='<div class="decision-prompt state-advice '+(a.cls||'')+'">'+a.t+'</div>';}
+
+// WELLNESS TOOLKIT - conditional visibility
+var triggerStates=['low','crashed','anxious','scattered'];
+function shouldShowWellness(){return triggerStates.includes(state.energy)||triggerStates.includes(state.mood);}
+
+function updateWellnessVisibility(){
+  const wp=document.querySelector('[data-panel="wellness"]');
+  if(shouldShowWellness()){
+    wp.classList.remove('hidden-panel');
+    const triggers=[];
+    if(triggerStates.includes(state.energy))triggers.push(state.energy);
+    if(triggerStates.includes(state.mood))triggers.push(state.mood);
+    document.getElementById('wellnessTrigger').textContent=triggers.join(' + ');
+    populateWellnessDropdown();
+  }else{
+    wp.classList.add('hidden-panel');
+    stopGuided();
+  }
+}
+
+var wellnessTechniques=[
+{id:'grounding54321',name:'5-4-3-2-1 Grounding',icon:'\u{1F590}\uFE0F',source:'Ackerman, 2017 \u2014 sensory-based anxiety intervention',bestFor:['anxious','scattered'],steps:[{n:'5',t:'Name <strong>5 things you can see</strong>.'},{n:'4',t:'Touch <strong>4 things you can feel</strong>. Notice textures.'},{n:'3',t:'Identify <strong>3 things you can hear</strong>.'},{n:'2',t:'Notice <strong>2 things you can smell</strong>.'},{n:'1',t:'<strong>1 thing you can taste</strong>.'}],guided:false},
+{id:'box_breathing',name:'Box Breathing (4-4-4-4)',icon:'\u{1FAC1}',source:'Balban et al., 2023, Cell Reports Medicine \u2014 Navy SEAL protocol',bestFor:['anxious','crashed'],steps:[{n:'1',t:'<strong>Inhale</strong> through nose, 4 sec.'},{n:'2',t:'<strong>Hold</strong> 4 sec.'},{n:'3',t:'<strong>Exhale</strong> through mouth, 4 sec.'},{n:'4',t:'<strong>Hold empty</strong> 4 sec.'},{n:'\u2192',t:'Repeat 4\u20136 cycles. Activates parasympathetic nervous system.'}],guided:true,gd:{phases:['Inhale','Hold','Exhale','Hold'],dur:[4,4,4,4],cycles:5}},
+{id:'physiological_sigh',name:'Physiological Sigh',icon:'\u{1F4A8}',source:'Balban et al., 2023, Cell Reports Medicine \u2014 Stanford/Huberman Lab',bestFor:['anxious','crashed'],steps:[{n:'1',t:'<strong>Deep inhale</strong> through nose.'},{n:'2',t:'<strong>Second short sniff</strong> in through nose (reinflates alveoli).'},{n:'3',t:'<strong>Long slow exhale</strong> through mouth \u2014 2x inhale length.'},{n:'\u2192',t:'Fastest known voluntary method to reduce autonomic arousal. Even 1 cycle works.'}],guided:false},
+{id:'pmr',name:'Progressive Muscle Relaxation',icon:'\u{1F4AA}',source:'Jacobson, 1938; Toussaint et al., 2021 systematic review',bestFor:['anxious','low'],steps:[{n:'1',t:'<strong>Feet:</strong> Curl toes tight 5 sec, release.'},{n:'2',t:'<strong>Thighs:</strong> Squeeze 5 sec, release.'},{n:'3',t:'<strong>Fists:</strong> Clench 5 sec, release.'},{n:'4',t:'<strong>Shoulders:</strong> Shrug to ears 5 sec, drop.'},{n:'5',t:'<strong>Face:</strong> Scrunch everything 5 sec, release.'}],guided:false},
+{id:'breathing_478',name:'4-7-8 Breathing',icon:'\u{1F30A}',source:'Weil, 2015; pranayama \u2014 extended exhale activates vagus nerve',bestFor:['anxious','low','crashed'],steps:[{n:'1',t:'<strong>Inhale</strong> through nose, <strong>4</strong> sec.'},{n:'2',t:'<strong>Hold</strong> <strong>7</strong> sec.'},{n:'3',t:'<strong>Exhale</strong> through mouth, <strong>8</strong> sec.'},{n:'\u2192',t:'Extended exhale shifts to parasympathetic dominance. Do 4 cycles.'}],guided:true,gd:{phases:['Inhale','Hold','Exhale'],dur:[4,7,8],cycles:4}},
+{id:'body_scan',name:'2-Minute Body Scan',icon:'\u{1F9D8}',source:'Kabat-Zinn MBSR; Demarzo et al., 2017 meta-analysis',bestFor:['scattered','low','crashed'],steps:[{n:'1',t:'Close eyes. 3 slow breaths.'},{n:'2',t:'<strong>Scan feet to head.</strong> Notice without judgment.'},{n:'3',t:'Breathe <strong>into</strong> tension spots.'},{n:'4',t:'Open eyes slowly.'}],guided:false},
+{id:'dive_reflex',name:'Dive Reflex Reset',icon:'\u{1F9CA}',source:'Khurana & Wu, 2006 \u2014 mammalian dive reflex / vagal tone',bestFor:['anxious','crashed'],steps:[{n:'1',t:'Fill bowl with <strong>cold water</strong>.'},{n:'2',t:'Hold breath, <strong>submerge face</strong> 15\u201330 sec (or cold cloth to forehead).'},{n:'3',t:'Dive reflex triggers immediate parasympathetic response \u2014 HR drops, nervous system downshifts.'}],guided:false}
+];
+
+function populateWellnessDropdown(){
+  const sel=document.getElementById('wellnessSelect');
+  let sorted=[...wellnessTechniques];
+  const triggers=[state.energy,state.mood].filter(x=>triggerStates.includes(x));
+  sorted.sort((a,b)=>{const ar=triggers.some(t=>a.bestFor.includes(t))?0:1;const br=triggers.some(t=>b.bestFor.includes(t))?0:1;return ar-br;});
+  sel.innerHTML='<option value="">Choose a technique...</option>'+sorted.map(t=>{const rel=triggers.some(tr=>t.bestFor.includes(tr));return '<option value="'+t.id+'">'+(rel?'\u2605 ':'')+t.icon+' '+t.name+'</option>';}).join('');
+  document.getElementById('techniqueDetail').innerHTML='';
+}
+
+function showSelectedTechnique(){
+  const id=document.getElementById('wellnessSelect').value;
+  const el=document.getElementById('techniqueDetail');
+  if(!id){el.innerHTML='';return;}
+  const t=wellnessTechniques.find(t=>t.id===id);if(!t){el.innerHTML='';return;}
+  el.innerHTML='<div class="technique-detail"><div class="td-name">'+t.icon+' '+t.name+'</div><div class="td-source">'+t.source+'</div>'+t.steps.map(s=>'<div class="tc-step"><span class="tc-step-num">'+s.n+'</span><span>'+s.t+'</span></div>').join('')+(t.guided?'<button class="tc-timer-btn" onclick="startGuided(\''+t.id+'\')">\u25B6 Start Guided Timer</button>':'')+'</div>';
+}
+
+var guidedInterval=null;
+function startGuided(id){const t=wellnessTechniques.find(t=>t.id===id);if(!t||!t.guided)return;const disp=document.getElementById('guidedDisplay');disp.classList.add('active');disp.scrollIntoView({behavior:'smooth',block:'nearest'});const{phases,dur,cycles}=t.gd;let cycle=0,pi=0,count=dur[0];function tick(){document.getElementById('guidedPhase').textContent=phases[pi];document.getElementById('guidedCount').textContent=count;document.getElementById('guidedInstruction').textContent='Cycle '+(cycle+1)+' of '+cycles;count--;if(count<0){pi++;if(pi>=phases.length){pi=0;cycle++;if(cycle>=cycles){stopGuided();document.getElementById('guidedPhase').textContent='\u2713 Complete';document.getElementById('guidedCount').textContent='';document.getElementById('guidedInstruction').textContent='Well done. Take a moment.';return;}}count=dur[pi];}}tick();guidedInterval=setInterval(tick,1000);}
+function stopGuided(){clearInterval(guidedInterval);guidedInterval=null;document.getElementById('guidedDisplay').classList.remove('active');}
+
+// NOTES
+// ── Rich-text (WYSIWYG) note editor support ───────────────────────────────
+// Notes are stored as sanitized HTML (n.rich===true). Legacy notes are
+// markdown/plain text and are auto-converted on load. All HTML is sanitized
+// on save AND on display so a note body can never inject script/markup.
+
+// Allowlist-based HTML sanitizer. Post-order DFS: clean descendants first,
+// then unwrap disallowed elements (keeping their text), strip all attributes
+// except a safe http(s) href on <a>.
+function _sanitizeNoteHtml(html){
+  if(!html) return '';
+  var ALLOWED={B:1,STRONG:1,I:1,EM:1,U:1,H3:1,H4:1,UL:1,OL:1,LI:1,A:1,BR:1,P:1,DIV:1,SPAN:1};
+  var root=document.createElement('div');
+  root.innerHTML=html;
+  (function clean(node){
+    var kids=[].slice.call(node.childNodes);
+    kids.forEach(function(child){
+      if(child.nodeType===1){
+        clean(child);
+        var tag=child.tagName;
+        if(!ALLOWED[tag]){
+          while(child.firstChild) node.insertBefore(child.firstChild, child);
+          node.removeChild(child);
+          return;
+        }
+        [].slice.call(child.attributes).forEach(function(attr){
+          var an=attr.name.toLowerCase();
+          if(tag==='A' && an==='href' && /^https?:\/\//i.test(attr.value.trim())) return;
+          child.removeAttribute(attr.name);
+        });
+        if(tag==='A' && child.getAttribute('href')){
+          child.setAttribute('target','_blank');
+          child.setAttribute('rel','noopener noreferrer');
+        }
+      } else if(child.nodeType===8){
+        node.removeChild(child);
+      }
+    });
+  })(root);
+  return root.innerHTML;
+}
+
+// Strip tags to plain text (used for search + empty checks).
+function _stripHtml(h){
+  if(!h) return '';
+  var d=document.createElement('div'); d.innerHTML=h; return (d.textContent||'').trim();
+}
+
+// Render a note body for display, handling both formats.
+function _renderNoteBody(n){
+  if(!n) return '';
+  if(n.rich===true) return _sanitizeNoteHtml(n.body||'');
+  return _renderNoteMarkdown(n.body||'');
+}
+
+// One-time migration: convert legacy markdown notes to sanitized HTML.
+var _notesMigrated=false;
+function _migrateNotesRich(){
+  if(_notesMigrated) return false;
+  _notesMigrated=true;
+  if(!state.notes||!state.notes.length) return false;
+  var changed=false;
+  for(var i=0;i<state.notes.length;i++){
+    var n=state.notes[i];
+    if(n && n.rich!==true){
+      try{
+        n.body=_sanitizeNoteHtml(_renderNoteMarkdown(n.body||''));
+        n.rich=true;
+        changed=true;
+      }catch(e){ /* leave this note untouched on any error */ }
+    }
+  }
+  return changed;
+}
+
+// Toolbar action on a contenteditable note editor. Buttons use
+// onmousedown="event.preventDefault()" so the editor keeps its selection.
+var _noteSavedRange=null;
+function _noteFmt(targetId,kind){
+  var ed=document.getElementById(targetId);
+  if(!ed) return;
+  ed.focus();
+  if(kind==='bold'){ document.execCommand('bold'); }
+  else if(kind==='italic'){ document.execCommand('italic'); }
+  else if(kind==='header'){
+    var blk=(document.queryCommandValue('formatBlock')||'').toLowerCase();
+    document.execCommand('formatBlock', false, (blk==='h3'||blk==='<h3>')?'div':'h3');
+  }
+  else if(kind==='bullet'){ document.execCommand('insertUnorderedList'); }
+  else if(kind==='link'){
+    var sel=window.getSelection();
+    if(sel && sel.rangeCount) _noteSavedRange=sel.getRangeAt(0).cloneRange();
+    var url=prompt('Link URL (https://...)','https://');
+    ed.focus();
+    if(_noteSavedRange){ sel=window.getSelection(); sel.removeAllRanges(); sel.addRange(_noteSavedRange); }
+    if(url && /^https?:\/\//i.test(url)) document.execCommand('createLink', false, url);
+    _noteSavedRange=null;
+  }
+  var ev=document.createEvent('Event'); ev.initEvent('input',true,true); ed.dispatchEvent(ev);
+}
+
+// Build a formatting toolbar targeting a given editor id.
+function _noteToolbarHtml(targetId,extraId){
+  function b(kind,title,inner){
+    return '<button type="button" class="note-fmt-btn" title="'+title+'" onmousedown="event.preventDefault()" onclick="_noteFmt(\''+targetId+'\',\''+kind+'\')">'+inner+'</button>';
+  }
+  return '<div class="note-fmt-bar"'+(extraId?' id="'+extraId+'"':'')+' role="toolbar" aria-label="Formatting">'+
+    b('bold','Bold','<b>B</b>')+b('italic','Italic','<i>I</i>')+b('header','Header','H')+
+    b('bullet','Bullet list','&bull;')+b('link','Link','&#128279;')+'</div>';
+}
+
+function addNote(){const label=document.getElementById('newNoteLabel').value.trim();const bodyEl=document.getElementById('newNoteBody');const body=_sanitizeNoteHtml(bodyEl?bodyEl.innerHTML:'');const bodyText=_stripHtml(body);if(!label&&!bodyText)return;const projVal=document.getElementById('newNoteProject').value;const projIds=projVal?projVal.split(',').filter(Boolean):[];const now=new Date();state.notes.push({id:'n'+Date.now(),label:label||'Untitled',body:body,rich:true,projectId:projIds[0]||'',projectIds:projIds,created:now.toISOString(),date:now.toLocaleDateString('en-US',{month:'short',day:'numeric',year:'numeric'}),time:now.toLocaleTimeString('en-US',{hour:'numeric',minute:'2-digit'})});document.getElementById('newNoteLabel').value='';if(bodyEl)bodyEl.innerHTML='';document.getElementById('newNoteProject').value='';renderProjMultiPickerChips(document.getElementById('newNoteProjectPicker'));save();renderNotes();renderProjects();if(projIds.length>1)toast('Note added to '+projIds.length+' projects');_trackEvent('tool_use','add_note','Add Note');}
+function deleteNote(id){state.notes=state.notes.filter(n=>n.id!==id);save();renderNotes();}
+function editNoteLabel(id,v){if(!v)return;const n=state.notes.find(n=>n.id===id);if(n){n.label=v;save();}}
+function editNoteBody(id,v){const n=state.notes.find(n=>n.id===id);if(n){n.body=v;save();}}
+
+// -- Lightweight markdown renderer for note bodies --------------------------
+// Supports: **bold**, *italic*, # / ## headers, - bullets, [text](url) links.
+// Always escapes HTML first, so user text can never inject markup.
+function _renderNoteMarkdown(text){
+  if(!text) return '';
+  // 1. Escape all HTML entities first (security + correctness)
+  var s = text.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+
+  var lines = s.split('\n');
+  var html = '';
+  var inList = false;
+
+  for(var i=0;i<lines.length;i++){
+    var line = lines[i];
+    var trimmed = line.trim();
+
+    // Bullets: "- " or "* " at line start
+    var bulletMatch = trimmed.match(/^[-*]\s+(.*)$/);
+    if(bulletMatch){
+      if(!inList){ html+='<ul>'; inList=true; }
+      html += '<li>'+_mdInline(bulletMatch[1])+'</li>';
+      continue;
+    } else if(inList){
+      html += '</ul>'; inList=false;
+    }
+
+    // Headers: ## or #
+    if(/^##\s+/.test(trimmed)){
+      html += '<h4>'+_mdInline(trimmed.replace(/^##\s+/,''))+'</h4>';
+    } else if(/^#\s+/.test(trimmed)){
+      html += '<h3>'+_mdInline(trimmed.replace(/^#\s+/,''))+'</h3>';
+    } else if(trimmed===''){
+      // blank line -- paragraph break (skip; spacing handled by p margins)
+    } else {
+      html += '<p>'+_mdInline(line)+'</p>';
+    }
+  }
+  if(inList) html += '</ul>';
+  return html;
+}
+
+// Inline markdown: bold, italic, links. Operates on already-escaped text.
+function _mdInline(t){
+  // Links [text](url) -- only http/https allowed
+  t = t.replace(/\[([^\]]+)\]\((https?:\/\/[^\s)]+)\)/g, function(m,txt,url){
+    return '<a href="'+url+'" target="_blank" rel="noopener noreferrer">'+txt+'</a>';
+  });
+  // Bold **text**
+  t = t.replace(/\*\*([^*]+)\*\*/g, '<strong>$1</strong>');
+  // Italic *text* (after bold so ** is consumed first)
+  t = t.replace(/(^|[^*])\*([^*]+)\*([^*]|$)/g, '$1<em>$2</em>$3');
+  return t;
+}
+
+// Toggle a single note between rendered view and rich edit mode
+function toggleNoteEdit(id){
+  var rendered = document.getElementById('nbr_'+id);
+  var editor = document.getElementById('nb_'+id);
+  var bar = document.getElementById('nbbarwrap_'+id);
+  var toggle = document.getElementById('nbtoggle_'+id);
+  if(!editor) return;
+  var editing = editor.style.display !== 'none';
+  if(editing){
+    var clean = _sanitizeNoteHtml(editor.innerHTML);
+    var n = state.notes.find(function(x){return x.id===id;});
+    if(n){ n.body = clean; n.rich = true; save(); }
+    if(rendered){ rendered.innerHTML = _renderNoteBody(n||{body:clean,rich:true}); rendered.style.display=''; }
+    editor.style.display='none';
+    if(bar) bar.style.display='none';
+    if(toggle) toggle.innerHTML='<i class="ti ti-pencil" aria-hidden="true"></i>Edit';
+  } else {
+    if(rendered) rendered.style.display='none';
+    editor.style.display='';
+    editor.focus();
+    if(bar) bar.style.display='';
+    if(toggle) toggle.innerHTML='<i class="ti ti-check" aria-hidden="true"></i>Done';
+  }
+}
+function editNoteProject(id,projId){const n=state.notes.find(n=>n.id===id);if(n){n.projectId=projId;n.projectIds=projId?[projId]:[];save();renderNotes();renderProjects();}}
+function editNoteProjects(id,projIdsStr){const n=state.notes.find(n=>n.id===id);if(n){var ids=projIdsStr?projIdsStr.split(',').filter(Boolean):[];n.projectIds=ids;n.projectId=ids[0]||'';save();renderProjects();}}
+function autoResizeTextarea(ta){ta.style.height='auto';ta.style.height=ta.scrollHeight+'px';}
+function updateNoteSelectors(){
+  // Filter dropdown for notes (still single-select) -- preserve current selection
+  const noteFilterEl=document.getElementById('noteFilterProj');
+  const prevNoteFilter=noteFilterEl?noteFilterEl.value:'all';
+  const fOpts='<option value="all">All projects</option><option value="none">Untagged</option>'+_sortedProjects().map(p=>'<option value="'+p.id+'">'+esc(p.name)+'</option>').join('');
+  if(noteFilterEl){
+    noteFilterEl.innerHTML=fOpts;
+    if(prevNoteFilter&&[].slice.call(noteFilterEl.options).some(function(o){return o.value===prevNoteFilter;}))noteFilterEl.value=prevNoteFilter;
+  }
+  // Filter dropdown for tasks (still single-select)
+  var taskFilterEl=document.getElementById('tlFilterProj');
+  if(taskFilterEl){
+    var prevVal=taskFilterEl.value;
+    taskFilterEl.innerHTML='<option value="all">Projects</option>'+_sortedProjects().map(function(p){return '<option value="'+p.id+'">'+esc(p.name)+'</option>';}).join('');
+    if(prevVal&&[].slice.call(taskFilterEl.options).some(function(o){return o.value===prevVal;}))taskFilterEl.value=prevVal;
+  }
+  // Render any open multi-pickers
+  ['newNoteProjectPicker','tlNewProjectPicker','newRemProjectPicker'].forEach(function(pid){
+    var picker=document.getElementById(pid);
+    if(picker)renderProjMultiPickerChips(picker);
+  });
+}
+
+// =======================================
+// MULTI-PROJECT PICKER
+// =======================================
+function _getProjMultiSelected(picker){
+  var hidden=document.getElementById(picker.dataset.target);
+  if(!hidden||!hidden.value)return [];
+  return hidden.value.split(',').filter(Boolean);
+}
+function _setProjMultiSelected(picker,ids){
+  var hidden=document.getElementById(picker.dataset.target);
+  if(hidden)hidden.value=ids.join(',');
+  renderProjMultiPickerChips(picker);
+}
+
+function renderProjMultiPickerChips(picker){
+  var selected=_getProjMultiSelected(picker);
+  // Preserve any open dropdown
+  var dropdown=picker.querySelector('.proj-multi-dropdown');
+  picker.innerHTML='';
+  if(selected.length===0){
+    var ph=document.createElement('span');
+    ph.className='proj-multi-placeholder';
+    ph.textContent=picker.dataset.placeholder||(picker.dataset.allowNew?'+ Projects':'+ Tag projects (optional)');
+    picker.appendChild(ph);
+  }else{
+    selected.forEach(function(pid){
+      var p=state.projects.find(function(pr){return pr.id===pid;});
+      if(!p)return;
+      var chip=document.createElement('span');
+      chip.className='proj-multi-chip';
+      chip.innerHTML=esc(p.name)+' <span class="proj-multi-chip-x" onclick="event.stopPropagation();removeProjMultiChip(this,\''+pid+'\')">\u2715</span>';
+      picker.appendChild(chip);
+    });
+  }
+  if(dropdown)picker.appendChild(dropdown);
+}
+
+function removeProjMultiChip(xEl,pid){
+  var picker=xEl.closest('.proj-multi-picker');
+  if(!picker)return;
+  var ids=_getProjMultiSelected(picker).filter(function(x){return x!==pid;});
+  _setProjMultiSelected(picker,ids);
+}
+
+function openProjMultiPicker(ev,picker){
+  if(ev.target.classList.contains('proj-multi-chip-x'))return;
+  if(ev.target.closest('.proj-multi-dropdown'))return;
+  
+  // Close any other open dropdowns (now portaled to body -- find globally)
+  document.querySelectorAll('.proj-multi-dropdown').forEach(function(d){
+    if(d._owner!==picker)d.remove();
+  });
+  
+  // Toggle: if a dropdown for THIS picker is already open, close it
+  var existing=document.querySelector('.proj-multi-dropdown');
+  if(existing&&existing._owner===picker){existing.remove();return;}
+  
+  var selected=_getProjMultiSelected(picker);
+  var dropdown=document.createElement('div');
+  dropdown.className='proj-multi-dropdown';
+  dropdown._owner=picker; // tag for owner-aware close logic
+  
+  if(state.projects.length===0){
+    var empty=document.createElement('div');
+    empty.className='proj-multi-option';
+    empty.style.color='var(--text-faint)';
+    empty.style.fontStyle='italic';
+    empty.textContent='No projects yet';
+    dropdown.appendChild(empty);
+  }else{
+    state.projects.forEach(function(p){
+      var opt=document.createElement('div');
+      opt.className='proj-multi-option'+(selected.indexOf(p.id)>=0?' selected':'');
+      opt.innerHTML='<span class="check-mark">'+(selected.indexOf(p.id)>=0?'✓':'')+'</span>'+esc(p.name);
+      opt.onclick=function(e){
+        e.stopPropagation();
+        var sel=_getProjMultiSelected(picker);
+        var idx=sel.indexOf(p.id);
+        if(idx>=0)sel.splice(idx,1);
+        else sel.push(p.id);
+        _setProjMultiSelected(picker,sel);
+        opt.classList.toggle('selected');
+        opt.querySelector('.check-mark').textContent=opt.classList.contains('selected')?'✓':'';
+      };
+      dropdown.appendChild(opt);
+    });
+  }
+  
+  // "New project..." action if allowed
+  if(picker.dataset.allowNew){
+    var newOpt=document.createElement('div');
+    newOpt.className='proj-multi-option action-new';
+    newOpt.innerHTML='<span class="check-mark">+</span>New project...';
+    newOpt.onclick=function(e){
+      e.stopPropagation();
+      var pname=prompt('New project name:');
+      if(!pname||!pname.trim())return;
+      var newProj={id:'p'+Date.now(),name:pname.trim(),due:'',expanded:true,subtasks:[]};
+      state.projects.push(newProj);
+      save();renderProjects();
+      var sel=_getProjMultiSelected(picker);
+      sel.push(newProj.id);
+      _setProjMultiSelected(picker,sel);
+      dropdown.remove();
+      toast('Project "'+pname.trim()+'" created');
+    };
+    dropdown.appendChild(newOpt);
+  }
+  
+  // Portal to body so panel/grid overflow can't clip us
+  document.body.appendChild(dropdown);
+  
+  // Position dropdown anchored to picker, flipped above if not enough room below
+  function positionDropdown(){
+    var rect=picker.getBoundingClientRect();
+    var ddH=dropdown.offsetHeight;
+    var ddW=Math.max(rect.width,180);
+    var spaceBelow=window.innerHeight-rect.bottom;
+    var spaceAbove=rect.top;
+    dropdown.style.width=ddW+'px';
+    // Prefer below; flip above only if too little room below AND more room above
+    var openUp=spaceBelow<ddH+10&&spaceAbove>spaceBelow;
+    if(openUp){
+      dropdown.style.top=Math.max(8,rect.top-ddH-4)+'px';
+    }else{
+      dropdown.style.top=(rect.bottom+4)+'px';
+    }
+    // Horizontal: align left edge with picker; clamp to viewport
+    var left=rect.left;
+    if(left+ddW>window.innerWidth-8)left=window.innerWidth-ddW-8;
+    if(left<8)left=8;
+    dropdown.style.left=left+'px';
+  }
+  positionDropdown();
+  // After a tick (for accurate offsetHeight), reposition
+  requestAnimationFrame(positionDropdown);
+  
+  // Reposition on scroll/resize while open
+  var repositionHandler=function(){positionDropdown();};
+  window.addEventListener('scroll',repositionHandler,true);
+  window.addEventListener('resize',repositionHandler);
+  
+  // Click-outside to close
+  setTimeout(function(){
+    var handler=function(e){
+      if(picker.contains(e.target))return;
+      if(dropdown.contains(e.target))return;
+      dropdown.remove();
+      document.removeEventListener('click',handler);
+      window.removeEventListener('scroll',repositionHandler,true);
+      window.removeEventListener('resize',repositionHandler);
+    };
+    document.addEventListener('click',handler);
+    // Also clean up listeners when dropdown is removed for any other reason
+    var observer=new MutationObserver(function(){
+      if(!document.body.contains(dropdown)){
+        document.removeEventListener('click',handler);
+        window.removeEventListener('scroll',repositionHandler,true);
+        window.removeEventListener('resize',repositionHandler);
+        observer.disconnect();
+      }
+    });
+    observer.observe(document.body,{childList:true,subtree:false});
+  },10);
+}
+
+function renderNotes(){if(_migrateNotesRich())save();
+  updateNoteSelectors();
+  const el=document.getElementById('notesList');
+  const filter=document.getElementById('noteFilterProj').value;
+  const search=document.getElementById('noteSearch').value.toLowerCase().trim();
+  let notes=[...state.notes];
+  function noteProjIds(n){return (n.projectIds&&n.projectIds.length)?n.projectIds:(n.projectId?[n.projectId]:[]);}
+  if(filter==='none')notes=notes.filter(n=>noteProjIds(n).length===0);
+  else if(filter!=='all')notes=notes.filter(n=>noteProjIds(n).indexOf(filter)>=0);
+  if(search)notes=notes.filter(n=>(n.label+' '+_stripHtml(n.body)).toLowerCase().includes(search));
+  notes.sort((a,b)=>(b.created||'').localeCompare(a.created||''));
+  if(notes.length===0){el.innerHTML='<div class="empty-state">'+(state.notes.length===0?'No notes yet. Add your first one below.':'No matching notes.')+'</div>';document.getElementById('noteCount').textContent=state.notes.length;if(typeof _updateTileSummaryNotes==='function')_updateTileSummaryNotes();return;}
+  el.innerHTML=notes.map(n=>{
+    var pids=noteProjIds(n);
+    var hasProjClass=pids.length?'has-proj':'';
+    var projChips=pids.map(function(pid){
+      var pr=state.projects.find(function(p){return p.id===pid;});
+      return pr?'<span class="proj-multi-chip" style="font-size:10px;padding:1px 5px;">📂 '+esc(pr.name)+'</span>':'';
+    }).join('');
+    return '<div class="note-card">'+
+      '<div class="note-header">'+
+        '<input class="note-label-input" id="nl_'+n.id+'" value="'+esc(n.label)+'" placeholder="Short title..." />'+
+        '<button class="note-edit-toggle" id="nbtoggle_'+n.id+'" onclick="toggleNoteEdit(\''+n.id+'\')"><i class="ti ti-pencil" aria-hidden="true"></i>Edit</button>'+
+        '<span class="note-date">'+n.date+' '+n.time+'</span>'+
+      '</div>'+
+      '<div class="note-body-rendered" id="nbr_'+n.id+'" onclick="toggleNoteEdit(\''+n.id+'\')">'+_renderNoteBody(n)+'</div>'+
+      '<div class="note-editable note-body-edit" id="nb_'+n.id+'" contenteditable="true" data-placeholder="Write your note..." style="display:none;">'+_renderNoteBody(n)+'</div>'+
+      '<div id="nbbarwrap_'+n.id+'" style="display:none;">'+_noteToolbarHtml('nb_'+n.id,'nbbar_'+n.id)+'</div>'+
+      '<div class="note-footer">'+
+        '<div class="proj-multi-picker '+hasProjClass+'" id="npp_'+n.id+'" data-target="np_'+n.id+'" data-note-id="'+n.id+'" onclick="openProjMultiPicker(event,this)" style="font-size:11px;padding:3px 6px;min-height:24px;flex:1;">'+
+          (pids.length===0?'<span class="proj-multi-placeholder">+ Tag projects</span>':projChips)+
+        '</div>'+
+        '<input type="hidden" id="np_'+n.id+'" value="'+pids.join(',')+'" onchange="editNoteProjects(\''+n.id+'\',this.value)">'+
+        '<span class="note-delete" onclick="deleteNote(\''+n.id+'\')">\u2715</span>'+
+      '</div>'+
+    '</div>';
+  }).join('');
+  document.getElementById('noteCount').textContent=state.notes.length;
+  notes.forEach(n=>{
+    const li=document.getElementById('nl_'+n.id);
+    if(li){li.addEventListener('blur',()=>editNoteLabel(n.id,li.value.trim()));}
+    const bi=document.getElementById('nb_'+n.id);
+    if(bi){
+      bi.addEventListener('blur',()=>{
+        var clean=_sanitizeNoteHtml(bi.innerHTML);
+        var nn=state.notes.find(function(x){return x.id===n.id;});
+        if(nn){ nn.body=clean; nn.rich=true; save(); }
+        var r=document.getElementById('nbr_'+n.id);
+        if(r)r.innerHTML=_renderNoteBody(nn||{body:clean,rich:true});
+      });
+    }
+    // Empty notes (e.g. just created) open directly in edit mode
+    const rEl=document.getElementById('nbr_'+n.id);
+    if(rEl && !(n.body||'').trim()){
+      toggleNoteEdit(n.id);
+    }
+    const ph=document.getElementById('np_'+n.id);
+    if(ph){
+      // Watch for changes via MutationObserver since hidden inputs don't fire change events natively
+      var lastVal=ph.value;
+      var poll=setInterval(function(){
+        if(!document.body.contains(ph)){clearInterval(poll);return;}
+        if(ph.value!==lastVal){lastVal=ph.value;editNoteProjects(n.id,ph.value);}
+      },300);
+    }
+  });
+  if(typeof _updateTileSummaryNotes==='function')_updateTileSummaryNotes();
+}
+// ROUTINES
+function checkDailyRoutineReset(){
+  const today=todayStr();
+  // Primary guard: state field (persisted to Firestore)
+  if(state.lastRoutineReset===today)return;
+  // Secondary guard: sessionStorage so a Firestore pull mid-session can't re-trigger
+  // (sessionStorage survives tab focus/visibility changes but clears on true tab close)
+  var ssKey='_routineResetDate';
+  if(sessionStorage.getItem(ssKey)===today){
+    // Cloud state is stale -- update it without wiping done-checkmarks
+    state.lastRoutineReset=today;
+    save();
+    return;
+  }
+  // New calendar day -- do the reset
+  ['morning','evening','custom'].forEach(tab=>{
+    if(state.routines[tab])state.routines[tab].forEach(r=>r.done=false);
+  });
+  state.lastRoutineReset=today;
+  sessionStorage.setItem(ssKey,today);
+  save();
+  renderRoutines();
+}
+function switchRoutineTab(tab,btn){state.currentRoutineTab=tab;document.querySelectorAll('.tab-btn').forEach(b=>b.classList.remove('active'));btn.classList.add('active');renderRoutines();}
+function toggleRoutine(tab,id){const r=state.routines[tab].find(r=>r.id===id);if(r){var wasUndone=!r.done;r.done=!r.done;if(wasUndone&&r.done){var srcEl=document.querySelector('.r-check[onclick*="'+id+'"]');addPoints('routine',srcEl);_trackEvent('tool_use','routine_check','Routine Check');}}save();renderRoutines();}
+function addRoutine(){const n=document.getElementById('newRoutineName').value.trim();if(!n)return;state.routines[state.currentRoutineTab].push({id:'r'+Date.now(),name:n,done:false});document.getElementById('newRoutineName').value='';save();renderRoutines();}
+function deleteRoutine(tab,id){state.routines[tab]=state.routines[tab].filter(r=>r.id!==id);save();renderRoutines();}
+function resetRoutines(){state.routines[state.currentRoutineTab].forEach(r=>r.done=false);save();renderRoutines();toast('Routines reset');}
+function editRoutineName(tab,id,v){if(!v)return;const r=state.routines[tab].find(r=>r.id===id);if(r)r.name=v;save();}
+function renderRoutines(){const tab=state.currentRoutineTab,items=state.routines[tab]||[];const el=document.getElementById('routineList');if(items.length===0){el.innerHTML='<div class="empty-state">No routine items.</div>';}else{el.innerHTML=items.map(r=>'<div class="routine-item '+(r.done?'r-done':'')+'"><div class="r-check '+(r.done?'r-checked':'')+'" onclick="toggleRoutine(\''+tab+"','"+r.id+'\')">'+(r.done?'\u2713':'')+'</div><span class="r-name editable" id="rn_'+r.id+'">'+esc(r.name)+'</span><span class="r-delete" onclick="deleteRoutine(\''+tab+"','"+r.id+'\')">\u2715</span></div>').join('');}const done=items.filter(r=>r.done).length;document.getElementById('routineProgress').textContent=done+'/'+items.length;items.forEach(r=>{const e=document.getElementById('rn_'+r.id);if(e)makeEditable(e,v=>editRoutineName(tab,r.id,v));});refreshEditables();}
+
+// DECISION
+var prompts=['<strong>Can\'t start?</strong> 2-minute rule: commit to just 2 minutes.','<strong>Overwhelmed?</strong> Brain Dump everything. Then pick the smallest item.','<strong>Can\'t decide?</strong> "Which will I regret NOT doing tomorrow?"','<strong>Procrastinating?</strong> Name the feeling behind it.','<strong>Task too big?</strong> Break it down until each step feels silly.','<strong>Context switching?</strong> Write one sentence about where you left off.','<strong>Forgetting?</strong> Under 2 min \u2192 do now. Otherwise \u2192 Brain Dump.','<strong>Stuck in a loop?</strong> Change your physical state.','<strong>Perfectionism?</strong> C-minus draft. Done > perfect.','<strong>No motivation?</strong> Motivation follows action.','<strong>Decision fatigue?</strong> Top 3 only.','<strong>Emotional flooding?</strong> Try 5-4-3-2-1 grounding.','<strong>Avoiding a follow-up?</strong> Draft it now. Sending is separate.'];
+function newDecisionPrompt(){const el=document.getElementById('decisionPrompt');el.innerHTML=prompts[Math.floor(Math.random()*prompts.length)];el.style.animation='none';el.offsetHeight;el.style.animation='chipIn 0.3s ease';}
+
+// MOBILE
+// --- MOBILE HOME TILE NAVIGATION -----------------------------------------
+var _isMobile=function(){return window.innerWidth<=768;};
+
+// Detect standalone PWA mode (launched from home screen, not Safari)
+// iOS exposes navigator.standalone, modern browsers also support display-mode media query
+(function _detectStandalone(){
+  var isStandalone=
+    (window.matchMedia&&window.matchMedia('(display-mode: standalone)').matches)
+    ||window.navigator.standalone===true
+    ||document.referrer.startsWith('android-app://');
+  if(isStandalone){
+    document.body.classList.add('standalone-pwa');
+  }
+})();
+
+var MOBILE_PANELS=[
+  {id:'projects', icon:'<i class="ti ti-folder" aria-hidden="true"></i>',   label:'Projects',   badge:'projCount'},
+  {id:'reminders',icon:'<i class="ti ti-bell" aria-hidden="true"></i>',     label:'Reminders',  badge:'remCount'},
+  {id:'tasklist', icon:'<i class="ti ti-checklist" aria-hidden="true"></i>',label:'Tasks',       badge:'taskListCount'},
+  {id:'notes',    icon:'<i class="ti ti-notebook" aria-hidden="true"></i>', label:'Notes',       badge:'noteCount'},
+  {id:'brain',    icon:'<i class="ti ti-brain" aria-hidden="true"></i>',    label:'Brain Dump',  badge:null},
+  {id:'routines', icon:'<i class="ti ti-repeat" aria-hidden="true"></i>',   label:'Routines',    badge:null},
+  {id:'time',     icon:'<i class="ti ti-tool" aria-hidden="true"></i>',     label:'Tool Kit',    badge:null, wide:true},
+  {id:'decision', icon:'<i class="ti ti-help-circle" aria-hidden="true"></i>',label:'Stuck? Help',badge:null},
+  {id:'admin',    icon:'<i class="ti ti-shield" aria-hidden="true"></i>',   label:'Admin',       badge:null, adminOnly:true}
+];
+
+function buildMobileHome(){
+  var grid=document.getElementById('mobilePanelGrid');
+  if(!grid)return;
+  var html='';
+  MOBILE_PANELS.forEach(function(p){
+    if(p.adminOnly&&!isAdmin)return;
+    if(state.visiblePanels&&state.visiblePanels[p.id]===false)return;
+    var wideClass=p.wide?' toolkit-tile':'';
+    var badgeVal='';
+    if(p.badge){
+      var el=document.getElementById(p.badge);
+      if(el)badgeVal=el.textContent||'';
+    }
+    var badgeHtml=badgeVal&&badgeVal!=='0'?'<span class="mpt-badge visible">'+badgeVal+'</span>':'<span class="mpt-badge"></span>';
+    html+='<div class="mobile-panel-tile'+wideClass+'" onclick="showMobilePanel(\''+p.id+'\')">'
+      +badgeHtml
+      +'<span class="mpt-icon">'+p.icon+'</span>'
+      +'<span class="mpt-label">'+p.label+'</span>'
+      +'</div>';
+  });
+  grid.innerHTML=html;
+  // Update clock on home screen
+  var clk=document.getElementById('mobileHomeClock');
+  if(clk){var now=new Date();clk.textContent=now.toLocaleTimeString('en-US',{hour:'numeric',minute:'2-digit'});}
+}
+
+function showMobileHome(){
+  if(!_isMobile())return;
+  // Hide the tile-grid home screen
+  document.getElementById('mobileHome').classList.remove('active');
+  // Hide the back bar (not needed when all panels are visible)
+  document.getElementById('mobileBackBar').classList.remove('active');
+  // Show header with banner
+  var hdr=document.querySelector('.header');
+  if(hdr)hdr.classList.add('mobile-visible');
+  // Remove panel-open padding (not needed with sticky header)
+  var appWrap=document.querySelector('.app-wrap');
+  if(appWrap)appWrap.classList.remove('panel-open');
+  // Show ALL panels vertically (except hidden/user-hidden ones)
+  document.querySelectorAll('.panel').forEach(function(p){
+    if(p.classList.contains('hidden-panel')||p.classList.contains('user-hidden')){
+      p.classList.remove('mobile-visible');
+    }else{
+      p.classList.add('mobile-visible');
+    }
+  });
+}
+
+function showMobilePanel(panelId){
+  if(!_isMobile()){return;}
+  // Hide home, show back bar
+  document.getElementById('mobileHome').classList.remove('active');
+  document.getElementById('mobileBackBar').classList.add('active');
+  document.querySelector('.app-wrap').classList.add('panel-open');
+  // Hide header on mobile (back bar replaces it)
+  var hdr=document.querySelector('.header');
+  if(hdr)hdr.classList.remove('mobile-visible');
+  // Show requested panel
+  document.querySelectorAll('.panel').forEach(function(p){p.classList.remove('mobile-visible');});
+  var target=document.querySelector('.panel[data-panel="'+panelId+'"]')
+           ||document.querySelector('.panel[data-nav="'+panelId+'"]');
+  if(target&&!target.classList.contains('hidden-panel')&&!target.classList.contains('user-hidden')){
+    target.classList.add('mobile-visible');
+    // Update back bar label
+    var tile=MOBILE_PANELS.find(function(p){return p.id===panelId;});
+    var backBar=document.getElementById('mobileBackBar');
+    if(backBar&&tile){
+      backBar.querySelector('.mobile-back-btn').textContent='';
+      backBar.querySelector('.mobile-back-btn').innerHTML='&#8249; '+tile.label;
+    }
+    // Scroll to top
+    window.scrollTo(0,0);
+  }
+}
+
+// On resize: if going to desktop, clean up mobile state
+window.addEventListener('resize',function(){
+  if(!_isMobile()){
+    document.getElementById('mobileHome').classList.remove('active');
+    document.getElementById('mobileBackBar').classList.remove('active');
+    document.querySelector('.app-wrap')&&document.querySelector('.app-wrap').classList.remove('panel-open');
+    var hdr=document.querySelector('.header');
+    if(hdr)hdr.classList.remove('mobile-visible');
+  } else {
+    // Going back to mobile -- show home if no panel open
+    var anyVisible=document.querySelector('.panel.mobile-visible');
+    if(!anyVisible){showMobileHome();}
+  }
+});
+
+// UTILITY
+function esc(s){const d=document.createElement('div');d.textContent=s;return d.innerHTML;}
+function todayStr(){var d=new Date();var pad=function(n){return n<10?'0'+n:''+n;};return d.getFullYear()+'-'+pad(d.getMonth()+1)+'-'+pad(d.getDate());}
+function fmtDate(d){return new Date(d+'T00:00:00').toLocaleDateString('en-US',{month:'short',day:'numeric',year:'numeric'});}
+function fmtTime(t){const[h,m]=t.split(':');const hr=parseInt(h);return(hr>12?hr-12:hr||12)+':'+m+(hr>=12?' PM':' AM');}
+function slugify(s){return s.toLowerCase().replace(/[^a-z0-9]+/g,'-').replace(/(^-|-$)/g,'');}
+function toast(msg){const el=document.getElementById('toast');el.textContent=msg;el.classList.add('show');setTimeout(()=>el.classList.remove('show'),2500);}
+document.addEventListener('keydown',e=>{if(e.target.tagName==='INPUT'||e.target.tagName==='TEXTAREA'||e.target.tagName==='SELECT'||e.target.isContentEditable)return;if(e.key==='b'||e.key==='B'){document.getElementById('brainDump').focus();e.preventDefault();}if(e.key==='s'||e.key==='S'){startTimer();e.preventDefault();}if(e.key==='p'||e.key==='P'){pauseTimer();e.preventDefault();}});
+
+// =======================================
+// MOOD/ENERGY LOGGING & TRENDS
+// =======================================
+
+// -- Mood & Energy History Chart --------------------------------------
+var _mhActivePeriod=7;
+function openMoodHistory(days){
+  _mhActivePeriod=days||7;
+  document.getElementById('moodHistoryModal').classList.add('open');
+  renderMoodHistory(_mhActivePeriod);
+}
+function closeMoodHistory(){document.getElementById('moodHistoryModal').classList.remove('open');}
+
+function renderMoodHistory(days){
+  _mhActivePeriod=days;
+  document.getElementById('mhBtn7').classList.toggle('active',days===7);
+  document.getElementById('mhBtn30').classList.toggle('active',days===30);
+
+  var ENERGY={high:4,good:3,low:2,crashed:1};
+  var MOOD={focused:4,calm:3,scattered:2,anxious:1};
+  var ELABELS={4:'High',3:'Good',2:'Low',1:'Crash'};
+  var MLABELS={4:'Focused',3:'Calm',2:'Scattered',1:'Anxious'};
+
+  var today=new Date();
+  var labels=[],eData=[],mData=[];
+  for(var i=days-1;i>=0;i--){
+    var d=new Date(today);d.setDate(d.getDate()-i);
+    var ds=d.toISOString().slice(0,10);
+    var entry=(state.moodLog||[]).find(function(e){return e.date===ds;});
+    labels.push(ds);
+    eData.push(entry&&entry.energy?ENERGY[entry.energy]:null);
+    mData.push(entry&&entry.mood?MOOD[entry.mood]:null);
+  }
+
+  var hasAny=eData.some(function(v){return v!==null;})||mData.some(function(v){return v!==null;});
+  document.getElementById('mhNoData').style.display=hasAny?'none':'block';
+  document.getElementById('mhChartWrap').style.display=hasAny?'block':'none';
+  if(!hasAny)return;
+
+  var W=580,H=200,padL=52,padR=12,padT=16,padB=38;
+  var cW=W-padL-padR,cH=H-padT-padB;
+  var n=days;
+  var stepX=n>1?cW/(n-1):cW;
+
+  function xp(i){return padL+i*stepX;}
+  function yp(v){return padT+cH-((v-1)/3)*cH;}
+
+  var svg='<svg viewBox="0 0 '+W+' '+H+'" xmlns="http://www.w3.org/2000/svg" style="width:100%;height:auto;display:block;">';
+
+  // Grid + y-axis labels
+  [1,2,3,4].forEach(function(v){
+    var y=yp(v);
+    svg+='<line x1="'+padL+'" y1="'+y+'" x2="'+(W-padR)+'" y2="'+y+'" stroke="rgba(128,128,128,0.15)" stroke-width="1"/>';
+    svg+='<text x="'+(padL-6)+'" y="'+(y+4)+'" text-anchor="end" font-size="9" fill="rgba(128,128,128,0.7)">'+ELABELS[v]+'</text>';
+  });
+
+  // Build path segments (energy)
+  var ePts=[];
+  eData.forEach(function(v,i){if(v!==null)ePts.push({x:xp(i),y:yp(v),i:i,v:v});});
+  for(var j=1;j<ePts.length;j++){
+    if(ePts[j].i-ePts[j-1].i<=1)
+      svg+='<line x1="'+ePts[j-1].x+'" y1="'+ePts[j-1].y+'" x2="'+ePts[j].x+'" y2="'+ePts[j].y+'" stroke="#d4a853" stroke-width="2.5" stroke-linecap="round" opacity="0.85"/>';
+  }
+  ePts.forEach(function(p){
+    svg+='<circle cx="'+p.x+'" cy="'+p.y+'" r="4.5" fill="#d4a853" stroke="var(--surface-raised)" stroke-width="2"><title>'+labels[p.i]+': '+ELABELS[p.v]+'</title></circle>';
+  });
+
+  // Build path segments (mood)
+  var mPts=[];
+  mData.forEach(function(v,i){if(v!==null)mPts.push({x:xp(i),y:yp(v),i:i,v:v});});
+  for(var k=1;k<mPts.length;k++){
+    if(mPts[k].i-mPts[k-1].i<=1)
+      svg+='<line x1="'+mPts[k-1].x+'" y1="'+mPts[k-1].y+'" x2="'+mPts[k].x+'" y2="'+mPts[k].y+'" stroke="#5f8fc7" stroke-width="2.5" stroke-linecap="round" opacity="0.85"/>';
+  }
+  mPts.forEach(function(p){
+    svg+='<circle cx="'+p.x+'" cy="'+p.y+'" r="4.5" fill="#5f8fc7" stroke="var(--surface-raised)" stroke-width="2"><title>'+labels[p.i]+': '+MLABELS[p.v]+'</title></circle>';
+  });
+
+  // X-axis labels
+  var step=days<=7?1:days<=14?2:Math.ceil(days/10);
+  labels.forEach(function(ds,i){
+    if(i%step===0||i===n-1){
+      var dObj=new Date(ds+'T12:00:00Z');
+      var lbl=i===n-1?'Today':(dObj.getUTCMonth()+1)+'/'+(dObj.getUTCDate());
+      svg+='<text x="'+xp(i)+'" y="'+(H-10)+'" text-anchor="middle" font-size="9" fill="rgba(128,128,128,0.7)">'+lbl+'</text>';
+      svg+='<line x1="'+xp(i)+'" y1="'+(H-padB+3)+'" x2="'+xp(i)+'" y2="'+(H-padB+8)+'" stroke="rgba(128,128,128,0.3)" stroke-width="1"/>';
+    }
+  });
+
+  // Today marker
+  svg+='<line x1="'+xp(n-1)+'" y1="'+padT+'" x2="'+xp(n-1)+'" y2="'+(H-padB)+'" stroke="#d4a853" stroke-width="1" stroke-dasharray="3,3" opacity="0.4"/>';
+
+  svg+='</svg>';
+  document.getElementById('mhChartWrap').innerHTML=svg;
+}
+
+function logMoodEntry(){
+  if(!state.energy&&!state.mood)return;
+  const today=todayStr();
+  let entry=state.moodLog.find(e=>e.date===today);
+  if(!entry){entry={date:today};state.moodLog.push(entry);}
+  if(state.energy)entry.energy=state.energy;
+  if(state.mood)entry.mood=state.mood;
+  entry.ts=new Date().toISOString();
+  _trackEvent('tool_use','log_mood','Log Mood');
+}
+
+
+
+
+// =======================================
+// ADMIN FUNCTIONS
+// =======================================
+function showAdminPanel(){
+  const ap=document.getElementById('adminPanel');
+  if(!ap)return;
+  if(isAdmin){
+    ap.classList.remove('hidden-panel');
+    if(_isMobile())buildMobileHome(); // rebuild tiles in case admin tile visibility changed
+    renderAdminPanel();
+    _bootstrapInviteCodesIfEmpty().then(function(){renderInviteCodes();});
+  }else{
+    ap.classList.add('hidden-panel');
+    if(_isMobile())buildMobileHome();
+  }
+}
+
+async function renderAdminPanel(){
+  if(!isAdmin||!db)return;
+  try{
+    const snap=await db.collection('users').get();
+    const users=[];
+    snap.forEach(doc=>{users.push({uid:doc.id,...doc.data()});});
+
+    // Stats
+    const total=users.length;
+    const active=users.filter(u=>!u.disabled).length;
+    const admins=users.filter(u=>u.admin).length;
+    document.getElementById('adminStats').innerHTML=
+      '<div class="admin-stat"><div class="as-val">'+total+'</div><div class="as-lbl">Total Users</div></div>'+
+      '<div class="admin-stat"><div class="as-val">'+active+'</div><div class="as-lbl">Active</div></div>'+
+      '<div class="admin-stat"><div class="as-val">'+admins+'</div><div class="as-lbl">Admins</div></div>';
+
+    // User list
+    const tbody=document.getElementById('adminUserList');
+    tbody.innerHTML=users.map(u=>{
+      const lastActive=u.lastActive?u.lastActive.toDate().toLocaleDateString('en-US',{month:'short',day:'numeric'}):'Never';
+      const isSelf=u.uid===currentUser.uid;
+      const tier=u.accountTier||'free';
+      const tierLabel={free:'Free',pro:'Pro',premium:'Premium',legacy:'Legacy',owner:'Owner'}[tier]||tier;
+      const isLegacy=u.accountTier==='legacy';
+      return '<tr>'+
+        '<td>'+esc(u.email)+(u.admin?' <span class="admin-badge admin">Admin</span>':'')+'</td>'+
+        '<td><span class="admin-badge '+(u.disabled?'disabled':'active')+'">'+(u.disabled?'Disabled':'Active')+'</span></td>'+
+        '<td><span class="admin-badge '+(isLegacy?'active':'disabled')+'" style="'+(isLegacy?'background:rgba(5,150,105,0.15);color:#059669;border-color:rgba(5,150,105,0.4)':'')+'">'+tierLabel+'</span></td>'+
+        '<td>'+lastActive+'</td>'+
+        '<td><div class="admin-actions">'+
+        (!isSelf&&!u.disabled?'<button class="admin-action danger" onclick="adminDisableUser(\''+u.uid+'\')">Disable</button>':'')+
+        (!isSelf&&u.disabled?'<button class="admin-action" onclick="adminEnableUser(\''+u.uid+'\')">Enable</button>':'')+
+        '<button class="admin-action" onclick="adminResetPassword(\''+esc(u.email)+'\')">Reset PW</button>'+
+        (!isSelf&&!u.admin?'<button class="admin-action" onclick="adminMakeAdmin(\''+u.uid+'\')">Make Admin</button>':'')+
+        (!isSelf&&!isLegacy?'<button class="admin-action" style="background:rgba(5,150,105,0.12);border-color:rgba(5,150,105,0.5);color:#059669;" onclick="adminGrantLegacy(\''+u.uid+'\')">Grant Legacy</button>':'')+
+        (!isSelf&&isLegacy?'<button class="admin-action" onclick="adminRevokeLegacy(\''+u.uid+'\')">Revoke Legacy</button>':'')+
+        (!isSelf?'<button class="admin-action danger" onclick="adminDeleteUser(\''+u.uid+'\',\''+esc(u.email)+'\')">Delete</button>':'')+
+        '</div></td></tr>';
+    }).join('');
+  }catch(e){console.log('Admin render error:',e);}
+}
+
+async function adminAddUser(){
+  if(!isAdmin)return;
+  const email=document.getElementById('adminNewEmail').value.trim();
+  const pass=document.getElementById('adminNewPass').value;
+  const err=document.getElementById('adminAddError');
+  err.textContent='';
+  if(!email||!pass){err.textContent='Enter email and password.';return;}
+  if(pass.length<6){err.textContent='Password must be at least 6 characters.';return;}
+  try{
+    // Use secondary app to create user without signing out admin
+    const secondaryApp=firebase.initializeApp(firebaseConfig,'secondary_'+Date.now());
+    const cred=await secondaryApp.auth().createUserWithEmailAndPassword(email,pass);
+    const newUid=cred.user.uid;
+    await secondaryApp.auth().signOut();
+    secondaryApp.delete();
+    // Create profile in Firestore
+    await db.collection('users').doc(newUid).set({
+      email:email,admin:false,disabled:false,
+      createdAt:firebase.firestore.FieldValue.serverTimestamp(),
+      lastActive:null
+    });
+    document.getElementById('adminNewEmail').value='';
+    document.getElementById('adminNewPass').value='';
+    toast('User '+email+' created');
+    renderAdminPanel();
+  }catch(e){err.textContent=e.message;}
+}
+
+// --- Legacy tier grant / revoke -------------------------------------------
+async function adminGrantLegacy(uid){
+  if(!isAdmin)return;
+  try{
+    await db.collection('users').doc(uid).update({accountTier:'legacy'});
+    toast('Legacy access granted');
+    renderAdminPanel();
+  }catch(e){toast('Error: '+e.message);}
+}
+async function adminRevokeLegacy(uid){
+  if(!isAdmin)return;
+  try{
+    await db.collection('users').doc(uid).update({accountTier:firebase.firestore.FieldValue.delete()});
+    toast('Legacy access revoked');
+    renderAdminPanel();
+  }catch(e){toast('Error: '+e.message);}
+}
+
+// --- Music Streaming Modal ------------------------------------------------
+// Opens the user's chosen platform in a new tab. No audio is streamed
+// through Centerpost -- this sidesteps all copyright/licensing concerns.
+// Only visible to Premium, Legacy, and Owner tiers.
+function openMusicStreamingModal(){
+  var cfg=getTierConfig();
+  if(!cfg.musicStreaming){_tierUpgradeToast('Premium');return;}
+  var overlay=document.getElementById('musicStreamOverlay');
+  if(overlay)overlay.classList.remove('hidden');
+}
+function closeMusicStreamingModal(){
+  var overlay=document.getElementById('musicStreamOverlay');
+  if(overlay)overlay.classList.add('hidden');
+}
+function launchMusicPlatform(platform){
+  var urls={
+    spotify:'https://open.spotify.com',
+    apple:'https://music.apple.com',
+    amazon:'https://music.amazon.com'
+  };
+  var url=urls[platform];
+  if(!url)return;
+  window.open(url,'_blank','noopener,noreferrer');
+  // Save preference
+  if(!state.settings)state.settings={};
+  state.settings.preferredMusicPlatform=platform;
+  save();
+  closeMusicStreamingModal();
+  toast('Opening '+{spotify:'Spotify',apple:'Apple Music',amazon:'Amazon Music'}[platform]+'…');
+}
+// Codes live at /inviteCodes/{CODE} with fields: used, maxUses, note,
+// disabled, createdAt, createdBy, lastUsedAt, lastUsedBy, lastUsedEmail.
+// ===========================================================================
+function _generateRandomCode(len){
+  // Avoid ambiguous chars: no 0/O, no 1/I/L
+  var chars='ABCDEFGHJKMNPQRSTUVWXYZ23456789';
+  var out='';
+  for(var i=0;i<(len||8);i++)out+=chars[Math.floor(Math.random()*chars.length)];
+  return out;
+}
+
+async function adminCreateInviteCode(){
+  if(!isAdmin||!db)return;
+  var codeEl=document.getElementById('newInviteCode');
+  var maxUsesEl=document.getElementById('newInviteMaxUses');
+  var noteEl=document.getElementById('newInviteNote');
+  var err=document.getElementById('inviteCreateError');
+  err.textContent='';
+  var code=(codeEl.value||'').trim().toUpperCase().replace(/[^A-Z0-9-]/g,'');
+  if(!code)code=_generateRandomCode(8);
+  if(code.length<4){err.textContent='Code must be at least 4 characters.';return;}
+  if(code.length>32){err.textContent='Code must be 32 characters or fewer.';return;}
+  var maxUses=parseInt(maxUsesEl.value,10);
+  if(isNaN(maxUses)||maxUses<1)maxUses=1;
+  if(maxUses>999)maxUses=999;
+  try {
+    var ref=db.collection('inviteCodes').doc(code);
+    var existing=await ref.get();
+    if(existing.exists){err.textContent='That code already exists. Pick a different one.';return;}
+    await ref.set({
+      code:code,
+      used:0,
+      maxUses:maxUses,
+      note:(noteEl.value||'').trim(),
+      disabled:false,
+      createdAt:firebase.firestore.FieldValue.serverTimestamp(),
+      createdBy:currentUser.uid,
+      createdByEmail:currentUser.email
+    });
+    codeEl.value='';
+    maxUsesEl.value='1';
+    noteEl.value='';
+    toast('Invite code '+code+' created');
+    renderInviteCodes();
+  } catch(e){err.textContent=e.message||'Failed to create code.';}
+}
+
+async function adminToggleInviteCode(code,disable){
+  if(!isAdmin||!db)return;
+  try {
+    await db.collection('inviteCodes').doc(code).update({disabled:!!disable});
+    toast(disable?'Code disabled':'Code enabled');
+    renderInviteCodes();
+  } catch(e){toast('Failed: '+e.message);}
+}
+
+async function adminDeleteInviteCode(code){
+  if(!isAdmin||!db)return;
+  _confirm('Delete invite code "'+code+'"? Anyone who already used it keeps their account, but the code itself is removed.',async function(){
+    try {
+      await db.collection('inviteCodes').doc(code).delete();
+      toast('Code '+code+' deleted');
+      renderInviteCodes();
+    } catch(e){toast('Failed: '+e.message);}
+  },{destructive:true,confirmText:'Delete Code'});
+}
+
+async function adminCopyInviteCode(code){
+  try {
+    await navigator.clipboard.writeText(code);
+    toast('Copied: '+code);
+  } catch(e){
+    // Fallback for old browsers / non-secure contexts
+    var tmp=document.createElement('input');
+    tmp.value=code;document.body.appendChild(tmp);tmp.select();
+    try{document.execCommand('copy');toast('Copied: '+code);}catch(e2){toast('Copy failed');}
+    tmp.remove();
+  }
+}
+
+async function renderInviteCodes(){
+  if(!isAdmin||!db)return;
+  var tbody=document.getElementById('inviteCodeList');
+  if(!tbody)return;
+  try {
+    var snap=await db.collection('inviteCodes').orderBy('createdAt','desc').get();
+    if(snap.empty){
+      tbody.innerHTML='<tr><td colspan="5" style="text-align:center;color:var(--text-faint);padding:14px;">No codes yet. Create one above to start inviting beta users.</td></tr>';
+      return;
+    }
+    var rows=[];
+    snap.forEach(function(doc){
+      var d=doc.data();
+      var used=d.used||0;
+      var max=d.maxUses||0;
+      var usesTxt=max?used+' / '+max:used+' (unlimited)';
+      var statusBadge;
+      if(d.disabled){
+        statusBadge='<span class="admin-badge disabled">Disabled</span>';
+      } else if(max && used>=max){
+        statusBadge='<span class="admin-badge disabled">Used up</span>';
+      } else {
+        statusBadge='<span class="admin-badge active">Active</span>';
+      }
+      var note=d.note?esc(d.note):'<span style="color:var(--text-faint);">--</span>';
+      rows.push(
+        '<tr><td><code style="background:rgba(91,232,255,0.1);color:#5be8ff;padding:2px 8px;border-radius:4px;font-family:ui-monospace,monospace;font-size:12px;letter-spacing:1px;">'+esc(d.code||doc.id)+'</code></td>'+
+        '<td>'+usesTxt+'</td>'+
+        '<td>'+statusBadge+'</td>'+
+        '<td>'+note+'</td>'+
+        '<td><div class="admin-actions">'+
+          '<button class="admin-action" onclick="adminCopyInviteCode(\''+(d.code||doc.id)+'\')">Copy</button>'+
+          (d.disabled
+            ? '<button class="admin-action" onclick="adminToggleInviteCode(\''+(d.code||doc.id)+'\',false)">Enable</button>'
+            : '<button class="admin-action" onclick="adminToggleInviteCode(\''+(d.code||doc.id)+'\',true)">Disable</button>')+
+          '<button class="admin-action danger" onclick="adminDeleteInviteCode(\''+(d.code||doc.id)+'\')">Delete</button>'+
+        '</div></td></tr>'
+      );
+    });
+    tbody.innerHTML=rows.join('');
+  } catch(e){
+    console.warn('[admin] renderInviteCodes failed',e);
+    tbody.innerHTML='<tr><td colspan="5" style="text-align:center;color:var(--red);padding:14px;">Failed to load codes: '+esc(e.message||'unknown error')+'. Make sure Firestore rules allow admin read/write on /inviteCodes.</td></tr>';
+  }
+}
+
+// Bootstrap: if no codes exist on first admin load, create a starter code
+// so the admin has something to hand out immediately.
+async function _bootstrapInviteCodesIfEmpty(){
+  if(!isAdmin||!db)return;
+  try {
+    var snap=await db.collection('inviteCodes').limit(1).get();
+    if(snap.empty){
+      var starter='BETA-'+_generateRandomCode(5);
+      await db.collection('inviteCodes').doc(starter).set({
+        code:starter,used:0,maxUses:10,
+        note:'Auto-generated starter code (10 uses)',disabled:false,
+        createdAt:firebase.firestore.FieldValue.serverTimestamp(),
+        createdBy:currentUser.uid,createdByEmail:currentUser.email
+      });
+      toast('Created starter invite code: '+starter);
+    }
+  } catch(e){console.warn('[admin] bootstrap codes failed',e);}
+}
+
+async function adminDisableUser(uid){
+  if(!isAdmin)return;
+  try{await db.collection('users').doc(uid).update({disabled:true});toast('User disabled');renderAdminPanel();}catch(e){toast('Error: '+e.message);}
+}
+async function adminEnableUser(uid){
+  if(!isAdmin)return;
+  try{await db.collection('users').doc(uid).update({disabled:false});toast('User enabled');renderAdminPanel();}catch(e){toast('Error: '+e.message);}
+}
+async function adminResetPassword(email){
+  if(!isAdmin)return;
+  try{await firebase.auth().sendPasswordResetEmail(email);toast('Password reset sent to '+email);}catch(e){toast('Error: '+e.message);}
+}
+async function adminMakeAdmin(uid){
+  if(!isAdmin)return;
+  _confirm('Make this user an admin?',async function(){
+    try{await db.collection('users').doc(uid).update({admin:true});toast('Admin granted');renderAdminPanel();}catch(e){toast('Error: '+e.message);}
+  },{confirmText:'Make Admin',icon:'ti-shield'});
+}
+async function adminDeleteUser(uid,email){
+  if(!isAdmin)return;
+  _confirm('Delete user '+email+'? Their data will also be deleted.',async function(){
+    try{
+      await db.collection('users').doc(uid).collection('data').doc('dashboard').delete();
+      await db.collection('users').doc(uid).delete();
+      toast('User '+email+' deleted');
+      renderAdminPanel();
+    }catch(e){toast('Error: '+e.message);}
+  },{destructive:true,confirmText:'Delete User'});
+}
+
+// =======================================
+// BREATHWORK ENGINE
+// =======================================
+var breathTechniques={
+  box:{
+    name:'Box Breathing (4-4-4-4)',
+    source:'Balban et al., 2023 \u2014 Navy SEAL protocol',
+    desc:'Equal inhale, hold, exhale, hold. Activates parasympathetic nervous system and reduces cortisol.',
+    phases:['Inhale','Hold','Exhale','Hold'],
+    durations:[4,4,4,4],
+    cycles:4,
+    cues:['Breathe in slowly through your nose','Keep your lungs full, stay relaxed','Release slowly through your mouth','Stay empty, stay calm']
+  },
+  '478':{
+    name:'4-7-8 Breathing',
+    source:'Weil, 2015; pranayama tradition \u2014 vagus nerve activation',
+    desc:'Extended exhale (2x inhale) shifts autonomic balance toward parasympathetic dominance. Powerful for anxiety.',
+    phases:['Inhale','Hold','Exhale'],
+    durations:[4,7,8],
+    cycles:4,
+    cues:['Quietly through your nose','Gently hold, body relaxed','Slowly and completely through your mouth']
+  },
+  sigh:{
+    name:'Physiological Sigh',
+    source:'Balban et al., 2023, Cell Reports Medicine \u2014 Stanford/Huberman Lab',
+    desc:'Fastest known voluntary method to reduce autonomic arousal. Double inhale reinflates alveoli, long exhale calms.',
+    phases:['Deep Inhale','Quick Sniff In','Long Exhale'],
+    durations:[3,1,6],
+    cycles:6,
+    cues:['Deep breath through your nose','Short sharp sniff on top','Slow and long through your mouth']
+  },
+  scan:{
+    name:'2-Minute Body Scan',
+    source:'Kabat-Zinn MBSR; Demarzo et al., 2017 meta-analysis',
+    desc:'Redirects attention from rumination to body awareness. Even brief scans reduce cortisol and cognitive fusion.',
+    phases:['Settle In','Feet & Legs','Torso & Hands','Arms & Shoulders','Neck & Face','Integrate'],
+    durations:[8,15,15,15,15,12],
+    cycles:1,
+    cues:['Close your eyes. Three slow breaths.','Notice your feet on the ground. Scan up through calves, knees, thighs.','Feel your belly rise and fall. Notice your hands resting.','Scan forearms, upper arms. Let shoulders drop.','Relax your jaw. Soften your forehead. Unclench.','Breathe into any remaining tension. Open your eyes slowly.']
+  },
+  resonance:{
+    name:'Resonance Breathing (5.5-5.5)',
+    source:'Lehrer & Gevirtz, 2014 \u2014 heart rate variability optimization',
+    desc:'Breathing at ~5.5 breaths/min maximizes heart rate variability. The gold standard for vagal tone training.',
+    phases:['Inhale','Exhale'],
+    durations:[5,6],
+    cycles:6,
+    cues:['Slowly fill your lungs through your nose','Gently release, letting your body soften']
+  },
+  alternate:{
+    name:'Alternate Nostril Breathing',
+    source:'Telles et al., 2013; Nadi Shodhana from Hatha Yoga tradition',
+    desc:'Balances sympathetic and parasympathetic activity. Reduces blood pressure and improves attention.',
+    phases:['Right Nostril In','Hold','Left Nostril Out','Left Nostril In','Hold','Right Nostril Out'],
+    durations:[4,2,4,4,2,4],
+    cycles:3,
+    cues:['Close left nostril, inhale right','Close both, hold gently','Close right nostril, exhale left','Keep right closed, inhale left','Close both, hold gently','Close left nostril, exhale right']
+  },
+  '22exhale':{
+    name:'2:1 Extended Exhale (4-8)',
+    source:'Gerritsen & Band, 2018 review \u2014 slow breathing and vagal stimulation',
+    desc:'Exhale twice as long as inhale. Reliably increases parasympathetic activity and reduces anxiety.',
+    phases:['Inhale','Exhale'],
+    durations:[4,8],
+    cycles:5,
+    cues:['Breathe in smoothly through your nose','Long, slow release through your mouth']
+  }
+};
+
+function showBreathDesc(){
+  const id=document.getElementById('breathSelect').value;
+  const desc=document.getElementById('breathDesc');
+  const btn=document.getElementById('breathStartBtn');
+  if(!id){if(desc)desc.innerHTML='';btn.style.display='none';return;}
+  const t=breathTechniques[id];
+  if(desc)desc.innerHTML='<strong style="color:var(--teal);">'+t.name+'</strong><br>'+t.desc+'<br><span style="color:var(--text-faint);font-size:10px;">'+t.source+'</span>';
+  btn.style.display='block';
+}
+
+var breathInterval=null;
+var breathActive=false;
+var CIRC=628.3; // 2 * PI * 100
+var breathVoice=null;
+var breathVoiceReady=false;
+var breathMuted=true;
+var _breathCurrentAudio=null;  // HTML Audio for ElevenLabs breathwork voice
+function toggleBreathMute(){
+  breathMuted=!breathMuted;
+  const btn=document.getElementById('breathMuteBtn');
+  if(breathMuted){
+    btn.textContent='\u{1F507} Voice Off';
+    btn.classList.add('muted');
+    if(_breathCurrentAudio){_breathCurrentAudio.pause();_breathCurrentAudio=null;}
+    try{speechSynthesis.cancel();}catch(e){}
+  }else{
+    btn.textContent='\u{1F50A} Voice On';
+    btn.classList.remove('muted');
+  }
+}
+
+// VOICE SETUP -- warm female US English
+function initBreathVoice(){
+  if(!('speechSynthesis' in window))return;
+  function pickVoice(){
+    const voices=speechSynthesis.getVoices();
+    if(!voices.length)return;
+    // Prefer: Samantha (macOS/iOS), Microsoft Aria, Google US English Female
+    const preferred=['samantha','aria','zira','female','woman'];
+    const usVoices=voices.filter(v=>v.lang&&v.lang.startsWith('en')&&(v.lang.includes('US')||v.lang.includes('us')||v.lang==='en-US'||v.lang==='en_US'));
+    const allEn=usVoices.length?usVoices:voices.filter(v=>v.lang&&v.lang.startsWith('en'));
+    // Try to find a preferred female voice
+    for(const pref of preferred){
+      const match=allEn.find(v=>v.name.toLowerCase().includes(pref));
+      if(match){breathVoice=match;breathVoiceReady=true;return;}
+    }
+    // Fallback: any English voice
+    if(allEn.length){breathVoice=allEn[0];breathVoiceReady=true;}
+  }
+  pickVoice();
+  if(!breathVoiceReady) speechSynthesis.onvoiceschanged=pickVoice;
+}
+
+async function speak(text){
+  if(!breathActive||breathMuted)return;
+  // Stop any in-flight breath audio
+  if(_breathCurrentAudio){_breathCurrentAudio.pause();_breathCurrentAudio=null;}
+  try{
+    var res=await fetch(JARVIS_PROXY_URL+'/ops-speak',{
+      method:'POST',headers:{'Content-Type':'application/json'},
+      body:JSON.stringify({text:text}),
+    });
+    if(!res.ok)throw new Error('HTTP '+res.status);
+    var blob=await res.blob();
+    var blobUrl=URL.createObjectURL(blob);
+    _breathCurrentAudio=new Audio(blobUrl);
+    _breathCurrentAudio.volume=0.5;
+    _breathCurrentAudio.onended=function(){URL.revokeObjectURL(blobUrl);_breathCurrentAudio=null;};
+    _breathCurrentAudio.onerror=function(){URL.revokeObjectURL(blobUrl);_breathCurrentAudio=null;};
+    _breathCurrentAudio.play();
+  }catch(e){
+    if(!breathVoiceReady)return;
+    try{
+      speechSynthesis.cancel();
+      const utt=new SpeechSynthesisUtterance(text);
+      if(breathVoice)utt.voice=breathVoice;
+      utt.rate=0.85;utt.pitch=1.05;utt.volume=0.45;
+      speechSynthesis.speak(utt);
+    }catch(e2){console.log('Speech error:',e2);}
+  }
+}
+
+
+// --- Breathwork: compute per-technique @keyframes and inject into <style id="breathKF"> ---
+function buildBreathKeyframes(t){
+  const total=t.durations.reduce((a,b)=>a+b,0);
+  const SMIN=0.35,SMAX=1.0;
+  const EASE='cubic-bezier(0.4,0,0.2,1)';
+
+  function classify(phase){
+    const p=phase.toLowerCase();
+    if(p.includes('exhale')||p.includes('out')) return 'exhale';
+    if(p.includes('inhale')||p.includes('sniff')||p.includes(' in')||p==='inhale') return 'inhale';
+    return 'hold';
+  }
+
+  let kfOrb='@keyframes breathCycle {\n';
+  let kfGlow='@keyframes breathGlow {\n';
+  let cumSec=0,curScale=SMIN;
+
+  t.phases.forEach((phase,i)=>{
+    const pct=parseFloat((cumSec/total*100).toFixed(2));
+    const type=classify(phase);
+    const target=type==='inhale'?SMAX:type==='exhale'?SMIN:curScale;
+    const seg=(type==='inhale'||type==='exhale')?EASE:'linear';
+    const glowNow=parseFloat(((curScale-SMIN)/(SMAX-SMIN)).toFixed(2));
+    kfOrb+=`  ${pct}%{transform:scale(${curScale});animation-timing-function:${seg};}\n`;
+    kfGlow+=`  ${pct}%{opacity:${glowNow};animation-timing-function:${seg};}\n`;
+    cumSec+=t.durations[i];
+    curScale=target;
+  });
+
+  const finalGlow=parseFloat(((curScale-SMIN)/(SMAX-SMIN)).toFixed(2));
+  kfOrb+=`  100%{transform:scale(${curScale});}\n}`;
+  kfGlow+=`  100%{opacity:${finalGlow};}\n}`;
+
+  let el=document.getElementById('breathKF');
+  if(!el){el=document.createElement('style');el.id='breathKF';document.head.appendChild(el);}
+  el.textContent=kfOrb+'\n'+kfGlow;
+}
+
+function startBreathwork(){
+  const id=document.getElementById('breathSelect').value;
+  if(!id)return;
+  const t=breathTechniques[id];
+  breathActive=true;
+  _trackEvent('tool_use','breathwork','Breathwork');
+  initBreathVoice();
+
+  const isScan=(id==='scan');
+  const totalCycleSec=t.durations.reduce((a,b)=>a+b,0);
+
+  document.getElementById('breathOverlay').classList.add('active');
+  document.getElementById('breathName').textContent=t.name;
+
+  // Show correct visual
+  const orbWrap=document.getElementById('breathOrbWrap');
+  const scanWrap=document.getElementById('bodyScanWrap');
+  orbWrap.style.display=isScan?'none':'flex';
+  scanWrap.style.display=isScan?'flex':'none';
+
+  if(isScan){
+    document.querySelectorAll('.scan-part').forEach(p=>p.classList.remove('scan-lit','scan-glow'));
+  } else {
+    // Inject technique-specific @keyframes then apply CSS animation -- zero rAF height writes
+    buildBreathKeyframes(t);
+    const orb=document.getElementById('breathOrb');
+    const glow=document.getElementById('breathOrbGlow');
+    orb.style.animation='none';
+    glow.style.animation='none';
+    void orb.offsetWidth; // flush so the new animation fires from frame 0
+    orb.style.animation=`breathCycle ${totalCycleSec}s linear ${t.cycles} forwards`;
+    glow.style.animation=`breathGlow ${totalCycleSec}s linear ${t.cycles} forwards`;
+  }
+
+  // -- Tick: updates TEXT only (countdown + phase label). No layout-triggering properties. --
+  const SCAN_MAP={
+    'Settle In':[],
+    'Feet & Legs':['sp-lleg','sp-rleg','sp-lfoot','sp-rfoot'],
+    'Torso & Hands':['sp-torso','sp-lhand','sp-rhand'],
+    'Arms & Shoulders':['sp-larm','sp-rarm'],
+    'Neck & Face':['sp-neck','sp-head'],
+    'Integrate':['sp-head','sp-neck','sp-torso','sp-larm','sp-rarm','sp-lhand','sp-rhand','sp-lleg','sp-rleg','sp-lfoot','sp-rfoot']
+  };
+
+  function updateBodyScan(phase){
+    document.querySelectorAll('.scan-part').forEach(p=>p.classList.remove('scan-lit','scan-glow'));
+    const parts=SCAN_MAP[phase]||[];
+    const isIntegrate=(phase==='Integrate');
+    parts.forEach(pid=>{const el=document.getElementById(pid);if(el)el.classList.add(isIntegrate?'scan-glow':'scan-lit');});
+  }
+
+  function onBreathComplete(){
+    clearInterval(breathInterval);breathInterval=null;
+    document.getElementById('breathPhase').textContent='\u2713 Complete';
+    document.getElementById('breathCount').textContent='';
+    document.getElementById('breathInstruction').textContent='Well done. Take a moment before returning.';
+    document.getElementById('breathCycleInfo').textContent='';
+    if(isScan){document.querySelectorAll('.scan-part').forEach(p=>{p.classList.remove('scan-lit');p.classList.add('scan-glow');});}
+    document.querySelector('.breath-content').classList.add('breath-complete');
+    setTimeout(()=>{document.querySelector('.breath-content').classList.remove('breath-complete');},600);
+    speak('Well done. Take a moment.');
+    addPoints('breathwork');
+    setTimeout(()=>{if(breathActive)stopBreathwork();},6000);
+  }
+
+  const sessionStart=performance.now();
+  let lastPhaseKey='';
+
+  function tick(){
+    if(!breathActive)return;
+    const elapsed=(performance.now()-sessionStart)/1000;
+    const currentCycle=Math.floor(elapsed/totalCycleSec);
+    if(currentCycle>=t.cycles){onBreathComplete();return;}
+
+    const posInCycle=elapsed%totalCycleSec;
+    let acc=0,pi=0;
+    for(let i=0;i<t.phases.length;i++){
+      acc+=t.durations[i];
+      if(posInCycle<acc){pi=i;break;}
+      if(i===t.phases.length-1)pi=i;
+    }
+    const phaseStart=acc-t.durations[pi];
+    const remaining=t.durations[pi]-(posInCycle-phaseStart);
+    const countDown=Math.ceil(remaining);
+    const phaseKey=currentCycle+'-'+pi;
+
+    // textContent writes -- safe, no layout reflow
+    document.getElementById('breathPhase').textContent=t.phases[pi];
+    document.getElementById('breathCount').textContent=countDown>0?countDown:'';
+    document.getElementById('breathInstruction').textContent=t.cues[pi];
+    if(t.cycles>1)document.getElementById('breathCycleInfo').textContent='Cycle '+(currentCycle+1)+' of '+t.cycles;
+
+    if(phaseKey!==lastPhaseKey){
+      lastPhaseKey=phaseKey;
+      if(isScan)updateBodyScan(t.phases[pi]);
+      speak(t.cues[pi]);
+    }
+  }
+
+  tick();
+  breathInterval=setInterval(tick,100); // text-only, 100ms is plenty
+}
+
+function stopBreathwork(){
+  breathActive=false;
+  clearInterval(breathInterval);breathInterval=null;
+  if(_breathCurrentAudio){_breathCurrentAudio.pause();_breathCurrentAudio=null;}
+  try{speechSynthesis.cancel();}catch(e){}
+  const orb=document.getElementById('breathOrb');
+  const glow=document.getElementById('breathOrbGlow');
+  if(orb){orb.style.animation='none';orb.style.transform='scale(0.35)';}
+  if(glow){glow.style.animation='none';glow.style.opacity='0';}
+  document.getElementById('breathOverlay').classList.remove('active');
+  document.getElementById('bodyScanWrap').style.display='none';
+  document.querySelectorAll('.scan-part').forEach(p=>p.classList.remove('scan-lit','scan-glow'));
+  _unblurDashboard();
+}
+
+
+
+// =======================================
+// TASK LIST
+// =======================================
+var TIME_LABELS={'30':'30m','60':'1hr','90':'1.5hr','120':'2hr','180':'3hr','240':'4hr','360':'6hr','480':'8hr','720':'12hr','999':'4hr+'};
+function fmtTimeEst(v){return TIME_LABELS[v]||'';}
+var PRIORITY_ORDER={high:0,med:1,low:2};
+var TIME_ORDER={'':9999,'30':30,'60':60,'90':90,'120':120,'180':180,'240':240,'360':360,'480':480,'720':720,'999':999};
+
+function getAllTasks(){
+  var tasks=[];
+  // Pull subtasks from all projects
+  state.projects.forEach(function(p){
+    p.subtasks.forEach(function(st){
+      tasks.push({id:st.id,name:st.name,done:st.done,priority:st.priority||'med',timeEst:st.timeEst||'',due:st.due||'',projectId:p.id,projectName:p.name,source:'project'});
+    });
+  });
+  // Add standalone tasks
+  (state.tasks||[]).forEach(function(t){
+    var pName='';
+    if(t.projectId){var pr=state.projects.find(function(p){return p.id===t.projectId;});if(pr)pName=pr.name;}
+    tasks.push({id:t.id,name:t.name,done:t.done,priority:t.priority||'med',timeEst:t.timeEst||'',due:t.due||'',projectId:t.projectId||'',projectName:pName,source:'standalone'});
+  });
+  return tasks;
+}
+
+function renderTaskList(){
+  var el=document.getElementById('taskListItems');if(!el)return;
+  var all=getAllTasks();
+  var sortBy=document.getElementById('tlSortBy');var sort=sortBy?sortBy.value:'due';
+  var filterProj=document.getElementById('tlFilterProj');var filt=filterProj?filterProj.value:'all';
+  var upcomingEl=document.getElementById('taskUpcomingOnly');
+
+  // Detect overlay mode -- skip blank-when-unchecked if expanded
+  var taskPanel=document.querySelector('.panel[data-panel="tasklist"]');
+  var inOverlay=taskPanel&&!taskPanel.classList.contains('panel-tile');
+  // "Show all" toggle: when checked on the tile, render every task using
+  // the current sort (priority is the default). Date-window filter removed.
+  var showAll=!inOverlay&&upcomingEl&&upcomingEl.checked;
+
+  // Filter by project
+  if(filt!=='all')all=all.filter(function(t){return t.projectId===filt||(t.projectIds&&t.projectIds.indexOf(filt)>=0);});
+
+  // Save total count (for badge) before any further filtering
+  var totalCount=all.filter(function(t){return !t.done;}).length;
+
+  // Sort
+  if(sort==='priority'){
+    all.sort(function(a,b){var pa=PRIORITY_ORDER[a.priority]||1,pb=PRIORITY_ORDER[b.priority]||1;return pa-pb;});
+  }else if(sort==='time'){
+    all.sort(function(a,b){var ta=TIME_ORDER[a.timeEst]||9999,tb=TIME_ORDER[b.timeEst]||9999;return ta-tb;});
+  }else if(sort==='project'){
+    all.sort(function(a,b){var na=a.projectName||'zzz',nb=b.projectName||'zzz';return na.localeCompare(nb);});
+  }else if(sort==='due'){
+    all.sort(function(a,b){var da=a.due||'9999',db=b.due||'9999';return da.localeCompare(db);});
+  }
+
+  var today=new Date().toISOString().split('T')[0];
+  var pcEl=document.getElementById('pc_tasklist');
+  
+  // If unchecked and in tile mode -- blank so add-form anchors at bottom
+  if(!inOverlay&&!showAll){
+    el.innerHTML='';
+    if(pcEl){pcEl.style.flex='none';pcEl.style.minHeight='0';}
+    document.getElementById('taskListCount').textContent=totalCount;
+    if(typeof _updateTileSummaryTasklist==='function')_updateTileSummaryTasklist();
+    return;
+  }
+  
+  // Checkbox is checked -- show matching items or blank if none
+  if(all.length===0){
+    el.innerHTML='';
+    if(pcEl){pcEl.style.flex='none';pcEl.style.minHeight='0';}
+  }else{
+    if(pcEl){pcEl.style.flex='';pcEl.style.minHeight='';}
+    el.innerHTML=all.map(function(t){
+      var nameId='tlname_'+t.id;
+      var dueId='tldue_'+t.id;
+      var dueHTML;
+      if(t.due){
+        dueHTML='<span class="date-editable tl-due-edit" id="'+dueId+'">'+fmtDate(t.due)+'</span>';
+      }else{
+        dueHTML='<span class="date-editable tl-due-edit" id="'+dueId+'" style="color:var(--text-faint);">+ date</span>';
+      }
+      return '<div class="tl-item">'+
+        '<div class="tl-check" onclick="toggleTaskDone(\''+t.id+'\',\''+t.source+'\',\''+t.projectId+'\')"></div>'+
+        '<div class="tl-body"><div class="tl-name"><span class="priority-dot clickable priority-'+t.priority+'" onclick="event.stopPropagation();'+(t.source==='standalone'?'cycleTaskPriority(\''+t.id+'\',event)':'cycleSubtaskPriority(\''+t.projectId+'\',\''+t.id+'\',event)')+'" title="Click to change priority"></span><span class="editable" id="'+nameId+'">'+esc(t.name)+'</span></div>'+
+        '<div class="tl-meta">'+(t.projectName?'<span class="tl-proj-badge">'+esc(t.projectName)+'</span>':'')+
+        (t.timeEst?'<span class="tl-time-badge">'+fmtTimeEst(t.timeEst)+'</span>':'')+
+        dueHTML+
+        '</div></div>'+
+        '<span class="wt-clock-btn '+(_isScheduledToday(t.id)?'scheduled':'')+'" onclick="event.stopPropagation();handleWorkTodayClick(\''+(t.source==='standalone'?'task':'subtask')+'\',\''+t.id+'\',\''+(t.projectId||'')+'\')" title="Work on this today">&#128197;</span>'+
+        (t.source==='standalone'
+          ?'<span class="tl-del" onclick="deleteStandaloneTask(\''+t.id+'\')" title="Delete task">\u2715</span>'
+          :'<span class="tl-del" onclick="deleteSubtask(\''+t.projectId+'\',\''+t.id+'\')" title="Delete subtask">\u2715</span>')+
+        '</div>';
+    }).join('');
+    // Wire editables
+    all.forEach(function(t){
+      var nameEl=document.getElementById('tlname_'+t.id);
+      var dueEl=document.getElementById('tldue_'+t.id);
+      if(nameEl){
+        if(t.source==='standalone'){
+          makeEditable(nameEl,function(v){editStandaloneTaskName(t.id,v);});
+        }else{
+          // Subtask in a project
+          makeEditable(nameEl,function(v){editSubtaskName(t.projectId,t.id,v);});
+        }
+      }
+      if(dueEl){
+        if(t.source==='standalone'){
+          makeDateClickable(dueEl,t.due,function(v){editStandaloneTaskDue(t.id,v);});
+        }else{
+          makeDateClickable(dueEl,t.due,function(v){editSubtaskDue(t.projectId,t.id,v);});
+        }
+      }
+    });
+    refreshEditables();
+  }
+  document.getElementById('taskListCount').textContent=totalCount;
+  // Update completed counter badge (green)
+  var compCount=(state.completedTasks||[]).length;
+  var compBadge=document.getElementById('taskListCompletedBadge');
+  if(compBadge){
+    compBadge.textContent='✓ '+compCount;
+    compBadge.style.display=compCount>0?'inline-flex':'none';
+  }
+  // Completed archive folder
+  var compEl=document.getElementById('taskListCompleted');
+  if(compEl){
+    var comp=state.completedTasks||[];
+    if(comp.length===0){
+      compEl.innerHTML='';
+    }else{
+      compEl.innerHTML='<div class="tl-completed-header" onclick="toggleCompletedFolder(this)">'
+        +'<span class="tl-completed-arrow">&#9654;</span>'
+        +'<span>&#10003; Completed ('+comp.length+')</span>'
+        +'</div>'
+        +'<div class="tl-completed-list">'
+        +comp.slice(0,50).map(function(t){
+          var d=t.archivedAt?new Date(t.archivedAt).toLocaleDateString('en-US',{month:'short',day:'numeric'}):'';
+          return '<div class="tl-item tl-done" style="opacity:0.65;">'
+            +'<div class="tl-check checked" style="cursor:default;">\u2713</div>'
+            +'<div class="tl-body"><div class="tl-name">'+esc(t.name)+'</div>'
+            +'<div class="tl-meta">'+(t.projectName?'<span class="tl-proj-badge">'+esc(t.projectName)+'</span>':'')
+            +(d?'<span style="font-size:10px;color:var(--text-faint);">'+d+'</span>':'')
+            +'</div></div>'
+            +'<span class="tl-del" onclick="removeCompleted(\''+t.id+'\')" title="Remove">\u2715</span>'
+            +'</div>';
+        }).join('')
+        +(comp.length>50?'<div class="tl-completed-empty">+'+( comp.length-50)+' older items</div>':'')
+        +'</div>';
+    }
+  }
+  updateTLProjectDropdowns();
+  if(typeof _updateTileSummaryTasklist==='function')_updateTileSummaryTasklist();
+}
+
+function toggleTaskDone(id,source,projId){
+  if(!state.completedTasks)state.completedTasks=[];
+  var srcEl=document.querySelector('.tl-check[onclick*="'+id+'"]')||document.querySelector('.st-check[onclick*="'+id+'"]');
+  if(source==='project'){
+    var p=state.projects.find(function(p){return p.id===projId;});
+    if(p){
+      var s=p.subtasks.find(function(s){return s.id===id;});
+      if(s){
+        state.completedTasks.unshift({
+          id:s.id,name:s.name,projectName:p.name,projectId:p.id,
+          archivedAt:new Date().toISOString(),source:'project'
+        });
+        if(s.linkGroupId){
+          state.projects.forEach(function(pr){
+            pr.subtasks=pr.subtasks.filter(function(x){return x.linkGroupId!==s.linkGroupId;});
+          });
+        }else{
+          p.subtasks=p.subtasks.filter(function(x){return x.id!==id;});
+        }
+        addPoints('subtask',srcEl);
+      }
+    }
+    renderProjects();
+  }else{
+    var t=state.tasks.find(function(t){return t.id===id;});
+    if(t){
+      var pName=t.projectId?((state.projects.find(function(p){return p.id===t.projectId;})||{}).name||''):'';
+      state.completedTasks.unshift({
+        id:t.id,name:t.name,projectName:pName,projectId:t.projectId||'',projectIds:t.projectIds||[],
+        archivedAt:new Date().toISOString(),source:'standalone'
+      });
+      state.tasks=state.tasks.filter(function(x){return x.id!==id;});
+      addPoints('task',srcEl);
+    }
+  }
+  if(state.completedTasks.length>100)state.completedTasks=state.completedTasks.slice(0,100);
+  save();renderTaskList();
+}
+
+function addStandaloneTask(){
+  var nameEl=document.getElementById('tlNewName');
+  var name=nameEl.value.trim();if(!name)return;
+  var projHidden=document.getElementById('tlNewProject');
+  var projVal=projHidden.value;
+  var projIds=projVal?projVal.split(',').filter(Boolean):[];
+  var priority=document.getElementById('tlNewPriority').value;
+  var timeEst=document.getElementById('tlNewTime').value;
+  var due=document.getElementById('tlNewDue').value;
+
+  if(projIds.length>=1){
+    // Add as subtask to EACH selected project, sharing a linkGroupId
+    var groupId=projIds.length>1?'lg'+Date.now():null;
+    var addedCount=0;
+    projIds.forEach(function(pid){
+      var pr=state.projects.find(function(p){return p.id===pid;});
+      if(pr){
+        pr.subtasks.push({
+          id:'st'+Date.now()+'_'+Math.random().toString(36).slice(2,7),
+          name:name,due:due,priority:priority,timeEst:timeEst,done:false,
+          linkGroupId:groupId
+        });
+        addedCount++;
+      }
+    });
+    renderProjects();
+    if(addedCount>1)toast('Task added to '+addedCount+' projects');
+    else ;
+  }else{
+    // Add as standalone task
+    state.tasks.push({id:'tk'+Date.now(),name:name,due:due,priority:priority,timeEst:timeEst,projectId:'',projectIds:[],done:false});
+    ;
+  }
+  nameEl.value='';document.getElementById('tlNewDue').value='';
+  projHidden.value='';
+  renderProjMultiPickerChips(document.getElementById('tlNewProjectPicker'));
+  save();renderTaskList();
+}
+
+function deleteStandaloneTask(id){
+  state.tasks=state.tasks.filter(function(t){return t.id!==id;});
+  save();renderTaskList();
+}
+
+function clearDoneTasks(){
+  // Tasks now auto-archive when checked. This is a no-op kept for backwards compat.
+  toast('Tasks auto-archive when checked');
+}
+
+function updateTLProjectDropdowns(){
+  // Update filter dropdown
+  var filt=document.getElementById('tlFilterProj');
+  if(filt){
+    var cur=filt.value;
+    filt.innerHTML='<option value="all">All Projects</option>'+_sortedProjects().map(function(p){return '<option value="'+p.id+'">'+esc(p.name)+'</option>';}).join('');
+    filt.value=cur;
+  }
+  // Update add-task project dropdown
+  var add=document.getElementById('tlNewProject');
+  if(add){
+    var cur2=add.value;
+    add.innerHTML='<option value="">No project</option><option value="__new__">+ New project...</option>'+_sortedProjects().map(function(p){return '<option value="'+p.id+'">'+esc(p.name)+'</option>';}).join('');
+    if(cur2&&cur2!=='__new__')add.value=cur2;
+  }
+}
+
+// PANEL EXPAND/COLLAPSE
+function toggleExpand(btn){const panel=btn.closest('.panel');panel.classList.toggle('expanded');checkOverflows();}
+
+// =======================================
+// PANEL TILE / OVERLAY EXPANSION SYSTEM
+// =======================================
+var _panelOverlayCurrent=null;
+
+// -- Usage analytics -- fire-and-forget to Jarvis /ops-track ----------
+function _trackEvent(type,id,name){
+  try{
+    fetch(JARVIS_PROXY_URL+'/ops-track',{
+      method:'POST',
+      headers:{'Content-Type':'application/json'},
+      body:JSON.stringify({type,id,name:name||id})
+    }).catch(function(){});
+  }catch(e){}
+}
+
+function openPanelOverlay(panelKey){
+  var panel=document.querySelector('.panel[data-panel="'+panelKey+'"]');
+  if(!panel)return;
+  var overlay=document.getElementById('panelOverlay');
+  var body=document.getElementById('panelOverlayBody');
+  var titleEl=document.getElementById('panelOverlayTitle');
+  if(!overlay||!body||!titleEl)return;
+  
+  // Close any other open overlay first
+  if(_panelOverlayCurrent)closePanelOverlay();
+  
+  // Get the title text + icon from the panel header
+  var titleNode=panel.querySelector('.panel-title');
+  var titleHTML=titleNode?titleNode.innerHTML.replace(/<span class="drag-handle"[^<]*<\/span>/,''):panelKey;
+  titleEl.innerHTML=titleHTML;
+  
+  // Move the panel into the overlay (preserve original position with placeholder)
+  var placeholder=document.createElement('div');
+  placeholder.className='panel-placeholder';
+  placeholder.dataset.placeholderFor=panelKey;
+  placeholder.style.display='none';
+  panel.parentNode.insertBefore(placeholder,panel);
+  
+  // Remove tile mode while in overlay (so all content is visible)
+  panel.classList.remove('panel-tile');
+  body.appendChild(panel);
+  
+  overlay.classList.add('open');
+  _panelOverlayCurrent=panelKey;
+  _trackEvent('panel_view',panelKey,panelKey);
+
+  // Re-render to refresh content (some renderers depend on element visibility)
+  if(panelKey==='projects'&&typeof renderProjects==='function')renderProjects();
+  else if(panelKey==='reminders'&&typeof renderReminders==='function')renderReminders();
+  else if(panelKey==='notes'&&typeof renderNotes==='function')renderNotes();
+  else if(panelKey==='tasklist'&&typeof renderTaskList==='function')renderTaskList();
+}
+
+function closePanelOverlay(){
+  if(!_panelOverlayCurrent)return;
+  var panelKey=_panelOverlayCurrent;
+  var overlay=document.getElementById('panelOverlay');
+  var body=document.getElementById('panelOverlayBody');
+  var panel=body?body.querySelector('.panel[data-panel="'+panelKey+'"]'):null;
+  var placeholder=document.querySelector('.panel-placeholder[data-placeholder-for="'+panelKey+'"]');
+  
+  if(panel&&placeholder){
+    // Restore tile mode and move panel back to dashboard
+    panel.classList.add('panel-tile');
+    placeholder.parentNode.insertBefore(panel,placeholder);
+    placeholder.parentNode.removeChild(placeholder);
+  }
+  
+  if(overlay)overlay.classList.remove('open');
+  _panelOverlayCurrent=null;
+  
+  // Refresh tile summaries
+  updateAllTileSummaries();
+  
+  // Re-render the closed panel so tile view is always fresh
+  if(panelKey==='projects'&&typeof renderProjects==='function')renderProjects();
+  else if(panelKey==='tasklist'&&typeof renderTaskList==='function')renderTaskList();
+  else if(panelKey==='notes'&&typeof renderNotes==='function')renderNotes();
+  else if(panelKey==='reminders'&&typeof renderReminders==='function')renderReminders();
+  else if(panelKey==='routines'&&typeof renderRoutines==='function')renderRoutines();
+  else if(panelKey==='brain'&&typeof renderThoughts==='function')renderThoughts();
+  else if(panelKey==='timeline'&&typeof renderTimeline==='function')renderTimeline();
+}
+
+// ESC key closes overlay
+document.addEventListener('keydown',function(e){
+  if(e.key==='Escape'&&_panelOverlayCurrent)closePanelOverlay();
+});
+
+function updateAllTileSummaries(){
+  _updateTileSummaryProjects();
+  _updateTileSummaryReminders();
+  _updateTileSummaryNotes();
+  _updateTileSummaryTasklist();
+}
+
+function _summaryPill(text,cls){
+  return '<span class="panel-tile-summary-pill'+(cls?' '+cls:'')+'">'+text+'</span>';
+}
+
+function _updateTileSummaryProjects(){
+  var el=document.getElementById('tile-summary-projects');
+  if(!el)return;
+  var active=(state.projects||[]).length;
+  var done=(state.completedProjects||[]).length;
+  var html='';
+  if(active>0)html+=_summaryPill(active+' active');
+  if(done>0)html+=_summaryPill('\u2713 '+done+' done');
+  if(!html)html='<span style="color:var(--text-faint);font-style:italic;">No projects yet</span>';
+  el.innerHTML=html;
+}
+
+function _updateTileSummaryReminders(){
+  var el=document.getElementById('tile-summary-reminders');
+  if(!el)return;
+  var rems=state.reminders||[];
+  var todayKey=todayStr();
+  var todayCount=0,overdueCount=0,upcomingCount=0;
+  rems.forEach(function(r){
+    if(!r.date){upcomingCount++;return;}
+    if(r.date===todayKey)todayCount++;
+    else if(r.date<todayKey)overdueCount++;
+    else upcomingCount++;
+  });
+  var html='';
+  if(overdueCount>0)html+=_summaryPill(overdueCount+' overdue','urgent');
+  if(todayCount>0)html+=_summaryPill(todayCount+' today','warn');
+  if(upcomingCount>0)html+=_summaryPill(upcomingCount+' upcoming');
+  if(!html)html='<span style="color:var(--text-faint);font-style:italic;">No reminders</span>';
+  el.innerHTML=html;
+}
+
+function _updateTileSummaryNotes(){
+  var el=document.getElementById('tile-summary-notes');
+  if(!el)return;
+  var n=(state.notes||[]).length;
+  var html='';
+  if(n>0)html+=_summaryPill(n+' note'+(n!==1?'s':''));
+  else html='<span style="color:var(--text-faint);font-style:italic;">No notes yet</span>';
+  el.innerHTML=html;
+}
+
+function _updateTileSummaryTasklist(){
+  var el=document.getElementById('tile-summary-tasklist');
+  if(!el)return;
+  var todayKey=todayStr();
+  var allTasks=[];
+  state.projects.forEach(function(p){
+    p.subtasks.forEach(function(st){allTasks.push(st);});
+  });
+  (state.tasks||[]).forEach(function(t){if(!t.done)allTasks.push(t);});
+  
+  var dueToday=0,overdue=0,highPri=0;
+  allTasks.forEach(function(t){
+    if(t.due===todayKey)dueToday++;
+    else if(t.due&&t.due<todayKey)overdue++;
+    if(t.priority==='high')highPri++;
+  });
+  var done=(state.completedTasks||[]).length;
+  
+  var html='';
+  if(allTasks.length>0)html+=_summaryPill(allTasks.length+' active');
+  if(overdue>0)html+=_summaryPill(overdue+' overdue','urgent');
+  if(dueToday>0)html+=_summaryPill(dueToday+' today','warn');
+  if(highPri>0)html+=_summaryPill('\u26a0 '+highPri+' high pri');
+  if(done>0)html+=_summaryPill('\u2713 '+done+' done');
+  if(!html)html='<span style="color:var(--text-faint);font-style:italic;">No tasks yet</span>';
+  el.innerHTML=html;
+}
+
+function checkOverflows(){document.querySelectorAll('.panel-content').forEach(pc=>{if(pc.scrollHeight>pc.clientHeight+10){pc.classList.add('has-overflow');}else{pc.classList.remove('has-overflow');}});}
+// Run overflow check after renders
+var _origRenderProjects=renderProjects;renderProjects=function(){_origRenderProjects();checkOverflows();}
+var _origRenderReminders=renderReminders;renderReminders=function(){_origRenderReminders();checkOverflows();}
+var _origRenderNotes=renderNotes;renderNotes=function(){_origRenderNotes();checkOverflows();}
+var _origRenderRoutines=renderRoutines;renderRoutines=function(){_origRenderRoutines();checkOverflows();}
+
+// INIT - called after auth
+
+// --- SHARE TARGET HANDLER ---------------------------------------------------
+// Activated when the app is opened via the OS Share sheet (Android/Chrome PWA).
+// Reads ?share_text=, ?share_title=, ?share_url= from the URL and shows an
+// inbox banner so the user can route the content to Brain Dump or Notes.
+function checkShareTarget(){
+  const p=new URLSearchParams(window.location.search);
+  const text=(p.get('share_text')||'').trim();
+  const title=(p.get('share_title')||'').trim();
+  const url=(p.get('share_url')||'').trim();
+  if(!text&&!title&&!url)return;
+
+  // Build a clean preview string
+  const parts=[];
+  if(title)parts.push(title);
+  if(text&&text!==title)parts.push(text);
+  if(url)parts.push(url);
+  const combined=parts.join('\n');
+
+  // Remove params from URL without reload
+  window.history.replaceState({},'',window.location.pathname);
+
+  // Build and show the inbox banner
+  const div=document.createElement('div');
+  div.className='share-inbox';
+  div.id='shareInbox';
+  div.innerHTML=`
+    <button class="share-inbox-dismiss" onclick="document.getElementById('shareInbox').remove()" title="Dismiss">&times;</button>
+    <div class="share-inbox-title">&#128228; Incoming Share</div>
+    <div class="share-inbox-preview" id="sharePreview">${esc(combined)}</div>
+    <div class="share-inbox-actions">
+      <button class="share-inbox-btn primary" onclick="shareIntoBrainDump()">&#129504; Brain Dump</button>
+      <button class="share-inbox-btn" onclick="shareIntoNote()">&#128221; Add as Note</button>
+      <button class="share-inbox-btn" onclick="shareIntoReminder()">&#128276; Add as Reminder</button>
+    </div>`;
+  // Store text on the element for the action functions
+  div._shareText=combined;
+  div._shareTitle=title||text.slice(0,40)||'Shared item';
+  document.body.appendChild(div);
+}
+
+function shareIntoBrainDump(){
+  const d=document.getElementById('shareInbox');if(!d)return;
+  const text=d._shareText;
+  state.thoughts.push({id:'th'+Date.now(),text:text});
+  save();renderThoughts();
+  // Make sure Brain Dump panel is visible and briefly highlight it
+  const bp=document.querySelector('[data-panel="brain"]');
+  if(bp){bp.scrollIntoView({behavior:'smooth',block:'nearest'});bp.style.outline='2px solid var(--accent)';setTimeout(()=>{bp.style.outline='';},1800);}
+  d.remove();
+  toast('Added to Brain Dump ✓');
+}
+
+function shareIntoNote(){
+  const d=document.getElementById('shareInbox');if(!d)return;
+  const now=new Date();
+  state.notes.push({id:'n'+Date.now(),label:d._shareTitle,body:d._shareText,projectId:'',created:now.toISOString(),date:now.toLocaleDateString('en-US',{month:'short',day:'numeric',year:'numeric'}),time:now.toLocaleTimeString('en-US',{hour:'numeric',minute:'2-digit'})});
+  save();renderNotes();
+  const np=document.querySelector('[data-panel="notes"]');
+  if(np){np.scrollIntoView({behavior:'smooth',block:'nearest'});np.style.outline='2px solid var(--accent)';setTimeout(()=>{np.style.outline='';},1800);}
+  d.remove();
+  toast('Added to Notes ✓');
+}
+
+function shareIntoReminder(){
+  const d=document.getElementById('shareInbox');if(!d)return;
+  state.reminders.push({id:'rem'+Date.now(),text:d._shareText,date:'',time:''});
+  save();renderReminders();
+  const rp=document.querySelector('[data-panel="reminders"]');
+  if(rp){rp.scrollIntoView({behavior:'smooth',block:'nearest'});rp.style.outline='2px solid var(--accent)';setTimeout(()=>{rp.style.outline='';},1800);}
+  d.remove();
+  toast('Added to Reminders ✓');
+}
+// ----------------------------------------------------------------------------
+
+// =======================================
+// VOICE INPUT
+// =======================================
+var _micRec=null,_micBtn=null;
+function toggleMic(targetId,btnId){
+  const btn=document.getElementById(btnId);
+  const target=document.getElementById(targetId);
+  if(!btn||!target){return;}
+  // If already listening on this button, stop
+  if(_micBtn===btnId&&_micRec){_micRec.stop();return;}
+  // Stop any other active mic first
+  if(_micRec){_micRec.stop();}
+  if(!('SpeechRecognition' in window||'webkitSpeechRecognition' in window)){
+    toast('Voice input not supported in this browser');return;
+  }
+  const SR=window.SpeechRecognition||window.webkitSpeechRecognition;
+  const rec=new SR();
+  rec.lang='en-US';rec.continuous=true;rec.interimResults=true;
+  var base='';
+  rec.onstart=function(){
+    _micRec=rec;_micBtn=btnId;
+    base=target.value?target.value.trimEnd()+' ':'';
+    btn.classList.add('listening');btn.textContent='\u23F9 Stop';
+  };
+  rec.onresult=function(e){
+    var interim='',final=base;
+    for(var i=e.resultIndex;i<e.results.length;i++){
+      if(e.results[i].isFinal)final+=e.results[i][0].transcript;
+      else interim+=e.results[i][0].transcript;
+    }
+    // Update base on each final chunk so next interim appends correctly
+    if(e.results[e.results.length-1].isFinal)base=final;
+    target.value=final+interim;
+    target.dispatchEvent(new Event('input'));
+  };
+  rec.onerror=function(e){if(e.error!=='aborted')toast('Mic: '+e.error);stopMic(btnId);};
+  rec.onend=function(){stopMic(btnId);};
+  rec.start();
+}
+function stopMic(btnId){
+  const btn=document.getElementById(btnId);
+  if(btn){btn.classList.remove('listening');btn.textContent='\uD83C\uDFA4';}
+  _micRec=null;_micBtn=null;
+}
+
+// =======================================
+// BREATHWORK MODAL
+// =======================================
+function _blurDashboard(){document.getElementById('dashboard').style.filter='blur(3px)';document.getElementById('dashboard').style.pointerEvents='none';}
+function _unblurDashboard(){document.getElementById('dashboard').style.filter='';document.getElementById('dashboard').style.pointerEvents='';}
+
+function toggleCompletedFolder(header){
+  var arrow=header.querySelector('.tl-completed-arrow');
+  var list=header.nextElementSibling;
+  arrow.classList.toggle('open');
+  list.classList.toggle('open');
+}
+
+function removeCompleted(id){
+  state.completedTasks=state.completedTasks.filter(function(t){return t.id!==id;});
+  save();renderTaskList();
+}
+
+// =======================================
+// WEATHER MODAL -- NWS API (free, no key, CORS-open)
+// =======================================
+var _wxCache=null,_wxCacheTime=0;
+var WX_CACHE_MS=10*60*1000; // 10-minute cache
+
+function openWeatherModal(){
+  document.getElementById('weatherModal').classList.add('open');
+  _blurDashboard();
+  _loadWeather();
+}
+function closeWeatherModal(){
+  document.getElementById('weatherModal').classList.remove('open');
+  _unblurDashboard();
+}
+
+function _wxIcon(shortForecast){
+  var f=(shortForecast||'').toLowerCase();
+  if(f.includes('tornado')||f.includes('funnel'))return'\uD83C\uDF00';
+  if(f.includes('thunder')||f.includes('storm'))return'\u26C8\uFE0F';
+  if(f.includes('snow')||f.includes('blizzard'))return'\u2744\uFE0F';
+  if(f.includes('sleet')||f.includes('wintry')||f.includes('ice'))return'\uD83C\uDF28';
+  if(f.includes('rain')||f.includes('shower')||f.includes('drizzle'))return'\uD83C\uDF27\uFE0F';
+  if(f.includes('fog')||f.includes('haze'))return'\uD83C\uDF2B\uFE0F';
+  if(f.includes('wind'))return'\uD83C\uDF2C\uFE0F';
+  if(f.includes('cloud')&&f.includes('part'))return'\u26C5';
+  if(f.includes('overcast')||f.includes('mostly cloudy'))return'\u2601\uFE0F';
+  if(f.includes('cloud'))return'\uD83C\uDF24\uFE0F';
+  if(f.includes('sunny')||f.includes('clear'))return'\u2600\uFE0F';
+  return'\uD83C\uDF24\uFE0F';
+}
+
+function _loadWeather(){
+  var body=document.getElementById('weatherBody');
+  var locEl=document.getElementById('weatherLocation');
+  body.innerHTML='<div class="wx-loading">&#127780; Getting your location\u2026</div>';
+
+  // Use cache if fresh
+  if(_wxCache&&(Date.now()-_wxCacheTime)<WX_CACHE_MS){
+    _renderWeather(_wxCache);return;
+  }
+
+  function fetchWeather(lat,lon){
+    locEl.textContent='';
+    body.innerHTML='<div class="wx-loading">&#127780; Loading weather\u2026</div>';
+    // Step 1: NWS points API resolves lat/lon to forecast office + grid
+    fetch('https://api.weather.gov/points/'+lat.toFixed(4)+','+lon.toFixed(4),{
+      headers:{'User-Agent':'ProductivityDashboard (personal-app)','Accept':'application/geo+json'}
+    })
+    .then(function(r){if(!r.ok)throw new Error('Points '+r.status);return r.json();})
+    .then(function(pts){
+      var props=pts.properties;
+      var city=props.relativeLocation&&props.relativeLocation.properties;
+      if(city)locEl.textContent=(city.city||'')+', '+(city.state||'');
+      // Step 2: fetch current conditions from nearest observation station
+      var stationsUrl=props.observationStations;
+      var forecastUrl=props.forecast;
+      var hourlyUrl=props.forecastHourly;
+      return Promise.all([
+        fetch(stationsUrl,{headers:{'User-Agent':'ProductivityDashboard'}}).then(function(r){return r.json();}),
+        fetch(forecastUrl,{headers:{'User-Agent':'ProductivityDashboard','Accept':'application/geo+json'}}).then(function(r){return r.json();})
+      ]);
+    })
+    .then(function(results){
+      var stations=results[0];var forecast=results[1];
+      var stationId=stations.features&&stations.features[0]&&stations.features[0].properties.stationIdentifier;
+      if(!stationId)throw new Error('No station');
+      return Promise.all([
+        fetch('https://api.weather.gov/stations/'+stationId+'/observations/latest',{
+          headers:{'User-Agent':'ProductivityDashboard','Accept':'application/geo+json'}
+        }).then(function(r){return r.json();}),
+        Promise.resolve(forecast)
+      ]);
+    })
+    .then(function(results){
+      var obs=results[0].properties;var forecast=results[1];
+      var periods=forecast.properties&&forecast.properties.periods||[];
+      var data={
+        temp:obs.temperature&&obs.temperature.value!==null
+          ?Math.round(obs.temperature.value*9/5+32):null,
+        feelsLike:obs.heatIndex&&obs.heatIndex.value!==null
+          ?Math.round(obs.heatIndex.value*9/5+32)
+          :obs.windChill&&obs.windChill.value!==null
+            ?Math.round(obs.windChill.value*9/5+32):null,
+        humidity:obs.relativeHumidity&&obs.relativeHumidity.value!==null
+          ?Math.round(obs.relativeHumidity.value):null,
+        wind:obs.windSpeed&&obs.windSpeed.value!==null
+          ?Math.round(obs.windSpeed.value*0.621371)+' mph':null,
+        windDir:obs.windDirection&&obs.windDirection.value!==null
+          ?_wxDegToDir(obs.windDirection.value):null,
+        description:obs.textDescription||'',
+        periods:periods.slice(0,14)
+      };
+      _wxCache=data;_wxCacheTime=Date.now();
+      _renderWeather(data);
+    })
+    .catch(function(e){
+      console.warn('NWS error:',e);
+      body.innerHTML='<div class="wx-loading" style="color:var(--red);">&#10060; Weather unavailable.<br><span style="font-size:12px;color:var(--text-faint);">'+e.message+'</span></div>';
+    });
+  }
+
+  if(!navigator.geolocation){fetchWeather(39.6139,-86.1069);return;}
+  navigator.geolocation.getCurrentPosition(
+    function(p){fetchWeather(p.coords.latitude,p.coords.longitude);},
+    function(){fetchWeather(39.6139,-86.1069);locEl.textContent='Greenwood, IN (default)';},
+    {timeout:6000,maximumAge:60000}
+  );
+}
+
+function _wxDegToDir(deg){
+  var dirs=['N','NNE','NE','ENE','E','ESE','SE','SSE','S','SSW','SW','WSW','W','WNW','NW','NNW'];
+  return dirs[Math.round(deg/22.5)%16];
+}
+
+function _renderWeather(data){
+  var body=document.getElementById('weatherBody');
+  if(!data){body.innerHTML='<div class="wx-loading">No data</div>';return;}
+
+  var tempStr=data.temp!==null?data.temp+'\u00B0F':'--';
+  var feelsStr=data.feelsLike!==null&&data.feelsLike!==data.temp?' / feels '+data.feelsLike+'\u00B0F':'';
+  var icon=_wxIcon(data.description);
+  var details=[];
+  if(data.humidity!==null)details.push('Humidity: '+data.humidity+'%');
+  if(data.wind)details.push('Wind: '+(data.windDir||'')+' '+data.wind);
+
+  var html='<div class="wx-current">'
+    +'<div class="wx-icon">'+icon+'</div>'
+    +'<div class="wx-main">'
+    +'<div class="wx-temp">'+tempStr+feelsStr+'</div>'
+    +'<div class="wx-desc">'+esc(data.description||'Current Conditions')+'</div>'
+    +(details.length?'<div class="wx-detail">'+details.join(' &bull; ')+'</div>':'')
+    +'</div></div>';
+
+  if(data.periods&&data.periods.length>0){
+    html+='<div class="wx-section-title">7-Day Forecast</div>';
+    html+='<div class="wx-forecast">';
+    // Pair day/night periods, show one tile per day
+    var shown={};
+    data.periods.forEach(function(p){
+      var dayKey=p.name.replace('This ','').replace(' Night','').replace(' Afternoon','').replace(' Evening','').replace(' Morning','');
+      if(shown[dayKey])return;
+      if(!p.isDaytime)return; // prefer daytime temps
+      shown[dayKey]=true;
+      // Find matching night for low
+      var low=null;
+      var ni=data.periods.indexOf(p)+1;
+      if(ni<data.periods.length&&!data.periods[ni].isDaytime)low=data.periods[ni].temperature;
+      html+='<div class="wx-day">'
+        +'<div class="wx-day-name">'+p.name.substring(0,3)+'</div>'
+        +'<div class="wx-day-icon">'+_wxIcon(p.shortForecast)+'</div>'
+        +'<div class="wx-day-temp">'+p.temperature+'\u00B0</div>'
+        +(low!==null?'<div class="wx-day-low">'+low+'\u00B0</div>':'')
+        +'<div class="wx-day-desc">'+p.shortForecast+'</div>'
+        +'</div>';
+    });
+    html+='</div>';
+  }
+
+  body.innerHTML=html;
+}
+
+
+
+
+
+// =======================================
+// RESTAURANT SPINNER
+// =======================================
+var _spinRestaurants=[];
+var _spinAngle=0;
+var _spinAnimId=null;
+var _spinFilters={type:'sitdown',meal:'lunch'};
+var _spinColors=['#d4a853','#5fafb0','#9b7ec7','#6bab73','#c75f5f','#5f8fc7','#c79b3a','#7ec75f','#af5f9b','#3ac7c0'];
+
+function openSpinnerModal(){
+  document.getElementById('spinnerModal').classList.add('open');
+  _blurDashboard();
+  // Reset to filter screen each open
+  document.getElementById('spinWheelArea').style.display='none';
+  document.getElementById('spinResultArea').innerHTML='';
+  document.getElementById('spinStatus').textContent='';
+  document.getElementById('spinGoBtn').disabled=false;
+  document.getElementById('spinGoBtn').textContent='\uD83C\uDF0F Find Restaurants Near Me';
+  _spinRestaurants=[];
+}
+function closeSpinnerModal(){
+  document.getElementById('spinnerModal').classList.remove('open');
+  _unblurDashboard();
+  if(_spinAnimId){cancelAnimationFrame(_spinAnimId);_spinAnimId=null;}
+}
+
+function spinToggle(btn){
+  var group=btn.dataset.group;
+  document.querySelectorAll('.spin-filter-btn[data-group="'+group+'"]').forEach(function(b){b.classList.remove('active');});
+  btn.classList.add('active');
+  _spinFilters[group]=btn.dataset.val;
+  // Dim meal selector when coffee chosen
+  if(group==='type'){
+    var mealGroup=document.querySelector('.spin-filter-btn[data-val="breakfast"]');
+    if(mealGroup){mealGroup=mealGroup.closest('.spin-filter-group');mealGroup.style.opacity=btn.dataset.val==='coffee'?'0.35':'1';}
+  }
+}
+
+function spinFetchAndBuild(){
+  var goBtn=document.getElementById('spinGoBtn');
+  var status=document.getElementById('spinStatus');
+  // Dim meal selector when coffee is selected
+  var mealBtn=document.querySelector('.spin-filter-btn[data-val="breakfast"]');
+  var mealGroup=mealBtn&&mealBtn.closest('.spin-filter-group');
+  if(mealGroup)mealGroup.style.opacity=_spinFilters.type==='coffee'?'0.35':'1';
+
+  goBtn.disabled=true;
+  status.textContent='Getting your location\u2026';
+
+  if(!navigator.geolocation){
+    status.textContent='Location unavailable \u2014 using Greenwood, IN area.';
+    _spinOverpassQuery(39.6139,-86.1069);
+    return;
+  }
+  navigator.geolocation.getCurrentPosition(
+    function(pos){
+      status.textContent='Finding places on OpenStreetMap\u2026';
+      _spinOverpassQuery(pos.coords.latitude,pos.coords.longitude);
+    },
+    function(){
+      status.textContent='Location denied \u2014 using Greenwood, IN area.';
+      _spinOverpassQuery(39.6139,-86.1069);
+    },
+    {timeout:8000,enableHighAccuracy:true}
+  );
+}
+
+// -- Step 1: OpenStreetMap Overpass -- precise location, finds local/independent places --
+function _spinOverpassQuery(lat,lon){
+  var amenityTag={sitdown:'restaurant',fastfood:'fast_food',coffee:'cafe'}[_spinFilters.type]||'restaurant';
+  // Search 3km radius, return up to 30 nodes/ways, ask for center coords on ways
+  var query='[out:json][timeout:12];('
+    +'node["amenity"="'+amenityTag+'"](around:3000,'+lat+','+lon+');'
+    +'way["amenity"="'+amenityTag+'"](around:3000,'+lat+','+lon+');'
+    +');out center 30;';
+
+  var url='https://overpass-api.de/api/interpreter?data='+encodeURIComponent(query);
+
+  document.getElementById('spinStatus').textContent='Scanning local area\u2026';
+
+  fetch(url)
+    .then(function(r){if(!r.ok)throw new Error('Overpass HTTP '+r.status);return r.json();})
+    .then(function(data){
+      var elements=data.elements||[];
+      if(elements.length<3){
+        // Too sparse -- fall back directly
+        document.getElementById('spinStatus').textContent='OSM sparse here \u2014 using local data.';
+        _spinRestaurants=_spinFallback();
+        _spinBuildWheel();
+        return;
+      }
+
+      // Parse OSM elements into restaurant stubs
+      var seen=new Set();
+      var places=[];
+      elements.forEach(function(el){
+        var name=(el.tags&&el.tags.name)||'';
+        if(!name||seen.has(name.toLowerCase()))return;
+        seen.add(name.toLowerCase());
+        var cuisine=(el.tags&&(el.tags.cuisine||el.tags.amenity))||'';
+        // Build address from OSM addr tags
+        var addr='';
+        if(el.tags){
+          var n=el.tags['addr:housenumber']||'';
+          var s=el.tags['addr:street']||'';
+          var c=el.tags['addr:city']||'';
+          if(n&&s)addr=(n+' '+s+(c?', '+c:'')).trim();
+        }
+        places.push({name:name,cuisine:cuisine.replace(/_/g,' '),address:addr,rating:null,yelpUrl:''});
+      });
+
+      if(places.length===0){
+        _spinRestaurants=_spinFallback();
+        _spinBuildWheel();
+        return;
+      }
+
+      // Shuffle to give different results each search, then take up to 12 for Claude to rate
+      places.sort(function(){return Math.random()-0.5;});
+      var pool=places.slice(0,12);
+
+      document.getElementById('spinStatus').textContent='Found '+places.length+' places.';
+      // Use OSM places directly without AI rating enrichment
+      pool.forEach(function(p){if(!p.rating)p.rating=null;});
+      _spinRestaurants=pool.slice(0,8);
+      _spinBuildWheel();
+    })
+    .catch(function(e){
+      console.warn('Overpass error:',e);
+      document.getElementById('spinStatus').textContent='OSM unavailable \u2014 using rated local data.';
+      _spinRestaurants=_spinFallback();
+      _spinBuildWheel();
+    });
+}
+
+
+function _spinFallback(){
+  var sitdown=[
+    {name:'Hickory Pit',rating:4.3,cuisine:'BBQ',address:'611 S Emerson Ave, Greenwood IN',yelpUrl:''},
+    {name:'Stacked Pickle',rating:4.1,cuisine:'American Bar',address:'851 S Emerson Ave, Greenwood IN',yelpUrl:''},
+    {name:'Buca di Beppo',rating:4.2,cuisine:'Italian',address:'1481 US-31 S, Greenwood IN',yelpUrl:''},
+    {name:'Texas Roadhouse',rating:4.0,cuisine:'Steakhouse',address:'980 N SR-135, Greenwood IN',yelpUrl:''},
+    {name:'Olive Garden',rating:4.0,cuisine:'Italian',address:'1451 N SR-135, Greenwood IN',yelpUrl:''},
+    {name:'Bob Evans',rating:3.9,cuisine:'American Diner',address:'1399 US-31 S, Greenwood IN',yelpUrl:''},
+    {name:'Red Robin',rating:3.9,cuisine:'Burgers',address:'900 N SR-135, Greenwood IN',yelpUrl:''},
+    {name:"Chili's Grill",rating:3.8,cuisine:'American',address:'300 N SR-135, Greenwood IN',yelpUrl:''}
+  ];
+  var fastfood=[
+    {name:"Chick-fil-A",rating:4.5,cuisine:'Chicken',address:'1060 N SR-135, Greenwood IN',yelpUrl:''},
+    {name:"Raising Cane's",rating:4.4,cuisine:'Chicken',address:'1315 N SR-135, Greenwood IN',yelpUrl:''},
+    {name:"Culver's",rating:4.3,cuisine:'Burgers',address:'880 N SR-135, Greenwood IN',yelpUrl:''},
+    {name:"Portillo's",rating:4.2,cuisine:'Chicago Style',address:'200 County Line Rd, Greenwood IN',yelpUrl:''},
+    {name:"Freddy's",rating:4.2,cuisine:'Burgers',address:'1398 US-31 S, Greenwood IN',yelpUrl:''},
+    {name:'Five Guys',rating:4.1,cuisine:'Burgers',address:'501 N SR-135, Greenwood IN',yelpUrl:''},
+    {name:'Panera Bread',rating:3.9,cuisine:'Bakery-Cafe',address:'955 N SR-135, Greenwood IN',yelpUrl:''},
+    {name:"Arby's",rating:3.7,cuisine:'Sandwiches',address:'700 N SR-135, Greenwood IN',yelpUrl:''}
+  ];
+  var coffee=[
+    {name:"Perk'd Up Coffee",rating:4.7,cuisine:'Local Coffee',address:'300 S Emerson Ave, Greenwood IN',yelpUrl:''},
+    {name:'Dutch Bros Coffee',rating:4.5,cuisine:'Coffee',address:'700 N SR-135, Greenwood IN',yelpUrl:''},
+    {name:'Hubbard & Cravens',rating:4.6,cuisine:'Coffee & Cafe',address:'840 N SR-135, Greenwood IN',yelpUrl:''},
+    {name:'Biggby Coffee',rating:4.3,cuisine:'Coffee',address:'1001 N SR-135, Greenwood IN',yelpUrl:''},
+    {name:'Starbucks',rating:4.2,cuisine:'Coffee',address:'1310 N SR-135, Greenwood IN',yelpUrl:''},
+    {name:'Panera Bread',rating:3.9,cuisine:'Bakery-Cafe',address:'955 N SR-135, Greenwood IN',yelpUrl:''},
+    {name:"Dunkin'",rating:3.8,cuisine:'Coffee & Donuts',address:'455 N SR-135, Greenwood IN',yelpUrl:''},
+    {name:'Tim Hortons',rating:3.7,cuisine:'Coffee',address:'1200 N SR-135, Greenwood IN',yelpUrl:''}
+  ];
+  return _spinFilters.type==='coffee'?coffee:_spinFilters.type==='fastfood'?fastfood:sitdown;
+}
+
+function _spinBuildWheel(){
+  document.getElementById('spinStatus').textContent='';
+  document.getElementById('spinGoBtn').textContent='\uD83D\uDD04 Refresh';
+  document.getElementById('spinGoBtn').disabled=false;
+  document.getElementById('spinWheelArea').style.display='block';
+  document.getElementById('spinResultArea').innerHTML='';
+  _spinAngle=0;
+  _drawWheel(0);
+}
+
+
+function _drawWheel(rotation){
+  var canvas=document.getElementById('spinCanvas');
+  if(!canvas)return;
+  var ctx=canvas.getContext('2d');
+  var n=_spinRestaurants.length;
+  if(!n)return;
+  var R=148,cx=150,cy=150;
+  var slice=(Math.PI*2)/n;
+  ctx.clearRect(0,0,300,300);
+
+  _spinRestaurants.forEach(function(r,i){
+    var start=rotation+i*slice;
+    var end=start+slice;
+    // Slice
+    ctx.beginPath();ctx.moveTo(cx,cy);ctx.arc(cx,cy,R,start,end);ctx.closePath();
+    ctx.fillStyle=_spinColors[i%_spinColors.length];
+    ctx.fill();
+    ctx.strokeStyle='rgba(0,0,0,0.15)';ctx.lineWidth=1.5;ctx.stroke();
+
+    // Label
+    ctx.save();ctx.translate(cx,cy);ctx.rotate(start+slice/2);
+    ctx.textAlign='right';ctx.fillStyle='#fff';
+    ctx.font='bold 11px DM Sans,sans-serif';
+    ctx.shadowColor='rgba(0,0,0,0.4)';ctx.shadowBlur=3;
+    // Truncate name
+    var name=r.name.length>16?r.name.substring(0,15)+'\u2026':r.name;
+    ctx.fillText(name,R-8,4);
+    // Rating stars
+    ctx.font='9px DM Sans,sans-serif';ctx.shadowBlur=0;
+    ctx.fillStyle='rgba(255,255,255,0.85)';
+    ctx.fillText('\u2605'+r.rating.toFixed(1),R-8,15);
+    ctx.restore();
+  });
+
+  // Center cap
+  ctx.beginPath();ctx.arc(cx,cy,22,0,Math.PI*2);
+  ctx.fillStyle=getComputedStyle(document.documentElement).getPropertyValue('--surface').trim()||'#1a1510';
+  ctx.fill();
+  ctx.strokeStyle=getComputedStyle(document.documentElement).getPropertyValue('--accent').trim()||'#d4a853';
+  ctx.lineWidth=2.5;ctx.stroke();
+  ctx.fillStyle='#d4a853';ctx.font='bold 11px DM Sans,sans-serif';ctx.textAlign='center';ctx.fillText('SPIN',cx,cy+4);
+}
+
+function spinWheel(){
+  if(_spinAnimId){return;}
+  document.getElementById('spinResultArea').innerHTML='';
+  document.getElementById('spinBtn').disabled=true;
+
+  var totalRot=(Math.PI*2)*6 + Math.random()*(Math.PI*2); // 6+ full rotations + random
+  var duration=4500;
+  var start=null;
+  var startAngle=_spinAngle;
+
+  function easeOut(t){return 1-Math.pow(1-t,4);}
+
+  function frame(ts){
+    if(!start)start=ts;
+    var elapsed=ts-start;
+    var progress=Math.min(elapsed/duration,1);
+    var eased=easeOut(progress);
+    var current=startAngle+totalRot*eased;
+    _spinAngle=current;
+    _drawWheel(current);
+    if(progress<1){
+      _spinAnimId=requestAnimationFrame(frame);
+    }else{
+      _spinAnimId=null;
+      document.getElementById('spinBtn').disabled=false;
+      _spinShowResult(current);
+    }
+  }
+  _spinAnimId=requestAnimationFrame(frame);
+}
+
+function _spinShowResult(finalAngle){
+  var n=_spinRestaurants.length;
+  var slice=(Math.PI*2)/n;
+  // Pointer is at the top (12 o'clock = -π/2).
+  // Normalize angle so we know which slice the pointer falls on.
+  var normalized=((-finalAngle%(Math.PI*2))+(Math.PI*2))%(Math.PI*2);
+  // Which slice index is at the top?
+  var idx=Math.floor(normalized/slice)%n;
+  var restaurant=_spinRestaurants[idx];
+  if(!restaurant)return;
+
+  var stars='';
+  for(var i=0;i<5;i++){stars+=i<Math.floor(restaurant.rating)?'\u2605':i<restaurant.rating?'\u00BD':'\u2606';}
+  var mapsUrl='https://www.google.com/maps/search/'+encodeURIComponent(restaurant.name+' '+restaurant.address);
+  var yelpBtn=restaurant.yelpUrl?'<a href="'+restaurant.yelpUrl+'" target="_blank" rel="noopener">&#127381; View on Yelp</a>':'';
+  var html='<div class="spin-result">'
+    +'<div class="spin-result-name">'+restaurant.name+'</div>'
+    +'<div class="spin-result-meta">'
+    +'<strong>'+stars+'</strong> '+restaurant.rating.toFixed(1)+' &bull; '+restaurant.cuisine+'<br>'
+    +restaurant.address
+    +'</div>'
+    +'<div class="spin-result-actions">'
+    +'<a href="'+mapsUrl+'" target="_blank" rel="noopener">&#128205; Maps</a>'
+    +(yelpBtn||'')
+    +'<button class="spin-again-btn" onclick="spinWheel()">&#127869; Spin Again</button>'
+    +'</div>'
+    +'</div>';
+  document.getElementById('spinResultArea').innerHTML=html;
+}
+
+
+// =======================================
+// PROJECT DETAIL MODAL
+// =======================================
+function openProjectModal(pid){
+  var p=state.projects.find(function(pr){return pr.id===pid;});
+  if(!p)return;
+  document.getElementById('projDetailModal').classList.add('open');
+  _blurDashboard();
+  var today=todayStr();
+  var done=p.subtasks.filter(function(s){return s.done;}).length;
+  var done=p.subtasks.filter(function(s){return s.done;}).length;
+  var total=p.subtasks.length;
+  // Header
+  document.getElementById('pmdTitle').textContent=p.name;
+  var metaParts=[(done+'/'+total+' subtasks')];
+  if(p.due)metaParts.push('Ends: '+fmtDate(p.due));
+  var linkedNotes=(state.notes||[]).filter(function(n){return (n.projectIds&&n.projectIds.indexOf(pid)>=0)||n.projectId===pid;});
+  var linkedTasks=(state.tasks||[]).filter(function(t){return (t.projectIds&&t.projectIds.indexOf(pid)>=0)||t.projectId===pid;});
+  var linkedReminders=(state.reminders||[]).filter(function(r){return (r.projectIds&&r.projectIds.indexOf(pid)>=0)||r.projectId===pid;});
+  if(linkedTasks.length)metaParts.push(linkedTasks.length+' task'+(linkedTasks.length!==1?'s':''));
+  if(linkedNotes.length)metaParts.push(linkedNotes.length+' note'+(linkedNotes.length!==1?'s':''));
+  if(linkedReminders.length)metaParts.push(linkedReminders.length+' reminder'+(linkedReminders.length!==1?'s':''));
+  document.getElementById('pmdMeta').textContent=metaParts.join(' · ');
+
+  var html='';
+
+  // Subtasks
+  html+='<div class="proj-modal-section"><div class="proj-modal-section-title">&#128203; Subtasks</div>';
+  if(p.subtasks.length===0){html+='<div style="font-size:13px;color:var(--text-faint);padding:6px 0;">No subtasks yet.</div>';}
+  else{
+    var sorted=[...p.subtasks].sort(function(a,b){
+      if(a.done!==b.done)return a.done?1:-1;
+      if(a.due&&b.due)return a.due.localeCompare(b.due);
+      if(a.due)return -1;if(b.due)return 1;return 0;
+    });
+    html+=sorted.map(function(st){
+      var nameId='pmd_stname_'+st.id;
+      var dueId='pmd_stdue_'+st.id;
+      var dueHTML;
+      if(st.due){
+        dueHTML='<span class="date-editable" id="'+dueId+'" style="font-size:11px;color:var(--text-dim);">'+fmtDate(st.due)+'</span>';
+      }else{
+        dueHTML='<span class="date-editable" id="'+dueId+'" style="font-size:11px;color:var(--text-faint);">+ date</span>';
+      }
+      return '<div class="pmd-subtask">'
+        +'<div class="pmd-st-check" onclick="pmdToggleSubtask(\''+pid+'\',\''+st.id+'\')"></div>'
+        +'<span class="pmd-st-name">'
+        +'<span class="priority-dot clickable priority-'+( st.priority||'med')+'" onclick="event.stopPropagation();cycleSubtaskPriorityInModal(\''+pid+'\',\''+st.id+'\',event)" title="Click to change priority"></span><span class="editable" id="'+nameId+'">'+esc(st.name)+'</span></span>'
+        +dueHTML
+        +(st.timeEst?'<span class="tl-time-badge">'+fmtTimeEst(st.timeEst)+'</span>':'')
+        +'<span class="st-btn st-del" onclick="deleteSubtask(\''+pid+'\',\''+st.id+'\')" title="Delete">\u2715</span>'
+        +'</div>';
+    }).join('');
+  }
+  html+='</div>';
+
+  // Linked tasks
+  if(linkedTasks.length){
+    html+='<div class="proj-modal-section"><div class="proj-modal-section-title">&#128203; Linked Tasks</div>';
+    html+=linkedTasks.map(function(t){
+      var nameId='pmd_tname_'+t.id;
+      var dueId='pmd_tdue_'+t.id;
+      var dueHTML=t.due?
+        '<div class="pmd-item-meta">Due: <span class="date-editable" id="'+dueId+'">'+fmtDate(t.due)+'</span></div>':
+        '<div class="pmd-item-meta">Due: <span class="date-editable" id="'+dueId+'" style="color:var(--text-faint);">+ set</span></div>';
+      return '<div class="pmd-item"><div class="pmd-item-label">'
+        +'<span class="priority-dot clickable priority-'+(t.priority||'med')+'" onclick="event.stopPropagation();cycleTaskPriorityInModal(\''+pid+'\',\''+t.id+'\',event)" title="Click to change priority"></span>'
+        +'<span class="editable" id="'+nameId+'">'+esc(t.name)+'</span>'+(t.done?' <span style="color:var(--text-faint);font-size:11px;">(done)</span>':'')
+        +'</div>'+dueHTML+'</div>';
+    }).join('');
+    html+='</div>';
+  }
+
+  // Linked reminders
+  if(linkedReminders.length){
+    html+='<div class="proj-modal-section"><div class="proj-modal-section-title">&#128276; Reminders</div>';
+    html+=linkedReminders.map(function(r){
+      return '<div class="pmd-item"><div class="pmd-item-label">'+esc(r.text)+'</div>'
+        +(r.date?'<div class="pmd-item-meta">'+fmtDate(r.date)+(r.time?' at '+fmtTime(r.time):'')+'</div>':'')+'</div>';
+    }).join('');
+    html+='</div>';
+  }
+
+  // Linked notes
+  if(linkedNotes.length){
+    html+='<div class="proj-modal-section"><div class="proj-modal-section-title">&#128221; Notes</div>';
+    html+=linkedNotes.map(function(n){
+      return '<div class="pmd-item"><div class="pmd-item-label">'+esc(n.label||'Note')+'</div>'
+        +(n.date?'<div class="pmd-item-meta">'+n.date+(n.time?' · '+n.time:'')+'</div>':'')
+        +(n.body?'<div class="pmd-item-body">'+esc(n.body)+'</div>':'')+'</div>';
+    }).join('');
+    html+='</div>';
+  }
+
+  // Quick add subtask
+  html+='<div class="proj-modal-section"><div class="proj-modal-section-title">&#43; Add Subtask</div>'
+    +'<div style="display:flex;gap:6px;flex-wrap:wrap;">'
+    +'<input type="text" id="pmdNewSt" placeholder="Next step..." style="flex:1;min-width:140px;">'
+    +'<select id="pmdNewPri" style="font-size:12px;padding:4px 6px;background:var(--surface-raised);border:1px solid var(--border);border-radius:var(--radius-sm);font-family:inherit;color:var(--text-dim);">'
+    +'<option value="low">Low</option><option value="med" selected>Med</option><option value="high">High</option></select>'
+    +'<input type="date" id="pmdNewDate" style="font-size:12px;">'
+    +'<button class="btn btn-accent btn-sm" onclick="pmdAddSubtask(\''+pid+'\')">+ Add</button>'
+    +'</div></div>';
+
+  document.getElementById('pmdBody').innerHTML=html;
+  
+  // Wire editable subtask names + due dates inside the modal
+  p.subtasks.forEach(function(st){
+    var nameEl=document.getElementById('pmd_stname_'+st.id);
+    if(nameEl){
+      makeEditable(nameEl,function(v){editSubtaskName(pid,st.id,v);});
+    }
+    var dueEl=document.getElementById('pmd_stdue_'+st.id);
+    if(dueEl){
+      makeDateClickable(dueEl,st.due,function(v){editSubtaskDue(pid,st.id,v);});
+    }
+  });
+  // Wire editable linked tasks (standalone tasks tagged to this project)
+  linkedTasks.forEach(function(t){
+    var nameEl=document.getElementById('pmd_tname_'+t.id);
+    if(nameEl){
+      makeEditable(nameEl,function(v){editStandaloneTaskName(t.id,v);});
+    }
+    var dueEl=document.getElementById('pmd_tdue_'+t.id);
+    if(dueEl){
+      makeDateClickable(dueEl,t.due,function(v){editStandaloneTaskDue(t.id,v);});
+    }
+  });
+  refreshEditables();
+}
+
+function closeProjectModal(){
+  document.getElementById('projDetailModal').classList.remove('open');
+  _unblurDashboard();
+}
+
+// Modal-aware priority cyclers -- re-open the modal to refresh the view
+function cycleSubtaskPriorityInModal(pid,sid,ev){
+  if(ev)ev.stopPropagation();
+  cycleSubtaskPriority(pid,sid,null);
+  openProjectModal(pid);
+}
+function cycleTaskPriorityInModal(pid,tid,ev){
+  if(ev)ev.stopPropagation();
+  cycleTaskPriority(tid,null);
+  openProjectModal(pid);
+}
+
+function pmdToggleSubtask(pid,sid){
+  var p=state.projects.find(function(pr){return pr.id===pid;});
+  if(!p)return;
+  var s=p.subtasks.find(function(st){return st.id===sid;});
+  if(!s)return;
+  var srcEl=document.querySelector('.pmd-st-check[onclick*="'+sid+'"]');
+  if(!state.completedTasks)state.completedTasks=[];
+  state.completedTasks.unshift({
+    id:s.id,name:s.name,projectName:p.name,projectId:p.id,
+    archivedAt:new Date().toISOString(),source:'project'
+  });
+  if(state.completedTasks.length>100)state.completedTasks=state.completedTasks.slice(0,100);
+  if(s.linkGroupId){
+    state.projects.forEach(function(pr){
+      pr.subtasks=pr.subtasks.filter(function(x){return x.linkGroupId!==s.linkGroupId;});
+    });
+  }else{
+    p.subtasks=p.subtasks.filter(function(x){return x.id!==sid;});
+  }
+  addPoints('subtask',srcEl);
+  save();renderProjects();renderTaskList();
+  openProjectModal(pid); // refresh modal
+}
+
+function pmdAddSubtask(pid){
+  var nm=document.getElementById('pmdNewSt').value.trim();
+  if(!nm)return;
+  var p=state.projects.find(function(pr){return pr.id===pid;});
+  if(!p)return;
+  p.subtasks.push({id:'st'+Date.now(),name:nm,due:document.getElementById('pmdNewDate').value,
+    priority:document.getElementById('pmdNewPri').value,timeEst:'',done:false});
+  save();renderProjects();renderTaskList();
+  openProjectModal(pid); // refresh modal
+}
+
+// =======================================
+// HALT+ SENSORY CHECK
+// =======================================
+var _haltChecked={};
+
+
+
+
+var HALT_ITEMS=[
+  {key:'H',letter:'H',icon:'&#127860;',label:'Hungry',
+   question:'When did you last eat a real meal or drink water?',
+   action:'Even a small snack with protein stabilizes blood glucose and directly improves prefrontal cortex function. Dehydration of just 1% impairs attention and working memory. Water first, then food. Set a 5-minute timer, eat something, then return.'},
+  {key:'A',letter:'A',icon:'&#128560;',label:'Anxious / Activated',
+   question:'Is there background anxiety, worry, or anticipatory stress running right now?',
+   action:'Name what\'s circling: write one sentence in Brain Dump. Then try a Physiological Sigh (double inhale through nose, long exhale through mouth) -- the fastest documented way to lower heart rate and cortisol. The anxiety may still be there, but it won\'t be running at full volume.'},
+  {key:'L',letter:'L',icon:'&#128338;',label:'Late / Behind',
+   question:'Are you behind on something? Is time pressure creating a cognitive loop?',
+   action:'Lateness anxiety hijacks working memory. Write down the ONE thing you\'re behind on and just the next physical action. That offloads the loop from your brain to the page. If you\'re actually late -- decide now: text ahead, or just go. Limbo is the most expensive mental state.'},
+  {key:'T',letter:'T',icon:'&#128564;',label:'Tired',
+   question:'How many hours of sleep last night? Is there accumulated fatigue this week?',
+   action:'If genuinely sleep-deprived, shift to maintenance tasks. A 10–20 minute nap (not longer -- that causes grogginess) restores alertness more than caffeine without the crash. If napping isn\'t possible, cold water on your face or a 5-minute walk outside both produce measurable alertness improvements.'},
+  {key:'N',letter:'N+',icon:'&#128266;',label:'Noise / Sensory Load',
+   question:'Is the environment louder, brighter, or more chaotic than your nervous system can filter?',
+   action:'ADHD brains have reduced sensory gating -- you can\'t filter background inputs as efficiently. This isn\'t willpower. Options: headphones with brown noise, move to a quieter space, reduce screen brightness, or face away from visual chaos. The 15 seconds to put in headphones routinely doubles focus duration for sensory-sensitive people.'},
+  {key:'L2',letter:'+',icon:'&#128267;',label:'Low Energy State',
+   question:'Is your energy crashed or flat -- no motivation, foggy, depleted (not just tired)?',
+   action:'If it\'s 2–4pm, this is likely your natural cortisol trough. A 10-minute walk outside resets the cortisol curve best. If persistent across the day, check Energy & Mood and consider the Wellness Toolkit next.'},
+  {key:'T2',letter:'+',icon:'&#127777;',label:'Temperature',
+   question:'Are you too hot or cold? Is the room temperature uncomfortable?',
+   action:'Thermal discomfort is a continuous background stressor that depletes attentional resources without you realizing it. Optimal cognitive performance is 70–77°F. Add or remove a layer, adjust a thermostat, or move. This sounds trivial but is one of the most impactful and fastest environment fixes.'}
+];
+
+function openHaltModal(){
+  _haltChecked={};
+  document.getElementById('haltModal').classList.add('open');
+  _blurDashboard();
+  _renderHalt();
+}
+function closeHaltModal(){
+  document.getElementById('haltModal').classList.remove('open');
+  _unblurDashboard();
+}
+function _renderHalt(){
+  var body=document.getElementById('haltBody');
+  var html='<div class="halt-intro">A one-tap diagnostic for <strong>physical and environmental inputs</strong> that tank executive function before you know why. Tap each to expand, address it, and check it off.</div>';
+  HALT_ITEMS.forEach(function(item){
+    var isChecked=!!_haltChecked[item.key];
+    html+='<div class="halt-item"><div class="halt-item-header" onclick="haltToggle(\''+item.key+'\')">'
+      +'<div class="halt-item-icon">'+item.icon+'</div>'
+      +'<div class="halt-item-label">'+item.label+'</div>'
+      +'<span class="halt-item-letter">'+item.letter+'</span>'
+      +'<div class="halt-item-check'+(isChecked?' checked':'')+'">'+( isChecked?'&#10003;':'')+'</div>'
+      +'</div>'
+      +'<div class="halt-item-body" id="halt-body-'+item.key+'">'
+      +'<div class="halt-item-question">'+item.question+'</div>'
+      +'<div class="halt-item-action">'+item.action+'</div>'
+      +'<div style="margin-top:10px;">'
+      +'<button class="btn btn-sm'+(isChecked?' btn-accent':'')+'" onclick="haltCheck(event,\''+item.key+'\')">'
+      +(isChecked?'&#10003; Addressed':'Mark as Addressed')+'</button>'
+      +'</div></div></div>';
+  });
+  html+='<div class="halt-summary" id="haltSummary"></div>';
+  html+='<button class="halt-reset-btn" onclick="haltReset()">&#8634; Reset All</button>';
+  body.innerHTML=html;
+  _updateHaltSummary();
+}
+function haltToggle(key){var bd=document.getElementById('halt-body-'+key);if(bd)bd.classList.toggle('open');}
+function haltCheck(e,key){e.stopPropagation();_haltChecked[key]=!_haltChecked[key];_renderHalt();var bd=document.getElementById('halt-body-'+key);if(bd)bd.classList.add('open');_updateHaltSummary();}
+function _updateHaltSummary(){
+  var checked=Object.keys(_haltChecked).filter(function(k){return _haltChecked[k];}).length;
+  var total=HALT_ITEMS.length;
+  var el=document.getElementById('haltSummary');if(!el)return;
+  if(checked===0){el.classList.remove('visible');el.textContent='';return;}
+  el.classList.add('visible');
+  var remaining=total-checked;
+  if(remaining===0){el.innerHTML='<strong style="color:var(--green);">&#10003; All items addressed.</strong> Physical/environmental state is clear. If still stuck, the issue is likely task initiation -- try the Stuck? panel or Brain Dump.';}
+  else{el.innerHTML='<strong>'+checked+' of '+total+' addressed.</strong> '+remaining+' item'+(remaining!==1?'s':'')+' still to check.';}
+}
+function haltReset(){_haltChecked={};_renderHalt();}
+
+// =======================================
+// WELLNESS WHEEL (SAMHSA 8 Dimensions)
+// =======================================
+var WELLNESS_DIMENSIONS=[
+  {key:'emotional',name:'Emotional',icon:'\u{1F60C}',
+   def:'Coping effectively with life and creating satisfying relationships. Includes engaging in self-care, managing stress, and acknowledging your feelings.'},
+  {key:'environmental',name:'Environmental',icon:'\u{1F33F}',
+   def:'Good health by occupying pleasant, stimulating environments that support well-being. Includes having a comfortable indoor space and getting outside in nature.'},
+  {key:'financial',name:'Financial',icon:'\u{1F4B0}',
+   def:'Satisfaction with current and future financial situations. Includes managing debt, building savings, and feeling secure about money matters.'},
+  {key:'intellectual',name:'Intellectual',icon:'\u{1F4DA}',
+   def:'Recognizing creative abilities and finding ways to expand knowledge and skills. Includes pursuing personal interests, education, and intellectually stimulating activities.'},
+  {key:'occupational',name:'Occupational',icon:'\u{1F4BC}',
+   def:'Personal satisfaction and enrichment from one\u2019s work. Includes work-life balance, having a sense of accomplishment, and meaningful contribution.'},
+  {key:'physical',name:'Physical',icon:'\u{1F3C3}',
+   def:'Recognizing the need for physical activity, healthy foods, and sleep. Includes nutrition, exercise, sleep hygiene, and mindful substance use.'},
+  {key:'social',name:'Social',icon:'\u{1F465}',
+   def:'Developing a sense of connection, belonging, and a well-developed support system. Includes nurturing relationships and contributing to your community.'},
+  {key:'spiritual',name:'Spiritual',icon:'\u{1F54A}\uFE0F',
+   def:'Expanding a sense of purpose and meaning in life. Includes connecting to your values, practices, or beliefs that bring perspective and inner peace.'}
+];
+
+function openWellnessModal(){
+  document.getElementById('wellnessModal').classList.add('open');
+  _blurDashboard();
+  _renderWellness();
+}
+
+function closeWellnessModal(){
+  document.getElementById('wellnessModal').classList.remove('open');
+  _unblurDashboard();
+}
+
+function _renderWellness(){
+  if(!state.wellnessNotes)state.wellnessNotes={};
+  var body=document.getElementById('wellnessBody');
+  var html='<div class="well-intro">'
+    +'The <strong>SAMHSA Wellness Wheel</strong> recognizes 8 dimensions of well-being. Click any dimension to expand it, read the definition, and add a personal note about how you can grow in that area.'
+    +' <span style="color:#7fb3a0;">+4 pts</span> for each note saved.'
+    +'</div>';
+  html+='<div class="well-list">';
+  WELLNESS_DIMENSIONS.forEach(function(d){
+    var existing=(state.wellnessNotes[d.key]||{}).note||'';
+    var hasNote=existing.trim().length>0;
+    html+='<div class="well-item'+(hasNote?' has-note':'')+'" id="well-'+d.key+'">'
+      +'<div class="well-item-header" onclick="_wellToggle(\''+d.key+'\')">'
+      +'<span class="well-icon">'+d.icon+'</span>'
+      +'<span class="well-name">'+d.name+'</span>'
+      +(hasNote?'<span class="well-note-indicator">\u2713 noted</span>':'')
+      +'<span class="well-arrow">\u25B6</span>'
+      +'</div>'
+      +'<div class="well-item-body">'
+      +'<div class="well-def">'+d.def+'</div>'
+      +'<div class="well-note-label">My note for this area</div>'
+      +'<textarea class="well-note-input" id="well-note-'+d.key+'" placeholder="What would help you grow here? Example: try and make 2 new connections over the next couple of months">'+esc(existing)+'</textarea>'
+      +'<div class="well-note-actions">'
+      +'<span class="well-note-saved" id="well-saved-'+d.key+'">'+(hasNote?'Last updated '+_wellFormatDate((state.wellnessNotes[d.key]||{}).updatedAt):'')+'</span>'
+      +'<button class="well-save-btn" onclick="_wellSave(\''+d.key+'\')">Save</button>'
+      +'</div>'
+      +'</div>'
+      +'</div>';
+  });
+  html+='</div>';
+  body.innerHTML=html;
+}
+
+function _wellToggle(key){
+  var item=document.getElementById('well-'+key);
+  if(!item)return;
+  var arrow=item.querySelector('.well-arrow');
+  var open=item.classList.toggle('expanded');
+  if(arrow)arrow.classList.toggle('open',open);
+  if(open){
+    setTimeout(function(){
+      var ta=document.getElementById('well-note-'+key);
+      if(ta)ta.focus();
+    },50);
+  }
+}
+
+function _wellSave(key){
+  var ta=document.getElementById('well-note-'+key);
+  if(!ta)return;
+  var newText=ta.value.trim();
+  if(!state.wellnessNotes)state.wellnessNotes={};
+  var existing=(state.wellnessNotes[key]||{}).note||'';
+  
+  if(!newText){
+    // Empty save = clear the note (no points)
+    delete state.wellnessNotes[key];
+    save();
+    _renderWellness();
+    setTimeout(function(){
+      var item=document.getElementById('well-'+key);
+      if(item){item.classList.add('expanded');var arrow=item.querySelector('.well-arrow');if(arrow)arrow.classList.add('open');}
+    },10);
+    return;
+  }
+  
+  // Award points only if new content was added (not just resaving same text)
+  var isNewOrUpdated=newText!==existing.trim();
+  state.wellnessNotes[key]={note:newText,updatedAt:new Date().toISOString()};
+  save();
+  
+  if(isNewOrUpdated){
+    var btnEl=document.querySelector('#well-'+key+' .well-save-btn');
+    addPoints('wellness_note',btnEl);
+    toast('\u2713 Wellness note saved');
+  }else{
+    toast('No changes to save');
+  }
+  
+  _renderWellness();
+  // Re-expand the same item
+  setTimeout(function(){
+    var item=document.getElementById('well-'+key);
+    if(item){item.classList.add('expanded');var arrow=item.querySelector('.well-arrow');if(arrow)arrow.classList.add('open');}
+  },10);
+}
+
+function _wellFormatDate(iso){
+  if(!iso)return '';
+  var d=new Date(iso);
+  var now=new Date();
+  var diffMs=now-d;
+  var diffMin=Math.floor(diffMs/60000);
+  if(diffMin<1)return 'just now';
+  if(diffMin<60)return diffMin+' min ago';
+  var diffHr=Math.floor(diffMin/60);
+  if(diffHr<24)return diffHr+'h ago';
+  var diffDay=Math.floor(diffHr/24);
+  if(diffDay<7)return diffDay+'d ago';
+  return d.toLocaleDateString('en-US',{month:'short',day:'numeric'});
+}
+
+// =======================================
+// TIME LEFT PRODUCTIVE WINDOW (5am–10pm)
+// =======================================
+var TL_START_H=5,TL_END_H=20;
+function updateTimeLeft(){
+  // Text overlay removed -- just update the day progress position
+  updateDayProgress();
+}
+
+function updateDayProgress(){
+  var now=new Date();
+  var nowMin=now.getHours()*60+now.getMinutes()+now.getSeconds()/60;
+  var startMin=TL_START_H*60,endMin=TL_END_H*60,totalMin=endMin-startMin;
+  var elapsedEl=document.getElementById('dayProgressElapsed');
+  var nowEl=document.getElementById('dayProgressNow');
+  if(!elapsedEl||!nowEl)return;
+  
+  var elapsed=0;
+  if(nowMin<startMin){
+    // Before 5am -- show at start, no indicator
+    elapsed=0;
+    nowEl.style.left='0%';
+    nowEl.style.display='none';
+    nowEl.classList.remove('resting');
+  }else if(nowMin>=endMin){
+    // After 8pm -- full bar, moon at right edge (via CSS)
+    elapsed=100;
+    nowEl.style.left='';   // CSS handles position via .resting rule
+    nowEl.style.display='flex';
+    nowEl.classList.add('resting');
+  }else{
+    // During productive day -- sun follows progress
+    var elapsedMin=nowMin-startMin;
+    elapsed=(elapsedMin/totalMin)*100;
+    nowEl.style.left=elapsed+'%';
+    nowEl.style.display='block';
+    nowEl.classList.remove('resting');
+  }
+  
+  elapsedEl.style.width=elapsed+'%';
+  // Render scheduled block overlays on the bar
+  if(typeof renderBannerBlocks==='function')renderBannerBlocks();
+}
+
+// =======================================
+// FOCUS MUSIC (YouTube IFrame API)
+// =======================================
+// =======================================
+// MUSIC PLAYER (YouTube IFrame API + Playlist Switcher)
+// =======================================
+var MUSIC_PLAYLISTS=[
+  {id:'PLeSVVJPLz73E_INwG2Oj5W_CG25Ac2t6l',name:'Rock Vibes',icon:'🤘'},
+  {id:'PLeSVVJPLz73HAqvoVE-8litfOeQk6oQ8m',name:'Khruangbin',icon:'🎸'},
+  {id:'PLeSVVJPLz73HUhdxoKKMJFfBgB5U_4JWC',name:'Jazz',icon:'🎷'},
+  {id:'PLeSVVJPLz73FPBtEZXCUPrLybUGbGoz8i',name:'90s Grunge',icon:'🎤'},
+  {id:'PLeSVVJPLz73FGftTDMuiefwuadwf4IAiF',name:'ADHD Focus',icon:'🎯'}
+];
+var currentPlaylistIdx=0;
+var ytPlayer=null,ytPlayerReady=false,ytAPILoading=false;
+
+function _loadYTAPI(callback){
+  if(typeof YT!=='undefined'&&YT.Player){callback();return;}
+  window.onYouTubeIframeAPIReady=callback;
+  if(ytAPILoading)return;
+  ytAPILoading=true;
+  var tag=document.createElement('script');
+  tag.src='https://www.youtube.com/iframe_api';
+  document.head.appendChild(tag);
+}
+
+function _createYTPlayer(playlistId){
+  var host=document.getElementById('ytPlayerHost');
+  if(!host)return;
+  host.innerHTML='<div id="ytPlayerInner"></div>';
+  ytPlayer=new YT.Player('ytPlayerInner',{
+    height:'1',width:'1',
+    playerVars:{listType:'playlist',list:playlistId,autoplay:1,controls:0,modestbranding:1,playsinline:1},
+    events:{
+      'onReady':function(e){
+        ytPlayerReady=true;
+        try{e.target.playVideo();}catch(err){}
+        _updateMusicUI();
+      },
+      'onStateChange':_updateMusicUI,
+      'onError':function(e){
+        console.error('YT Player error:',e.data);
+        var msgs={2:'Invalid playlist',5:'HTML5 player error',100:'Playlist not found',101:'Playlist owner disallows embedded playback',150:'Playlist owner disallows embedded playback'};
+        alert('Music error: '+(msgs[e.data]||'Error code '+e.data));
+      }
+    }
+  });
+}
+
+function musicHandleClick(ev){
+  // Always close dropdown on regular click
+  var dd=document.getElementById('musicDropdown');
+  if(dd&&dd.style.display==='block'){dd.style.display='none';}
+  focusMusicToggle();
+}
+
+function focusMusicToggle(){
+  // Lazy-load YT API and create player on first use
+  if(!ytPlayer){
+    _loadYTAPI(function(){_createYTPlayer(MUSIC_PLAYLISTS[currentPlaylistIdx].id);});
+    return;
+  }
+  // Toggle play/pause
+  if(!ytPlayerReady)return;
+  try{
+    var st=ytPlayer.getPlayerState();
+    if(st===1){ytPlayer.pauseVideo();}
+    else{ytPlayer.playVideo();}
+  }catch(err){console.error('Music toggle error:',err);}
+}
+
+function focusMusicSkip(){
+  if(ytPlayer&&ytPlayerReady){
+    try{ytPlayer.nextVideo();}catch(err){console.error('Skip error:',err);}
+  }
+}
+
+function musicToggleDropdown(ev){
+  var dd=document.getElementById('musicDropdown');
+  if(!dd)return;
+  if(dd.style.display==='block'){dd.style.display='none';return;}
+  
+  // Build dropdown contents
+  var html=MUSIC_PLAYLISTS.map(function(p,i){
+    var current=i===currentPlaylistIdx;
+    return '<div class="music-dropdown-item'+(current?' current':'')+'" onclick="event.stopPropagation();musicSelectPlaylist('+i+')">'
+      +'<span class="music-dropdown-icon">'+p.icon+'</span>'
+      +'<span class="music-dropdown-name">'+esc(p.name)+'</span>'
+      +(current?'<span class="music-dropdown-check">&#9654; playing</span>':'')
+      +'</div>';
+  }).join('');
+  dd.innerHTML=html;
+  dd.style.display='block';
+  
+  // Click-outside to close
+  setTimeout(function(){
+    var handler=function(e){
+      var wrap=document.querySelector('.toolkit-music-wrap');
+      if(!wrap||!wrap.contains(e.target)){
+        dd.style.display='none';
+        document.removeEventListener('click',handler);
+      }
+    };
+    document.addEventListener('click',handler);
+  },10);
+}
+
+function musicSelectPlaylist(idx){
+  if(idx<0||idx>=MUSIC_PLAYLISTS.length)return;
+  
+  var dd=document.getElementById('musicDropdown');
+  if(dd)dd.style.display='none';
+  
+  // No-op if same playlist already selected
+  if(idx===currentPlaylistIdx&&ytPlayer&&ytPlayerReady)return;
+  
+  currentPlaylistIdx=idx;
+  var playlistId=MUSIC_PLAYLISTS[idx].id;
+  
+  // If player exists, switch playlist; otherwise create with this one
+  if(ytPlayer&&ytPlayerReady){
+    try{
+      // Stop current playback first to avoid the API restarting the current track
+      ytPlayer.stopVideo();
+      // Use cuePlaylist to load without auto-playing, then call playVideo
+      // The string form (just playlist ID) is more reliable than the object form
+      ytPlayer.cuePlaylist({list:playlistId,listType:'playlist',index:0,startSeconds:0,suggestedQuality:'small'});
+      // Give the API a tick to process the new playlist before starting
+      setTimeout(function(){
+        try{ytPlayer.playVideo();}catch(err){console.error('Auto-play after switch error:',err);}
+      },200);
+    }catch(err){
+      console.error('Playlist switch error:',err);
+    }
+  }else if(!ytPlayer){
+    _loadYTAPI(function(){_createYTPlayer(playlistId);});
+  }
+  _updateMusicUI();
+}
+
+function _updateMusicUI(){
+  var btn=document.getElementById('focusMusicBtn');
+  var ctrls=document.getElementById('musicControls');
+  var stateIcon=document.getElementById('musicStateIcon');
+  var emoji=document.getElementById('musicEmoji');
+  var label=document.getElementById('musicLabel');
+  if(!btn||!ctrls)return;
+  
+  var currentName=MUSIC_PLAYLISTS[currentPlaylistIdx].name;
+  
+  if(!ytPlayer||!ytPlayerReady){
+    ctrls.style.display='none';
+    btn.classList.remove('playing');
+    if(emoji)emoji.classList.remove('music-emoji-spin');
+    if(label)label.textContent='Music';
+    return;
+  }
+  
+  ctrls.style.display='inline-flex';
+  var st;
+  try{st=ytPlayer.getPlayerState();}catch(err){st=-1;}
+  // States: -1=unstarted, 0=ended, 1=playing, 2=paused, 3=buffering, 5=cued
+  if(st===1){
+    btn.classList.add('playing');
+    if(stateIcon)stateIcon.innerHTML='&#9208;'; // pause icon (next action)
+    if(emoji)emoji.classList.add('music-emoji-spin');
+    if(label)label.textContent=currentName;
+  }else{
+    btn.classList.remove('playing');
+    if(stateIcon)stateIcon.innerHTML='&#9654;'; // play icon (next action)
+    if(emoji)emoji.classList.remove('music-emoji-spin');
+    if(label)label.textContent=currentName+' (paused)';
+  }
+}
+
+// =======================================
+// POINTS / REWARDS SYSTEM
+// =======================================
+var TIER_THRESHOLDS=[
+  {name:'bronze',label:'Bronze',icon:'🥉',min:0,max:100,color:'#cd7f32'},
+  {name:'silver',label:'Silver',icon:'🥈',min:100,max:300,color:'#dadada'},
+  {name:'gold',label:'Gold',icon:'🥇',min:300,max:700,color:'#ffd700'},
+  {name:'diamond',label:'Diamond',icon:'💎',min:700,max:1500,color:'#b9f2ff'},
+  {name:'mythic',label:'Mythic',icon:'⭐',min:1500,max:Infinity,color:'#ff9ec0'}
+];
+
+var POINT_VALUES={
+  daily_login:1,
+  routine:1,
+  breathwork:2,
+  timer:3,
+  subtask:3,
+  mood_energy:3,
+  wellness_note:4,
+  journal:5,
+  task:5,
+  recovery:8,
+  workout:15,
+  project:25
+};
+
+function _monthKey(d){d=d||new Date();return d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0');}
+function _dayKey(d){d=d||new Date();return d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')+'-'+String(d.getDate()).padStart(2,'0');}
+
+function getCurrentTier(pts){
+  pts=pts||0;
+  for(var i=TIER_THRESHOLDS.length-1;i>=0;i--){
+    if(pts>=TIER_THRESHOLDS[i].min)return TIER_THRESHOLDS[i];
+  }
+  return TIER_THRESHOLDS[0];
+}
+
+function getNextTier(pts){
+  var cur=getCurrentTier(pts);
+  var idx=TIER_THRESHOLDS.findIndex(function(t){return t.name===cur.name;});
+  return TIER_THRESHOLDS[idx+1]||null;
+}
+
+function checkMonthReset(){
+  var nowKey=_monthKey();
+  if(state.points.monthKey!==nowKey){
+    // Carry over lifetime, reset current
+    state.points.lifetimeTotal=(state.points.lifetimeTotal||0)+(state.points.current||0);
+    state.points.current=0;
+    state.points.monthKey=nowKey;
+    state.points.lastTier='bronze';
+    // Trim totalsByDay to last 90 days
+    var cutoff=new Date();cutoff.setDate(cutoff.getDate()-90);
+    var cutKey=_dayKey(cutoff);
+    Object.keys(state.points.totalsByDay).forEach(function(k){
+      if(k<cutKey)delete state.points.totalsByDay[k];
+    });
+    save();
+  }
+}
+
+function awardDailyLogin(){
+  var today=_dayKey();
+  if(state.points.lastLoginDate!==today){
+    state.points.lastLoginDate=today;
+    addPoints('daily_login');
+  }
+}
+
+function addPoints(source,sourceEl){
+  if(!state.points)state.points={current:0,monthKey:_monthKey(),lastTier:'bronze',totalsByDay:{},lastLoginDate:'',lifetimeTotal:0};
+  checkMonthReset();
+  var amount=POINT_VALUES[source]||0;
+  if(amount<=0)return;
+  
+  var prevTier=getCurrentTier(state.points.current);
+  state.points.current+=amount;
+  var newTier=getCurrentTier(state.points.current);
+  
+  // Track daily
+  var today=_dayKey();
+  state.points.totalsByDay[today]=(state.points.totalsByDay[today]||0)+amount;
+  
+  save();
+  renderPointsBadge();
+  
+  // Floating popup
+  showPointFloater(amount,sourceEl);
+  
+  // Tier-up celebration
+  if(newTier.name!==prevTier.name){
+    state.points.lastTier=newTier.name;
+    save();
+    setTimeout(function(){triggerTierUp(newTier);},300);
+  }
+}
+
+function showPointFloater(amount,sourceEl){
+  var container=document.getElementById('pointPopupContainer');
+  if(!container)return;
+  var floater=document.createElement('div');
+  floater.className='point-popup-floater';
+  floater.textContent='+'+amount;
+  
+  // Position - near source element if provided, otherwise near badge
+  var x,y;
+  if(sourceEl&&sourceEl.getBoundingClientRect){
+    var rect=sourceEl.getBoundingClientRect();
+    x=rect.left+rect.width/2;
+    y=rect.top;
+  }else{
+    var badge=document.getElementById('pointsBadge');
+    if(badge){
+      var br=badge.getBoundingClientRect();
+      x=br.left+br.width/2;
+      y=br.bottom;
+    }else{x=window.innerWidth/2;y=80;}
+  }
+  floater.style.left=(x-15)+'px';
+  floater.style.top=y+'px';
+  container.appendChild(floater);
+  setTimeout(function(){if(floater.parentNode)floater.parentNode.removeChild(floater);},1500);
+}
+
+function renderPointsBadge(){
+  if(!state.points)return;
+  checkMonthReset();
+  var badge=document.getElementById('pointsBadge');
+  var iconEl=document.getElementById('ptTierIcon');
+  var valEl=document.getElementById('ptValue');
+  if(!badge||!valEl)return;
+  
+  var tier=getCurrentTier(state.points.current);
+  var classes=['tier-bronze','tier-silver','tier-gold','tier-diamond','tier-mythic'];
+  classes.forEach(function(c){badge.classList.remove(c);});
+  badge.classList.add('tier-'+tier.name);
+  if(iconEl)iconEl.textContent=tier.icon;
+  valEl.textContent=state.points.current;
+}
+
+function togglePointsPopup(){
+  var pop=document.getElementById('pointsPopup');
+  if(!pop)return;
+  if(pop.style.display==='block'){pop.style.display='none';return;}
+  renderPointsPopup();
+  pop.style.display='block';
+  // Click-outside to close
+  setTimeout(function(){
+    var handler=function(e){
+      if(!pop.contains(e.target)&&!document.getElementById('pointsBadge').contains(e.target)){
+        pop.style.display='none';
+        document.removeEventListener('click',handler);
+      }
+    };
+    document.addEventListener('click',handler);
+  },10);
+}
+
+function renderPointsPopup(){
+  var pop=document.getElementById('pointsPopup');
+  if(!pop)return;
+  var pts=state.points.current||0;
+  var tier=getCurrentTier(pts);
+  var next=getNextTier(pts);
+  var today=_dayKey();
+  var todayPts=state.points.totalsByDay[today]||0;
+  
+  // Week total = last 7 days including today
+  var weekPts=0;
+  for(var i=0;i<7;i++){
+    var d=new Date();d.setDate(d.getDate()-i);
+    weekPts+=(state.points.totalsByDay[_dayKey(d)]||0);
+  }
+  
+  var progressPct=0;
+  var progressLabel='';
+  if(next){
+    var range=next.min-tier.min;
+    var into=pts-tier.min;
+    progressPct=Math.min(100,Math.round((into/range)*100));
+    progressLabel=(next.min-pts)+' to '+next.label+' '+next.icon;
+  }else{
+    progressPct=100;
+    progressLabel='Mythic -- top tier!';
+  }
+  
+  var html='<div class="points-popup-section">'
+    +'<div class="points-popup-tier-row" style="color:'+tier.color+';">'
+    +'<span style="font-size:20px;">'+tier.icon+'</span> '+tier.label
+    +'</div>'
+    +'<div class="points-popup-progress"><div class="points-popup-progress-fill" style="width:'+progressPct+'%;background:'+tier.color+';"></div></div>'
+    +'<div class="points-popup-next">'+progressLabel+'</div>'
+    +'</div>'
+    +'<div class="points-popup-section">'
+    +'<div class="points-popup-row"><span class="points-popup-label">Today</span><span class="points-popup-value">'+todayPts+' pts</span></div>'
+    +'<div class="points-popup-row"><span class="points-popup-label">Last 7 days</span><span class="points-popup-value">'+weekPts+' pts</span></div>'
+    +'<div class="points-popup-row"><span class="points-popup-label">This month</span><span class="points-popup-value">'+pts+' pts</span></div>'
+    +'</div>'
+    +'<div class="points-popup-section">'
+    +'<div class="points-popup-row"><span class="points-popup-label">Lifetime</span><span class="points-popup-value">'+(state.points.lifetimeTotal+pts)+' pts</span></div>'
+    +'</div>';
+  pop.innerHTML=html;
+}
+
+function triggerTierUp(tier){
+  var overlay=document.getElementById('fireworksOverlay');
+  if(!overlay)return;
+  overlay.classList.add('show');
+  overlay.innerHTML='';
+  
+  // Banner
+  var banner=document.createElement('div');
+  banner.className='tier-up-banner';
+  banner.style.color=tier.color;
+  banner.innerHTML=tier.icon+' '+tier.label.toUpperCase()+' TIER!';
+  overlay.appendChild(banner);
+  
+  // Fireworks bursts at random positions
+  var colors=['#ffd700','#ff6b9d','#7fdfff','#a0f0a0','#ffaa44','#c77dba'];
+  var bursts=6;
+  for(var b=0;b<bursts;b++){
+    setTimeout(function(){
+      var cx=Math.random()*window.innerWidth;
+      var cy=Math.random()*window.innerHeight*0.7+window.innerHeight*0.1;
+      var color=colors[Math.floor(Math.random()*colors.length)];
+      _spawnBurst(overlay,cx,cy,color);
+    },b*250);
+  }
+  
+  // Auto-cleanup
+  setTimeout(function(){
+    overlay.classList.remove('show');
+    overlay.innerHTML='';
+  },2800);
+}
+
+function _spawnBurst(parent,cx,cy,color){
+  var particles=24;
+  for(var i=0;i<particles;i++){
+    var p=document.createElement('div');
+    p.className='firework-particle';
+    var angle=(i/particles)*Math.PI*2;
+    var distance=80+Math.random()*60;
+    var tx=Math.cos(angle)*distance;
+    var ty=Math.sin(angle)*distance;
+    p.style.left=cx+'px';
+    p.style.top=cy+'px';
+    p.style.background=color;
+    p.style.boxShadow='0 0 6px '+color;
+    p.style.setProperty('--tx',tx+'px');
+    p.style.setProperty('--ty',ty+'px');
+    parent.appendChild(p);
+    // Cleanup
+    setTimeout(function(el){return function(){if(el.parentNode)el.parentNode.removeChild(el);};}(p),1600);
+  }
+}
+
+// =======================================
+// TASK TIMER (elapsed stopwatch)
+// =======================================
+var _ttRunning=false,_ttElapsed=0,_ttStart=null,_ttTick=null,_ttAwarded=false;
+function _ttFmt(ms){var s=Math.floor(ms/1000),h=Math.floor(s/3600);s=s%3600;var m=Math.floor(s/60);s=s%60;return (h<10?'0':'')+h+':'+(m<10?'0':'')+m+':'+(s<10?'0':'')+s;}
+function ttStart(){
+  if(_ttRunning)return;
+  _ttRunning=true;_ttStart=Date.now()-_ttElapsed;
+  _ttTick=setInterval(function(){
+    _ttElapsed=Date.now()-_ttStart;
+    var el=document.getElementById('ttDisplay');if(el){el.textContent=_ttFmt(_ttElapsed);el.className='task-timer-display running';}
+  },500);
+  var btn=document.getElementById('ttStartBtn');if(btn)btn.textContent='\u23F8';
+}
+function ttPause(){
+  if(!_ttRunning)return;
+  _ttRunning=false;clearInterval(_ttTick);_ttTick=null;
+  _ttElapsed=Date.now()-_ttStart;
+  var el=document.getElementById('ttDisplay');if(el)el.className='task-timer-display';
+  var btn=document.getElementById('ttStartBtn');if(btn)btn.textContent='\u25B6';
+  // Award once per session if ran 5+ minutes
+  if(!_ttAwarded&&_ttElapsed>=300000){
+    _ttAwarded=true;
+    addPoints('timer');
+  }
+}
+function ttReset(){
+  ttPause();_ttElapsed=0;_ttStart=null;_ttAwarded=false;
+  var el=document.getElementById('ttDisplay');if(el){el.textContent='00:00:00';el.className='task-timer-display';}
+  var btn=document.getElementById('ttStartBtn');if(btn)btn.textContent='\u25B6';
+}
+
+// -- Custom confirm dialog -- replaces all browser confirm() calls ------
+var _confirmOnDo=null,_confirmOnAlt=null;
+function _confirm(msg,onDo,opts){
+  opts=opts||{};
+  _confirmOnDo=onDo||null;_confirmOnAlt=opts.onAlt||null;
+  var iconEl=document.getElementById('confirmDialogIcon');
+  var msgEl=document.getElementById('confirmDialogMsg');
+  var okBtn=document.getElementById('confirmOkBtn');
+  var altBtn=document.getElementById('confirmAltBtn');
+  var cancelBtn=document.getElementById('confirmCancelBtn');
+  var bd=document.getElementById('confirmDialogBd');
+  var iconName=opts.icon||(opts.destructive?'ti-alert-circle':'ti-help-circle');
+  iconEl.innerHTML='<i class="ti '+iconName+'" aria-hidden="true"></i>';
+  iconEl.className='confirm-dialog-icon'+(opts.destructive?' cdx-destructive':opts.warn?' cdx-warn':'');
+  msgEl.textContent=msg;
+  okBtn.textContent=opts.confirmText||(opts.destructive?'Delete':'Confirm');
+  okBtn.className='btn '+(opts.destructive?'btn-danger':'btn-accent-solid');
+  if(opts.altText){altBtn.textContent=opts.altText;altBtn.style.display='';}
+  else{altBtn.style.display='none';}
+  cancelBtn.style.display=opts.noCancel?'none':'';
+  bd.onclick=opts.noCancel?null:_confirmCancel;
+  document.getElementById('confirmDialog').classList.add('open');
+}
+function _confirmDo(){
+  document.getElementById('confirmDialog').classList.remove('open');
+  var cb=_confirmOnDo;_confirmOnDo=null;_confirmOnAlt=null;if(cb)cb();
+}
+function _confirmAlt(){
+  document.getElementById('confirmDialog').classList.remove('open');
+  var cb=_confirmOnAlt;_confirmOnDo=null;_confirmOnAlt=null;if(cb)cb();
+}
+function _confirmCancel(){
+  document.getElementById('confirmDialog').classList.remove('open');
+  _confirmOnDo=null;_confirmOnAlt=null;
+}
+// Wrapper for gcalDisconnect confirm (called from rendered HTML strings)
+function _confirmGcalDisconnect(){
+  _confirm('Disconnect Google Calendar? Synced events stay in Google but Centerpost will forget which ones it created.',gcalDisconnect,{confirmText:'Disconnect',icon:'ti-calendar-off'});
+}
+
+function openEnergyModal(){
+  document.getElementById('energyModal').classList.add('open');
+  _blurDashboard();
+  // Restore selected pill states
+  if(state.energy){const pills=document.querySelectorAll('#energyPills .em-pill');['high','good','low','crashed'].forEach((v,i)=>{pills[i]&&pills[i].classList.toggle('selected',v===state.energy);});}
+  if(state.mood){const pills=document.querySelectorAll('#moodPills .em-pill');['focused','scattered','anxious','calm'].forEach((v,i)=>{pills[i]&&pills[i].classList.toggle('selected',v===state.mood);});}
+  showStateAdvice();
+}
+function closeEnergyModal(){
+  document.getElementById('energyModal').classList.remove('open');
+  _unblurDashboard();
+}
+
+function openBreathworkModal(){
+  document.getElementById('breathworkModal').classList.add('open');
+  _blurDashboard();
+}
+function closeBreathworkModal(){
+  document.getElementById('breathworkModal').classList.remove('open');
+  _unblurDashboard();
+}
+function startBreathworkFromModal(){
+  // Close the picker but keep dashboard blurred (breath-overlay has its own dark backdrop)
+  document.getElementById('breathworkModal').classList.remove('open');
+  startBreathwork();
+}
+
+// =======================================
+// TIMER MODAL
+// =======================================
+function openTimerModal(){
+  document.getElementById('timerModal').classList.add('open');
+  _blurDashboard();
+  _syncTimerPresetBtns();
+}
+function closeTimerModal(){
+  document.getElementById('timerModal').classList.remove('open');
+  _unblurDashboard();
+}
+function setTimerPresetDirect(mins,btn){
+  document.getElementById('timerPreset').value=String(mins);
+  setTimerPreset();
+  _syncTimerPresetBtns();
+}
+function _syncTimerPresetBtns(){
+  const val=document.getElementById('timerPreset').value;
+  ['25','15','5','45'].forEach(function(v){
+    const b=document.getElementById('tp'+v);
+    if(b)b.classList.toggle('active',v===val);
+  });
+}
+
+// =======================================
+// JOURNAL
+// =======================================
+var _journalUnlocked=false;
+var _pinBuffer='';
+var _setPinBuffer='';
+var _setPinStage=0; // 0=first entry, 1=confirm
+var _setPinFirst='';
+var _changingPin=false; // true while verifying old PIN before a change
+
+function openJournal(){
+  _journalUnlocked=false;
+  document.getElementById('journalOverlay').classList.add('open');
+  _blurDashboard();
+  _journalShowMain();
+}
+
+function closeJournal(){
+  document.getElementById('journalOverlay').classList.remove('open');
+  _unblurDashboard();
+  _journalUnlocked=false;
+  _pinBuffer='';_setPinBuffer='';_setPinStage=0;_setPinFirst='';_changingPin=false;
+  // Restore lock-gate labels in case a change was mid-flight
+  var t=document.querySelector('#journalPinGate .journal-pin-title');
+  var s=document.querySelector('#journalPinGate .journal-pin-sub');
+  if(t)t.textContent='Journal is locked';
+  if(s)s.textContent='Enter your PIN to view entries';
+}
+
+function _journalShowMain(){
+  document.getElementById('journalPinGate').style.display='none';
+  document.getElementById('journalSetPin').style.display='none';
+  document.getElementById('journalMain').style.display='flex';
+  document.getElementById('journalEntriesView').style.display='none';
+  document.getElementById('journalCompose').style.display='flex';
+  document.getElementById('journalViewToggle').classList.remove('active');
+  _updateJournalMeta();
+  _populateJournalProjDropdowns();
+  document.getElementById('journalText').focus();
+}
+
+function _updateJournalMeta(){
+  const now=new Date();
+  document.getElementById('journalDateStamp').textContent=now.toLocaleDateString('en-US',{weekday:'long',year:'numeric',month:'long',day:'numeric'})+' \u2014 '+now.toLocaleTimeString('en-US',{hour:'numeric',minute:'2-digit'});
+  document.getElementById('journalEntryCount').textContent=(state.journal||[]).length+' '+(state.journal.length===1?'entry':'entries');
+  const ta=document.getElementById('journalText');
+  if(ta)ta.addEventListener('input',function(){document.getElementById('journalCharCount').textContent=ta.value.length+' characters';});
+}
+
+function _populateJournalProjDropdowns(){
+  const opts='<option value="">No project tag</option>'+_sortedProjects().map(p=>'<option value="'+p.id+'">'+esc(p.name)+'</option>').join('');
+  document.getElementById('journalProjTag').innerHTML=opts;
+  const fopts='<option value="all">All projects</option>'+_sortedProjects().map(p=>'<option value="'+p.id+'">'+esc(p.name)+'</option>').join('');
+  document.getElementById('journalFilterProj').innerHTML=fopts;
+}
+
+function saveJournalEntry(){
+  const text=document.getElementById('journalText').value.trim();
+  if(!text){toast('Write something first');return;}
+  const projId=document.getElementById('journalProjTag').value;
+  const mood=document.getElementById('journalMoodTag').value;
+  const proj=projId?state.projects.find(p=>p.id===projId):null;
+  state.journal.unshift({
+    id:'j'+Date.now(),
+    text:text,
+    date:new Date().toISOString(),
+    projId:projId||'',
+    projName:proj?proj.name:'',
+    mood:mood||''
+  });
+  document.getElementById('journalText').value='';
+  document.getElementById('journalCharCount').textContent='0 characters';
+  document.getElementById('journalProjTag').value='';
+  document.getElementById('journalMoodTag').value='';
+  document.getElementById('journalEntryCount').textContent=state.journal.length+' '+(state.journal.length===1?'entry':'entries');
+  save();
+  addPoints('journal');
+  
+}
+
+// -- View entries (PIN gate) --
+function toggleJournalView(){
+  const ev=document.getElementById('journalEntriesView');
+  const compose=document.getElementById('journalCompose');
+  const btn=document.getElementById('journalViewToggle');
+  if(ev.style.display==='none'||!ev.style.display){
+    // Try to open entries
+    if(_journalUnlocked){
+      compose.style.display='none';
+      ev.style.display='flex';
+      btn.classList.add('active');
+      renderJournalEntries();
+    } else if(!state.journalPin){
+      // No PIN set yet -- prompt to create one
+      _showSetPin();
+    } else {
+      // Show PIN gate
+      document.getElementById('journalMain').style.display='none';
+      document.getElementById('journalPinGate').style.display='flex';
+      _pinBuffer='';_renderPinDots('journalPinDots',0);
+      document.getElementById('journalPinError').textContent='';
+    }
+  } else {
+    lockJournalEntries();
+  }
+}
+
+function lockJournalEntries(){
+  _journalUnlocked=false;
+  document.getElementById('journalEntriesView').style.display='none';
+  document.getElementById('journalCompose').style.display='flex';
+  document.getElementById('journalViewToggle').classList.remove('active');
+}
+
+// -- PIN entry (verify) --
+function journalPinKey(k){
+  const err=document.getElementById('journalPinError');
+  if(k==='C'){_pinBuffer='';_renderPinDots('journalPinDots',0);err.textContent='';return;}
+  if(k==='DEL'){_pinBuffer=_pinBuffer.slice(0,-1);_renderPinDots('journalPinDots',_pinBuffer.length);return;}
+  if(_pinBuffer.length>=4)return;
+  _pinBuffer+=k;
+  _renderPinDots('journalPinDots',_pinBuffer.length);
+  if(_pinBuffer.length===4){
+    setTimeout(function(){
+      if(_pinBuffer===state.journalPin){
+        _pinBuffer='';
+        if(_changingPin){
+          // Old PIN confirmed -- now let them set a new one
+          _changingPin=false;
+          // Restore the lock-gate labels for next time
+          document.querySelector('#journalPinGate .journal-pin-title').textContent='Journal is locked';
+          document.querySelector('#journalPinGate .journal-pin-sub').textContent='Enter your PIN to view entries';
+          document.getElementById('journalPinGate').style.display='none';
+          _setPinBuffer='';_setPinStage=0;_setPinFirst='';
+          document.getElementById('journalSetPin').style.display='flex';
+          document.getElementById('setPinTitle').textContent='Set a new 4-digit PIN';
+          document.getElementById('setPinSub').textContent='Enter a new PIN to replace your current one.';
+          document.getElementById('setPinError').textContent='';
+          _renderPinDots('setPinDots',0);
+          return;
+        }
+        _journalUnlocked=true;
+        document.getElementById('journalPinGate').style.display='none';
+        document.getElementById('journalMain').style.display='flex';
+        document.getElementById('journalCompose').style.display='none';
+        document.getElementById('journalEntriesView').style.display='flex';
+        document.getElementById('journalViewToggle').classList.add('active');
+        _populateJournalProjDropdowns();
+        renderJournalEntries();
+      } else {
+        err.textContent='Incorrect PIN. Try again.';
+        document.querySelectorAll('#journalPinDots .pin-dot').forEach(d=>d.classList.add('shake'));
+        setTimeout(function(){document.querySelectorAll('#journalPinDots .pin-dot').forEach(d=>d.classList.remove('shake'));},500);
+        _pinBuffer='';_renderPinDots('journalPinDots',0);
+      }
+    },120);
+  }
+}
+
+// -- Change PIN (requires re-entering the current PIN) --
+function changeJournalPin(){
+  // SECURITY: require the user to re-enter their CURRENT PIN before they can
+  // set a new one -- even though they're already in the unlocked view.
+  if(!_journalUnlocked){
+    toast('Unlock the journal first');
+    return;
+  }
+  if(!state.journalPin){
+    // No PIN yet -- go straight to creating one
+    _showSetPin();
+    return;
+  }
+  // Send them to the PIN gate in "change" mode to confirm the old PIN.
+  _changingPin=true;
+  _pinBuffer='';
+  document.getElementById('journalEntriesView').style.display='none';
+  document.getElementById('journalMain').style.display='none';
+  document.getElementById('journalPinGate').style.display='flex';
+  document.querySelector('#journalPinGate .journal-pin-title').textContent='Confirm current PIN';
+  document.querySelector('#journalPinGate .journal-pin-sub').textContent='Enter your current PIN to change it';
+  document.getElementById('journalPinError').textContent='';
+  _renderPinDots('journalPinDots',0);
+}
+
+// -- Set / change PIN --
+function showSetPinForm(){
+  // Only allowed when there is NO existing PIN (first-time setup) or the
+  // journal is already unlocked. Prevents bypassing an existing PIN.
+  if(state.journalPin && !_journalUnlocked){
+    toast('Unlock the journal first');
+    return;
+  }
+  document.getElementById('journalPinGate').style.display='none';
+  _showSetPin();
+}
+function _showSetPin(){
+  _setPinBuffer='';_setPinStage=0;_setPinFirst='';
+  document.getElementById('journalMain').style.display='none';
+  document.getElementById('journalSetPin').style.display='flex';
+  document.getElementById('setPinTitle').textContent='Create a 4-digit PIN';
+  document.getElementById('setPinSub').textContent='Your PIN protects entry viewing.';
+  document.getElementById('setPinError').textContent='';
+  _renderPinDots('setPinDots',0);
+}
+function setPinKey(k){
+  const err=document.getElementById('setPinError');
+  if(k==='C'){_setPinBuffer='';_renderPinDots('setPinDots',0);err.textContent='';return;}
+  if(k==='DEL'){_setPinBuffer=_setPinBuffer.slice(0,-1);_renderPinDots('setPinDots',_setPinBuffer.length);return;}
+  if(_setPinBuffer.length>=4)return;
+  _setPinBuffer+=k;
+  _renderPinDots('setPinDots',_setPinBuffer.length);
+  if(_setPinBuffer.length===4){
+    setTimeout(function(){
+      if(_setPinStage===0){
+        _setPinFirst=_setPinBuffer;
+        _setPinBuffer='';_setPinStage=1;
+        document.getElementById('setPinTitle').textContent='Confirm your PIN';
+        document.getElementById('setPinSub').textContent='Enter the same PIN again to confirm.';
+        err.textContent='';
+        _renderPinDots('setPinDots',0);
+      } else {
+        if(_setPinBuffer===_setPinFirst){
+          state.journalPin=_setPinBuffer;
+          save();
+          
+          _journalUnlocked=true;
+          _setPinBuffer='';_setPinStage=0;_setPinFirst='';
+          document.getElementById('journalSetPin').style.display='none';
+          document.getElementById('journalMain').style.display='flex';
+          document.getElementById('journalCompose').style.display='none';
+          document.getElementById('journalEntriesView').style.display='flex';
+          document.getElementById('journalViewToggle').classList.add('active');
+          _populateJournalProjDropdowns();
+          renderJournalEntries();
+        } else {
+          err.textContent='PINs did not match. Start over.';
+          document.querySelectorAll('#setPinDots .pin-dot').forEach(d=>d.classList.add('shake'));
+          setTimeout(function(){document.querySelectorAll('#setPinDots .pin-dot').forEach(d=>d.classList.remove('shake'));},500);
+          _setPinBuffer='';_setPinStage=0;_setPinFirst='';
+          document.getElementById('setPinTitle').textContent='Create a 4-digit PIN';
+          document.getElementById('setPinSub').textContent='Your PIN protects entry viewing.';
+          _renderPinDots('setPinDots',0);
+        }
+      }
+    },120);
+  }
+}
+
+function _renderPinDots(containerId,filled){
+  const dots=document.querySelectorAll('#'+containerId+' .pin-dot');
+  dots.forEach(function(d,i){d.classList.toggle('filled',i<filled);});
+}
+
+function renderJournalEntries(){
+  const list=document.getElementById('journalEntriesList');
+  if(!list)return;
+  const q=(document.getElementById('journalSearch').value||'').toLowerCase();
+  const fp=document.getElementById('journalFilterProj').value;
+  let entries=(state.journal||[]).filter(function(e){
+    if(fp!=='all'&&e.projId!==fp)return false;
+    if(q&&!e.text.toLowerCase().includes(q))return false;
+    return true;
+  });
+  if(!entries.length){
+    list.innerHTML='<div class="journal-empty">No entries yet.<br>Write your first one using the compose area.</div>';
+    return;
+  }
+  const MOOD_LABELS={reflective:'&#129300; Reflective',grateful:'&#128149; Grateful',anxious:'&#128560; Anxious',motivated:'&#128293; Motivated',frustrated:'&#128548; Frustrated',content:'&#127774; Content',uncertain:'&#129300; Uncertain'};
+  list.innerHTML=entries.map(function(e){
+    const d=new Date(e.date);
+    const dStr=d.toLocaleDateString('en-US',{weekday:'short',month:'short',day:'numeric',year:'numeric'})+' \u2014 '+d.toLocaleTimeString('en-US',{hour:'numeric',minute:'2-digit'});
+    const tags=(e.projName?'<span class="jec-tag">&#128194; '+esc(e.projName)+'</span>':'')+(e.mood?'<span class="jec-tag mood-tag">'+MOOD_LABELS[e.mood]+'</span>':'');
+    return '<div class="journal-entry-card"><div class="jec-header"><div class="jec-meta"><div class="jec-date">'+dStr+'</div>'+(tags?'<div class="jec-tags">'+tags+'</div>':'')+'</div><div class="jec-actions"><button class="jec-del" onclick="deleteJournalEntry(\''+e.id+'\')" title="Delete entry">&#128465;</button></div></div><div class="jec-body">'+esc(e.text)+'</div></div>';
+  }).join('');
+}
+
+function deleteJournalEntry(id){
+  _confirm('Delete this journal entry? This cannot be undone.',function(){
+    state.journal=state.journal.filter(function(e){return e.id!==id;});
+    save();
+    document.getElementById('journalEntryCount').textContent=state.journal.length+' '+(state.journal.length===1?'entry':'entries');
+    renderJournalEntries();
+  },{destructive:true,confirmText:'Delete'});
+}
+
+// =======================================
+// WORKOUT MODAL
+// =======================================
+function openWorkoutModal(){
+  document.getElementById('workoutModal').classList.add('open');
+  _blurDashboard();
+  renderWorkout();
+  updateCompletedWorkoutsCounter();
+}
+function closeWorkoutModal(){
+  document.getElementById('workoutModal').classList.remove('open');
+  _unblurDashboard();
+}
+
+// =======================================
+// WORKOUT PANEL
+// =======================================
+var WO_ACTIVE_DAY=null;
+
+var WO_DAYS=[
+  {label:'Monday',type:'lift',prog:0},
+  {label:'Tuesday',type:'walk'},
+  {label:'Wednesday',type:'lift',prog:1},
+  {label:'Thursday',type:'walk'},
+  {label:'Friday',type:'lift',prog:2},
+  {label:'Saturday',type:'walk'},
+  {label:'Sunday',type:'rest'}
+];
+
+// -- Exercise database ------------------------------------------------------
+var WO_EXERCISES={
+  // HORIZONTAL PUSH
+  db_bench:{name:'DB Bench Press',muscles:'Chest · Anterior Deltoid · Triceps',
+    steps:['Lie flat, feet on floor. Dumbbells at chest, palms forward.','Press upward until arms nearly locked, slight arc inward.','Lower slowly 2–3 s, feel chest stretch.','Shoulder blades pinched back throughout -- no shrugging.'],
+    tip:'Control the descent. If no bench, do floor press.',
+    alts:['db_incline','db_floor_press','cable_chest','pushup_weighted','pec_deck','dips_chest','cable_crossover','smith_bench','chest_press_machine']},
+  db_incline:{name:'Incline DB Press',muscles:'Upper Chest · Anterior Deltoid · Triceps',
+    steps:['Set bench 30–45°. Kick DBs up as you lie back.','Press upward at bench angle, not straight up.','Lower to outside upper chest, elbows ~60°.','Pause at bottom, drive back up.'],
+    tip:'Upper chest is often underdeveloped. Go lighter than flat press.',
+    alts:['db_bench','db_floor_press','cable_chest','pushup_weighted','pec_deck','dips_chest','cable_crossover','smith_bench','chest_press_machine']},
+  db_floor_press:{name:'DB Floor Press',muscles:'Chest · Triceps',
+    steps:['Lie on floor, knees bent. DBs at chest, elbows on floor.','Press to full extension, squeeze chest at top.','Lower until elbows touch floor -- that is the ROM.','Great option when bench is taken.'],
+    tip:'Floor limits shoulder strain. Excellent for shoulder-sensitive days.',
+    alts:['db_bench','db_incline','cable_chest','pushup_weighted','pec_deck','dips_chest','cable_crossover','smith_bench','chest_press_machine']},
+  cable_chest:{name:'Cable Chest Fly',muscles:'Chest (inner) · Anterior Deltoid',
+    steps:['Cables at chest height, stand center, one foot forward.','Arms slightly bent -- hug a tree arc.','Bring hands together, squeeze pec at end.','Open slowly, control the stretch.'],
+    tip:'Lead with elbows, not hands. Keep bend consistent.',
+    alts:['db_bench','db_incline','db_floor_press','pushup_weighted','pec_deck','dips_chest','cable_crossover','smith_bench','chest_press_machine']},
+  pushup_weighted:{name:'Weighted Push-Up',muscles:'Chest · Triceps · Core',
+    steps:['Plate on upper back or weighted vest. High plank.','Lower chest near floor, elbows 45° from torso.','Press back up, squeeze chest at top.','Body straight line throughout.'],
+    tip:'Backpack with books works if no vest or plates.',
+    alts:['db_bench','db_incline','db_floor_press','cable_chest','pec_deck','dips_chest','cable_crossover','smith_bench','chest_press_machine']},
+  pec_deck:{name:'Pec Deck Machine',muscles:'Chest (isolation) · Anterior Deltoid',
+    steps:['Adjust seat so handles are at chest height.','Grip handles, elbows bent ~90°.','Bring handles together in front of chest.','Open slowly -- feel the stretch.'],
+    tip:'Machine keeps you in the groove. Great finishing move or when the free weights area is packed.',
+    alts:['db_bench','db_incline','cable_chest','pushup_weighted','dips_chest','cable_crossover','smith_bench','chest_press_machine','db_floor_press']},
+  dips_chest:{name:'Chest Dips (Weighted)',muscles:'Lower Chest · Triceps · Anterior Deltoid',
+    steps:['Grip parallel bars, lean torso forward ~30°.','Lower until upper arms parallel to floor.','Drive up, squeezing chest -- slight forward lean maintained.','Add dip belt with plates as you progress.'],
+    tip:'The forward lean is what makes it a chest dip vs tricep dip.',
+    alts:['db_bench','db_incline','cable_chest','pushup_weighted','pec_deck','cable_crossover','smith_bench','chest_press_machine','db_floor_press']},
+  cable_crossover:{name:'Cable Crossover',muscles:'Chest (full sweep) · Anterior Deltoid',
+    steps:['High cables. Step forward, one foot staggered.','Pull handles down and in, crossing slightly at the bottom.','Squeeze hard at crossover point.','Return slowly to stretch.'],
+    tip:'Different angle than standard fly -- great for the lower-chest sweep.',
+    alts:['db_bench','cable_chest','pec_deck','dips_chest','pushup_weighted','db_incline','db_floor_press','smith_bench','chest_press_machine']},
+  smith_bench:{name:'Smith Machine Bench',muscles:'Chest · Triceps · Anterior Deltoid',
+    steps:['Lie on bench under Smith bar. Grip shoulder-width.','Unrack and lower to lower chest.','Press back up, lock out at top.','Fixed path reduces stabilizer demand -- good for overload.'],
+    tip:'Good for going heavy when no spotter is available.',
+    alts:['db_bench','db_incline','pec_deck','cable_chest','chest_press_machine','pushup_weighted','dips_chest','cable_crossover','db_floor_press']},
+  chest_press_machine:{name:'Chest Press Machine',muscles:'Chest · Triceps · Anterior Deltoid',
+    steps:['Set seat so handles are at chest height.','Grip handles, elbows bent, pull shoulder blades back.','Press forward to full extension.','Control return -- do not let the stack slam.'],
+    tip:'Zero balance required. Great for focusing purely on pressing strength.',
+    alts:['db_bench','db_incline','pec_deck','cable_chest','smith_bench','pushup_weighted','dips_chest','cable_crossover','db_floor_press']},
+
+  // KNEE-DOMINANT / QUADS
+  goblet_squat:{name:'Goblet Squat',muscles:'Quads · Glutes · Core',
+    steps:['Hold one heavy DB at chest, cupping the top end.','Feet shoulder-width, toes slightly out.','Knees out as you sit straight down, chest tall.','Drive through heels, squeeze glutes at top.'],
+    tip:'The DB counterbalances you. Go heavy -- it\'s stable.',
+    alts:['db_front_squat','leg_press','hack_squat','box_squat','sumo_squat','smith_squat','walking_lunge','wall_sit','db_step_up_squat']},
+  db_front_squat:{name:'DB Front Squat',muscles:'Quads · Glutes · Upper Back · Core',
+    steps:['DBs at shoulder height, elbows high.','Squat down keeping elbows up -- forces upright torso.','Drive back up through heels.'],
+    tip:'Elbows high is the key cue. Cross arms to support DBs if wrists bother you.',
+    alts:['goblet_squat','leg_press','hack_squat','box_squat','sumo_squat','smith_squat','walking_lunge','wall_sit','db_step_up_squat']},
+  leg_press:{name:'Leg Press',muscles:'Quads · Glutes · Hamstrings',
+    steps:['Feet hip-width on platform. Knees ~90° when loaded.','Release safety and lower platform controlled.','Stop at 90° -- knees don\'t collapse.','Press through heels, don\'t lock out.'],
+    tip:'Higher foot position = more glutes; lower = more quads.',
+    alts:['goblet_squat','db_front_squat','hack_squat','box_squat','sumo_squat','smith_squat','walking_lunge','wall_sit','db_step_up_squat']},
+  hack_squat:{name:'Hack Squat (DB)',muscles:'Quads (primary) · Glutes',
+    steps:['DBs at sides, heels elevated 1–2 in on a plate.','Squat straight down, torso upright.','Knees travel over toes -- intended.','Drive through balls of feet.'],
+    tip:'Heel elevation is the key for quad emphasis.',
+    alts:['goblet_squat','db_front_squat','leg_press','box_squat','sumo_squat','smith_squat','walking_lunge','wall_sit','db_step_up_squat']},
+  box_squat:{name:'Box Squat (DB)',muscles:'Glutes · Hamstrings · Quads',
+    steps:['Box behind you at knee height. DBs at sides.','Sit BACK (not down) onto the box, hip hinge.','Briefly pause, drive up through heels, squeeze glutes.'],
+    tip:'Reinforces sit-back hip pattern. Great for glutes.',
+    alts:['goblet_squat','db_front_squat','leg_press','hack_squat','sumo_squat','smith_squat','walking_lunge','wall_sit','db_step_up_squat']},
+  sumo_squat:{name:'Sumo Squat (DB)',muscles:'Quads · Glutes · Adductors',
+    steps:['Wide stance, toes turned out 45°. Hold one heavy DB between legs.','Lower straight down, chest tall.','Inner thighs and glutes drive up.','Wider stance = more inner thigh and glute.'],
+    tip:'Comfortable for people with hip mobility limitations.',
+    alts:['goblet_squat','db_front_squat','leg_press','hack_squat','box_squat','smith_squat','walking_lunge','wall_sit','db_step_up_squat']},
+  smith_squat:{name:'Smith Machine Squat',muscles:'Quads · Glutes · Hamstrings',
+    steps:['Bar on upper traps. Feet slightly forward of hips.','Squat to parallel or below.','Drive up, push head back into bar at top.'],
+    tip:'Fixed path lets you focus on depth and quad tension without balance concerns.',
+    alts:['goblet_squat','db_front_squat','leg_press','hack_squat','box_squat','sumo_squat','walking_lunge','wall_sit','db_step_up_squat']},
+  walking_lunge:{name:'Walking Lunge (DB)',muscles:'Quads · Glutes · Balance',
+    steps:['DBs at sides. Step forward into a lunge.','Back knee drops toward floor without touching.','Step the back foot up to meet the front.','Continue forward alternating legs.'],
+    tip:'Excellent for space and athleticism. 10 reps each leg.',
+    alts:['goblet_squat','db_front_squat','leg_press','hack_squat','box_squat','sumo_squat','smith_squat','wall_sit','db_step_up_squat']},
+
+  // VERTICAL PULL / BACK
+  pullups:{name:'Pull-Ups',muscles:'Lats · Biceps · Rear Deltoid · Core',
+    steps:['Overhand grip, hands just outside shoulders.','Depress shoulder blades first.','Drive elbows toward hips.','Lower slowly 2–3 s.'],
+    tip:'Joe\'s favorite. Band or negatives if needed. Earn the reps.',
+    alts:['lat_pulldown','assisted_pullup','db_row','cable_row','t_bar_row','chest_supported_row','straight_arm_pulldown','ring_row','close_grip_pulldown']},
+  lat_pulldown:{name:'Lat Pulldown',muscles:'Lats · Biceps · Rear Deltoid',
+    steps:['Overhand, just outside shoulder width. Lean back 10–15°.','Drive elbows down to hips.','Pull to upper chest. Control return.'],
+    tip:'Focus on elbow path -- lats pull the arm down.',
+    alts:['pullups','assisted_pullup','db_row','cable_row','t_bar_row','chest_supported_row','straight_arm_pulldown','ring_row','close_grip_pulldown']},
+  assisted_pullup:{name:'Assisted Pull-Up',muscles:'Lats · Biceps · Core',
+    steps:['Set assistance weight. Grip just outside shoulders.','Same motion: shoulder blades down, elbows to hips.','Lower slowly. Reduce assistance 5 lbs every 2–3 weeks.'],
+    tip:'A progression tool. Track it and chip away.',
+    alts:['pullups','lat_pulldown','db_row','cable_row','t_bar_row','chest_supported_row','straight_arm_pulldown','ring_row','close_grip_pulldown']},
+  db_row:{name:'Single-Arm DB Row',muscles:'Lats · Rhomboids · Rear Delt · Biceps',
+    steps:['One hand and knee on bench. Row DB toward hip, not shoulder.','Elbow behind body at top -- hold 1 s.','Lower slowly. Finish all reps one side, then switch.'],
+    tip:'Pulling to the hip is key. Allows heavy loading with good form.',
+    alts:['pullups','lat_pulldown','assisted_pullup','cable_row','t_bar_row','chest_supported_row','straight_arm_pulldown','ring_row','close_grip_pulldown']},
+  cable_row:{name:'Seated Cable Row',muscles:'Lats · Rhomboids · Biceps · Rear Delt',
+    steps:['Low cable row. Feet on platform, knees slightly bent.','Retract shoulder blades before pulling.','Pull handle to lower abdomen, elbows close.','Control return -- slight forward lean only.'],
+    tip:'Keep torso upright. Leaning back makes it a lower-back exercise.',
+    alts:['pullups','lat_pulldown','assisted_pullup','db_row','t_bar_row','chest_supported_row','straight_arm_pulldown','ring_row','close_grip_pulldown']},
+  t_bar_row:{name:'T-Bar Row',muscles:'Lats · Rhomboids · Rear Delt · Biceps',
+    steps:['Straddle the barbell/T-bar handle. Hip hinge, flat back.','Row to lower chest, elbows close.','Squeeze shoulder blades together at top.','Lower with control.'],
+    tip:'One of the heaviest row variations. Great for thickness.',
+    alts:['pullups','lat_pulldown','db_row','cable_row','assisted_pullup','chest_supported_row','straight_arm_pulldown','ring_row','close_grip_pulldown']},
+  chest_supported_row:{name:'Chest-Supported DB Row',muscles:'Rhomboids · Rear Delt · Lats · Biceps',
+    steps:['Set incline bench to 30–45°. Lie chest-down, DBs hanging.','Row both DBs up toward hips simultaneously.','Squeeze shoulder blades together.','Lower slowly -- full stretch.'],
+    tip:'Chest support eliminates lower-back fatigue. Pure back work.',
+    alts:['pullups','lat_pulldown','db_row','cable_row','t_bar_row','assisted_pullup','straight_arm_pulldown','ring_row','close_grip_pulldown']},
+  straight_arm_pulldown:{name:'Straight-Arm Pulldown',muscles:'Lats (isolation) · Core',
+    steps:['High cable, rope or straight bar. Arms nearly straight.','Pull bar down to thighs with a sweeping arc.','Feel the lat stretch at top -- that\'s the money.','Return slowly.'],
+    tip:'Pure lat isolation. Great as a warm-up or finishing move.',
+    alts:['pullups','lat_pulldown','db_row','cable_row','t_bar_row','chest_supported_row','assisted_pullup','ring_row','close_grip_pulldown']},
+  close_grip_pulldown:{name:'Close-Grip Pulldown',muscles:'Lats (lower) · Biceps',
+    steps:['Use close neutral-grip handle. Sit tall.','Drive elbows straight down to sides.','Pull to upper chest.','Full stretch at top.'],
+    tip:'Neutral grip is easier on the shoulders and hits lower lats well.',
+    alts:['pullups','lat_pulldown','db_row','cable_row','t_bar_row','chest_supported_row','straight_arm_pulldown','assisted_pullup','ring_row']},
+  ring_row:{name:'Ring Row (TRX Row)',muscles:'Lats · Rhomboids · Rear Delt · Core',
+    steps:['Set rings or TRX at waist height. Grip and lean back.','Body straight like a plank. Pull chest to handles.','Elbows drive back past body.','Lower with control. Walk feet out to increase difficulty.'],
+    tip:'Bodyweight but surprisingly tough. Angle your body for the right challenge.',
+    alts:['pullups','lat_pulldown','db_row','cable_row','t_bar_row','chest_supported_row','straight_arm_pulldown','close_grip_pulldown','assisted_pullup']},
+
+  // HIP-DOMINANT / POSTERIOR CHAIN
+  rdl:{name:'Romanian Deadlift (DB)',muscles:'Hamstrings · Glutes · Lower Back',
+    steps:['DBs at thighs, soft knee bend, feet hip-width.','Hinge at hips, pushing butt backward.','Lower to mid-shin (feel stretch).','Drive hips forward, squeeze glutes at top.'],
+    tip:'Hip hinge, not squat. Keep DBs close to legs.',
+    alts:['leg_curl','good_morning','kb_swing','stiff_leg_dl','nordic_curl','hip_thrust','sumo_rdl','single_leg_rdl','cable_pull_through']},
+  leg_curl:{name:'Lying Leg Curl',muscles:'Hamstrings (isolated)',
+    steps:['Face down, pad just above ankles.','Curl heels toward glutes, full ROM.','Hold 1 s at top.','Lower slowly -- eccentric is key.'],
+    tip:'Standing single-leg cable curl is a great substitute.',
+    alts:['rdl','good_morning','kb_swing','stiff_leg_dl','nordic_curl','hip_thrust','sumo_rdl','single_leg_rdl','cable_pull_through']},
+  good_morning:{name:'Good Morning',muscles:'Hamstrings · Glutes · Lower Back',
+    steps:['Light DB at chest or bar across upper traps.','Feet hip-width, soft knee bend.','Hinge forward until torso near parallel -- feel hamstring stretch.','Drive hips forward to return.'],
+    tip:'GO LIGHT. This is a hamstring stretch strengthener, not a max effort move.',
+    alts:['rdl','leg_curl','kb_swing','stiff_leg_dl','nordic_curl','hip_thrust','sumo_rdl','single_leg_rdl','cable_pull_through']},
+  kb_swing:{name:'Kettlebell Swing',muscles:'Hamstrings · Glutes · Core · Shoulders',
+    steps:['KB between legs. Hike it back with a hip hinge.','Explosively snap hips forward.','Let momentum swing weight to chest height -- arms guide only.','Control the hike back pattern.'],
+    tip:'Power comes entirely from the hip snap. Think "hip, not arms."',
+    alts:['rdl','leg_curl','good_morning','stiff_leg_dl','nordic_curl','hip_thrust','sumo_rdl','single_leg_rdl','cable_pull_through']},
+  stiff_leg_dl:{name:'Stiff-Leg Deadlift (DB)',muscles:'Hamstrings · Glutes · Lower Back',
+    steps:['DBs at thighs, legs nearly straight (not locked).','Hinge forward, flat back, lower toward floor.','Stop at your flexibility limit.','Drive up with hamstrings and glutes.'],
+    tip:'More hamstring stretch than RDL. Good for mobility gains.',
+    alts:['rdl','leg_curl','good_morning','kb_swing','nordic_curl','hip_thrust','sumo_rdl','single_leg_rdl','cable_pull_through']},
+  nordic_curl:{name:'Nordic Curl',muscles:'Hamstrings (eccentric, very high demand)',
+    steps:['Kneel on mat, feet anchored under a bench or bar.','Keep body straight hip-to-knee as you lower torso toward floor.','Lower as slowly as possible -- use arms to catch if needed.','Pull back up using hamstrings (or push up from floor).'],
+    tip:'Regarded as one of the most effective hamstring exercises in sports science research. Very hard -- start with negatives only.',
+    alts:['rdl','leg_curl','good_morning','kb_swing','stiff_leg_dl','hip_thrust','sumo_rdl','single_leg_rdl','cable_pull_through']},
+  hip_thrust:{name:'Hip Thrust (DB or Barbell)',muscles:'Glutes (primary) · Hamstrings',
+    steps:['Sit with upper back against a bench. Bar or DB on hips.','Feet flat, knees ~90° at top.','Drive hips up until body is straight hip to shoulder.','Squeeze glutes hard at top for 1 s -- lower controlled.'],
+    tip:'The single most effective glute exercise per EMG research (Contreras et al., 2015). Go heavy.',
+    alts:['rdl','leg_curl','good_morning','kb_swing','stiff_leg_dl','nordic_curl','sumo_rdl','single_leg_rdl','cable_pull_through']},
+  sumo_rdl:{name:'Sumo RDL (DB)',muscles:'Hamstrings · Glutes · Adductors',
+    steps:['Wide stance, toes turned out 45°. DBs between legs.','Hinge at hips keeping chest tall.','Lower DBs along inner legs to mid-shin.','Drive hips through, squeeze glutes.'],
+    tip:'Wider stance shifts some load to adductors and changes glute activation angle.',
+    alts:['rdl','leg_curl','good_morning','kb_swing','stiff_leg_dl','nordic_curl','hip_thrust','single_leg_rdl','cable_pull_through']},
+  single_leg_rdl:{name:'Single-Leg RDL (DB)',muscles:'Hamstrings · Glutes · Balance · Core',
+    steps:['Hold one or two DBs. Stand on one leg, soft bend.','Hinge at hip, extending free leg behind you for balance.','Lower DB to mid-shin on standing leg side.','Drive back up -- same hip hinges both ways.'],
+    tip:'Outstanding for addressing leg imbalances. Balance will improve quickly.',
+    alts:['rdl','leg_curl','good_morning','kb_swing','stiff_leg_dl','nordic_curl','hip_thrust','sumo_rdl','cable_pull_through']},
+  cable_pull_through:{name:'Cable Pull-Through',muscles:'Glutes · Hamstrings · Lower Back',
+    steps:['Low cable behind you, rope attachment. Straddle cable.','Hip hinge forward, grabbing rope between legs.','Drive hips forward explosively to standing.','Control the hinge back.'],
+    tip:'Hip hinge pattern with constant cable tension. Teaches the RDL/swing pattern very well.',
+    alts:['rdl','leg_curl','good_morning','kb_swing','stiff_leg_dl','nordic_curl','hip_thrust','sumo_rdl','single_leg_rdl']},
+
+  // UNILATERAL LOWER
+  step_ups:{name:'Weighted Step-Ups',muscles:'Glutes · Quads · Hamstrings · Core',
+    steps:['DBs at sides. Box at knee height.','Entire foot on box -- don\'t use trailing leg to push.','Drive through heel to step up, knee lifts opposite leg.','Step back down controlled. All reps one leg, then switch.'],
+    tip:'Joe\'s favorite. Heel drive is everything.',
+    alts:['reverse_lunge','split_squat','bulgarian_split','db_lateral_lunge','hip_thrust','curtsy_lunge','single_leg_rdl','walking_lunge','step_mill']},
+  reverse_lunge:{name:'Reverse Lunge (DB)',muscles:'Glutes · Quads · Hamstrings · Balance',
+    steps:['DBs at sides, feet hip-width.','Step one foot back and lower back knee near floor.','Front knee stays over ankle.','Push through front heel to return. Alternate.'],
+    tip:'Easier on knees than forward lunge. Better glute activation.',
+    alts:['step_ups','split_squat','bulgarian_split','db_lateral_lunge','hip_thrust','curtsy_lunge','single_leg_rdl','walking_lunge','step_mill']},
+  split_squat:{name:'Split Squat (DB)',muscles:'Quads · Glutes · Hip Flexors',
+    steps:['Long split stance -- front forward, back extended. DBs at sides.','Lower straight down until back knee near floor.','Front shin stays as vertical as possible.','All reps one side then switch.'],
+    tip:'Static stance -- no movement. Purely a drop and drive.',
+    alts:['step_ups','reverse_lunge','bulgarian_split','db_lateral_lunge','hip_thrust','curtsy_lunge','single_leg_rdl','walking_lunge','step_mill']},
+  bulgarian_split:{name:'Bulgarian Split Squat',muscles:'Glutes · Quads · Hip Flexors · Balance',
+    steps:['Rear foot on bench. DBs at sides.','Lower until front thigh parallel -- front shin vertical at bottom.','Drive through front heel to return.','Go lighter than you think -- this is brutal.'],
+    tip:'Often called the king of lower body. Use Smith machine or TRX initially.',
+    alts:['step_ups','reverse_lunge','split_squat','db_lateral_lunge','hip_thrust','curtsy_lunge','single_leg_rdl','walking_lunge','step_mill']},
+  db_lateral_lunge:{name:'Lateral Lunge (DB)',muscles:'Glutes (lateral) · Adductors · Quads',
+    steps:['DBs at sides. Wide step to one side, bend that knee.','Other leg stays straight. Sit into the hip.','Push through bent leg heel to return. Alternate.'],
+    tip:'Frontal plane movement -- often neglected. Great complement to step-ups.',
+    alts:['step_ups','reverse_lunge','split_squat','bulgarian_split','hip_thrust','curtsy_lunge','single_leg_rdl','walking_lunge','step_mill']},
+  curtsy_lunge:{name:'Curtsy Lunge (DB)',muscles:'Glutes (lateral) · Adductors · Quads',
+    steps:['DBs at sides. Step one foot diagonally BEHIND and across.','Lower back knee toward floor in a curtsy pattern.','Drive through front heel to return.','Alternate sides.'],
+    tip:'Hits the lateral glute in a unique way. Great variety for glute development.',
+    alts:['step_ups','reverse_lunge','split_squat','bulgarian_split','db_lateral_lunge','hip_thrust','single_leg_rdl','walking_lunge','step_mill']},
+
+  // SHOULDER / OVERHEAD PUSH
+  db_shoulder_press:{name:'DB Shoulder Press',muscles:'Anterior & Lateral Delt · Triceps',
+    steps:['Seated or standing. DBs at shoulder height, palms forward.','Press upward -- hands arc slightly inward at top.','Stop just before lockout.','Lower to shoulder height with control.'],
+    tip:'Seated with back support reduces lower-back strain.',
+    alts:['arnold_press','lateral_raise','db_upright_row','machine_shoulder','cable_lateral','rear_delt_fly','db_front_raise','face_pull','overhead_press_machine']},
+  arnold_press:{name:'Arnold Press',muscles:'All 3 Delt Heads · Triceps · Rotator Cuff',
+    steps:['Start with palms facing YOU at shoulder height.','Press and rotate -- palms face FORWARD at top.','Reverse on the way down.','Rotation recruits all three delt heads.'],
+    tip:'Named after Arnold. Go slightly lighter -- wider ROM.',
+    alts:['db_shoulder_press','lateral_raise','db_upright_row','machine_shoulder','cable_lateral','rear_delt_fly','db_front_raise','face_pull','overhead_press_machine']},
+  lateral_raise:{name:'Lateral Raise (DB)',muscles:'Lateral Delt (isolated)',
+    steps:['Light DBs at sides, slight elbow bend.','Raise arms out to shoulder height -- no higher.','Pause, lower over 3 s.','Lead with elbows, pinky slightly higher than thumb.'],
+    tip:'Start at 8–15 lbs. Most people go too heavy and it becomes a trap shrug.',
+    alts:['db_shoulder_press','arnold_press','db_upright_row','machine_shoulder','cable_lateral','rear_delt_fly','db_front_raise','face_pull','overhead_press_machine']},
+  db_upright_row:{name:'DB Upright Row',muscles:'Lateral Delt · Upper Traps · Biceps',
+    steps:['DBs at thighs, overhand, close grip.','Pull straight up toward chin, elbows lead.','Elbows higher than wrists throughout.','Stop at chest height.'],
+    tip:'Wide grip = more delt; narrow = more trap. Stop at chest to protect shoulder.',
+    alts:['db_shoulder_press','arnold_press','lateral_raise','machine_shoulder','cable_lateral','rear_delt_fly','db_front_raise','face_pull','overhead_press_machine']},
+  machine_shoulder:{name:'Shoulder Press Machine',muscles:'Anterior & Lateral Delt · Triceps',
+    steps:['Seat adjusted so handles are at shoulder height.','Press upward to near extension.','Lower with control.'],
+    tip:'Fixed path. Good for overloading when shoulder stability is an issue.',
+    alts:['db_shoulder_press','arnold_press','lateral_raise','db_upright_row','cable_lateral','rear_delt_fly','db_front_raise','face_pull','overhead_press_machine']},
+  cable_lateral:{name:'Cable Lateral Raise',muscles:'Lateral Delt (constant tension)',
+    steps:['Single low cable, handle in outside hand.','Raise arm to shoulder height, arc slightly across body.','Control return -- cable maintains tension at bottom.','Complete all reps, switch sides.'],
+    tip:'Cable provides tension at the bottom where DBs are easiest -- better overall stimulus.',
+    alts:['db_shoulder_press','arnold_press','lateral_raise','machine_shoulder','rear_delt_fly','db_front_raise','face_pull','overhead_press_machine','db_upright_row']},
+  rear_delt_fly:{name:'Rear Delt Fly (DB)',muscles:'Rear Deltoid · Rhomboids · Lower Traps',
+    steps:['Seated, lean forward until torso nearly parallel.','DBs hanging, slight elbow bend.','Raise arms out to sides -- pinch shoulder blades.','Hold 1 s at top, lower slowly.'],
+    tip:'Rear delts are chronically underdeveloped. Light weight, high reps.',
+    alts:['db_shoulder_press','arnold_press','lateral_raise','machine_shoulder','cable_lateral','db_front_raise','face_pull','overhead_press_machine','db_upright_row']},
+  overhead_press_machine:{name:'Overhead Press Machine',muscles:'Anterior & Lateral Delt · Triceps',
+    steps:['Set seat. Grip handles at shoulder level.','Press overhead to near full extension.','Lower controlled.'],
+    tip:'Overhead press machines vary -- some allow more freedom of movement than others.',
+    alts:['db_shoulder_press','arnold_press','lateral_raise','machine_shoulder','cable_lateral','rear_delt_fly','db_front_raise','face_pull','db_upright_row']},
+
+  // REAR DELT / ROTATOR CUFF
+  face_pull:{name:'Face Pull',muscles:'Rear Deltoid · Rotator Cuff · Rear Traps',
+    steps:['High cable with rope attachment. Grab ends with palms down.','Pull rope toward face, elbows flare wide and high.','External rotate at end -- elbows behind the rope at top.','Return slowly -- this range of motion is rare and valuable.'],
+    tip:'One of the best shoulder health exercises. Often called "the most important exercise you\'re not doing." 15–20 reps every session.',
+    alts:['rear_delt_fly','lateral_raise','cable_lateral','machine_shoulder','db_upright_row','arnold_press','db_shoulder_press','ring_row','overhead_press_machine']},
+
+  // TRICEPS
+  db_tricep_ext:{name:'DB Tricep Extension (Overhead)',muscles:'Triceps (long head emphasis)',
+    steps:['Seated or standing. Hold one DB with both hands overhead.','Lower DB behind head, elbows pointing forward.','Press back up to full extension -- squeeze triceps.','Keep elbows from flaring out.'],
+    tip:'Overhead position puts the long head of the tricep in a stretched position -- highest growth stimulus.',
+    alts:['cable_pushdown','skull_crusher','close_grip_press','db_kickback','bench_dip','diamond_pushup','tricep_machine','cable_overhead_tri','dips_chest']},
+  cable_pushdown:{name:'Cable Pushdown (Rope)',muscles:'Triceps (all heads)',
+    steps:['High cable, rope attachment. Elbows fixed at sides.','Push rope down and out -- separate at bottom.','Full extension, squeeze triceps.','Control return -- stop when forearms are parallel.'],
+    tip:'Keep elbows pinned to sides throughout. If they drift forward, reduce weight.',
+    alts:['db_tricep_ext','skull_crusher','close_grip_press','db_kickback','bench_dip','diamond_pushup','tricep_machine','cable_overhead_tri','dips_chest']},
+  skull_crusher:{name:'Skull Crushers (DB)',muscles:'Triceps (all heads)',
+    steps:['Lie flat, DBs extended above chest.','Lower DBs toward temples by bending only at elbow.','Extend back up -- keep upper arms vertical.'],
+    tip:'Keep upper arms still. Only the forearms move. Go lighter than you think.',
+    alts:['db_tricep_ext','cable_pushdown','close_grip_press','db_kickback','bench_dip','diamond_pushup','tricep_machine','cable_overhead_tri','dips_chest']},
+  close_grip_press:{name:'Close-Grip DB Press',muscles:'Triceps · Chest (inner)',
+    steps:['Hold DBs together at chest, palms facing each other.','Press straight up while keeping DBs touching.','Lower slowly.'],
+    tip:'Neutral grip targets triceps more than standard bench.',
+    alts:['db_tricep_ext','cable_pushdown','skull_crusher','db_kickback','bench_dip','diamond_pushup','tricep_machine','cable_overhead_tri','dips_chest']},
+  db_kickback:{name:'DB Tricep Kickback',muscles:'Triceps (all heads)',
+    steps:['Hinge forward 45°, upper arm parallel to floor.','Extend forearm back to full lockout.','Hold 1 s, lower slowly.'],
+    tip:'Light weight only. The lockout is where triceps fully contract.',
+    alts:['db_tricep_ext','cable_pushdown','skull_crusher','close_grip_press','bench_dip','diamond_pushup','tricep_machine','cable_overhead_tri','dips_chest']},
+
+  // BICEPS
+  db_bicep_curl:{name:'DB Bicep Curl',muscles:'Biceps · Brachialis · Brachioradialis',
+    steps:['Stand or sit, DBs at sides, palms forward.','Curl both up simultaneously -- elbows stay pinned to sides.','Squeeze biceps at top.','Lower slowly -- 2–3 s.'],
+    tip:'Slow the lowering -- the eccentric builds more muscle.',
+    alts:['hammer_curl','incline_curl','concentration_curl','cable_curl','preacher_curl','db_21s','reverse_curl','cable_hammer_curl','machine_curl']},
+  hammer_curl:{name:'Hammer Curl',muscles:'Brachialis · Biceps · Brachioradialis',
+    steps:['DBs at sides, palms facing each other (hammer grip).','Curl upward -- no rotation.','Hold 1 s, lower slowly.'],
+    tip:'Brachialis sits under the bicep and when built, pushes the bicep up making your arm look bigger. Very underrated.',
+    alts:['db_bicep_curl','incline_curl','concentration_curl','cable_curl','preacher_curl','db_21s','reverse_curl','cable_hammer_curl','machine_curl']},
+  incline_curl:{name:'Incline DB Curl',muscles:'Biceps (long head peak)',
+    steps:['Lie back on incline bench (45–60°). Arms hang behind body.','Curl DBs up without moving upper arms.','Full stretch at bottom is the key stimulus.'],
+    tip:'The incline position creates a unique stretch on the long head of the bicep -- excellent for peak development.',
+    alts:['db_bicep_curl','hammer_curl','concentration_curl','cable_curl','preacher_curl','db_21s','reverse_curl','cable_hammer_curl','machine_curl']},
+  concentration_curl:{name:'Concentration Curl',muscles:'Biceps (isolated peak)',
+    steps:['Seated, lean forward, elbow braced against inner thigh.','Curl DB up fully, rotating wrist outward at top.','Lower fully.','Complete all reps one arm, then switch.'],
+    tip:'Maximum isolation with zero body swing. Quality over quantity.',
+    alts:['db_bicep_curl','hammer_curl','incline_curl','cable_curl','preacher_curl','db_21s','reverse_curl','cable_hammer_curl','machine_curl']},
+  preacher_curl:{name:'Preacher Curl (DB or Cable)',muscles:'Biceps (lower/short head)',
+    steps:['Arms over preacher pad, elbows at edge of pad.','Curl up -- full contraction.','Lower fully -- critical to get the stretch.','Do not let elbows lift off pad.'],
+    tip:'Eliminates any cheating. Great for adding lower bicep thickness.',
+    alts:['db_bicep_curl','hammer_curl','incline_curl','cable_curl','concentration_curl','db_21s','reverse_curl','cable_hammer_curl','machine_curl']},
+  cable_curl:{name:'Cable Curl',muscles:'Biceps (constant tension)',
+    steps:['Low cable, straight bar or EZ bar. Stand shoulder-width.','Curl up -- keep elbows still.','Cable provides tension at the bottom where DBs are lightest.'],
+    tip:'Constant tension throughout the movement is the advantage over DBs.',
+    alts:['db_bicep_curl','hammer_curl','incline_curl','concentration_curl','preacher_curl','db_21s','reverse_curl','cable_hammer_curl','machine_curl']},
+
+  // DEADLIFT / HIP HINGE COMPOUND
+  db_deadlift:{name:'DB Deadlift',muscles:'Hamstrings · Glutes · Lower Back · Quads · Traps',
+    steps:['DBs on floor outside feet. Hinge and grip.','Flat back, chest tall, hips above knees.','Drive through floor -- hips and shoulders rise together.','Stand tall, squeeze glutes. Lower with control.'],
+    tip:'Think "push the floor away" not "pull the weight up." Full compound movement.',
+    alts:['rdl','hip_thrust','kb_swing','stiff_leg_dl','sumo_rdl','trap_bar_dl','good_morning','cable_pull_through','nordic_curl']},
+  trap_bar_dl:{name:'Trap Bar Deadlift',muscles:'Quads · Glutes · Hamstrings · Lower Back',
+    steps:['Stand inside hex bar. Grip handles.','Hinge to grab, flat back, hips above knees.','Drive through floor simultaneously with hips and shoulders.','Lockout -- squeeze glutes, stand tall.'],
+    tip:'Trap bar reduces lower back stress vs conventional. Higher quad involvement. Excellent for athletes.',
+    alts:['db_deadlift','rdl','hip_thrust','kb_swing','stiff_leg_dl','sumo_rdl','good_morning','cable_pull_through','nordic_curl']},
+
+  // -- CORE (anti-extension, anti-rotation, anti-lateral flexion) --
+  plank:{name:'Plank',muscles:'Core (anti-extension) · Glutes · Shoulders',
+    steps:['Forearms on floor, elbows under shoulders. Feet hip-width.','Body straight line head to heels.','Squeeze glutes and brace abs hard -- no sagging hips.','Breathe steadily. Hold for time.'],
+    tip:'Quality over duration. 30 seconds with perfect form beats 2 minutes with sagging hips. Progress by adding load (plate on back).',
+    alts:['side_plank','dead_bug','pallof_press','ab_wheel','hanging_knee_raise','farmer_carry','suitcase_carry']},
+  side_plank:{name:'Side Plank',muscles:'Obliques · QL · Glute Medius',
+    steps:['Lie on side. Forearm on floor, elbow under shoulder.','Lift hips so body is straight line from ankle to head.','Top arm reaches toward ceiling or rests on hip.','Hold for time, then switch sides.'],
+    tip:'Anti-lateral flexion is often neglected. Crucial for spine stability under one-sided loads (think patient carries).',
+    alts:['plank','dead_bug','pallof_press','ab_wheel','hanging_knee_raise','suitcase_carry']},
+  dead_bug:{name:'Dead Bug',muscles:'Deep Core · Transverse Abdominis · Hip Flexors',
+    steps:['Lie on back, arms straight up, knees over hips at 90°.','Press lower back into floor -- maintain throughout.','Slowly extend opposite arm and leg toward floor.','Return controlled. Alternate sides.'],
+    tip:'Trains the core to resist extension under limb movement. Foundation for everything else. Slow is hard.',
+    alts:['plank','side_plank','pallof_press','ab_wheel','hanging_knee_raise']},
+  pallof_press:{name:'Pallof Press (Cable)',muscles:'Core (anti-rotation) · Obliques · Shoulders',
+    steps:['Cable at chest height. Stand sideways to cable, feet shoulder-width.','Grip handle with both hands at chest.','Press arms straight out, resisting the rotational pull.','Hold 2 sec, return. Complete all reps, switch sides.'],
+    tip:'The cable WANTS to twist you. Your job is to refuse. Single best anti-rotation exercise for occupational core strength.',
+    alts:['plank','side_plank','dead_bug','ab_wheel','hanging_knee_raise','suitcase_carry']},
+  ab_wheel:{name:'Ab Wheel Rollout',muscles:'Core · Lats · Shoulders · Hip Flexors',
+    steps:['Kneel on pad, grip ab wheel under shoulders.','Roll forward, extending arms -- keep core braced, no back sag.','Roll only as far as you can without losing flat back.','Pull back using abs and lats.'],
+    tip:'Start kneeling, partial range. Build to full extension before attempting from feet. One of the hardest core exercises.',
+    alts:['plank','side_plank','dead_bug','pallof_press','hanging_knee_raise']},
+  hanging_knee_raise:{name:'Hanging Knee Raise',muscles:'Lower Abs · Hip Flexors · Grip',
+    steps:['Hang from pull-up bar, dead hang.','Knees up toward chest -- curl pelvis at top.','Lower slowly, no swing.','Progress to straight leg raises.'],
+    tip:'The pelvic tilt at the top is what hits the abs. Just lifting knees without that = mostly hip flexor work.',
+    alts:['plank','side_plank','dead_bug','pallof_press','ab_wheel']},
+
+  // -- LOADED CARRIES (occupational -- grip + core + gait under load) --
+  farmer_carry:{name:'Farmer Carry',muscles:'Grip · Core · Traps · Forearms · Glutes',
+    steps:['Heavy DBs or KBs at sides. Stand tall, shoulders pulled back.','Walk forward with normal gait. Do NOT shuffle.','Brace core, breathe steady. No side-bending.','Carry for distance or time.'],
+    tip:'Single most occupationally relevant exercise for first responders. Pair patient transfers and gear carries with this. Start ~25% bodyweight per hand, build up.',
+    alts:['suitcase_carry','overhead_carry','plank','side_plank','pallof_press']},
+  suitcase_carry:{name:'Suitcase Carry',muscles:'Core (anti-lateral flexion) · Grip · Obliques · QL',
+    steps:['One heavy DB or KB in ONE hand. Other hand free.','Walk tall -- do NOT let weighted side dip down.','Active brace against the asymmetric load.','Carry for distance, then switch sides.'],
+    tip:'The unbalanced load forces obliques and QL to work hard. Direct training for one-sided carries like jump bags or scene gear.',
+    alts:['farmer_carry','overhead_carry','side_plank','pallof_press','plank']},
+  overhead_carry:{name:'Overhead Carry',muscles:'Shoulders · Core · Upper Back · Grip',
+    steps:['Press DB or KB overhead with one or both arms.','Lock arms out -- bicep by ear.','Walk forward maintaining the lockout.','Tight core, ribs down, no arching back.'],
+    tip:'Tests shoulder stability and overhead mobility under fatigue. Start light. Excellent for overhead reach jobs (extrication, hose pulls).',
+    alts:['farmer_carry','suitcase_carry','plank','pallof_press','db_shoulder_press']},
+
+  // -- CALVES --
+  standing_calf_raise:{name:'Standing Calf Raise',muscles:'Gastrocnemius (upper calf)',
+    steps:['Stand on edge of step, balls of feet on edge, heels off.','Hold DBs at sides or use calf raise machine.','Lower heels below step level -- feel stretch.','Press up onto toes hard, squeeze 1 sec at top.','Lower slowly.'],
+    tip:'Knee straight = gastroc (upper calf). Full ROM is key -- most people barely move. Reps 10–15.',
+    alts:['seated_calf_raise','single_leg_calf_raise','walking_lunge','step_ups']},
+  seated_calf_raise:{name:'Seated Calf Raise',muscles:'Soleus (lower calf)',
+    steps:['Seated calf machine or DB on knees with feet on plate.','Knees bent 90° throughout.','Lower heels, stretch.','Press up onto toes, hold 1 sec.','Lower slowly.'],
+    tip:'Knee bent = soleus (lower calf). Often more responsive than gastroc. Pair with standing calf raise for full development.',
+    alts:['standing_calf_raise','single_leg_calf_raise','walking_lunge','step_ups']},
+  single_leg_calf_raise:{name:'Single-Leg Calf Raise',muscles:'Gastrocnemius · Balance · Foot Stability',
+    steps:['Stand on one foot on edge of step. Other foot lifted.','Hold DB on same side for added load.','Lower heel below step.','Press up onto toes, hold 1 sec.','Complete all reps, switch sides.'],
+    tip:'Catches and corrects side-to-side imbalances. Helps with ankle stability on uneven ground.',
+    alts:['standing_calf_raise','seated_calf_raise','walking_lunge','step_ups']},
+
+  // === BODY-PART SPLIT additions ======================================
+  cable_fly:{name:'Cable Fly (Chest)',muscles:'Pecs · Front Delts',
+    steps:['Cables at upper position. Stand center, slight forward lean.','Grab handles, arms slightly bent, palms forward.','Bring hands together in front of chest in arc motion.','Squeeze pecs at midline. Slow return.'],
+    tip:'Stretch is where the chest grows. Don\'t shortcut the lengthening phase.',
+    alts:['db_fly','db_bench','db_incline','pec_deck','push_up']},
+  db_fly:{name:'DB Fly',muscles:'Pecs · Front Delts',
+    steps:['Lie on bench, DBs above chest, slight elbow bend.','Lower DBs in wide arc, feeling chest stretch.','Bring DBs back up in same arc -- don\'t bend elbows more at top.','Squeeze pecs together at top.'],
+    tip:'Keep that slight elbow bend locked throughout. Going too heavy turns this into a press.',
+    alts:['cable_fly','db_bench','db_incline','pec_deck','push_up']},
+  pec_deck:{name:'Pec Deck Machine',muscles:'Pecs · Front Delts',
+    steps:['Set seat height -- pads at chest level.','Press handles together with controlled arc.','Squeeze 1 sec at midline.','Slow return to stretched position.'],
+    tip:'Fixed path makes this great for end-of-workout pump work when you\'re fatigued.',
+    alts:['cable_fly','db_fly','db_bench','push_up']},
+  skull_crusher:{name:'Skull Crusher (EZ Bar)',muscles:'Triceps (all heads)',
+    steps:['Lie on bench, EZ bar held overhead, arms vertical.','Lower bar to forehead by bending elbows only -- upper arms stay vertical.','Press back up using triceps.','Lock out without moving upper arms.'],
+    tip:'The "skull crusher" name is a warning. Control the descent. Elbows track inward slightly.',
+    alts:['db_tricep_ext','tricep_pushdown','close_grip_bench','tricep_kickback','dip']},
+  tricep_pushdown:{name:'Tricep Pushdown (Cable)',muscles:'Triceps (lateral head emphasis)',
+    steps:['Cable at top, rope or straight bar attachment.','Elbows pinned to sides throughout.','Push down until arms locked, squeeze 1 sec.','Slow return -- feel stretch at top.'],
+    tip:'Elbow position is everything. If they flare out, you\'re recruiting chest. Lock them at your sides.',
+    alts:['skull_crusher','db_tricep_ext','close_grip_bench','tricep_kickback','dip']},
+  tricep_kickback:{name:'Tricep Kickback (DB)',muscles:'Triceps · Rear Delt (stabilizer)',
+    steps:['Bent over, one hand on bench, DB in opposite hand.','Upper arm parallel to floor and locked there.','Extend forearm back until arm is straight.','Squeeze, slow return.'],
+    tip:'Low-load isolation. Great for tricep finishers.',
+    alts:['db_tricep_ext','tricep_pushdown','skull_crusher','close_grip_bench','dip']},
+  close_grip_bench:{name:'Close-Grip Bench Press',muscles:'Triceps · Inner Chest',
+    steps:['Bench press setup, hands ~shoulder-width (not narrower than that).','Lower bar to lower chest, elbows tucked.','Press back up driving through triceps.','Lock out elbows fully.'],
+    tip:'Don\'t go narrower than shoulder-width -- wrist pain isn\'t worth it. Tucking elbows is what loads triceps.',
+    alts:['skull_crusher','db_tricep_ext','tricep_pushdown','dip','push_up']},
+  dip:{name:'Dips (Triceps focus)',muscles:'Triceps · Lower Chest · Front Delts',
+    steps:['Dip bars, body upright (not leaning forward -- that targets chest).','Lower until upper arms parallel to floor.','Press back up using triceps.','Lock out fully.'],
+    tip:'Upright torso = triceps. Leaning forward = chest. Pick your focus and commit.',
+    alts:['close_grip_bench','tricep_pushdown','skull_crusher','db_tricep_ext','push_up']},
+  lat_pulldown:{name:'Lat Pulldown (Cable)',muscles:'Lats · Biceps · Rear Delts',
+    steps:['Sit at machine, knees secured, wide grip on bar.','Lean back slightly, pull bar to upper chest.','Squeeze shoulder blades together at bottom.','Slow controlled return -- full stretch at top.'],
+    tip:'Don\'t pull behind the neck (shoulder injury risk). Bar to upper chest is the safe target.',
+    alts:['pullups','db_row','cable_row','straight_arm_pulldown']},
+  straight_arm_pulldown:{name:'Straight-Arm Pulldown (Cable)',muscles:'Lats (isolation) · Long head triceps',
+    steps:['Cable at top, slight forward lean, arms straight and pointed up.','Push bar down in arc to thighs, keeping arms straight.','Feel lats engage throughout.','Slow controlled return.'],
+    tip:'Pure lat isolation -- no bicep recruitment. Great for end-of-back-day pump work.',
+    alts:['lat_pulldown','pullups','db_row','cable_row']},
+  bent_over_row:{name:'Bent-Over Row (Barbell)',muscles:'Mid Back · Lats · Rear Delts',
+    steps:['Hinge at hips with barbell, back flat, knees slightly bent.','Row bar to lower chest/upper abs.','Squeeze shoulder blades.','Slow return with control.'],
+    tip:'Bigger compound version of DB row. Form first, weight second -- keep that flat back.',
+    alts:['db_row','cable_row','lat_pulldown','pullups','t_bar_row']},
+  t_bar_row:{name:'T-Bar Row',muscles:'Mid Back · Lats · Traps',
+    steps:['Straddle T-bar or landmine, grip handles, hinge to row position.','Pull bar to chest, squeeze shoulder blades.','Slow return.','Keep back flat throughout.'],
+    tip:'Hits the mid-back hard. Great alternative when bent-over rows bother your lower back.',
+    alts:['bent_over_row','db_row','cable_row','lat_pulldown']},
+  hammer_curl:{name:'Hammer Curl (DB)',muscles:'Brachialis · Biceps · Forearms',
+    steps:['Stand or sit, DBs at sides, neutral grip (palms facing each other).','Curl DBs up keeping palms neutral throughout.','Squeeze at top, slow return.','Elbows pinned at sides.'],
+    tip:'Hits brachialis, the muscle UNDER your biceps that pushes them up. Adds visible arm thickness.',
+    alts:['db_bicep_curl','preacher_curl','cable_curl','concentration_curl','chin_up']},
+  preacher_curl:{name:'Preacher Curl (DB or EZ Bar)',muscles:'Biceps (short head emphasis)',
+    steps:['Sit at preacher bench, upper arms on pad.','Curl weight up with strict form -- no swinging.','Squeeze at top, slow eccentric.','Don\'t fully lock out at bottom (keep tension).'],
+    tip:'Eliminates body english. Pure bicep stretch and contraction. Don\'t go heavy -- strict reps.',
+    alts:['db_bicep_curl','hammer_curl','cable_curl','concentration_curl','chin_up']},
+  cable_curl:{name:'Cable Curl',muscles:'Biceps · Forearms',
+    steps:['Cable at low pulley, straight bar or rope attachment.','Curl up with elbows pinned, palms up.','Squeeze hard at top -- cables maintain tension here.','Slow return, controlled.'],
+    tip:'Constant tension throughout the rep -- cables don\'t lose load at peak like dumbbells do.',
+    alts:['db_bicep_curl','hammer_curl','preacher_curl','concentration_curl','chin_up']},
+  concentration_curl:{name:'Concentration Curl (DB)',muscles:'Biceps (peak emphasis)',
+    steps:['Sit, lean forward, DB in one hand, elbow braced against inner thigh.','Curl DB up with slow control.','Squeeze hard at top, slow descent.','Complete all reps, switch sides.'],
+    tip:'Highest measured bicep EMG of any curl variation (American Council on Exercise study). Isolation gold.',
+    alts:['db_bicep_curl','hammer_curl','preacher_curl','cable_curl','chin_up']},
+  chin_up:{name:'Chin-Up (Underhand)',muscles:'Biceps · Lats · Mid Back',
+    steps:['Underhand grip on pull-up bar, shoulder-width.','Hang fully, pull body up until chin clears bar.','Squeeze biceps and lats at top.','Lower with control to full hang.'],
+    tip:'More biceps than pull-ups. The "best bicep exercise nobody does" because it\'s hard. Add weight if you can do 10+.',
+    alts:['pullups','db_bicep_curl','preacher_curl','hammer_curl','cable_curl']},
+  rear_delt_fly:{name:'Rear Delt Fly (DB or Cable)',muscles:'Rear Delts · Mid Traps · Rhomboids',
+    steps:['Bent over (DB) or facing cable column with cables crossed at low pulley.','Arms slightly bent, lift weights out to sides -- pinky up.','Squeeze shoulder blades at top.','Slow return.'],
+    tip:'Most people\'s rear delts are weak vs front. This evens you out and improves posture.',
+    alts:['face_pull','reverse_pec_deck','db_row','cable_row']},
+  reverse_pec_deck:{name:'Reverse Pec Deck',muscles:'Rear Delts · Mid Traps · Rhomboids',
+    steps:['Sit facing the pec deck (reverse direction). Grip handles.','Pull handles out and back, squeezing shoulder blades.','Pause 1 sec at full contraction.','Slow controlled return.'],
+    tip:'Cleaner ROM than DB rear delt flies -- machine doesn\'t cheat for you.',
+    alts:['rear_delt_fly','face_pull','db_row','cable_row']},
+  front_raise:{name:'Front Raise (DB)',muscles:'Front Delts',
+    steps:['DBs in front of thighs, arms straight.','Raise one or both up to shoulder height in front of body.','Slow controlled descent.','No swinging.'],
+    tip:'Front delts already get hammered by bench/incline. One light set is plenty.',
+    alts:['db_shoulder_press','lateral_raise','arnold_press']},
+  arnold_press:{name:'Arnold Press (DB)',muscles:'All Three Delt Heads · Triceps',
+    steps:['Seated, DBs at shoulder height, palms facing you.','Press up while rotating palms to face forward at top.','Reverse motion on descent.','Smooth rotation throughout -- no jerking.'],
+    tip:'Hits all three delt heads in one rep. Schwarzenegger\'s favorite for a reason.',
+    alts:['db_shoulder_press','lateral_raise','front_raise']},
+  shrug:{name:'DB Shrug',muscles:'Upper Traps',
+    steps:['Heavy DBs at sides, arms straight, stand tall.','Lift shoulders straight up toward ears.','Hold 1 sec at top.','Slow descent. No rolling motion.'],
+    tip:'Don\'t roll the shoulders -- pure vertical movement. Rolling is an old myth and risks the rotator cuff.',
+    alts:['farmer_carry','db_row','db_shoulder_press']},
+
+  // === BODYWEIGHT / HIIT track ========================================
+  push_up:{name:'Push-Up',muscles:'Chest · Triceps · Front Delts · Core',
+    steps:['Plank position, hands shoulder-width, body straight.','Lower chest to floor, elbows ~45° from torso.','Press back up to start.','Brace core throughout -- no sagging hips.'],
+    tip:'Hands wider = more chest. Hands closer = more tricep (diamond). Both build the chest.',
+    alts:['db_bench','db_incline','dip','incline_push_up','decline_push_up','diamond_push_up']},
+  incline_push_up:{name:'Incline Push-Up',muscles:'Lower Chest · Triceps · Core',
+    steps:['Hands on elevated surface (couch, bench, counter).','Body angled, plank-tight from head to heels.','Lower chest to surface, press back up.','Higher surface = easier.'],
+    tip:'Regression for standard push-ups. Lower the surface as you build strength.',
+    alts:['push_up','decline_push_up','diamond_push_up','db_bench']},
+  decline_push_up:{name:'Decline Push-Up',muscles:'Upper Chest · Front Delts · Triceps',
+    steps:['Feet on elevated surface, hands on floor.','Plank position, body straight.','Lower chest toward floor.','Press back up.'],
+    tip:'Progression from standard. Hits upper chest harder. Higher feet = harder.',
+    alts:['push_up','diamond_push_up','db_incline','dip']},
+  diamond_push_up:{name:'Diamond Push-Up',muscles:'Triceps (heavy) · Inner Chest',
+    steps:['Hands together under chest, thumbs and index fingers forming diamond.','Lower chest to hands.','Press back up.','Keep elbows tracking close to torso.'],
+    tip:'Tricep-dominant push-up variation. Hard. Build to it from regular push-ups.',
+    alts:['push_up','decline_push_up','close_grip_bench','dip']},
+  pike_push_up:{name:'Pike Push-Up',muscles:'Shoulders · Triceps · Upper Chest',
+    steps:['Push-up start, then pike hips up -- body in inverted V.','Bend elbows, lower head toward floor between hands.','Press back up to pike position.','Higher feet = more shoulder load.'],
+    tip:'Bodyweight overhead press substitute. Building block toward handstand push-ups.',
+    alts:['handstand_hold','push_up','decline_push_up','db_shoulder_press']},
+  handstand_hold:{name:'Wall Handstand Hold',muscles:'Shoulders · Core · Wrists',
+    steps:['Hands on floor 6" from wall, kick up to handstand.','Heels touch wall, stack joints (wrists, elbows, shoulders, hips, ankles).','Push floor away -- no shoulder shrug.','Hold for time.'],
+    tip:'Build static strength before handstand push-ups. Quality holds > sloppy reps.',
+    alts:['pike_push_up','db_shoulder_press','plank']},
+  inverted_row:{name:'Inverted Row',muscles:'Mid Back · Lats · Rear Delts · Biceps',
+    steps:['Bar/sturdy table at hip-to-chest height. Grip overhand, body underneath.','Hang at full arm extension, body straight.','Pull chest to bar, squeeze shoulder blades.','Slow controlled descent.'],
+    tip:'Bodyweight row. Higher bar = easier, lower bar = harder. Feet elevated = harder still.',
+    alts:['pullups','db_row','lat_pulldown','chin_up']},
+  bw_squat:{name:'Bodyweight Squat',muscles:'Quads · Glutes · Core',
+    steps:['Feet shoulder-width, toes slightly out.','Sit back and down, chest tall, knees track over toes.','Descend until thighs parallel (or lower).','Drive through heels to stand.'],
+    tip:'Foundation of all squat work. Build to 30+ reps before adding load.',
+    alts:['goblet_squat','jump_squat','pistol_progression','lunge_bw']},
+  jump_squat:{name:'Jump Squat',muscles:'Quads · Glutes · Power · Calves',
+    steps:['Descend into squat.','Explode up, jumping as high as possible.','Land softly, immediately descend into next rep.','Knees soft on landing.'],
+    tip:'Plyometric/HIIT staple. Land softly -- joints take the brunt if you slap-land.',
+    alts:['bw_squat','goblet_squat','box_jump','jump_lunge','burpee']},
+  pistol_progression:{name:'Pistol Squat Progression',muscles:'Quads · Glutes · Balance · Mobility',
+    steps:['Stand on one leg, other leg extended forward.','Slowly descend by bending standing leg.','Use TRX or door frame for assist as needed.','Press back up, stay tall.'],
+    tip:'Bodyweight single-leg squat. Progress: assisted → unassisted partial → full pistol. Takes months.',
+    alts:['bulgarian_split','bw_squat','step_ups','reverse_lunge','split_squat']},
+  lunge_bw:{name:'Bodyweight Lunge',muscles:'Quads · Glutes · Hamstrings · Balance',
+    steps:['Step forward or backward, lower back knee toward floor.','Front shin vertical, knee tracks over ankle.','Drive through front heel to return.','Alternate or all one side.'],
+    tip:'Forward lunges build quads more, reverse lunges easier on knees. Pick based on what your knees say.',
+    alts:['reverse_lunge','split_squat','walking_lunge','bulgarian_split','jump_lunge']},
+  jump_lunge:{name:'Jump Lunge (Plyometric)',muscles:'Quads · Glutes · Power · Cardio',
+    steps:['Start in lunge position.','Jump explosively, switch legs mid-air.','Land in opposite lunge.','Continue alternating.'],
+    tip:'High demand. Keep that front shin vertical even when fatigued -- that\'s when knees go bad.',
+    alts:['jump_squat','lunge_bw','box_jump','burpee']},
+  glute_bridge:{name:'Glute Bridge',muscles:'Glutes · Hamstrings · Core',
+    steps:['Lie on back, knees bent, feet flat on floor near butt.','Push through heels to lift hips up.','Squeeze glutes hard at top.','Slow descent.'],
+    tip:'Bodyweight hip thrust substitute. Single-leg version when bilateral becomes easy.',
+    alts:['single_leg_glute_bridge','hip_thrust','rdl','cable_pull_through']},
+  single_leg_glute_bridge:{name:'Single-Leg Glute Bridge',muscles:'Glutes · Hamstrings · Core',
+    steps:['Lie on back, one knee bent foot on floor, other leg extended.','Push through standing heel, lift hips.','Squeeze glute at top, keep extended leg in line with body.','Slow descent, switch sides each set.'],
+    tip:'Unilateral glute work that catches imbalances. Great for runners and on-foot first responders.',
+    alts:['glute_bridge','hip_thrust','bulgarian_split','step_ups']},
+  burpee:{name:'Burpee',muscles:'Full Body · Cardio · Power',
+    steps:['Stand. Squat down, hands on floor.','Kick legs back to plank, do a push-up (optional).','Jump feet back to hands.','Stand and jump with hands overhead.'],
+    tip:'The classic full-body HIIT exercise. Drop the push-up if pace is the goal. 10 burpees = a serious minute.',
+    alts:['mountain_climber','jump_squat','bear_crawl','jump_lunge']},
+  mountain_climber:{name:'Mountain Climber',muscles:'Core · Cardio · Hip Flexors · Shoulders',
+    steps:['Plank position, hands under shoulders.','Drive one knee toward chest.','Switch legs quickly, like running in place.','Keep hips low -- no piking up.'],
+    tip:'Cardio + core + shoulder stability all at once. Pace it like sprint intervals.',
+    alts:['burpee','bear_crawl','plank','high_knees']},
+  bear_crawl:{name:'Bear Crawl',muscles:'Core · Shoulders · Quads · Coordination',
+    steps:['Hands and feet on floor, knees hovering just off ground.','Crawl forward -- opposite hand and foot move together.','Knees stay low (1-2" off floor).','Quick small steps.'],
+    tip:'Anti-rotation core work disguised as cardio. Looks easy until you try it.',
+    alts:['mountain_climber','crab_walk','burpee','plank']},
+  crab_walk:{name:'Crab Walk',muscles:'Shoulders · Triceps · Glutes · Core',
+    steps:['Sit, hands behind you, feet flat in front.','Lift hips so body forms reverse plank.','Walk forward or backward.','Hips stay lifted throughout.'],
+    tip:'Hits triceps and posterior chain together -- rare combo. Burns the back of the arms.',
+    alts:['bear_crawl','plank','glute_bridge','dip']},
+  high_knees:{name:'High Knees',muscles:'Cardio · Hip Flexors · Calves',
+    steps:['Stand tall, run in place.','Drive knees up toward chest -- at least to belt height.','Pump arms.','Keep pace fast.'],
+    tip:'Easy HIIT warm-up or finisher. Tabata-style for 4 min wrecks the cardio system.',
+    alts:['mountain_climber','burpee','jump_squat','jumping_jack']},
+  jumping_jack:{name:'Jumping Jack',muscles:'Cardio · Shoulders · Calves',
+    steps:['Stand feet together, arms at sides.','Jump feet out wide while raising arms overhead.','Jump back to start.','Keep pace consistent.'],
+    tip:'Warm-up classic. 30-60 sec gets the heart rate primed for harder intervals.',
+    alts:['high_knees','mountain_climber','burpee','jump_squat']},
+  box_jump:{name:'Box Jump',muscles:'Quads · Glutes · Power · Calves',
+    steps:['Stand in front of sturdy box (12-30" tall).','Quarter squat, swing arms back.','Explode up onto box, landing soft with quarter squat.','Step DOWN (don\'t jump down -- protects knees).'],
+    tip:'Step down every rep. Jumping down compounds knee load over reps and is the #1 box jump injury.',
+    alts:['jump_squat','jump_lunge','burpee','step_ups']},
+  jump_rope:{name:'Jump Rope',muscles:'Cardio · Calves · Coordination',
+    steps:['Rope handles in each hand, rope behind feet.','Small jumps, just clearing the rope.','Light on toes, knees soft.','Wrists turn the rope, not arms.'],
+    tip:'Most underrated cardio tool. 10 min jump rope ≈ 30 min jogging at higher impact efficiency.',
+    alts:['jumping_jack','high_knees','box_jump','mountain_climber']},
+  hollow_hold:{name:'Hollow Body Hold',muscles:'Deep Core · Hip Flexors',
+    steps:['Lie on back. Arms overhead, legs straight.','Lift shoulders and legs off floor, lower back pressed into floor.','Hold the "banana" position.','Breathe steadily. Hold for time.'],
+    tip:'Gymnastics staple. Foundation for advanced bodyweight skills. Lower back must stay glued to floor.',
+    alts:['plank','dead_bug','hanging_knee_raise','ab_wheel']},
+  
+  // === HIIT PROTOCOL BLOCKS (treated as "exercises" so they fit the same UI) ===
+  tabata_burpees:{name:'Tabata Burpees (4 min)',muscles:'Full Body · Maximal Cardio',
+    steps:['Set a Tabata timer: 20 sec work / 10 sec rest, 8 rounds = 4 min total.','Burpees for the 20 sec all-out.','Rest fully for 10 sec.','Count total reps across rounds -- aim to maintain.'],
+    tip:'Authentic Tabata is ALL OUT effort. If you can do more than 8-10 burpees per round, push harder. Track total reps weekly.',
+    alts:['tabata_mountain_climbers','amrap_full_body','emom_squats']},
+  tabata_mountain_climbers:{name:'Tabata Mountain Climbers (4 min)',muscles:'Core · Cardio',
+    steps:['20 sec all-out mountain climbers.','10 sec rest.','Repeat 8 rounds = 4 min total.','Count reps -- both knees count as one rep.'],
+    tip:'Lower-impact Tabata option than burpees. Still wrecks the cardio system.',
+    alts:['tabata_burpees','amrap_full_body','emom_squats']},
+  emom_squats:{name:'EMOM Squats (10 min)',muscles:'Quads · Glutes · Conditioning',
+    steps:['Every Minute On the Minute, do 15 bodyweight squats.','Rest remainder of the minute.','When reps spill into the next minute, you\'re done.','Goal: complete all 10 rounds.'],
+    tip:'EMOM forces consistency. Rest decreases as you fatigue. 150 squats in 10 min is no joke.',
+    alts:['tabata_burpees','amrap_full_body','jump_squat']},
+  amrap_full_body:{name:'AMRAP Full Body (15 min)',muscles:'Full Body · Conditioning',
+    steps:['Set 15-min timer. Do as many rounds as possible:','10 push-ups','15 bodyweight squats','20 mountain climbers (count both knees)','30 sec plank','Track total rounds completed each week.'],
+    tip:'CrossFit-style metcon. Steady pace beats sprint-and-die. Track rounds to measure progress.',
+    alts:['tabata_burpees','emom_squats','tabata_mountain_climbers']},
+  sprint_intervals:{name:'Sprint Intervals (Outdoor)',muscles:'Power · VO2 Max · Legs',
+    steps:['Warm up 5 min easy jog.','Sprint 30 sec at 85-90% effort.','Recover 90 sec walking.','Repeat 6-8 rounds. Cool down 5 min.'],
+    tip:'Best evidence-based cardio for first-responder fitness. Mimics scene-burst physiology. Outdoor track or open field.',
+    alts:['jump_rope','tabata_burpees','box_jump','emom_squats']}
+};
+
+// -- 3-Day Evidence-Based Whole-Body Program -------------------------------
+// Basis: Schoenfeld et al. (2016) -- twice-weekly frequency per muscle group optimal.
+// Each day trains upper AND lower body. Days alternate push/pull emphasis to allow recovery.
+var WO_PROGRAM=[
+  {
+    day:'A',name:'Push + Knee-Dominant',
+    rationale:'Horizontal push + quad-dominant lower. Vertical push + unilateral. Tricep isolation. Core anti-extension finisher.',
+    exercises:[
+      {id:'db_bench',sets:'3×10–12',rest:'90 sec',note:'Horizontal push'},
+      {id:'goblet_squat',sets:'3×12–15',rest:'90 sec',note:'Knee-dominant lower'},
+      {id:'db_shoulder_press',sets:'3×10–12',rest:'90 sec',note:'Vertical push'},
+      {id:'step_ups',sets:'3×10 each',rest:'90 sec',note:'Unilateral quad/glute'},
+      {id:'db_tricep_ext',sets:'3×12–15',rest:'60 sec',note:'Tricep long-head'},
+      {id:'standing_calf_raise',sets:'3×12–15',rest:'45 sec',note:'Gastroc'},
+      {id:'plank',sets:'3×30–45 sec',rest:'45 sec',note:'Core finisher -- anti-extension'}
+    ]
+  },
+  {
+    day:'B',name:'Pull + Hip-Dominant',
+    rationale:'Vertical pull + hip-hinge posterior. Horizontal pull + unilateral lower. Rear delt + bicep. Anti-extension core finisher.',
+    exercises:[
+      {id:'pullups',sets:'3×max',rest:'2 min',note:'Vertical pull'},
+      {id:'rdl',sets:'3×10–12',rest:'90 sec',note:'Hip-dominant posterior'},
+      {id:'db_row',sets:'3×10 each',rest:'90 sec',note:'Horizontal pull'},
+      {id:'bulgarian_split',sets:'3×10 each',rest:'90 sec',note:'Unilateral posterior'},
+      {id:'face_pull',sets:'3×15–20',rest:'60 sec',note:'Rear delt / rotator cuff'},
+      {id:'db_bicep_curl',sets:'3×12–15',rest:'60 sec',note:'Bicep isolation'},
+      {id:'dead_bug',sets:'3×8 each side',rest:'45 sec',note:'Core finisher -- deep core'}
+    ]
+  },
+  {
+    day:'C',name:'Full-Body Compound + Carry',
+    rationale:'Hip hinge compound + upper chest. Horizontal pull + quad variation. Lateral delt + frontal plane lower. Loaded carry for grip, core, occupational strength.',
+    exercises:[
+      {id:'db_deadlift',sets:'3×8–10',rest:'2 min',note:'Full compound hip hinge'},
+      {id:'db_incline',sets:'3×10–12',rest:'90 sec',note:'Upper chest push'},
+      {id:'cable_row',sets:'3×10–12',rest:'90 sec',note:'Horizontal pull'},
+      {id:'hack_squat',sets:'3×12–15',rest:'90 sec',note:'Quad-dominant variation'},
+      {id:'lateral_raise',sets:'3×12–15',rest:'60 sec',note:'Lateral delt isolation'},
+      {id:'db_lateral_lunge',sets:'3×12 each',rest:'60 sec',note:'Frontal plane lower'},
+      {id:'farmer_carry',sets:'3×30–40 sec',rest:'60 sec',note:'Loaded carry -- grip + core + occupational'}
+    ]
+  }
+];
+
+// -- BODY-PART SPLIT (Option 2: Chest/Tri · Back/Bi · Legs/Shoulders) --------
+// Evidence basis: Classic isolation-focused split for hypertrophy. Higher volume
+// per muscle on its dedicated day. Best when frequency-per-muscle isn't a priority
+// and you want focused exhaustion of one area at a time.
+var WO_PROGRAM_BODYSPLIT=[
+  {
+    day:'A',name:'Chest + Triceps',
+    rationale:'High-volume chest work paired with the muscle group most synergistic -- triceps. Chest compounds first while fresh, then isolation work, then tricep finishers.',
+    exercises:[
+      {id:'db_bench',sets:'4×8–10',rest:'90 sec',note:'Primary chest compound'},
+      {id:'db_incline',sets:'3×10–12',rest:'90 sec',note:'Upper chest emphasis'},
+      {id:'cable_fly',sets:'3×12–15',rest:'60 sec',note:'Chest stretch + pump'},
+      {id:'close_grip_bench',sets:'3×8–10',rest:'90 sec',note:'Compound tricep movement'},
+      {id:'skull_crusher',sets:'3×10–12',rest:'60 sec',note:'Long head emphasis'},
+      {id:'tricep_pushdown',sets:'3×12–15',rest:'45 sec',note:'Lateral head finisher'},
+      {id:'plank',sets:'3×30–45 sec',rest:'45 sec',note:'Core finisher'}
+    ]
+  },
+  {
+    day:'B',name:'Back + Biceps',
+    rationale:'Vertical pull, horizontal pull, lat isolation, then bicep work. Back gets the priority -- biceps are heavily involved already, so isolation comes last.',
+    exercises:[
+      {id:'pullups',sets:'4×max',rest:'2 min',note:'Vertical pull priority'},
+      {id:'bent_over_row',sets:'4×8–10',rest:'90 sec',note:'Heavy compound row'},
+      {id:'lat_pulldown',sets:'3×10–12',rest:'90 sec',note:'Lat isolation'},
+      {id:'face_pull',sets:'3×15–20',rest:'45 sec',note:'Rear delts + rotator cuff'},
+      {id:'db_bicep_curl',sets:'3×10–12',rest:'60 sec',note:'Bicep compound'},
+      {id:'hammer_curl',sets:'3×10–12',rest:'60 sec',note:'Brachialis emphasis'},
+      {id:'dead_bug',sets:'3×8 each side',rest:'45 sec',note:'Anti-extension core'}
+    ]
+  },
+  {
+    day:'C',name:'Legs + Shoulders',
+    rationale:'Quad-dominant + hip-dominant lower work, then full shoulder rotation (front, side, rear delts). Most demanding day -- leave it for when energy is highest.',
+    exercises:[
+      {id:'goblet_squat',sets:'4×8–10',rest:'2 min',note:'Quad-dominant compound'},
+      {id:'rdl',sets:'4×8–10',rest:'90 sec',note:'Posterior chain'},
+      {id:'bulgarian_split',sets:'3×10 each',rest:'90 sec',note:'Unilateral'},
+      {id:'standing_calf_raise',sets:'4×12–15',rest:'45 sec',note:'Calves'},
+      {id:'db_shoulder_press',sets:'4×8–10',rest:'90 sec',note:'Vertical push'},
+      {id:'lateral_raise',sets:'3×12–15',rest:'45 sec',note:'Side delts'},
+      {id:'rear_delt_fly',sets:'3×12–15',rest:'45 sec',note:'Rear delts'}
+    ]
+  }
+];
+
+// -- BODYWEIGHT / HIIT (Option 3: No gym, weighted vest optional) ------------
+// Evidence basis: HIIT (Gibala et al., 2012) produces VO2 max gains equivalent to
+// continuous cardio in a fraction of the time. Strength block uses bodyweight
+// progressions (Calatayud et al., 2014) showing push-ups can match bench press
+// for hypertrophy in similar rep ranges.
+var WO_PROGRAM_BODYWEIGHT=[
+  {
+    day:'A',name:'Upper Power + HIIT',
+    rationale:'Bodyweight push/pull at hypertrophy rep ranges, followed by an all-out HIIT finisher. Use weighted vest for added load if available. 30-40 min total.',
+    exercises:[
+      {id:'push_up',sets:'4×10–20',rest:'60 sec',note:'Primary push (incline/decline to scale)'},
+      {id:'inverted_row',sets:'4×8–15',rest:'60 sec',note:'Primary pull'},
+      {id:'pike_push_up',sets:'3×8–12',rest:'60 sec',note:'Shoulder/overhead push'},
+      {id:'diamond_push_up',sets:'3×8–12',rest:'45 sec',note:'Tricep focus'},
+      {id:'plank',sets:'3×45–60 sec',rest:'30 sec',note:'Core anti-extension'},
+      {id:'tabata_burpees',sets:'1× 4 min',rest:'--',note:'HIIT finisher'}
+    ]
+  },
+  {
+    day:'B',name:'Lower Power + HIIT',
+    rationale:'Bodyweight squat/hinge patterns at higher volume, unilateral work for stability, finishing with sprint or jump intervals for explosive power.',
+    exercises:[
+      {id:'bw_squat',sets:'4×15–25',rest:'60 sec',note:'Squat pattern volume'},
+      {id:'reverse_lunge',sets:'3×10 each',rest:'60 sec',note:'Unilateral (bodyweight)'},
+      {id:'single_leg_glute_bridge',sets:'3×10 each',rest:'45 sec',note:'Posterior chain isolation'},
+      {id:'standing_calf_raise',sets:'3×15–25',rest:'30 sec',note:'Calves (bodyweight)'},
+      {id:'hollow_hold',sets:'3×20–40 sec',rest:'30 sec',note:'Deep core static'},
+      {id:'sprint_intervals',sets:'1× 6–8 rounds',rest:'--',note:'HIIT finisher'}
+    ]
+  },
+  {
+    day:'C',name:'Full Body MetCon',
+    rationale:'Mixed-modality circuit. Builds work capacity that translates to occupational tasks (scene calls, patient transfers, long shifts). AMRAP format pushes endurance.',
+    exercises:[
+      {id:'burpee',sets:'3×8–12',rest:'60 sec',note:'Warm-up explosive set'},
+      {id:'push_up',sets:'3×12–20',rest:'45 sec',note:'Upper push'},
+      {id:'inverted_row',sets:'3×10–15',rest:'45 sec',note:'Upper pull'},
+      {id:'jump_squat',sets:'3×10–15',rest:'45 sec',note:'Lower explosive'},
+      {id:'bear_crawl',sets:'3×30–45 sec',rest:'30 sec',note:'Anti-rotation core'},
+      {id:'amrap_full_body',sets:'1× 15 min',rest:'--',note:'Conditioning finisher'}
+    ]
+  }
+];
+
+// Track registry -- all available program variations
+var WO_TRACKS={
+  primary:{name:'Primary',icon:'💪',label:'Gym · Push/Pull/Full-body',program:WO_PROGRAM},
+  bodysplit:{name:'Body Split',icon:'🏋️',label:'Gym · Chest+Tri / Back+Bi / Legs+Shoulders',program:WO_PROGRAM_BODYSPLIT},
+  bodyweight:{name:'Bodyweight + HIIT',icon:'🤸',label:'No gym · BW + HIIT, 30–40 min',program:WO_PROGRAM_BODYWEIGHT}
+};
+
+var WO_COOLDOWN=[
+  'Chest doorway stretch -- 30 sec each side',
+  'Standing hamstring stretch -- 30 sec each leg',
+  'Hip flexor lunge stretch -- 30 sec each side',
+  'Lat stretch (hang or overhead reach) -- 30 sec',
+  'Shoulder cross-body stretch -- 30 sec each arm',
+  'Quad stretch standing -- 30 sec each leg',
+  "Child's pose (back/hip opener) -- 60 sec"
+];
+
+function renderWorkout(){
+  var today=new Date().getDay();
+  var dayMap=[6,0,1,2,3,4,5];
+  var todayIdx=dayMap[today];
+  if(WO_ACTIVE_DAY===null)WO_ACTIVE_DAY=todayIdx;
+  var sel=document.getElementById('woDaySelect');
+  if(sel){
+    sel.innerHTML=WO_DAYS.map(function(d,i){
+      var typeLabel=d.type==='lift'?' -- Weights':d.type==='walk'?' -- Active Recovery':' -- Rest';
+      var star=i===todayIdx?' \u2605':'';
+      return '<option value="'+i+'"'+(i===WO_ACTIVE_DAY?' selected':'')+'>'+d.label+typeLabel+star+'</option>';
+    }).join('');
+  }
+  var dayType=WO_DAYS[WO_ACTIVE_DAY].type;
+  var html='';
+  if(dayType==='lift') html+=_renderLiftDay();
+  else if(dayType==='walk') html+=_renderWalkDay();
+  else html='<div class="wo-walk-card" style="background:#f0eee8;border-color:#c0b890;"><div class="wo-walk-icon">&#128564;</div><div class="wo-walk-title" style="color:#4a3e28;">Rest Day</div><div class="wo-walk-desc" style="color:#3a3028;">Recovery is where the adaptation happens.<br>Sleep well, stay hydrated, eat protein.</div></div>';
+  document.getElementById('woContent').innerHTML=html;
+}
+
+function woSetDay(idx){WO_ACTIVE_DAY=idx;renderWorkout();}
+
+function _renderWalkDay(){
+  var dayName=WO_DAYS[WO_ACTIVE_DAY].label;
+  var activeActivity=WO_ACTIVE_DAY===5?'hike':'walk'; // Saturday default hike, others walk
+  var activities={
+    walk:{
+      icon:'&#127939;',name:'Walk',
+      desc:'45 minutes at a conversational, Zone 2 pace (100–120 bpm). The gold standard for aerobic base building and active recovery.',
+      options:[
+        'Flat neighborhood or trail -- maintain easy breathing','Treadmill incline 3–5% for extra challenge without impact',
+        'Aim for 4,000–6,000 steps minimum','Swing your arms naturally -- activates core and improves gait'
+      ]
+    },
+    hike:{
+      icon:'&#9968;',name:'Hike',
+      desc:'45–60 minutes on uneven terrain. Improves balance, recruits stabilizers, and burns more calories than flat walking at the same pace.',
+      options:[
+        'Choose trails with moderate elevation change','Trekking poles reduce knee strain on descents',
+        'Uneven ground activates glutes and ankles differently than pavement','Watch footing -- proprioception work is the bonus'
+      ]
+    },
+    yoga:{
+      icon:'&#129335;',name:'Yoga / Mobility',
+      desc:'30–45 minutes of movement-based recovery. Targets the exact muscles loaded in your lifting sessions: hip flexors, hamstrings, lats, chest, and thoracic spine.',
+      options:[
+        'Sun salutations × 5 -- warm up the whole chain','Pigeon pose -- 90 sec each side for hip flexors and glutes',
+        'Thread-the-needle -- 60 sec each side for thoracic rotation','Downward dog -- calf and hamstring lengthening',
+        'Child\'s pose wide -- lat stretch','Cat-cow × 10 -- spinal decompression after deadlifts'
+      ]
+    }
+  };
+
+  var html='<div class="wo-recovery-header">&#127807; '+dayName+' -- Active Recovery</div>'
+    +'<div class="wo-activity-tabs">';
+  ['walk','hike','yoga'].forEach(function(key){
+    var a=activities[key];
+    var cls='wo-activity-tab'+(key===activeActivity?' active':'');
+    html+='<button class="'+cls+'" onclick="woSwitchActivity(this,\''+key+'\')">'
+      +a.icon+'<br>'+a.name+'</button>';
+  });
+  html+='</div>';
+
+  // Render details for active activity
+  html+=_renderActivityDetail(activities[activeActivity]);
+  return html;
+}
+
+function _renderActivityDetail(a){
+  var optHtml=a.options.map(function(o){return '<div class="wo-activity-option">'+o+'</div>';}).join('');
+  return '<div class="wo-activity-detail">'
+    +'<div class="wo-activity-icon">'+a.icon+'</div>'
+    +'<div class="wo-activity-name">'+a.name+'</div>'
+    +'<div class="wo-activity-desc">'+a.desc+'</div>'
+    +'<div class="wo-activity-options"><div class="wo-activity-options-title">How to do it well</div>'+optHtml+'</div>'
+    +'</div>'
+    +'<div class="wo-complete-section">'
+    +'<label class="wo-complete-label">'
+    +'<input type="checkbox" onclick="completeWorkout(\'recovery\','+WO_ACTIVE_DAY+')"> ✓ Recovery Completed'
+    +'</label>'
+    +'</div>';
+}
+
+function woSwitchActivity(btn,key){
+  // Update active tab
+  btn.closest('.modal-blur-body').querySelectorAll('.wo-activity-tab').forEach(function(t){t.classList.remove('active');});
+  btn.classList.add('active');
+  // Re-render detail panel
+  var activities={
+    walk:{icon:'&#127939;',name:'Walk',
+      desc:'45 minutes at a conversational, Zone 2 pace (100–120 bpm). The gold standard for aerobic base building and active recovery.',
+      options:['Flat neighborhood or trail -- maintain easy breathing','Treadmill incline 3–5% for extra challenge without impact',
+        'Aim for 4,000–6,000 steps minimum','Swing your arms naturally -- activates core and improves gait']},
+    hike:{icon:'&#9968;',name:'Hike',
+      desc:'45–60 minutes on uneven terrain. Improves balance, recruits stabilizers, and burns more calories than flat walking at the same pace.',
+      options:['Choose trails with moderate elevation change','Trekking poles reduce knee strain on descents',
+        'Uneven ground activates glutes and ankles differently than pavement','Watch footing -- proprioception work is the bonus']},
+    yoga:{icon:'&#129335;',name:'Yoga / Mobility',
+      desc:'30–45 minutes of movement-based recovery. Targets the exact muscles loaded in your lifting sessions.',
+      options:['Sun salutations × 5 -- warm up the whole chain','Pigeon pose -- 90 sec each side for hip flexors and glutes',
+        'Thread-the-needle -- 60 sec each side for thoracic rotation','Downward dog -- calf and hamstring lengthening',
+        "Child's pose wide -- lat stretch",'Cat-cow × 10 -- spinal decompression after deadlifts']}
+  };
+  var existing=btn.closest('.modal-blur-body').querySelector('.wo-activity-detail');
+  if(existing){
+    var tmp=document.createElement('div');
+    tmp.innerHTML=_renderActivityDetail(activities[key]);
+    existing.replaceWith(tmp.firstChild);
+  }
+}
+
+function _renderLiftDay(){
+  var liftDayMap={0:0,2:1,4:2};
+  var progIdx=liftDayMap[WO_ACTIVE_DAY];
+  if(progIdx===undefined)progIdx=0;
+  
+  // Determine which track is selected for this day (default 'primary')
+  if(!state.workoutTracks)state.workoutTracks={};
+  var dayLetter=['A','B','C'][progIdx];
+  var trackId=state.workoutTracks[dayLetter]||'primary';
+  if(!WO_TRACKS[trackId])trackId='primary';
+  
+  var program=WO_TRACKS[trackId].program;
+  var prog=program[progIdx];
+  
+  // -- Track selector at top ----------------------------------------
+  var html='<div class="wo-track-selector">'
+    +'<div class="wo-track-label">Workout style:</div>'
+    +'<div class="wo-track-buttons">';
+  Object.keys(WO_TRACKS).forEach(function(tid){
+    var t=WO_TRACKS[tid];
+    var active=tid===trackId?' active':'';
+    html+='<button class="wo-track-btn'+active+'" onclick="setWorkoutTrack(\''+dayLetter+'\',\''+tid+'\')" title="'+esc(t.label)+'">'
+      +'<span class="wo-track-icon">'+t.icon+'</span>'
+      +'<span class="wo-track-name">'+t.name+'</span>'
+      +'</button>';
+  });
+  html+='</div></div>';
+  
+  // Warmup
+  html+='<div class="wo-section"><div class="wo-section-title">Warmup (10 min)</div>'
+    +'<div class="wo-cooldown"><div class="wo-cooldown-item">'
+    +(trackId==='bodyweight'?'5 min easy jog or jumping jacks + dynamic stretches (leg swings, arm circles)':'Treadmill walk at warmup pace -- 10 minutes')
+    +'</div></div></div>';
+  
+  html+='<div class="wo-day-rationale"><strong>Day '+prog.day+': '+prog.name+'</strong><br>'+prog.rationale+'</div>';
+  
+  // Render all exercises
+  html+='<div class="wo-section"><div class="wo-section-title">Today\'s Exercises</div>';
+  prog.exercises.forEach(function(ex,idx){
+    html+=_renderExercise(ex,'ex_'+idx);
+    if(idx<prog.exercises.length-1&&ex.rest!=='--'){
+      html+='<div style="text-align:center;padding:8px 0;"><span class="wo-rest-badge">&#9202; '+ex.rest+' rest</span></div>';
+    }
+  });
+  html+='</div>';
+  
+  html+='<div class="wo-section"><div class="wo-section-title">Cooldown (5–10 min)</div><div class="wo-cooldown">';
+  WO_COOLDOWN.forEach(function(s){html+='<div class="wo-cooldown-item">'+s+'</div>';});
+  html+='</div></div>';
+  
+  // Add completion checkbox
+  html+='<div class="wo-complete-section">'
+    +'<label class="wo-complete-label">'
+    +'<input type="checkbox" onclick="completeWorkout(\'lift\','+progIdx+')"> ✓ Workout Completed'
+    +'</label>'
+    +'</div>';
+  
+  return html;
+}
+
+function setWorkoutTrack(dayLetter,trackId){
+  if(!state.workoutTracks)state.workoutTracks={};
+  state.workoutTracks[dayLetter]=trackId;
+  save();
+  // Re-render the workout modal
+  if(typeof openWorkoutModal==='function'){
+    var body=document.querySelector('#workoutModal .modal-blur-body');
+    if(body){
+      body.innerHTML=_renderLiftDay();
+    }
+  }
+  toast('Switched to '+WO_TRACKS[trackId].name);
+}
+
+function _renderExercise(ex,slotId){
+  var exData=WO_EXERCISES[ex.id];
+  var log=(state.workoutLog&&state.workoutLog[ex.id])||{weight:'',reps:'',sets:''};
+  var opts='<option value="'+ex.id+'">'+exData.name+'</option>'
+    +exData.alts.map(function(aid){var a=WO_EXERCISES[aid];return a?'<option value="'+aid+'">'+a.name+'</option>':'';}).join('');
+  return '<div class="wo-exercise">'
+    +'<div class="wo-ex-top">'
+    +'<select class="wo-ex-select" data-primary="'+ex.id+'" onchange="woExChanged(this)">'+opts+'</select>'
+    +'<button class="btn btn-sm wo-quicksub" onclick="woQuickSub(this)" title="Random alternative -- for crowded gym or variety" style="font-size:11px;padding:3px 8px;flex-shrink:0;">&#127922;</button>'
+    +'<button class="btn btn-sm" onclick="showExerciseInfo(this.closest(\'.wo-exercise\').querySelector(\'.wo-ex-select\').value)" style="font-size:11px;padding:3px 9px;flex-shrink:0;">&#9432; How-to</button>'
+    +'</div>'
+    +'<div class="wo-ex-note">'+ex.sets+' &bull; '+ex.note+'</div>'
+    +'<div class="wo-log-row">'
+    +'<span class="wo-log-label">Log:</span>'
+    +'<input class="wo-log-input" type="number" inputmode="numeric" placeholder="sets" value="'+esc(log.sets||'')+'" oninput="woLog(this.closest(\'.wo-exercise\').querySelector(\'.wo-ex-select\').value,\'sets\',this.value)" title="Sets done">'
+    +'<span class="wo-log-label">×</span>'
+    +'<input class="wo-log-input" type="number" inputmode="decimal" placeholder="lbs" value="'+esc(log.weight||'')+'" oninput="woLog(this.closest(\'.wo-exercise\').querySelector(\'.wo-ex-select\').value,\'weight\',this.value)" title="Weight used">'
+    +'<span class="wo-log-label">@</span>'
+    +'<input class="wo-log-input" type="number" inputmode="numeric" placeholder="reps" value="'+esc(log.reps||'')+'" oninput="woLog(this.closest(\'.wo-exercise\').querySelector(\'.wo-ex-select\').value,\'reps\',this.value)" title="Reps done">'
+    +'</div>'
+    +'</div>';
+}
+
+function woExChanged(sel){
+  var exId=sel.value;
+  var container=sel.closest('.wo-exercise');
+  var log=(state.workoutLog&&state.workoutLog[exId])||{weight:'',reps:'',sets:''};
+  var inputs=container.querySelectorAll('.wo-log-input');
+  if(inputs[0])inputs[0].value=log.sets||'';
+  if(inputs[1])inputs[1].value=log.weight||'';
+  if(inputs[2])inputs[2].value=log.reps||'';
+}
+
+function woQuickSub(btnEl){
+  var container=btnEl.closest('.wo-exercise');
+  var sel=container.querySelector('.wo-ex-select');
+  if(!sel)return;
+  // Collect all option values except the currently selected one
+  var current=sel.value;
+  var opts=Array.from(sel.options).map(function(o){return o.value;}).filter(function(v){return v!==current;});
+  if(opts.length===0){toast('No alternatives available');return;}
+  // Pick a random one
+  var pick=opts[Math.floor(Math.random()*opts.length)];
+  sel.value=pick;
+  // Trigger change handler manually so log values update
+  woExChanged(sel);
+  // Brief flash to show change happened
+  btnEl.style.transform='scale(1.2)';
+  setTimeout(function(){btnEl.style.transform='';},200);
+  var newName=(WO_EXERCISES[pick]||{}).name||pick;
+  toast('\u{1F3B2} Swapped to '+newName);
+}
+
+function woLog(exId,field,val){
+  if(!state.workoutLog)state.workoutLog={};
+  if(!state.workoutLog[exId])state.workoutLog[exId]={weight:'',reps:'',sets:''};
+  state.workoutLog[exId][field]=val;
+  save();
+}
+
+function showExerciseInfo(exId){
+  var ex=WO_EXERCISES[exId];if(!ex)return;
+  var stepsHtml=ex.steps.map(function(s,i){return '<li data-n="'+(i+1)+'">'+s+'</li>';}).join('');
+  var altsHtml=ex.alts.slice(0,6).map(function(aid){
+    var a=WO_EXERCISES[aid];
+    return a?'<span style="display:inline-block;margin:3px 4px 0 0;padding:3px 10px;background:var(--surface-raised);border:1px solid var(--border);border-radius:6px;font-size:12px;color:var(--teal);cursor:pointer;" onclick="showExerciseInfo(\''+aid+'\')">'+a.name+'</span>':'';
+  }).join('');
+  var html='<div class="wo-modal">'
+    +'<div class="wo-modal-name">'+ex.name+'</div>'
+    +'<div class="wo-modal-muscles">'+ex.muscles+'</div>'
+    +'<ol class="wo-modal-steps">'+stepsHtml+'</ol>'
+    +'<div class="wo-modal-tip"><strong>Tip:</strong> '+ex.tip+'</div>'
+    +(altsHtml?'<div style="margin-top:12px;"><div style="font-size:11px;font-weight:700;color:var(--text-faint);text-transform:uppercase;letter-spacing:0.5px;margin-bottom:6px;">Related Exercises</div>'+altsHtml+'</div>':'')
+    +'</div>';
+  document.getElementById('modalContent').innerHTML=html;
+  document.getElementById('modalOverlay').classList.add('show');
+}
+
+function completeWorkout(type,dayIndex){
+  var timestamp=new Date().toISOString();
+  var dayLabel=WO_DAYS[WO_ACTIVE_DAY]?WO_DAYS[WO_ACTIVE_DAY].label:'Unknown';
+  var workoutName='';
+  if(type==='lift'){
+    var prog=WO_PROGRAM[dayIndex];
+    workoutName='Day '+prog.day+': '+prog.name;
+  }else if(type==='recovery'){
+    workoutName=dayLabel+' -- Active Recovery';
+  }
+  
+  var record={
+    type:type,
+    dayIndex:dayIndex,
+    dayLabel:dayLabel,
+    workoutName:workoutName,
+    timestamp:timestamp,
+    date:timestamp.split('T')[0]
+  };
+  
+  state.completedWorkouts.push(record);
+  save();
+  
+  // Award points
+  addPoints(type==='lift'?'workout':'recovery');
+  
+  // Show confirmation and update counter
+  alert('✓ Workout completed!\n\n'+workoutName+'\n'+new Date(timestamp).toLocaleString());
+  updateCompletedWorkoutsCounter();
+}
+
+function updateCompletedWorkoutsCounter(){
+  var counter=document.getElementById('completedWorkoutsCounter');
+  if(counter){
+    counter.textContent=state.completedWorkouts.length;
+  }
+}
+
+
+
+// =======================================
+// TIMELINE + WORK-TODAY -- at script scope so renderers and HTML onclick handlers can see them
+// =======================================
+// =======================================
+// TIMELINE PANEL -- daily time-blocking
+// =======================================
+var TL_DAY_START_H=5;   // 5 AM -- matches day-progress bar
+var TL_DAY_END_H=22;    // 10 PM
+var TL_HOUR_PX=52;      // px per hour
+var TL_COLOR_COUNT=8;   // palette size
+
+function _tlProjectColor(projectId){
+  if(!projectId)return 'no-proj';
+  // Stable hash → palette index
+  var hash=0;
+  for(var i=0;i<projectId.length;i++)hash=((hash<<5)-hash+projectId.charCodeAt(i))|0;
+  return Math.abs(hash)%TL_COLOR_COUNT;
+}
+
+// === WORK TODAY scheduling ===
+var _wtCurrentItem=null; // {type, id, projectId, name, defaultDuration}
+var _wtSelectedDay='today'; // 'today' or 'tomorrow'
+
+function tomorrowStr(){
+  var d=new Date();
+  d.setDate(d.getDate()+1);
+  var pad=function(n){return n<10?'0'+n:''+n;};
+  return d.getFullYear()+'-'+pad(d.getMonth()+1)+'-'+pad(d.getDate());
+}
+
+function _wtTargetDate(){
+  return _wtSelectedDay==='tomorrow'?tomorrowStr():todayStr();
+}
+
+function wtSetDay(day){
+  if(day!=='today'&&day!=='tomorrow')return;
+  _wtSelectedDay=day;
+  // Update toggle visual state
+  document.querySelectorAll('.wt-day-btn').forEach(function(btn){
+    if(btn.dataset.day===day){
+      btn.classList.add('active');
+      btn.style.background='rgba(91,232,255,0.18)';
+      btn.style.color='#5be8ff';
+    }else{
+      btn.classList.remove('active');
+      btn.style.background='var(--surface-raised)';
+      btn.style.color='var(--text-dim)';
+    }
+  });
+  // Update modal title
+  var titleEl=document.getElementById('wtModalTitle');
+  if(titleEl)titleEl.innerHTML='&#128197; Schedule for '+(day==='tomorrow'?'Tomorrow':'Today');
+  // Recompute suggestion + conflicts for the new day
+  if(_wtCurrentItem){
+    var dur=parseInt(document.getElementById('wtDuration').value)||60;
+    var suggested=_suggestWorkTime(dur,_wtTargetDate());
+    var hh=Math.floor(suggested/60),mm=suggested%60;
+    var timeStr=(hh<10?'0':'')+hh+':'+(mm<10?'0':'')+mm;
+    // Only auto-fill the suggestion if user hasn't manually changed it
+    document.getElementById('wtTime').value=timeStr;
+    document.getElementById('wtSuggestion').textContent='💡 Suggested ('+day+'): '+_tlFmtTime(suggested)+' -- first open slot';
+    _wtUpdateConflicts();
+  }
+}
+
+function _isScheduledToday(itemId){
+  var today=todayStr();
+  return (state.tlBlocks||[]).some(function(b){
+    return b.date===today&&b.linkedId===itemId;
+  });
+}
+
+function _findScheduledBlock(itemId){
+  var today=todayStr();
+  return (state.tlBlocks||[]).find(function(b){return b.date===today&&b.linkedId===itemId;});
+}
+
+function _suggestWorkTime(durationMin,targetDate){
+  // Find first available slot of >=durationMin minutes between start and 6pm.
+  // For today: start is now-rounded-up (but no earlier than 9am).
+  // For tomorrow or any future day: start is 9am (no "now" constraint).
+  var isToday=!targetDate||targetDate===todayStr();
+  var blocks=_tlCollectBlocks(targetDate);
+  var startCandidate;
+  if(isToday){
+    var now=new Date();
+    var nowMin=now.getHours()*60+now.getMinutes();
+    startCandidate=Math.max(540,Math.ceil(nowMin/30)*30); // 9am or later
+    var dayEnd=18*60;
+    if(startCandidate>=dayEnd)startCandidate=Math.max(8*60,nowMin); // late-day fallback
+  }else{
+    startCandidate=540; // 9am for future days
+  }
+  
+  // Sort blocks by start
+  var sorted=blocks.slice().sort(function(a,b){return a.startMin-b.startMin;});
+  
+  // Walk gaps
+  var candidate=startCandidate;
+  for(var i=0;i<sorted.length;i++){
+    var b=sorted[i];
+    var bEnd=b.startMin+b.durMin;
+    if(b.startMin>=candidate+durationMin)return candidate;
+    if(bEnd>candidate)candidate=Math.ceil(bEnd/15)*15;
+  }
+  return candidate;
+}
+
+function _findConflicts(startMin,durMin,excludeId,targetDate){
+  var endMin=startMin+durMin;
+  var blocks=_tlCollectBlocks(targetDate);
+  return blocks.filter(function(b){
+    if(b.linkedId===excludeId)return false;
+    var bEnd=b.startMin+b.durMin;
+    return b.startMin<endMin&&bEnd>startMin;
+  });
+}
+
+function handleWorkTodayClick(itemType,itemId,projectId){
+  // If already scheduled, ask what to do
+  var existing=_findScheduledBlock(itemId);
+  if(existing){
+    var name=existing.name;
+    _confirm('"'+name+'" is scheduled at '+_tlFmtTime(_tlParseTime(existing.time))+'. Unschedule it?',function(){
+      state.tlBlocks=(state.tlBlocks||[]).filter(function(b){return b.id!==existing.id;});
+      save();
+      renderProjects();renderTaskList();renderTimeline();
+      if(typeof updateDayProgress==='function')updateDayProgress();
+      toast('Unscheduled');
+    },{confirmText:'Unschedule',icon:'ti-calendar-x'});
+    return;
+  }
+  
+  // Resolve the item
+  var name='',duration=60,priority='med';
+  if(itemType==='task'){
+    var t=(state.tasks||[]).find(function(t){return t.id===itemId;});
+    if(!t){toast('Task not found');return;}
+    name=t.name;duration=parseInt(t.timeEst)||60;priority=t.priority||'med';
+  }else if(itemType==='subtask'){
+    var p=(state.projects||[]).find(function(p){return p.id===projectId;});
+    if(!p){toast('Project not found');return;}
+    var st=(p.subtasks||[]).find(function(s){return s.id===itemId;});
+    if(!st){toast('Subtask not found');return;}
+    name=st.name;duration=parseInt(st.timeEst)||60;priority=st.priority||'med';
+  }else if(itemType==='project'){
+    var pr=(state.projects||[]).find(function(p){return p.id===itemId;});
+    if(!pr){toast('Project not found');return;}
+    name=pr.name+' (work session)';duration=60;priority='med';
+  }else{return;}
+  
+  if(duration>720)duration=720; // cap (largest selectable duration)
+  
+  _wtCurrentItem={type:itemType,id:itemId,projectId:projectId||'',name:name,duration:duration,priority:priority};
+  // Default to the day the timeline panel is currently showing (today or tomorrow)
+  _wtSelectedDay=(typeof _tlViewDay!=='undefined'&&_tlViewDay==='tomorrow')?'tomorrow':'today';
+  
+  // Reset the day toggle visuals
+  document.querySelectorAll('.wt-day-btn').forEach(function(btn){
+    if(btn.dataset.day===_wtSelectedDay){
+      btn.classList.add('active');
+      btn.style.background='rgba(91,232,255,0.18)';
+      btn.style.color='#5be8ff';
+    }else{
+      btn.classList.remove('active');
+      btn.style.background='var(--surface-raised)';
+      btn.style.color='var(--text-dim)';
+    }
+  });
+  var titleEl=document.getElementById('wtModalTitle');
+  if(titleEl)titleEl.innerHTML='&#128197; Schedule for '+(_wtSelectedDay==='tomorrow'?'Tomorrow':'Today');
+  
+  // Suggest a time for the selected day
+  var suggested=_suggestWorkTime(duration,_wtTargetDate());
+  var hh=Math.floor(suggested/60),mm=suggested%60;
+  var timeStr=(hh<10?'0':'')+hh+':'+(mm<10?'0':'')+mm;
+  
+  // Open modal
+  document.getElementById('wtItemName').textContent=name;
+  document.getElementById('wtTime').value=timeStr;
+  document.getElementById('wtDuration').value=String(duration);
+  document.getElementById('wtSuggestion').textContent='💡 Suggested ('+_wtSelectedDay+'): '+_tlFmtTime(suggested)+' -- first open slot';
+  _wtUpdateConflicts();
+  
+  // Reset modal to standard "Schedule" button if it was previously in edit mode
+  var modalBody=document.querySelector('#workTodayModal .modal-blur-body');
+  if(modalBody){
+    var editRow=modalBody.querySelector('.wt-button-row');
+    if(editRow){
+      var newRow=document.createElement('div');
+      newRow.style.cssText='display:flex;gap:8px;justify-content:flex-end;';
+      newRow.innerHTML=
+        '<button class="btn btn-sm" onclick="closeWorkTodayModal()" style="font-size:12px;">Cancel</button>'
+        +'<button class="btn btn-accent btn-sm" id="wtScheduleBtn" onclick="confirmWorkToday()" style="font-size:12px;background:#5be8ff;color:#02141a;">Schedule</button>';
+      editRow.replaceWith(newRow);
+    }
+  }
+  
+  document.getElementById('workTodayModal').classList.add('open');
+  
+  // Wire change handlers to refresh conflict warning live
+  var t=document.getElementById('wtTime');
+  var d=document.getElementById('wtDuration');
+  t.oninput=_wtUpdateConflicts;
+  d.onchange=_wtUpdateConflicts;
+}
+
+function _wtUpdateConflicts(){
+  if(!_wtCurrentItem)return;
+  var timeVal=document.getElementById('wtTime').value;
+  var durVal=parseInt(document.getElementById('wtDuration').value);
+  if(!timeVal||!durVal)return;
+  var startMin=_tlParseTime(timeVal);
+  var conflicts=_findConflicts(startMin,durVal,_wtCurrentItem.id,_wtTargetDate());
+  var cEl=document.getElementById('wtConflict');
+  if(conflicts.length){
+    cEl.style.display='block';
+    cEl.textContent='⚠ Overlaps with: '+conflicts.map(function(c){return c.name;}).join(', ');
+  }else{
+    cEl.style.display='none';
+  }
+}
+
+function closeWorkTodayModal(){
+  document.getElementById('workTodayModal').classList.remove('open');
+  _wtCurrentItem=null;
+}
+
+function confirmWorkToday(){
+  if(!_wtCurrentItem)return;
+  var timeVal=document.getElementById('wtTime').value;
+  var durVal=parseInt(document.getElementById('wtDuration').value);
+  if(!timeVal){toast('Pick a time');return;}
+  if(!durVal){toast('Pick a duration');return;}
+  
+  var targetDate=_wtTargetDate();
+  var isToday=targetDate===todayStr();
+  
+  // Late-end warning only when scheduling for today
+  if(isToday){
+    var startMin=_tlParseTime(timeVal);
+    var endMin=startMin+durVal;
+    var END_OF_DAY=20*60; // 8 PM
+    if(endMin>END_OF_DAY){
+      var endLabel=_tlFmtTime(endMin);
+      _confirm('This block would end at '+endLabel+' -- after 8 PM.',
+        function(){_writeBlock(targetDate,timeVal,durVal);},
+        {confirmText:'Today Anyway',altText:'Push to Tomorrow',onAlt:function(){_scheduleForTomorrow(timeVal,durVal);},icon:'ti-clock-exclamation',warn:true}
+      );
+      return;
+    }
+  }
+  
+  _writeBlock(targetDate,timeVal,durVal);
+}
+
+function _scheduleForTomorrow(timeVal,durVal){
+  var tomorrow=new Date();
+  tomorrow.setDate(tomorrow.getDate()+1);
+  var pad=function(n){return n<10?'0'+n:''+n;};
+  var tomorrowStr=tomorrow.getFullYear()+'-'+pad(tomorrow.getMonth()+1)+'-'+pad(tomorrow.getDate());
+  _writeBlock(tomorrowStr,timeVal,durVal);
+}
+
+function _writeBlock(dateStr,timeVal,durVal){
+  if(!state.tlBlocks)state.tlBlocks=[];
+  // If editing an existing block, update it in place
+  if(_wtCurrentItem&&_wtCurrentItem._editBlockId){
+    var existing=state.tlBlocks.find(function(b){return b.id===_wtCurrentItem._editBlockId;});
+    if(existing){
+      existing.date=dateStr;
+      existing.time=timeVal;
+      existing.duration=durVal;
+      save();
+      closeWorkTodayModal();
+      renderProjects();renderTaskList();renderTimeline();
+      if(typeof updateDayProgress==='function')updateDayProgress();
+      toast('Updated -- '+_tlFmtTime(_tlParseTime(timeVal)));
+      return;
+    }
+  }
+  // Otherwise create new
+  state.tlBlocks.push({
+    id:'tlb'+Date.now()+Math.random().toString(36).slice(2),
+    name:_wtCurrentItem.name,
+    date:dateStr,
+    time:timeVal,
+    duration:durVal,
+    projectId:(_wtCurrentItem.type==='subtask'||_wtCurrentItem.type==='project')?_wtCurrentItem.projectId:'',
+    projectIds:[],
+    priority:_wtCurrentItem.priority,
+    linkedType:_wtCurrentItem.type,
+    linkedId:_wtCurrentItem.id
+  });
+  save();
+  closeWorkTodayModal();
+  renderProjects();renderTaskList();renderTimeline();
+  if(typeof updateDayProgress==='function')updateDayProgress();
+  var today=todayStr();
+  if(dateStr===today){
+    toast('Scheduled today -- '+_tlFmtTime(_tlParseTime(timeVal)));
+  }else{
+    toast('Pushed to tomorrow -- '+_tlFmtTime(_tlParseTime(timeVal)));
+  }
+}
+
+// Edit an existing block -- opens the Work Today modal pre-filled with block data
+function editTimelineBlock(blockId){
+  var block=(state.tlBlocks||[]).find(function(b){return b.id===blockId;});
+  if(!block){toast('Block not found');return;}
+  
+  _wtCurrentItem={
+    type:block.linkedType||'manual',
+    id:block.linkedId||block.id,
+    projectId:block.projectId||'',
+    name:block.name,
+    duration:parseInt(block.duration)||60,
+    priority:block.priority||'med',
+    _editBlockId:block.id // signal to _writeBlock that this is an edit
+  };
+  
+  document.getElementById('wtItemName').textContent=block.name;
+  document.getElementById('wtTime').value=block.time;
+  document.getElementById('wtDuration').value=String(block.duration);
+  document.getElementById('wtSuggestion').textContent='✏ Editing existing block -- change time or duration, then Update';
+  
+  // Show the delete button (added in edit mode)
+  var modalBody=document.querySelector('#workTodayModal .modal-blur-body');
+  if(modalBody){
+    // Replace Schedule button with Update + Delete
+    var btnRow=modalBody.querySelector('.wt-button-row');
+    if(btnRow)btnRow.remove();
+    var newRow=document.createElement('div');
+    newRow.className='wt-button-row';
+    newRow.style.cssText='display:flex;gap:8px;justify-content:space-between;align-items:center;';
+    newRow.innerHTML=
+      '<button class="btn btn-sm" onclick="deleteEditingBlock()" style="font-size:12px;background:rgba(229,57,53,0.15);border-color:#e53935;color:#e53935;">🗑 Delete</button>'
+      +'<div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap;justify-content:flex-end;">'
+      +'<button class="btn btn-sm" onclick="pushBlockToGoogle(\''+block.id+'\')" style="font-size:11px;" title="Open in Google Calendar">📅 → Google</button>'
+      +'<button class="btn btn-sm" onclick="closeWorkTodayModal()" style="font-size:12px;">Cancel</button>'
+      +'<button class="btn btn-accent btn-sm" onclick="confirmWorkToday()" style="font-size:12px;background:#5be8ff;color:#02141a;">Update</button>'
+      +'</div>';
+    // Replace the existing schedule button row
+    var existingBtns=Array.from(modalBody.querySelectorAll('button')).find(function(b){return b.textContent.trim()==='Schedule';});
+    if(existingBtns&&existingBtns.parentElement){
+      existingBtns.parentElement.replaceWith(newRow);
+    }else{
+      modalBody.appendChild(newRow);
+    }
+  }
+  
+  _wtUpdateConflicts();
+  document.getElementById('workTodayModal').classList.add('open');
+  
+  var t=document.getElementById('wtTime');
+  var d=document.getElementById('wtDuration');
+  if(t)t.oninput=_wtUpdateConflicts;
+  if(d)d.onchange=_wtUpdateConflicts;
+}
+
+function deleteEditingBlock(){
+  if(!_wtCurrentItem||!_wtCurrentItem._editBlockId)return;
+  var blockName=_wtCurrentItem.name;
+  _confirm('Delete "'+blockName+'"?',function(){
+    var id=_wtCurrentItem._editBlockId;
+    state.tlBlocks=(state.tlBlocks||[]).filter(function(b){return b.id!==id;});
+    save();
+    closeWorkTodayModal();
+    renderProjects();renderTaskList();renderTimeline();
+    if(typeof updateDayProgress==='function')updateDayProgress();
+  },{destructive:true,confirmText:'Delete'});
+  toast('Deleted');
+}
+
+// === Drag-to-reschedule (works on both banner and timeline) ===
+var _tlDragInProgress=false;
+
+function _tlAttachDragHandlers(el,blockId,mode){
+  // mode: 'banner' (horizontal drag) or 'timeline' (vertical drag)
+  // Only state.tlBlocks entries (manual blocks + clock-button scheduled) are draggable;
+  // source-linked auto-blocks (reminders/tasks with embedded times) skip drag.
+  var inTlBlocks=(state.tlBlocks||[]).some(function(b){return b.id===blockId;});
+  if(!inTlBlocks){el.style.cursor='default';return;}
+  
+  var dragging=false,startCoord=0,initialStartMin=0,pxPerMin=0,blockRef=null,pendingMin=null;
+  
+  el.addEventListener('pointerdown',function(e){
+    if(e.button!==0&&e.pointerType==='mouse')return; // left button only for mouse
+    // If pointerdown originated on the delete X (or any element marked as a control),
+    // bail out -- let that element's own click handler fire normally.
+    if(e.target&&e.target.closest&&e.target.closest('.tl-block-del'))return;
+    blockRef=(state.tlBlocks||[]).find(function(b){return b.id===blockId;});
+    if(!blockRef)return;
+    e.preventDefault();
+    e.stopPropagation();
+    
+    initialStartMin=_tlParseTime(blockRef.time);
+    pendingMin=initialStartMin;
+    
+    if(mode==='banner'){
+      var bar=document.getElementById('dayProgressBar');
+      if(!bar)return;
+      var rect=bar.getBoundingClientRect();
+      // Banner spans 5am-8pm = 900 min
+      pxPerMin=rect.width/900;
+      startCoord=e.clientX;
+    }else{
+      // Timeline: 52px per hour
+      pxPerMin=TL_HOUR_PX/60;
+      startCoord=e.clientY;
+    }
+    
+    dragging=true;
+    _tlDragInProgress=true;
+    try{el.setPointerCapture(e.pointerId);}catch(err){}
+    el.classList.add('dragging');
+  });
+  
+  el.addEventListener('pointermove',function(e){
+    if(!dragging)return;
+    e.preventDefault();
+    
+    var deltaPx=(mode==='banner'?e.clientX:e.clientY)-startCoord;
+    var deltaMin=deltaPx/pxPerMin;
+    // Snap to 15-min increments
+    var snappedDelta=Math.round(deltaMin/15)*15;
+    var newStartMin=initialStartMin+snappedDelta;
+    
+    // Constrain to valid range
+    var maxStart=24*60-(parseInt(blockRef.duration)||60);
+    newStartMin=Math.max(0,Math.min(maxStart,newStartMin));
+    pendingMin=newStartMin;
+    
+    // Live visual update
+    if(mode==='banner'){
+      var BANNER_START=5*60,BANNER_RANGE=900;
+      var dur=parseInt(blockRef.duration)||60;
+      var endMin=newStartMin+dur;
+      if(endMin<=BANNER_START||newStartMin>=20*60){el.style.display='none';return;}
+      var clippedStart=Math.max(newStartMin,BANNER_START);
+      var clippedEnd=Math.min(endMin,20*60);
+      el.style.display='';
+      el.style.left=((clippedStart-BANNER_START)/BANNER_RANGE)*100+'%';
+      el.style.width=((clippedEnd-clippedStart)/BANNER_RANGE)*100+'%';
+    }else{
+      el.style.top=_tlMinutesToY(newStartMin)+'px';
+    }
+  });
+  
+  var commit=function(e){
+    if(!dragging)return;
+    dragging=false;
+    _tlDragInProgress=false;
+    try{el.releasePointerCapture(e.pointerId);}catch(err){}
+    el.classList.remove('dragging');
+    
+    if(pendingMin===null||pendingMin===initialStartMin){
+      // No real movement -- re-render to clean up any partial visual changes
+      renderTimeline();
+      return;
+    }
+    
+    // Commit new time to state
+    var hh=Math.floor(pendingMin/60),mm=pendingMin%60;
+    var newTime=(hh<10?'0':'')+hh+':'+(mm<10?'0':'')+mm;
+    var liveBlock=(state.tlBlocks||[]).find(function(b){return b.id===blockId;});
+    if(liveBlock){
+      liveBlock.time=newTime;
+      save();
+      renderTimeline();
+      if(typeof updateDayProgress==='function')updateDayProgress();
+      toast('Moved to '+_tlFmtTime(pendingMin));
+    }
+  };
+  
+  el.addEventListener('pointerup',commit);
+  el.addEventListener('pointercancel',commit);
+}
+
+
+function renderBannerBlocks(){
+  var bar=document.getElementById('dayProgressBar');
+  if(!bar)return;
+  // Remove existing overlay container
+  var existing=bar.querySelector('.day-progress-bar-blocks');
+  if(existing)existing.remove();
+  
+  var blocks=_tlCollectBlocks();
+  if(blocks.length===0)return;
+  
+  // Banner window: 5am → 8pm = 15 hours
+  var BANNER_START=5*60,BANNER_END=20*60,BANNER_RANGE=BANNER_END-BANNER_START;
+  
+  var palette=['#5b8ce8','#7fb3a0','#e88c6a','#c77dba','#a0a0aa','#9e7bff','#5be8ff','#ff6b9d'];
+  
+  var container=document.createElement('div');
+  container.className='day-progress-bar-blocks';
+  
+  blocks.forEach(function(b){
+    var startMin=b.startMin;
+    var endMin=startMin+b.durMin;
+    // Clip to banner range
+    if(endMin<=BANNER_START||startMin>=BANNER_END)return;
+    var clippedStart=Math.max(startMin,BANNER_START);
+    var clippedEnd=Math.min(endMin,BANNER_END);
+    var leftPct=((clippedStart-BANNER_START)/BANNER_RANGE)*100;
+    var widthPct=((clippedEnd-clippedStart)/BANNER_RANGE)*100;
+    var colorIdx=_tlProjectColor(b.projectId);
+    var color=colorIdx==='no-proj'?'rgba(255,255,255,0.4)':palette[colorIdx];
+    
+    var block=document.createElement('div');
+    block.className='dpb-block';
+    block.style.left=leftPct+'%';
+    block.style.width=widthPct+'%';
+    block.style.background=color;
+    block.title=b.name+' -- '+_tlFmtTime(startMin)+' to '+_tlFmtTime(endMin)+' · drag to reschedule';
+    block.dataset.blockId=b.id;
+    _tlAttachDragHandlers(block,b.id,'banner');
+    block.addEventListener('click',function(ev){
+      if(_tlDragInProgress)return;
+      ev.stopPropagation();
+      editTimelineBlock(b.id);
+    });
+    container.appendChild(block);
+  });
+  
+  bar.appendChild(container);
+}
+
+function _tlMinutesToY(minutes){
+  // minutes from midnight → Y px offset within tl-grid
+  var startMin=TL_DAY_START_H*60;
+  return ((minutes-startMin)/60)*TL_HOUR_PX;
+}
+
+function _tlParseTime(hhmm){
+  if(!hhmm||hhmm.indexOf(':')<0)return null;
+  var parts=hhmm.split(':');
+  return parseInt(parts[0])*60+parseInt(parts[1]);
+}
+
+function _tlFmtTime(min){
+  var h=Math.floor(min/60),m=min%60;
+  var ap=h<12?'a':'p';
+  var h12=h===0?12:h>12?h-12:h;
+  return h12+(m===0?'':':'+(m<10?'0':'')+m)+ap;
+}
+
+function _tlFmtHour(h){
+  var ap=h<12?'a':'p';
+  var h12=h===0?12:h>12?h-12:h;
+  return h12+ap;
+}
+
+function _tlCollectBlocks(targetDate){
+  // Returns array of block objects for the given date (defaults to today).
+  // Sources: explicit tlBlocks (manual + scheduled-via-modal) take priority.
+  // Auto-derivation from reminders/subtasks/tasks happens ONLY if no tlBlock
+  // already links to that item -- prevents an item from showing on multiple
+  // days when its "official" schedule has been moved via the schedule modal.
+  var today=targetDate||todayStr();
+  var blocks=[];
+  
+  // Build set of all linkedIds across ALL tlBlocks (any date).
+  // If a tlBlock anywhere points to a task/subtask, that tlBlock is the
+  // canonical scheduling for that item -- skip auto-derivation entirely.
+  var linkedIds={};
+  (state.tlBlocks||[]).forEach(function(b){
+    if(b.linkedId)linkedIds[b.linkedId]=true;
+  });
+  
+  // 1. Manual / modal-scheduled tlBlocks for THIS date
+  (state.tlBlocks||[]).forEach(function(b){
+    if(b.date===today){
+      blocks.push({
+        id:b.id,name:b.name,startMin:_tlParseTime(b.time),durMin:parseInt(b.duration||60),
+        projectId:b.projectId||'',priority:b.priority||'med',source:'manual'
+      });
+    }
+  });
+  
+  // 2. Reminders with date matching AND time set -- auto-derive if no tlBlock links to it
+  (state.reminders||[]).forEach(function(r){
+    if(r.date===today&&r.time&&!linkedIds[r.id]){
+      var projId=(r.projectIds&&r.projectIds[0])||r.projectId||'';
+      blocks.push({
+        id:'rem_'+r.id,name:r.text,startMin:_tlParseTime(r.time),durMin:30,
+        projectId:projId,priority:'med',source:'reminder'
+      });
+    }
+  });
+  
+  // 3. Subtasks with due matching AND time -- auto-derive only if no tlBlock links to it
+  (state.projects||[]).forEach(function(p){
+    (p.subtasks||[]).forEach(function(st){
+      if(st.due===today&&st.time&&!linkedIds[st.id]){
+        blocks.push({
+          id:'st_'+st.id,name:st.name,startMin:_tlParseTime(st.time),
+          durMin:parseInt(st.timeEst)||60,
+          projectId:p.id,priority:st.priority||'med',source:'subtask'
+        });
+      }
+    });
+  });
+  
+  // 4. Standalone tasks with due matching AND time -- auto-derive only if no tlBlock links to it
+  (state.tasks||[]).forEach(function(t){
+    if(!t.done&&t.due===today&&t.time&&!linkedIds[t.id]){
+      var projId=t.projectId||(t.projectIds&&t.projectIds[0])||'';
+      blocks.push({
+        id:'task_'+t.id,name:t.name,startMin:_tlParseTime(t.time),
+        durMin:parseInt(t.timeEst)||60,
+        projectId:projId,priority:t.priority||'med',source:'task'
+      });
+    }
+  });
+  
+  // Filter out blocks with no valid time
+  return blocks.filter(function(b){return b.startMin!==null&&!isNaN(b.startMin);});
+}
+
+function _tlBuildLegend(){
+  // Build legend from projects that have blocks on the active view date
+  var blocks=_tlCollectBlocks(typeof _tlViewDate==='function'?_tlViewDate():undefined);
+  var seen={};
+  blocks.forEach(function(b){
+    if(b.projectId&&!seen[b.projectId])seen[b.projectId]=true;
+  });
+  var projIds=Object.keys(seen);
+  var el=document.getElementById('tlLegend');
+  if(!el)return;
+  if(projIds.length===0){el.innerHTML='';return;}
+  
+  var palette=['#5b8ce8','#7fb3a0','#e88c6a','#c77dba','#a0a0aa','#9e7bff','#5be8ff','#ff6b9d'];
+  var html=projIds.map(function(pid){
+    var p=(state.projects||[]).find(function(p){return p.id===pid;});
+    if(!p)return '';
+    var c=_tlProjectColor(pid);
+    return '<span class="tl-legend-item"><span class="tl-legend-dot" style="background:'+palette[c]+';"></span><span class="tl-legend-label">'+esc(p.name)+'</span></span>';
+  }).join('');
+  el.innerHTML=html;
+}
+
+var _tlViewDay='today'; // 'today' or 'tomorrow' -- controls which day the panel shows
+
+function _tlViewDate(){
+  return _tlViewDay==='tomorrow'?tomorrowStr():todayStr();
+}
+
+function tlSetViewDay(day){
+  if(day!=='today'&&day!=='tomorrow')return;
+  _tlViewDay=day;
+  // Update tab visuals
+  document.querySelectorAll('.tl-day-tab').forEach(function(btn){
+    if(btn.dataset.day===day){
+      btn.classList.add('active');
+      btn.style.background='rgba(91,232,255,0.18)';
+      btn.style.color='#5be8ff';
+    }else{
+      btn.classList.remove('active');
+      btn.style.background='var(--surface-raised)';
+      btn.style.color='var(--text-dim)';
+    }
+  });
+  // Update panel title
+  var titleEl=document.getElementById('tlPanelTitle');
+  if(titleEl)titleEl.textContent=day==='tomorrow'?"Tomorrow's Timeline":"Today's Timeline";
+  renderTimeline();
+}
+
+function renderTimeline(){
+  var grid=document.getElementById('tlGrid');
+  if(!grid)return;
+  
+  var viewDate=_tlViewDate();
+  var isToday=viewDate===todayStr();
+  
+  // Build hour rows
+  var html='';
+  for(var h=TL_DAY_START_H;h<TL_DAY_END_H;h++){
+    html+='<div class="tl-hour-row" style="height:'+TL_HOUR_PX+'px;"><div class="tl-hour-label">'+_tlFmtHour(h)+'</div></div>';
+  }
+  grid.innerHTML=html;
+  
+  // Place "now" line -- only when viewing today
+  if(isToday){
+    var now=new Date();
+    var nowMin=now.getHours()*60+now.getMinutes();
+    if(nowMin>=TL_DAY_START_H*60&&nowMin<TL_DAY_END_H*60){
+      var nowY=_tlMinutesToY(nowMin);
+      var nowDiv=document.createElement('div');
+      nowDiv.className='tl-now-line';
+      nowDiv.style.top=nowY+'px';
+      grid.appendChild(nowDiv);
+    }
+  }
+  
+  // Place blocks for the active view date
+  var blocks=_tlCollectBlocks(viewDate);
+  var winStart=TL_DAY_START_H*60;   // 5am in minutes
+  var winEnd=TL_DAY_END_H*60;       // 10pm in minutes
+  blocks.forEach(function(b){
+    var blockEnd=b.startMin+b.durMin;
+    // Skip if block is entirely outside the visible window
+    if(blockEnd<=winStart||b.startMin>=winEnd)return;
+    // Clip to visible window (block may start before 5am or end after 10pm)
+    var visStart=Math.max(b.startMin,winStart);
+    var visEnd=Math.min(blockEnd,winEnd);
+    var visDur=visEnd-visStart;
+    var clippedStart=visStart>b.startMin;  // true if start was clipped
+    var clippedEnd=visEnd<blockEnd;        // true if end was clipped
+    var y=_tlMinutesToY(visStart);
+    var height=Math.max(24,(visDur/60)*TL_HOUR_PX-2);
+    var colorClass='tl-color-'+_tlProjectColor(b.projectId);
+    var proj=b.projectId?(state.projects||[]).find(function(p){return p.id===b.projectId;}):null;
+    var projName=proj?proj.name:'';
+    var endMin=b.startMin+b.durMin;
+    var div=document.createElement('div');
+    div.className='tl-block '+colorClass+(clippedStart?' tl-block-clipped-top':'')+(clippedEnd?' tl-block-clipped-bottom':'');
+    div.style.top=y+'px';
+    div.style.height=height+'px';
+    if(clippedStart){
+      // Show a visual cue that this block started earlier
+      div.style.borderTop='2px dashed rgba(255,255,255,0.4)';
+      div.style.borderRadius='0 4px 4px 4px';
+    }
+    if(clippedEnd){
+      div.style.borderBottom='2px dashed rgba(255,255,255,0.4)';
+      div.style.borderRadius=(clippedStart?'0 4px':'4px 4px')+' 4px 0';
+    }
+    div.dataset.blockId=b.id;
+    div.dataset.source=b.source;
+    var priorityLabel='';
+    if(b.priority==='high')priorityLabel='<span class="tl-block-priority priority-high">HIGH</span>';
+    else if(b.priority==='low')priorityLabel='<span class="tl-block-priority priority-low">low</span>';
+    div.innerHTML=
+      '<div class="tl-block-title">'+esc(b.name)+priorityLabel
+      +(clippedStart?' <span style="font-size:9px;opacity:0.7">← started '+_tlFmtTime(b.startMin)+'</span>':'')
+      +'</div>'
+      +'<div class="tl-block-meta">'+_tlFmtTime(b.startMin)+' – '+_tlFmtTime(endMin)+' · '+b.durMin+'m</div>'
+      +(projName?'<div class="tl-block-proj">'+esc(projName)+'</div>':'')
+      +(b.source==='manual'?'<div class="tl-block-del" onclick="event.stopPropagation();deleteTimelineBlock(\''+b.id+'\')" title="Delete block">&#10005;</div>':'');
+    if(b.source==='manual'){
+      div.addEventListener('click',function(ev){
+        if(_tlDragInProgress)return;
+        if(ev.target.classList&&ev.target.classList.contains('tl-block-del'))return;
+        editTimelineBlock(b.id);
+      });
+    }
+    _tlAttachDragHandlers(div,b.id,'timeline');
+    grid.appendChild(div);
+  });
+  
+  // Update count badge + legend
+  var countEl=document.getElementById('tlBlockCount');
+  if(countEl)countEl.textContent=blocks.length;
+  _tlBuildLegend();
+  // Refresh banner overlay
+  if(typeof renderBannerBlocks==='function')renderBannerBlocks();
+}
+
+function addTimelineBlock(){
+  var nameEl=document.getElementById('tlBlockName');
+  var timeEl=document.getElementById('tlBlockStart');
+  var durEl=document.getElementById('tlBlockDur');
+  var projEl=document.getElementById('tlBlockProj');
+  var name=nameEl.value.trim();
+  if(!name){toast('Block needs a name');return;}
+  if(!timeEl.value){toast('Pick a start time');return;}
+  
+  if(!state.tlBlocks)state.tlBlocks=[];
+  var projIds=(projEl.value||'').split(',').map(function(s){return s.trim();}).filter(Boolean);
+  // Use the active panel view day so blocks land on whatever day the user is looking at
+  var blockDate=(typeof _tlViewDate==='function')?_tlViewDate():todayStr();
+  state.tlBlocks.push({
+    id:'tlb'+Date.now()+Math.random().toString(36).slice(2),
+    name:name,
+    date:blockDate,
+    time:timeEl.value,
+    duration:parseInt(durEl.value)||60,
+    projectId:projIds[0]||'',
+    projectIds:projIds,
+    priority:'med'
+  });
+  save();
+  nameEl.value='';
+  // Reset picker UI
+  projEl.value='';
+  var picker=document.getElementById('tlBlockProjPicker');
+  if(picker)picker.innerHTML='<span class="proj-multi-placeholder">+ Project (color)</span>';
+  renderTimeline();
+  if(typeof updateDayProgress==='function')updateDayProgress();
+  var dayLabel=blockDate===todayStr()?'today':(blockDate===tomorrowStr()?'tomorrow':blockDate);
+  
+}
+
+function deleteTimelineBlock(id){
+  var block=(state.tlBlocks||[]).find(function(b){return b.id===id;});
+  var blockName=block?block.name:'this block';
+  _confirm('Delete "'+blockName+'"?',function(){
+    state.tlBlocks=(state.tlBlocks||[]).filter(function(b){return b.id!==id;});
+    save();
+    renderProjects();renderTaskList();renderTimeline();
+    if(typeof updateDayProgress==='function')updateDayProgress();
+    toast('Deleted');
+  },{destructive:true,confirmText:'Delete'});
+}
+
+function clearTimelineBlocks(){
+  var viewDate=(typeof _tlViewDate==='function')?_tlViewDate():todayStr();
+  var dayLabel=viewDate===todayStr()?'today':(viewDate===tomorrowStr()?'tomorrow':viewDate);
+  var count=(state.tlBlocks||[]).filter(function(b){return b.date===viewDate;}).length;
+  if(count===0){toast('No manual blocks to clear for '+dayLabel);return;}
+  _confirm('Delete all '+count+' manual blocks for '+dayLabel+'?',function(){
+    state.tlBlocks=(state.tlBlocks||[]).filter(function(b){return b.date!==viewDate;});
+    save();renderTimeline();
+    if(typeof updateDayProgress==='function')updateDayProgress();
+    toast('Manual blocks cleared');
+  },{destructive:true,confirmText:'Clear All'});
+}
+
+// === Outlook .ics export ===
+function _icsEscape(s){
+  return (s||'').replace(/\\/g,'\\\\').replace(/;/g,'\\;').replace(/,/g,'\\,').replace(/\n/g,'\\n');
+}
+
+function _icsTimestamp(date,minutes){
+  // date is YYYY-MM-DD, minutes is from midnight
+  var d=new Date(date+'T00:00:00');
+  d.setMinutes(d.getMinutes()+minutes);
+  var pad=function(n){return n<10?'0'+n:''+n;};
+  return d.getFullYear()+pad(d.getMonth()+1)+pad(d.getDate())+'T'+pad(d.getHours())+pad(d.getMinutes())+'00';
+}
+
+function exportTimelineICS(){
+  var viewDate=(typeof _tlViewDate==='function')?_tlViewDate():todayStr();
+  var dayLabel=viewDate===todayStr()?'today':(viewDate===tomorrowStr()?'tomorrow':viewDate);
+  var blocks=_tlCollectBlocks(viewDate);
+  if(blocks.length===0){toast('No blocks for '+dayLabel+' to export');return;}
+  var lines=[
+    'BEGIN:VCALENDAR',
+    'VERSION:2.0',
+    'PRODID:-//Centerpost//Timeline//EN',
+    'CALSCALE:GREGORIAN',
+    'METHOD:PUBLISH'
+  ];
+  blocks.forEach(function(b){
+    var proj=b.projectId?(state.projects||[]).find(function(p){return p.id===b.projectId;}):null;
+    var summary=b.name;
+    if(b.priority==='high')summary='[HIGH] '+summary;
+    var description=(proj?'Project: '+proj.name+'\n':'')+'Source: '+b.source+' (Centerpost)';
+    lines.push('BEGIN:VEVENT');
+    lines.push('UID:'+b.id+'@centerpost.app');
+    lines.push('DTSTAMP:'+_icsTimestamp(viewDate,b.startMin));
+    lines.push('DTSTART:'+_icsTimestamp(viewDate,b.startMin));
+    lines.push('DTEND:'+_icsTimestamp(viewDate,b.startMin+b.durMin));
+    lines.push('SUMMARY:'+_icsEscape(summary));
+    lines.push('DESCRIPTION:'+_icsEscape(description));
+    if(proj)lines.push('CATEGORIES:'+_icsEscape(proj.name));
+    lines.push('END:VEVENT');
+  });
+  lines.push('END:VCALENDAR');
+  var ics=lines.join('\r\n');
+  var blob=new Blob([ics],{type:'text/calendar'});
+  var url=URL.createObjectURL(blob);
+  var a=document.createElement('a');
+  a.href=url;
+  a.download='centerpost-timeline-'+viewDate+'.ics';
+  document.body.appendChild(a);a.click();document.body.removeChild(a);
+  URL.revokeObjectURL(url);
+  toast('Downloaded .ics -- drag into Outlook');
+}
+
+function connectOutlookGraph(){
+  toast('Outlook two-way sync requires Azure AD app setup -- coming in next build');
+}
+
+// === Google Calendar push ===
+// Uses Google Calendar's render URL -- no API key, no auth setup required.
+// User just needs to be logged into their Google account in the browser.
+// Each block opens in a new tab pre-filled; user clicks "Save" to add it.
+function _pad2(n){return n<10?'0'+n:''+n;}
+
+function _gcalUrl(block,dateStr){
+  // dateStr format: YYYY-MM-DD; convert to YYYYMMDD for Google
+  var d=dateStr.replace(/-/g,'');
+  var startMin=block.startMin;
+  var endMin=startMin+block.durMin;
+  var startStamp=d+'T'+_pad2(Math.floor(startMin/60))+_pad2(startMin%60)+'00';
+  var endStamp=d+'T'+_pad2(Math.floor(endMin/60))+_pad2(endMin%60)+'00';
+  
+  var proj=block.projectId?(state.projects||[]).find(function(p){return p.id===block.projectId;}):null;
+  var title=block.name;
+  if(block.priority==='high')title='[HIGH] '+title;
+  var details=(proj?'Project: '+proj.name+'\n':'')+'Source: Centerpost ('+block.source+')';
+  
+  var params=new URLSearchParams({
+    action:'TEMPLATE',
+    text:title,
+    dates:startStamp+'/'+endStamp,
+    details:details
+  });
+  return 'https://calendar.google.com/calendar/render?'+params.toString();
+}
+
+function pushToGoogleCalendar(){
+  var viewDate=(typeof _tlViewDate==='function')?_tlViewDate():todayStr();
+  var dayLabel=viewDate===todayStr()?'today':(viewDate===tomorrowStr()?'tomorrow':viewDate);
+  var blocks=_tlCollectBlocks(viewDate);
+  if(blocks.length===0){toast('No blocks for '+dayLabel+' to push');return;}
+  
+  // Sort by start time so tabs open in chronological order
+  blocks.sort(function(a,b){return a.startMin-b.startMin;});
+  
+  // Open all blocks in tabs; show confirm when >1 tab will open
+  var _openGcalTabs=function(){
+    var opened=0;
+    blocks.forEach(function(b,i){
+      setTimeout(function(){
+        var w=window.open(_gcalUrl(b,viewDate),'_blank');
+        if(w)opened++;
+      },i*250);
+    });
+    setTimeout(function(){
+      toast(blocks.length===1?'Opened in Google Calendar -- click Save':'Opened '+blocks.length+' tab(s) in Google Calendar -- click Save in each');
+    },blocks.length*250+100);
+  };
+  if(blocks.length>1){
+    _confirm('Push '+blocks.length+' blocks for '+dayLabel+' to Google Calendar? Each block opens in a new tab -- allow pop-ups if prompted.',_openGcalTabs,{confirmText:'Push All',icon:'ti-calendar-plus'});
+    return;
+  }
+  _openGcalTabs();
+}
+
+// Push a single block to Google Calendar (used from edit modal)
+function pushBlockToGoogle(blockId){
+  var block=(state.tlBlocks||[]).find(function(b){return b.id===blockId;});
+  if(!block){toast('Block not found');return;}
+  var startMin=_tlParseTime(block.time);
+  if(isNaN(startMin)){toast('Invalid block time');return;}
+  var blockData={
+    name:block.name,
+    startMin:startMin,
+    durMin:parseInt(block.duration)||60,
+    projectId:block.projectId||'',
+    priority:block.priority||'med',
+    source:block.linkedType||'manual'
+  };
+  window.open(_gcalUrl(blockData,block.date),'_blank');
+  toast('Opened in Google Calendar -- click Save');
+}
+
+// Auto-refresh timeline every minute so the "now" line moves
+setInterval(function(){
+  if(_tlDragInProgress)return; // Don't yank the block out of the user's hand
+  var el=document.getElementById('tlGrid');
+  if(el&&document.visibilityState==='visible')renderTimeline();
+},60000);
+
+// =======================================
+// END TIMELINE
+// =======================================
+
+// =======================================
+// END TIMELINE
+// =======================================
+
+// =======================================
+// THEME SYSTEM
+// =======================================
+var THEMES=[
+  {key:'dark',name:'Dark',tier:'free',bg:'#1a1917',surface:'#242320',accent:'#d4a853'},
+  {key:'light',name:'Light',tier:'free',bg:'#f6f4f0',surface:'#ffffff',accent:'#b08830'},
+  {key:'starry',name:'Starry Night',tier:'pro',bg:'#0a0e1a',surface:'#10152a',accent:'#7b68ee'},
+  {key:'sunny',name:'Sunny Sky',tier:'pro',bg:'#e8f0fa',surface:'#ffffff',accent:'#e07828'},
+  {key:'ocean',name:'Midnight Ocean',tier:'pro',bg:'#0a1a1a',surface:'#0f2222',accent:'#20c9a6'},
+  {key:'sunset',name:'Sunset Horizon',tier:'pro',bg:'#1a1018',surface:'#1e1420',accent:'#e84a7a'},
+  {key:'police',name:'Police Dark',tier:'premium',bg:'#0a0c14',surface:'#101420',accent:'#3a7aee'},
+  {key:'fire',name:'Fire Dark',tier:'premium',bg:'#120808',surface:'#1a0e0e',accent:'#e53935'},
+  {key:'autumn',name:'Autumn Ember',tier:'premium',bg:'#f0ebe0',surface:'#faf5ec',accent:'#c06030'},
+  {key:'storm-dark',name:'Storm Dark',tier:'premium',bg:'#0c0f14',surface:'#111520',accent:'#7ab8e8'},
+  {key:'galaxy',name:'Galaxy',tier:'premium',bg:'#050a18',surface:'#0a1124',accent:'#4a90e8'}
+];
+// Build stamp -- bump this on each deploy. Shown at the bottom of Settings so
+// you can confirm on any device exactly which build it's running.
+var APP_BUILD='2026.06.06b-beta';
+// BETA: ignore tier gating for themes (every theme selectable). Set to false
+// to restore the per-tier theme locks after beta.
+var BETA_ALL_THEMES=true;
+
+function applyTheme(key){
+  // Block if theme is above current tier
+  var cfg=getTierConfig();
+  var theme=THEMES.find(function(t){return t.key===key;});
+  if(!BETA_ALL_THEMES&&theme&&cfg.allowedThemeTiers.indexOf(theme.tier)<0){
+    if(typeof toast==='function')toast('⚡ Upgrade to unlock this theme');
+    return;
+  }
+  if(key==='dark'){
+    document.body.removeAttribute('data-theme');
+  }else{
+    document.body.setAttribute('data-theme',key);
+  }
+  if(!state.settings)state.settings={};
+  state.settings.theme=key;
+  save();
+  renderThemeSelector();
+  if(theme){
+    var metas=document.querySelectorAll('meta[name="theme-color"]');
+    metas.forEach(function(m){m.setAttribute('content',theme.bg);});
+  }
+  _emsUpdateOverlays(key);
+}
+
+// -- Emergency theme overlays (fire = strobe+fire+embers, police = strobe) --
+var _emsEmberInterval=null;
+function _emsUpdateOverlays(key){
+  if(key==='fire'){
+    _emsStartEmbers();
+  } else {
+    _emsStopEmbers();
+  }
+  if(key==='starry'){
+    _starryStart();
+  } else {
+    _starryStop();
+  }
+  if(key==='storm-dark'||key==='storm-light'){
+    _stormStart();
+  } else {
+    _stormStop();
+  }
+  if(key==='galaxy'){
+    _galaxyStart();
+  } else {
+    _galaxyStop();
+  }
+}
+
+// -- Galaxy: dense flowing orbital trails (canvas) ----------------
+// Eccentric, slowly-precessing orbits around the core; trails emerge
+// from per-frame fade + additive blending. Warm amber/gold palette.
+var _galaxyAnim=null;
+function _galaxyStart(){
+  var layer=document.getElementById('galaxyLayer');
+  if(!layer)return;
+  if(_galaxyAnim){ return; } // already running
+  var cv=document.getElementById('galaxyCanvas');
+  if(!cv){
+    cv=document.createElement('canvas');
+    cv.id='galaxyCanvas';
+    cv.style.cssText='position:absolute;inset:0;width:100%;height:100%;display:block;';
+    layer.appendChild(cv);
+  }
+  _galaxyAnim=_galaxyEngine(cv);
+}
+function _galaxyStop(){
+  if(_galaxyAnim){ _galaxyAnim.stop(); _galaxyAnim=null; }
+  var layer=document.getElementById('galaxyLayer');
+  if(layer){ layer.querySelectorAll('.gstar').forEach(function(e){e.remove();}); }
+}
+
+function _galaxyEngine(cv){
+  var ctx=cv.getContext('2d');
+  var raf=null, running=true, W,H,cx,cy;
+  var dpr=Math.min(window.devicePixelRatio||1, 1.5);
+  var reduce=window.matchMedia&&window.matchMedia('(prefers-reduced-motion:reduce)').matches;
+
+  function size(){
+    W=window.innerWidth; H=window.innerHeight;
+    cv.width=Math.max(1,W*dpr); cv.height=Math.max(1,H*dpr);
+    ctx.setTransform(dpr,0,0,dpr,0,0);
+    cx=W*0.52; cy=H*0.46;
+  }
+  size();
+  window.addEventListener('resize', size);
+
+  var COLORS=[
+    [255,190,110],[255,170,80],[255,150,70],[255,120,70],
+    [255,210,150],[255,235,200],[255,160,90],[255,180,100],
+    [160,195,255],[200,220,255]  // sparse cool accents
+  ];
+  var maxR=Math.max(W,H)*0.62;
+  var N=Math.max(260, Math.min(520, Math.floor((W*H)/3200)));
+  var DISK=0.46;
+  var DA=0.52, cosDA=Math.cos(DA), sinDA=Math.sin(DA);
+  var P=[];
+  for(var i=0;i<N;i++){
+    var r=Math.pow(Math.random(),0.62)*maxR;
+    var warm=Math.random()<0.9;
+    var ci=warm?Math.floor(Math.random()*8):8+Math.floor(Math.random()*2);
+    P.push({
+      r:r, e:Math.random()*0.5, w:Math.random()*Math.PI*2,
+      prec:(-0.0006 + Math.random()*0.0012),
+      th:Math.random()*Math.PI*2,
+      sp:(0.0007 + 0.9/(r+60)) * (0.7+Math.random()*0.6),
+      c:COLORS[ci], sz:0.5 + Math.random()*1.5, br:0.30 + Math.random()*0.55
+    });
+  }
+
+  var t0=performance.now();
+  // one render step; `advance` moves the orbits forward
+  function step(advance){
+    ctx.globalCompositeOperation='source-over';
+    ctx.fillStyle='rgba(8,5,14,0.115)';
+    ctx.fillRect(0,0,W,H);
+    ctx.globalCompositeOperation='lighter';
+    for(var i=0;i<P.length;i++){
+      var p=P[i];
+      if(advance){ p.th+=p.sp; p.w+=p.prec; }
+      var rad=p.r*(1-p.e*p.e)/(1+p.e*Math.cos(p.th-p.w));
+      var ex=Math.cos(p.th)*rad, ey=Math.sin(p.th)*rad*DISK;
+      var x=cx + ex*cosDA - ey*sinDA;
+      var y=cy + ex*sinDA + ey*cosDA;
+      var c=p.c;
+      ctx.fillStyle='rgba('+c[0]+','+c[1]+','+c[2]+','+p.br.toFixed(3)+')';
+      ctx.beginPath(); ctx.arc(x,y,p.sz,0,6.2832); ctx.fill();
+    }
+    var t=(performance.now()-t0)/1000;
+    var pulse=0.5+0.5*Math.sin(t*0.7);
+    var coreR=maxR*0.26;
+    var g=ctx.createRadialGradient(cx,cy,0,cx,cy,coreR);
+    g.addColorStop(0,'rgba(255,245,225,'+(0.42+pulse*0.12).toFixed(3)+')');
+    g.addColorStop(0.18,'rgba(255,205,150,0.22)');
+    g.addColorStop(0.5,'rgba(255,150,90,0.08)');
+    g.addColorStop(1,'rgba(255,120,70,0)');
+    ctx.fillStyle=g;
+    ctx.beginPath(); ctx.arc(cx,cy,coreR,0,6.2832); ctx.fill();
+    ctx.globalCompositeOperation='source-over';
+  }
+
+  function frame(){
+    if(!running)return;
+    step(true);
+    raf=requestAnimationFrame(frame);
+  }
+
+  if(reduce){
+    // build a dense static field, then hold (no animation)
+    for(var k=0;k<140;k++){ step(true); }
+    running=false;
+  } else {
+    for(var j=0;j<40;j++){ step(true); } // prime so it opens already-rich
+    frame();
+  }
+
+  function vis(){
+    if(reduce)return;
+    if(document.hidden){ running=false; if(raf)cancelAnimationFrame(raf); }
+    else if(!running){ running=true; frame(); }
+  }
+  document.addEventListener('visibilitychange', vis);
+
+  return { stop:function(){
+    running=false;
+    if(raf)cancelAnimationFrame(raf);
+    window.removeEventListener('resize', size);
+    document.removeEventListener('visibilitychange', vis);
+    try{ ctx.clearRect(0,0,W,H); }catch(e){}
+    if(cv&&cv.parentNode){ cv.parentNode.removeChild(cv); }
+  }};
+}
+
+// -- Starry Night: stars + fireflies ------------------------------
+var _starryActive=false;
+var _fireflyInterval=null;
+
+function _starryStart(){
+  if(_starryActive)return;
+  _starryActive=true;
+  _spawnStars();
+  _spawnFireflies();
+}
+
+function _starryStop(){
+  _starryActive=false;
+  var sl=document.getElementById('starryLayer');
+  var fl=document.getElementById('firefliesLayer');
+  // Remove dynamically-spawned elements; CSS ::before moon stays hidden via display:none
+  if(sl)sl.querySelectorAll('.star').forEach(function(e){e.remove();});
+  if(fl)fl.innerHTML='';
+  if(_fireflyInterval){clearInterval(_fireflyInterval);_fireflyInterval=null;}
+}
+
+function _starryRand(min,max){return min+Math.random()*(max-min);}
+
+function _spawnStars(){
+  var layer=document.getElementById('starryLayer');
+  if(!layer)return;
+  // Remove any old stars
+  layer.querySelectorAll('.star').forEach(function(e){e.remove();});
+  // Spawn ~200 stars concentrated in the upper 60% of the screen.
+  // Higher opacity floors (dim 0.45, bright 0.8+) keep them consistently visible.
+  for(var i=0;i<200;i++){
+    var s=document.createElement('div');
+    s.className='star';
+    var sz=_starryRand(0.8,2.8);
+    var top=_starryRand(0,60);
+    var left=_starryRand(1,99);
+    var dim=_starryRand(0.45,0.70);      // never goes very dim -- always visible
+    var bright=_starryRand(0.82,1.0);    // peaks near full white
+    var dur=_starryRand(2.5,7);
+    var delay=_starryRand(0,6);
+    s.style.cssText=[
+      'width:'+sz+'px',
+      'height:'+sz+'px',
+      'top:'+top+'vh',
+      'left:'+left+'vw',
+      '--dim:'+dim,
+      '--bright:'+bright,
+      '--dur:'+dur+'s',
+      'animation-delay:'+delay+'s',
+      'opacity:'+dim
+    ].join(';');
+    layer.appendChild(s);
+  }
+}
+
+function _spawnFireflies(){
+  var layer=document.getElementById('firefliesLayer');
+  if(!layer)return;
+  layer.innerHTML='';
+  // 14 fireflies spread across the bottom zone
+  for(var i=0;i<14;i++){
+    _spawnOneFirefly(layer);
+  }
+  // Occasionally add/remove a firefly to keep it feeling alive
+  _fireflyInterval=setInterval(function(){
+    if(!_starryActive)return;
+    var layer2=document.getElementById('firefliesLayer');
+    if(!layer2)return;
+    var old=layer2.querySelectorAll('.firefly');
+    // Replace a random one
+    var idx=Math.floor(Math.random()*old.length);
+    if(old[idx])old[idx].remove();
+    _spawnOneFirefly(layer2);
+  },3200);
+}
+
+function _spawnOneFirefly(layer){
+  var f=document.createElement('div');
+  f.className='firefly';
+  var sz=_starryRand(3,7);             // 3–7px -- noticeably larger than stars
+  var top=_starryRand(10,85);          // anywhere in the bottom overlay
+  var left=_starryRand(3,96);
+  var pdur=_starryRand(2.2,5.0);       // pulse duration
+  var ddur=_starryRand(7,14);          // drift duration (slow)
+  var pDelay=_starryRand(0,4);
+  var dDelay=_starryRand(0,6);
+  // Small random drift vectors
+  function rv(){return (_starryRand(8,22)*(Math.random()>0.5?1:-1)).toFixed(1)+'px';}
+  function rvy(){return (-_starryRand(4,20)).toFixed(1)+'px';}
+  f.style.cssText=[
+    'width:'+sz+'px',
+    'height:'+sz+'px',
+    'top:'+top+'%',
+    'left:'+left+'%',
+    '--pdur:'+pdur+'s',
+    '--ddur:'+ddur+'s',
+    'animation-delay:'+pDelay+'s,'+dDelay+'s',
+    '--dx1:'+rv(),'--dy1:'+rvy(),
+    '--dx2:'+rv(),'--dy2:'+rvy(),
+    '--dx3:'+rv(),'--dy3:'+rvy(),
+    '--dx4:'+rv(),'--dy4:'+rvy(),
+    'opacity:0'
+  ].join(';');
+  layer.appendChild(f);
+}
+
+// -- Storm theme: rain + lightning --------------------------------
+var _stormActive=false;
+var _stormRainInterval=null;
+var _stormRainStreaks=[];
+
+function _stormStart(){
+  if(_stormActive)return;
+  _stormActive=true;
+  _spawnRain();
+}
+
+function _stormStop(){
+  _stormActive=false;
+  if(_stormRainInterval){clearInterval(_stormRainInterval);_stormRainInterval=null;}
+  var layer=document.getElementById('stormLayer');
+  if(layer)layer.querySelectorAll('.rain-streak').forEach(function(e){e.remove();});
+}
+
+function _spawnRain(){
+  var layer=document.getElementById('stormLayer');
+  if(!layer)return;
+  // 140 streaks staggered across the first cycle, then loop indefinitely.
+  // No self-destruct timeout -- the animation is infinite so streaks just keep falling.
+  for(var i=0;i<140;i++){
+    _spawnOneRainStreak(layer);
+  }
+}
+
+function _spawnOneRainStreak(layer){
+  var r=document.createElement('div');
+  r.className='rain-streak';
+  var left=_starryRand(0,100);
+  var dur=_starryRand(0.50,0.90);
+  var del=_starryRand(0,dur);    // stagger so they don't all start together
+  var len=_starryRand(12,36);
+  var ang=_starryRand(10,20);
+  r.style.cssText=[
+    'left:'+left+'%',
+    'height:'+len+'px',
+    '--rdur:'+dur+'s',
+    '--rdel:'+del+'s',
+    '--rang:'+ang+'deg'
+  ].join(';');
+  layer.appendChild(r);
+}
+function _emsStartEmbers(){
+  _emsStopEmbers();
+  if(!container)return;
+  _emsEmberInterval=setInterval(function(){
+    if(document.body.getAttribute('data-theme')!=='fire'){_emsStopEmbers();return;}
+    var e=document.createElement('div');
+    e.className='ember';
+    e.style.left=(Math.random()*96+2)+'%';
+    e.style.bottom='0';
+    e.style.setProperty('--dx',((Math.random()-0.5)*60)+'px');
+    var sz=Math.random()*4+2;
+    e.style.width=sz+'px';e.style.height=sz+'px';
+    var dur=1.2+Math.random()*1.6;
+    e.style.animationDuration=dur+'s';
+    e.style.animationDelay=(Math.random()*0.5)+'s';
+    container.appendChild(e);
+    setTimeout(function(){if(e.parentNode)e.parentNode.removeChild(e);},(dur+0.6)*1000);
+  },280);
+}
+function _emsStopEmbers(){
+  if(_emsEmberInterval){clearInterval(_emsEmberInterval);_emsEmberInterval=null;}
+  var container=document.getElementById('emsFire');
+  if(container)container.innerHTML='';
+}
+
+function renderThemeSelector(){
+  var el=document.getElementById('themeSelector');
+  if(!el)return;
+  var currentTheme=(state.settings&&state.settings.theme)||'dark';
+  var cfg=getTierConfig();
+  el.innerHTML=THEMES.map(function(t){
+    var allowed=BETA_ALL_THEMES||cfg.allowedThemeTiers.indexOf(t.tier)>=0;
+    var active=t.key===currentTheme?' active':'';
+    var tierLabel=t.tier.charAt(0).toUpperCase()+t.tier.slice(1);
+    var tierClass='theme-tier-'+t.tier;
+    if(!allowed){
+      return '<button class="theme-btn theme-btn-locked" onclick="_tierUpgradeToast()" title="Upgrade to '+tierLabel+' to unlock">'+
+        '<div class="theme-swatch" style="position:relative;">'+
+          '<div class="theme-swatch-bg" style="background:'+t.bg+';opacity:0.4;"></div>'+
+          '<div class="theme-swatch-accent" style="background:'+t.accent+';opacity:0.4;"></div>'+
+          '<span style="position:absolute;inset:0;display:flex;align-items:center;justify-content:center;font-size:11px;">🔒</span>'+
+        '</div>'+
+        '<div class="theme-btn-name" style="opacity:0.4;">'+t.name+'</div>'+
+        '<span class="theme-tier-badge '+tierClass+'">'+tierLabel+'</span>'+
+      '</button>';
+    }
+    return '<button class="theme-btn'+active+'" onclick="applyTheme(\''+t.key+'\')">'+
+      '<div class="theme-swatch">'+
+        '<div class="theme-swatch-bg" style="background:'+t.bg+';"></div>'+
+        '<div class="theme-swatch-accent" style="background:'+t.accent+';"></div>'+
+      '</div>'+
+      '<div class="theme-btn-name">'+t.name+'</div>'+
+      '<span class="theme-tier-badge '+tierClass+'">'+tierLabel+'</span>'+
+    '</button>';
+  }).join('');
+}
+
+function _applySavedTheme(){
+  var saved=(state.settings&&state.settings.theme)||'dark';
+  if(saved!=='dark'){
+    document.body.setAttribute('data-theme',saved);
+  }
+  var theme=THEMES.find(function(t){return t.key===saved;});
+  if(theme){
+    var metas=document.querySelectorAll('meta[name="theme-color"]');
+    metas.forEach(function(m){m.setAttribute('content',theme.bg);});
+  }
+  _emsUpdateOverlays(saved);
+}
+
+
+async function initApp(){
+await load();
+initPanelVisibility();applyPanelOrder();applyPanelVisibility();updateLockUI();updateClock();updateTimeLeft();setInterval(updateClock,1000);setInterval(updateTimeLeft,30000);updateTimerDisplay();renderPointsBadge();awardDailyLogin();
+// -- DAILY ROUTINE RESET -- robust against tabs left open overnight --
+// 1. Run once immediately after load so stale checks clear before the user sees them.
+// 2. Poll every 60s for the date change.
+// 3. Also re-check whenever the tab becomes visible again (handles iOS/PWA where
+//    a backgrounded app may not fire intervals for hours but will fire visibilitychange).
+try { checkDailyRoutineReset(); } catch(e){}
+setInterval(checkDailyRoutineReset,60000);
+document.addEventListener('visibilitychange',function(){
+  if(!document.hidden){
+    try { checkDailyRoutineReset(); } catch(e){}
+  }
+});
+window.addEventListener('focus',function(){ try { checkDailyRoutineReset(); } catch(e){} });
+
+// -- Reminder auto-schedule + popup (deferred so Firestore data is loaded) --
+setTimeout(function(){
+  try { autoScheduleTodayReminders(); } catch(e){console.warn('[reminders] auto-schedule failed',e);}
+  try { checkAndShowReminderPopup(); } catch(e){console.warn('[reminders] popup failed',e);}
+},1500);
+
+// =======================================
+// PULL-TO-REFRESH (mobile)
+// =======================================
+(function(){
+  var THRESHOLD=70;        // px to drag before refresh fires
+  var MAX_PULL=120;        // max visual drag distance
+  var DAMPING=0.5;         // resistance after threshold
+  var startY=0,currentY=0,pulling=false,refreshing=false;
+  var ind=null;
+  
+  function getIndicator(){
+    if(!ind)ind=document.getElementById('ptrIndicator');
+    return ind;
+  }
+  
+  function updateIndicator(distance){
+    var el=getIndicator();
+    if(!el)return;
+    if(distance<=0){
+      el.style.transform='translate(-50%,-100%)';
+      el.classList.remove('visible','threshold-met');
+      return;
+    }
+    var capped=Math.min(distance,MAX_PULL);
+    // Translate down: at 0 it's offscreen (-100%), at THRESHOLD it should be at ~12px below top
+    var offsetPx=Math.min(capped*0.6,80);
+    el.style.transform='translate(-50%,calc(-100% + '+offsetPx+'px))';
+    el.classList.add('visible');
+    if(distance>=THRESHOLD){
+      el.classList.add('threshold-met');
+    }else{
+      el.classList.remove('threshold-met');
+    }
+  }
+  
+  function reset(){
+    var el=getIndicator();
+    if(el){
+      el.style.transition='transform 0.25s ease,opacity 0.2s';
+      el.style.transform='translate(-50%,-100%)';
+      el.classList.remove('visible','threshold-met','refreshing');
+      setTimeout(function(){if(el)el.style.transition='';},300);
+    }
+    pulling=false;
+    startY=0;currentY=0;
+  }
+  
+  async function triggerRefresh(){
+    if(refreshing)return;
+    refreshing=true;
+    var el=getIndicator();
+    if(el){
+      el.classList.add('refreshing','visible');
+      el.classList.remove('threshold-met');
+      el.style.transform='translate(-50%,calc(-100% + 80px))';
+    }
+    try{
+      if(typeof load==='function')await load();
+      if(typeof renderProjects==='function')renderProjects();
+      if(typeof renderReminders==='function')renderReminders();
+      if(typeof renderNotes==='function')renderNotes();
+      if(typeof renderTaskList==='function')renderTaskList();
+      if(typeof renderTimeline==='function')renderTimeline();
+      if(typeof renderRoutines==='function')renderRoutines();
+      if(typeof updateAllTileSummaries==='function')updateAllTileSummaries();
+      if(typeof buildMobileHome==='function')buildMobileHome();
+      if(typeof toast==='function')toast('Refreshed');
+    }catch(e){
+      console.warn('[PTR] refresh error:',e);
+    }
+    // Hold the spinner briefly so user sees the refresh happened
+    setTimeout(function(){
+      refreshing=false;
+      reset();
+    },600);
+  }
+  
+  // Only attach on touch devices
+  if(!('ontouchstart' in window))return;
+  
+  var container=null;
+  function ensureContainer(){
+    // In the new vertical layout, panels scroll inside app-wrap or the window
+    if(!container)container=document.querySelector('.app-wrap')||document.documentElement;
+    return container;
+  }
+  
+  document.addEventListener('touchstart',function(e){
+    if(refreshing)return;
+    if(!_isMobile())return; // Only on mobile
+    var c=ensureContainer();
+    if(!c)return;
+    // Only fire if scroll is at top (check both element and window scroll)
+    var scrollTop=c.scrollTop||window.pageYOffset||0;
+    if(scrollTop>0)return;
+    startY=e.touches[0].clientY;
+    currentY=startY;
+    pulling=true;
+  },{passive:true});
+  
+  document.addEventListener('touchmove',function(e){
+    if(!pulling||refreshing)return;
+    currentY=e.touches[0].clientY;
+    var delta=currentY-startY;
+    // If user scrolls UP (delta<0) or we lose top contact, cancel
+    if(delta<=0){
+      updateIndicator(0);
+      return;
+    }
+    var c=ensureContainer();
+    if(c){
+      var scrollTop=c.scrollTop||window.pageYOffset||0;
+      if(scrollTop>0){
+        pulling=false;
+        updateIndicator(0);
+        return;
+      }
+    }
+    // Apply damping past threshold
+    var dist=delta;
+    if(dist>THRESHOLD)dist=THRESHOLD+(dist-THRESHOLD)*DAMPING;
+    updateIndicator(dist);
+  },{passive:true});
+  
+  document.addEventListener('touchend',function(){
+    if(!pulling||refreshing)return;
+    var delta=currentY-startY;
+    if(delta>=THRESHOLD){
+      triggerRefresh();
+    }else{
+      reset();
+    }
+  },{passive:true});
+  
+  document.addEventListener('touchcancel',function(){
+    if(!pulling||refreshing)return;
+    reset();
+  },{passive:true});
+})();
+
+
+
+
+document.addEventListener('visibilitychange',function(){if(!document.hidden){awardDailyLogin();renderTimeline();}});
+
+renderProjects();renderReminders();renderThoughts();renderNotes();renderRoutines();renderTaskList();renderTimeline();checkDailyRoutineReset();newDecisionPrompt();initDragDrop();updateAllTileSummaries();_applySavedTheme();renderThemeSelector();applyTierGating();
+if(_isMobile()){showMobileHome();}else{document.querySelector('.header')&&document.querySelector('.header').classList.add('mobile-visible');}
+if(state.energy){const c=document.querySelectorAll('#energyPills .em-pill');const m=['high','good','low','crashed'];const i=m.indexOf(state.energy);if(i>=0)c[i].classList.add('selected');}
+if(state.mood){const c=document.querySelectorAll('#moodPills .em-pill');const m=['focused','scattered','anxious','calm'];const i=m.indexOf(state.mood);if(i>=0)c[i].classList.add('selected');}
+showStateAdvice();updateWellnessVisibility();
+startRealtimeSync();
+showAdminPanel();
+// --- Service Worker registration + one-time auto-reload on update ---
+// When the SW updates (e.g. you ship a new sw.js or bump CACHE_VERSION),
+// `controllerchange` fires once a new SW takes control. We reload the
+// page so it picks up the latest index.html. Guarded by sessionStorage
+// so it can't loop within a session.
+if('serviceWorker' in navigator){
+  navigator.serviceWorker.register('sw.js', {updateViaCache:'none'})
+    .then(function(reg){
+      // Force a check for updates on every page load (cheap, no-op if nothing changed)
+      try { reg.update(); } catch(e) {}
+      // When a new SW is found, push it to activate ASAP -- iOS PWAs otherwise
+      // cling to the old worker (and old HTML) across warm resumes.
+      reg.addEventListener('updatefound', function(){
+        var nw=reg.installing;
+        if(!nw)return;
+        nw.addEventListener('statechange', function(){
+          if(nw.state==='installed' && navigator.serviceWorker.controller){
+            try{ nw.postMessage({type:'SKIP_WAITING'}); }catch(e){}
+          }
+        });
+      });
+    })
+    .catch(function(e){console.log('SW:',e);});
+  // iOS PWAs resume from the background without re-checking for updates on
+  // their own, so force an update check every time the app becomes visible.
+  document.addEventListener('visibilitychange', function(){
+    if(document.visibilityState!=='visible')return;
+    navigator.serviceWorker.getRegistration().then(function(reg){
+      if(reg){ try{ reg.update(); }catch(e){} }
+    });
+  });
+  navigator.serviceWorker.addEventListener('controllerchange', function(){
+    if (sessionStorage.getItem('_swReloaded')) return;
+    sessionStorage.setItem('_swReloaded', '1');
+    window.location.reload();
+  });
+}
+// --- iOS: zoom back out when leaving a text field (no rotation needed) ---
+// On iOS, focusing a field with font-size < 16px auto-zooms in and never
+// resets on blur. Keep that helpful zoom-in, but when focus leaves a field
+// (and no other field is focused) briefly clamp the viewport to scale 1.0 --
+// which snaps the page back out -- then restore the zoomable viewport so
+// pinch-zoom and the next field's zoom-in still work.
+(function(){
+  if(!('ontouchstart' in window))return;
+  var vp=document.querySelector('meta[name="viewport"]');
+  if(!vp)return;
+  var zoomable=vp.getAttribute('content');
+  var clamped=zoomable+', maximum-scale=1.0';
+  function isField(el){return el&&/^(INPUT|TEXTAREA|SELECT)$/.test(el.tagName);}
+  document.addEventListener('focusin',function(e){
+    if(isField(e.target))vp.setAttribute('content',zoomable);
+  });
+  document.addEventListener('focusout',function(e){
+    if(!isField(e.target))return;
+    setTimeout(function(){
+      if(isField(document.activeElement))return; // moved to another field -- keep zoom
+      vp.setAttribute('content',clamped);        // snap back out to scale 1.0
+      setTimeout(function(){vp.setAttribute('content',zoomable);},350); // re-allow zoom
+    },0);
+  });
+})();
+// Handle Web Share Target inbound data
+setTimeout(checkShareTarget, 400); // slight delay so panels render first
+}
+// Auth is handled by Firebase onAuthStateChanged listener in Script 1
+
+// ── SCRIPT 4: JARVIS + CALENDAR ─────────────────────────────────
+// =======================================
+// JARVIS -- AI ASSISTANT
+// =======================================
+
+// -- Proxy config -----------------------------------------------------
+// JARVIS_PROXY_URL is defined in config.js
+var _jarvisOpen=false;
+var _jarvisHistory=[]; // {role:'user'|'assistant', content:'...'}
+var _jarvisThinking=false;
+var _jarvisSpeech=null;
+var _jarvisListening=false;
+var _jarvisMode='chat'; // 'chat' | 'breakdown:projects' | 'breakdown:tasks'
+
+var JARVIS_SYSTEM=function(){
+  var today=new Date();
+  var dateStr=today.toLocaleDateString('en-US',{weekday:'long',month:'long',day:'numeric',year:'numeric'});
+  var timeStr=today.toLocaleTimeString('en-US',{hour:'numeric',minute:'2-digit'});
+  var todayKey=today.toISOString().slice(0,10);
+
+  // -- Build COMPLETE structured context ---------------------------
+  // Projects with all subtasks (full detail)
+  var projects=(state.projects||[]).map(function(p){
+    return {
+      id:p.id,
+      name:p.name,
+      due:p.due||null,
+      subtaskCount:(p.subtasks||[]).length,
+      subtasks:(p.subtasks||[]).map(function(st){
+        return {
+          name:st.name,
+          due:st.due||null,
+          priority:st.priority||'med',
+          timeEst:st.timeEst||null,
+          done:!!st.done
+        };
+      })
+    };
+  });
+
+  // All standalone tasks
+  var tasks=(state.tasks||[]).filter(function(t){return !t.done;}).map(function(t){
+    var projName='';
+    if(t.projectId){
+      var p=(state.projects||[]).find(function(p){return p.id===t.projectId;});
+      if(p)projName=p.name;
+    }
+    if(!projName&&t.projectIds&&t.projectIds.length){
+      var names=t.projectIds.map(function(pid){
+        var p=(state.projects||[]).find(function(p){return p.id===pid;});
+        return p?p.name:null;
+      }).filter(Boolean);
+      projName=names.join(', ');
+    }
+    return {
+      name:t.name,
+      due:t.due||null,
+      priority:t.priority||'med',
+      timeEst:t.timeEst||null,
+      project:projName||null
+    };
+  });
+
+  // All notes (truncate body to keep size sane)
+  var notes=(state.notes||[]).map(function(n){
+    var body=(n.body||'').slice(0,300);
+    if((n.body||'').length>300)body+='...';
+    var projNames=[];
+    if(n.projectIds&&n.projectIds.length){
+      projNames=n.projectIds.map(function(pid){
+        var p=(state.projects||[]).find(function(p){return p.id===pid;});
+        return p?p.name:null;
+      }).filter(Boolean);
+    }
+    return {label:n.label||'',body:body,projects:projNames};
+  });
+
+  // All upcoming reminders (future or undated)
+  var reminders=(state.reminders||[]).filter(function(r){
+    return !r.date||r.date>=todayKey;
+  }).map(function(r){
+    var projNames=[];
+    if(r.projectIds&&r.projectIds.length){
+      projNames=r.projectIds.map(function(pid){
+        var p=(state.projects||[]).find(function(p){return p.id===pid;});
+        return p?p.name:null;
+      }).filter(Boolean);
+    }
+    return {text:r.text,date:r.date||null,time:r.time||null,projects:projNames};
+  });
+
+  // Recent completed tasks (last 20)
+  var completed=(state.completedTasks||[]).slice(0,20).map(function(ct){
+    return {name:ct.name,project:ct.projectName||null,archivedAt:ct.archivedAt||null};
+  });
+
+  // Completed/archived projects
+  var archivedProjects=(state.completedProjects||[]).map(function(cp){
+    return {name:cp.name,completedTaskCount:cp.completedTaskCount||0,archivedAt:cp.archivedAt||null};
+  });
+
+  // Wellness notes (your reflections on the 8 SAMHSA dimensions)
+  var wellness=[];
+  var wn=state.wellnessNotes||{};
+  Object.keys(wn).forEach(function(k){
+    if(wn[k]&&wn[k].note){
+      wellness.push({dimension:k,note:wn[k].note,updatedAt:wn[k].updatedAt||null});
+    }
+  });
+
+  // Routines status today
+  var routines={};
+  ['morning','evening','custom'].forEach(function(tab){
+    if(state.routines&&state.routines[tab]){
+      routines[tab]=state.routines[tab].map(function(r){return {name:r.name,done:!!r.done};});
+    }
+  });
+
+  // Energy/Mood
+  var energyMood={};
+  if(state.energyEntries&&state.energyEntries.length){
+    var latestE=state.energyEntries[state.energyEntries.length-1];
+    energyMood.energy={level:latestE.level,note:latestE.note||'',time:latestE.time||null};
+  }
+  if(state.moodEntries&&state.moodEntries.length){
+    var latestM=state.moodEntries[state.moodEntries.length-1];
+    energyMood.mood={value:latestM.value,note:latestM.note||'',time:latestM.time||null};
+  }
+
+  // Points/tier status
+  var pointsInfo={
+    current:(state.points&&state.points.current)||0,
+    lifetimeTotal:(state.points&&state.points.lifetimeTotal)||0,
+    tier:_jarvisCurrentTier()
+  };
+
+  // Timeline blocks -- manually scheduled items (name, date, time, duration, project)
+  // Include blocks from the past 24h through the next 14 days so Axis can read today's schedule
+  var tlCutoffPast=new Date();tlCutoffPast.setDate(tlCutoffPast.getDate()-1);
+  var tlCutoffPastStr=tlCutoffPast.toISOString().slice(0,10);
+  var tlCutoffFuture=new Date();tlCutoffFuture.setDate(tlCutoffFuture.getDate()+14);
+  var tlCutoffFutureStr=tlCutoffFuture.toISOString().slice(0,10);
+  var timelineBlocks=(state.tlBlocks||[])
+    .filter(function(b){return b.date&&b.date>=tlCutoffPastStr&&b.date<=tlCutoffFutureStr;})
+    .sort(function(a,b){return (a.date+' '+(a.time||'')).localeCompare(b.date+' '+(b.time||''));})
+    .map(function(b){
+      var projName='';
+      var pid=b.projectId||(b.projectIds&&b.projectIds[0]);
+      if(pid){var pr=(state.projects||[]).find(function(p){return p.id===pid;});if(pr)projName=pr.name;}
+      return {
+        name:b.name,
+        date:b.date,
+        time:b.time||null,
+        durationMinutes:b.duration||60,
+        project:projName||null,
+        priority:b.priority||'med',
+        type:b.linkedType||'manual'
+      };
+    });
+
+  var context={
+    today:dateStr,
+    time:timeStr,
+    todayDate:todayKey,
+    projects:projects,
+    standaloneTasks:tasks,
+    notes:notes,
+    upcomingReminders:reminders,
+    recentlyCompletedTasks:completed,
+    archivedProjects:archivedProjects,
+    wellnessReflections:wellness,
+    todaysRoutines:routines,
+    energyMood:energyMood,
+    timelineBlocks:timelineBlocks,
+    points:pointsInfo
+  };
+
+  // -- BREAKDOWN MODE: focused system prompt for AI task-breakdown --
+  if(_jarvisMode==='breakdown:projects'||_jarvisMode==='breakdown:tasks'){
+    var ordered=_jarvisBuildBreakdownContext(_jarvisMode==='breakdown:projects'?'projects':'tasks');
+    var scopeLabel=_jarvisMode==='breakdown:projects'?'project':'task';
+    return 'You are Axis in BREAKDOWN MODE inside Centerpost -- a productivity dashboard built and used by Joe, a firefighter/paramedic with 30+ years experience and ADHD. It is now '+dateStr+', '+timeStr+'.\n\n'
+      +'Your single job: break a chosen '+scopeLabel+' into actionable micro-steps for an ADHD brain.\n\n'
+      +'The user\'s items are listed below in suggested completion order: not-done before done; within not-done: overdue → today → tomorrow → later → undated; tiebreak by priority (high → med → low), then shorter time-estimate first to reduce initiation friction.\n\n'
+      +'=== ITEMS IN COMPLETION ORDER ===\n'+ordered+'\n=== END ITEMS ===\n\n'
+      +'CRITICAL OUTPUT FORMAT: respond with ONLY a raw JSON object -- no markdown fences. Format: {"reply":"...","actions":[]}. In breakdown mode you NEVER use actions -- leave the array empty and put the breakdown inside reply.\n\n'
+      +'When the user names or numbers an item, do this:\n'
+      +'1. Acknowledge which one in ONE short line.\n'
+      +'2. Produce 3–8 micro-steps in the order they should be done. Each step must be small enough to start in under 2 minutes.\n'
+      +'3. Mark the very first step with "🚀 START HERE".\n'
+      +'4. If any step would take more than 30 minutes, split it further.\n'
+      +'5. End with one line beginning "First physical action:" -- what the user\'s hands should literally do right now (open a tab, pick up a phone, walk to a room, etc.).\n\n'
+      +'Style: no preambles, no "great choice," no over-explaining. Joe dislikes filler. Use \\n inside the reply string for line breaks. Number the steps 1. 2. 3. For subtasks of a step, indent with two spaces.\n\n'
+      +'If the user types something that does not match any listed item, ask once for clarification and re-show the top 5 items by completion order.';
+  }
+
+  return 'You are Axis, an AI assistant embedded in Centerpost -- a personal ADHD-aware productivity dashboard built and used by Joe, a firefighter/paramedic with 30+ years experience, EMS leadership role at Fishers Public Safety, and college instructor in cognitive psychology / sensation & perception. He is ADHD with an ENFP profile.\n\nIt is now '+dateStr+', '+timeStr+'.\n\nYou have FULL access to the dashboard state below. Reference it precisely to answer questions about due dates, subtasks, projects, completed work, wellness reflections, routines, energy/mood, or anything else.\n\n=== DATA FIELD GUIDE ===\n- timelineBlocks = items manually scheduled on the TIMELINE PANEL (name, date, time, duration). Use THIS field for any question about the timeline, schedule, or blocked time. Do NOT substitute task due dates for timeline questions.\n- standaloneTasks / projects = task list and project subtasks. Use for task management questions.\n- upcomingReminders = reminders panel items.\n\n=== DASHBOARD STATE ===\n'+JSON.stringify(context,null,2)+'\n=== END STATE ===\n\nCRITICAL OUTPUT FORMAT: Respond with ONLY a raw JSON object. No markdown, no code fences, no explanation before or after. Format: {"reply":"...","actions":[]}\n\n=== RESPONSE STYLE RULES (STRICT -- ADHD-OPTIMIZED) ===\n\n1. **Count questions get count-first replies.** When asked "how many" or for any count: give the NUMBER first, then a single short urgency flag if applicable, then offer to expand. Maximum 2 short sentences.\n   - Example query: "How many tasks do I have?"\n   - GOOD reply: "You have 14 open tasks. 3 are high priority and 2 are overdue. Want me to list them?"\n   - GOOD reply: "8 active projects. All on track. Want me to list them by due date?"\n   - BAD reply: "You currently have 14 open tasks across 5 projects. The high priority ones are [lists everything]..." -- TOO MUCH UPFRONT.\n\n2. **List questions still default to a summary.** Even for "show me" or "what are", lead with a count + urgency summary, then offer to expand UNLESS the user explicitly said "list them all" or "show me each."\n   - "What\\\'s due this week?" → "6 items due this week, 2 today. Want the full list or just today\\\'s?"\n\n3. **Always end open-ended summary replies with an expansion offer** ("Want me to list them?", "Want details?", "Want today\\\'s breakdown?"). Phrase it naturally, not robotically.\n\n4. **If urgency flagging would clutter the reply, omit it.** No flag needed when nothing is high-priority and nothing is overdue.\n\n5. **Definitions of urgency flags:**\n   - "Overdue" = due date is BEFORE today\\\'s date '+todayKey+'.\n   - "High priority" = priority field === "high".\n   - "Due today" = due date === '+todayKey+'.\n\n6. **For action confirmations after add/complete/etc**: One short sentence. "Added \\\'Call dispatch\\\' as high priority, due tomorrow." No follow-up question needed.\n\n7. **For specific data lookups** (e.g. "when is X due", "what\\\'s the priority of Y"): Direct answer, no expansion offer.\n\n8. **Once the user confirms they want details**, THEN provide the full list -- but still use compact formatting: each item on one line with priority/due in parentheses. Group by project or urgency if list >8 items.\n\n=== ACTION TYPES ===\n{"type":"add_task","name":"string","priority":"low|med|high","due":"YYYY-MM-DD or null"}\n{"type":"add_project","name":"string","due":"YYYY-MM-DD or null"}\n{"type":"add_subtask","projectName":"string","name":"string","priority":"low|med|high","due":"YYYY-MM-DD or null"}\n{"type":"add_note","label":"string","body":"string"}\n{"type":"add_reminder","text":"string","date":"YYYY-MM-DD or null","time":"HH:MM or null"}\n{"type":"complete_task","name":"string"}\n\nFor pure questions with no state changes, use actions:[]. Parse relative dates using today\\\'s date.\n\n=== TIMELINE READOUT FORMAT ===\nWhen the user asks what is on their timeline (any phrasing: \"what\\\'s on my timeline\", \"what do I have scheduled\", \"read my timeline\", \"what\\\'s tomorrow\", etc.) ALWAYS read out the full list of blocks directly. Do NOT use the count-first-then-offer pattern for timeline questions -- just give the items. Format each entry as \"{time} -- {name}\" only. Do NOT include duration, project, or priority unless the user explicitly asks. If there are no blocks, say so directly. Example reply: \"3 blocks tomorrow: 9:00 AM -- Station meeting, 1:30 PM -- Report writing, 3:00 PM -- Training review.\"';
+};
+
+function _jarvisCurrentTier(){
+  var current=(state.points&&state.points.current)||0;
+  if(current>=1500)return 'Mythic';
+  if(current>=700)return 'Diamond';
+  if(current>=300)return 'Gold';
+  if(current>=100)return 'Silver';
+  return 'Bronze';
+}
+
+// === BREAKDOWN MODE ===
+// Order items by suggested completion sequence:
+//   1. Not-done first (done items sink to bottom)
+//   2. Due bucket: overdue → today → tomorrow → later → undated
+//   3. Priority: high → med → low
+//   4. Shorter time-estimate first (lowest initiation friction)
+function _jarvisOrderByCompletion(items){
+  var PRI={high:0,med:1,medium:1,low:2};
+  var t=new Date();t.setHours(0,0,0,0);
+  function bucket(dateStr){
+    if(!dateStr)return 4;
+    var d=new Date(dateStr+'T00:00:00');
+    if(isNaN(d.getTime()))return 4;
+    var diffDays=Math.round((d-t)/86400000);
+    if(diffDays<0)return 0;        // overdue
+    if(diffDays===0)return 1;      // today
+    if(diffDays===1)return 2;      // tomorrow
+    return 3;                      // later
+  }
+  function timeMin(v){
+    if(v===null||v===undefined||v==='')return 999;
+    var n=parseInt(v,10);
+    return isNaN(n)?999:n;
+  }
+  return items.slice().sort(function(a,b){
+    if(!!a.done!==!!b.done)return a.done?1:-1;
+    var db=bucket(a.due)-bucket(b.due);
+    if(db)return db;
+    var pr=(PRI[(a.priority||'med').toLowerCase()]??3)-(PRI[(b.priority||'med').toLowerCase()]??3);
+    if(pr)return pr;
+    return timeMin(a.timeEst)-timeMin(b.timeEst);
+  });
+}
+
+function _jarvisFmtDate(d){
+  if(!d)return '';
+  var dt=new Date(d+'T00:00:00');
+  if(isNaN(dt.getTime()))return d;
+  var today=new Date();today.setHours(0,0,0,0);
+  var diff=Math.round((dt-today)/86400000);
+  if(diff<0)return 'OVERDUE '+dt.toLocaleDateString('en-US',{month:'short',day:'numeric'});
+  if(diff===0)return 'today';
+  if(diff===1)return 'tomorrow';
+  return dt.toLocaleDateString('en-US',{month:'short',day:'numeric'});
+}
+
+// Build the markdown-style context the AI sees in breakdown mode
+function _jarvisBuildBreakdownContext(scope){
+  var out='';
+  var mark=function(x){return x.done?'✓':'○';};
+
+  if(scope==='projects'){
+    // Project objects need a 'due' alias for the sort helper (they use p.due directly -- already matches)
+    var projOrdered=_jarvisOrderByCompletion((state.projects||[]).map(function(p){
+      // Project is "done" if all subtasks are done AND it has subtasks
+      var allDone=(p.subtasks||[]).length>0&&(p.subtasks||[]).every(function(s){return s.done;});
+      // Highest-priority subtask floats project up (use 'high' if any subtask is high)
+      var hasHigh=(p.subtasks||[]).some(function(s){return s.priority==='high';});
+      var hasMed=(p.subtasks||[]).some(function(s){return s.priority==='med';});
+      return {_orig:p,id:p.id,name:p.name,due:p.due,done:allDone,priority:hasHigh?'high':(hasMed?'med':'low'),timeEst:''};
+    }));
+    out+='Projects (in suggested completion order):\n\n';
+    projOrdered.forEach(function(po,i){
+      var p=po._orig;
+      var dueTxt=p.due?' -- due '+_jarvisFmtDate(p.due):'';
+      out+=(i+1)+'. '+mark(po)+' '+p.name+dueTxt+'\n';
+      // Subtasks for this project, also ordered
+      var subs=_jarvisOrderByCompletion(p.subtasks||[]);
+      subs.forEach(function(s){
+        var bits=[];
+        if(s.timeEst)bits.push(s.timeEst+'m');
+        if(s.priority&&s.priority!=='med')bits.push(s.priority);
+        if(s.due)bits.push('due '+_jarvisFmtDate(s.due));
+        var meta=bits.length?' ['+bits.join(' · ')+']':'';
+        out+='   - '+mark(s)+' '+s.name+meta+'\n';
+      });
+      // Standalone tasks linked to this project
+      var linked=(state.tasks||[]).filter(function(t){
+        return t.projectId===p.id||(t.projectIds&&t.projectIds.indexOf(p.id)>=0);
+      });
+      _jarvisOrderByCompletion(linked).forEach(function(t){
+        var bits=[];
+        if(t.timeEst)bits.push(t.timeEst+'m');
+        if(t.priority&&t.priority!=='med')bits.push(t.priority);
+        if(t.due)bits.push('due '+_jarvisFmtDate(t.due));
+        var meta=bits.length?' ['+bits.join(' · ')+']':'';
+        out+='   - '+mark(t)+' '+t.name+meta+' (task)\n';
+      });
+      out+='\n';
+    });
+  } else if(scope==='tasks'){
+    // All tasks: standalone tasks + every project subtask, flattened and ordered
+    var all=[];
+    (state.tasks||[]).forEach(function(t){
+      var pName='';
+      if(t.projectId){var p=(state.projects||[]).find(function(p){return p.id===t.projectId;});if(p)pName=p.name;}
+      if(!pName&&t.projectIds&&t.projectIds.length){
+        pName=t.projectIds.map(function(pid){var p=(state.projects||[]).find(function(p){return p.id===pid;});return p?p.name:null;}).filter(Boolean).join(', ');
+      }
+      all.push({_kind:'task',_proj:pName,name:t.name,due:t.due,priority:t.priority||'med',timeEst:t.timeEst,done:!!t.done});
+    });
+    (state.projects||[]).forEach(function(p){
+      (p.subtasks||[]).forEach(function(s){
+        all.push({_kind:'subtask',_proj:p.name,name:s.name,due:s.due,priority:s.priority||'med',timeEst:s.timeEst,done:!!s.done});
+      });
+    });
+    var ordered=_jarvisOrderByCompletion(all);
+    out+='Tasks (in suggested completion order):\n\n';
+    ordered.forEach(function(t,i){
+      var bits=[];
+      if(t.timeEst)bits.push(t.timeEst+'m');
+      if(t.priority&&t.priority!=='med')bits.push(t.priority);
+      if(t.due)bits.push('due '+_jarvisFmtDate(t.due));
+      var meta=bits.length?' ['+bits.join(' · ')+']':'';
+      var projTag=t._proj?' -- '+t._proj:'';
+      out+=(i+1)+'. '+mark(t)+' '+t.name+projTag+meta+'\n';
+    });
+  }
+  return out||'(no items found)';
+}
+
+// Open the Jarvis panel directly into Breakdown mode
+function openJarvisBreakdown(scope){
+  // scope: 'projects' | 'tasks'
+  _jarvisMode='breakdown:'+scope;
+  _trackEvent('tool_use','jarvis_ai','Jarvis AI');
+  _jarvisHistory=[]; // start fresh -- don't pollute breakdown with prior chat
+
+  // Update panel chrome
+  var panel=document.getElementById('jarvisPanel');
+  var titleEl=document.getElementById('jarvisPanelTitle');
+  var fab=document.getElementById('jarvisFab');
+  if(panel)panel.classList.add('breakdown-mode');
+  if(titleEl)titleEl.textContent='Breakdown';
+
+  // Rebuild the messages area with the ordered preview as a seed assistant message
+  var preview=_jarvisBuildBreakdownContext(scope);
+  var greeting=scope==='projects'
+    ? 'Which project should we break down? Type a number or name from the list below.'
+    : 'Which task should we break down? Type a number or name from the list below.';
+  var container=document.getElementById('jarvisMessages');
+  if(container){
+    container.innerHTML=''; // wipe greeting + any prior chat
+    var seedMsg=document.createElement('div');
+    seedMsg.className='jarvis-msg assistant';
+    var bubble=document.createElement('div');
+    bubble.className='jarvis-msg-bubble';
+    bubble.style.whiteSpace='pre-wrap';
+    bubble.style.fontFamily='ui-monospace, SFMono-Regular, Menlo, monospace';
+    bubble.style.fontSize='12px';
+    bubble.style.lineHeight='1.5';
+    bubble.textContent=greeting+'\n\n'+preview;
+    seedMsg.appendChild(bubble);
+    container.appendChild(seedMsg);
+    container.scrollTop=0;
+    // Seed history so the AI sees what the user sees (they share the same list)
+    _jarvisHistory.push({role:'assistant',content:greeting+'\n\n'+preview});
+  }
+
+  // Open panel if not already open
+  if(!_jarvisOpen){
+    _jarvisOpen=true;
+    if(panel)panel.classList.add('open');
+    if(fab)fab.classList.add('active');
+  }
+
+  // Update input placeholder
+  var inp=document.getElementById('jarvisInput');
+  if(inp){
+    inp.placeholder=scope==='projects'?'Type a project number or name...':'Type a task number or name...';
+    setTimeout(function(){inp.focus();},280);
+  }
+}
+
+// Reset Breakdown mode back to chat (called when panel closes)
+function _jarvisExitBreakdownMode(){
+  if(_jarvisMode==='chat')return;
+  _jarvisMode='chat';
+  var panel=document.getElementById('jarvisPanel');
+  var titleEl=document.getElementById('jarvisPanelTitle');
+  if(panel)panel.classList.remove('breakdown-mode');
+  if(titleEl)titleEl.textContent='Axis';
+  var inp=document.getElementById('jarvisInput');
+  if(inp)inp.placeholder='Ask anything or give a command...';
+  var container=document.getElementById('jarvisMessages');
+  if(container){
+    container.innerHTML='<div class="jarvis-greeting">How can I help you today?</div>';
+  }
+  _jarvisHistory=[];
+}
+
+function toggleJarvis(){
+  _jarvisOpen=!_jarvisOpen;
+  var panel=document.getElementById('jarvisPanel');
+  var fab=document.getElementById('jarvisFab');
+  var tkBtn=document.querySelector('.toolkit-jarvis');
+  panel.classList.toggle('open',_jarvisOpen);
+  if(fab)fab.classList.toggle('active',_jarvisOpen);
+  if(tkBtn)tkBtn.classList.toggle('active',_jarvisOpen);
+  if(!_jarvisOpen){
+    // Closing -- reset breakdown mode so next open is clean chat
+    _jarvisExitBreakdownMode();
+  }
+  if(_jarvisOpen){
+    setTimeout(function(){
+      var inp=document.getElementById('jarvisInput');
+      if(inp)inp.focus();
+    },280);
+  }
+}
+
+function _jarvisAddMessage(role,content,actionSummary){
+  _jarvisHistory.push({role:role,content:content});
+  var container=document.getElementById('jarvisMessages');
+  if(!container)return;
+  var div=document.createElement('div');
+  div.className='jarvis-msg '+role;
+  var bubble=document.createElement('div');
+  bubble.className='jarvis-msg-bubble';
+  bubble.textContent=content;
+  div.appendChild(bubble);
+  if(actionSummary){
+    var act=document.createElement('div');
+    act.className='jarvis-msg-action';
+    act.textContent='✓ '+actionSummary;
+    div.appendChild(act);
+  }
+  container.appendChild(div);
+  container.scrollTop=container.scrollHeight;
+}
+
+function _jarvisShowThinking(){
+  var container=document.getElementById('jarvisMessages');
+  if(!container)return;
+  var div=document.createElement('div');
+  div.className='jarvis-msg assistant';
+  div.id='jarvis-thinking-msg';
+  div.innerHTML='<div class="jarvis-thinking-bubble"><div class="jarvis-reactor"><div class="jarvis-reactor-core"></div></div><div class="jarvis-thinking-label">Processing</div></div>';
+  container.appendChild(div);
+  container.scrollTop=container.scrollHeight;
+  var dot=document.getElementById('jarvisStatusDot');
+  if(dot)dot.classList.add('thinking');
+}
+
+function _jarvisHideThinking(){
+  var el=document.getElementById('jarvis-thinking-msg');
+  if(el)el.remove();
+  var dot=document.getElementById('jarvisStatusDot');
+  if(dot)dot.classList.remove('thinking');
+}
+
+function _jarvisExecuteActions(actions){
+  if(!actions||!actions.length)return '';
+  var done=[];
+  actions.forEach(function(a){
+    try{
+      if(a.type==='add_task'){
+        var t={id:'t'+Date.now()+Math.random().toString(36).slice(2),name:a.name,priority:a.priority||'med',due:a.due||'',projectId:'',projectIds:[],source:'standalone',done:false};
+        if(!state.tasks)state.tasks=[];
+        state.tasks.unshift(t);
+        done.push('Added task: "'+a.name+'"');
+        save();renderTaskList();
+      }else if(a.type==='add_project'){
+        var p={id:'p'+Date.now()+Math.random().toString(36).slice(2),name:a.name,due:a.due||'',subtasks:[],expanded:false};
+        if(!state.projects)state.projects=[];
+        state.projects.push(p);
+        done.push('Added project: "'+a.name+'"');
+        save();renderProjects();
+      }else if(a.type==='add_subtask'){
+        var proj=(state.projects||[]).find(function(p){return p.name.toLowerCase().includes((a.projectName||'').toLowerCase());});
+        if(proj){
+          var st={id:'st'+Date.now()+Math.random().toString(36).slice(2),name:a.name,priority:a.priority||'med',due:a.due||'',done:false};
+          proj.subtasks.push(st);
+          done.push('Added subtask "'+a.name+'" to '+proj.name);
+          save();renderProjects();renderTaskList();
+        }else{done.push('Project "'+a.projectName+'" not found');}
+      }else if(a.type==='add_note'){
+        var n={id:'n'+Date.now()+Math.random().toString(36).slice(2),label:a.label||'',body:a.body||'',projectIds:[],createdAt:new Date().toISOString()};
+        if(!state.notes)state.notes=[];
+        state.notes.unshift(n);
+        done.push('Added note: "'+(a.label||a.body.slice(0,30))+'"');
+        save();renderNotes();
+      }else if(a.type==='add_reminder'){
+        var r={id:'r'+Date.now()+Math.random().toString(36).slice(2),text:a.text,date:a.date||'',time:a.time||'',projectIds:[]};
+        if(!state.reminders)state.reminders=[];
+        state.reminders.push(r);
+        done.push('Added reminder: "'+a.text+'"');
+        save();renderReminders();
+      }else if(a.type==='complete_task'){
+        // Find by name match in tasks or project subtasks
+        var found=false;
+        (state.tasks||[]).forEach(function(t){
+          if(!found&&t.name.toLowerCase().includes((a.name||'').toLowerCase())){
+            toggleTaskDone(t.id,'standalone','');
+            done.push('Completed: "'+t.name+'"');
+            found=true;
+          }
+        });
+        if(!found){
+          (state.projects||[]).forEach(function(pr){
+            (pr.subtasks||[]).forEach(function(st){
+              if(!found&&st.name.toLowerCase().includes((a.name||'').toLowerCase())){
+                toggleSubtask(pr.id,st.id);
+                done.push('Completed: "'+st.name+'"');
+                found=true;
+              }
+            });
+          });
+        }
+        if(!found)done.push('Task "'+a.name+'" not found');
+      }
+    }catch(err){console.error('Jarvis action error:',err);}
+  });
+  updateAllTileSummaries();
+  return done.join('; ');
+}
+
+async function jarvisSend(){
+  var inp=document.getElementById('jarvisInput');
+  if(!inp)return;
+  var text=inp.value.trim();
+  if(!text||_jarvisThinking)return;
+
+  inp.value='';
+  inp.style.height='auto';
+  _jarvisAddMessage('user',text);
+  _jarvisThinking=true;
+  _jarvisShowThinking();
+
+  var sendBtn=document.getElementById('jarvisSendBtn');
+  if(sendBtn)sendBtn.disabled=true;
+
+  // Build messages for API (keep last 8 exchanges for context)
+  var apiMessages=_jarvisHistory.slice(-16).map(function(m){
+    return {role:m.role,content:m.content};
+  });
+
+  try{
+    var endpoint = JARVIS_PROXY_URL || 'https://api.anthropic.com/v1/messages';
+    var res=await fetch(endpoint,{
+      method:'POST',
+      headers:{'Content-Type':'application/json'},
+      body:JSON.stringify({
+        model:'claude-haiku-4-5-20251001',
+        max_tokens:1000,
+        system:JARVIS_SYSTEM(),
+        messages:apiMessages
+      })
+    });
+    
+    // Read raw response text first so we can log and inspect on error
+    var rawText=await res.text();
+    var data;
+    try{data=JSON.parse(rawText);}catch(e){data={parseError:true,raw:rawText};}
+    
+    console.log('[Jarvis] HTTP',res.status,data);
+    _jarvisHideThinking();
+
+    // -- HTTP-level errors ---------------------------------------
+    if(!res.ok){
+      var statusMsg='HTTP '+res.status;
+      var detail='';
+      if(data&&data.error){
+        // Worker error format: {error: "...", detail?: "..."}
+        // Anthropic error format: {type:"error", error:{type:"...", message:"..."}}
+        if(typeof data.error==='string'){
+          detail=data.error+(data.detail?' -- '+data.detail:'');
+        }else if(data.error.message){
+          detail=(data.error.type?'['+data.error.type+'] ':'')+data.error.message;
+        }
+      }else if(data&&data.parseError){
+        detail='Non-JSON response: '+(data.raw||'').slice(0,200);
+      }
+      
+      // Provide actionable guidance for common cases
+      var hint='';
+      if(res.status===401||(detail&&detail.toLowerCase().includes('api key'))){
+        hint=' → Check that ANTHROPIC_API_KEY secret is set on the Cloudflare Worker (Settings → Variables and Secrets).';
+      }else if(res.status===403){
+        hint=' → The Worker is rejecting this origin. Make sure your domain is in ALLOWED_ORIGINS in jarvis-worker.js.';
+      }else if(res.status===404){
+        hint=' → Endpoint not found. Verify JARVIS_PROXY_URL is correct.';
+      }else if(res.status===429){
+        hint=' → Rate limited. Wait a moment and retry.';
+      }else if(res.status===500||res.status===502){
+        hint=' → Worker or upstream error. Check Cloudflare Worker logs (Logs tab in dashboard) for details.';
+      }
+      
+      _jarvisAddMessage('assistant',statusMsg+': '+(detail||'unknown error')+hint);
+      _jarvisThinking=false;
+      if(sendBtn)sendBtn.disabled=false;
+      return;
+    }
+
+    // -- Anthropic error response inside 200 OK (rare but possible) -
+    if(data&&data.type==='error'){
+      var aErr=data.error||{};
+      _jarvisAddMessage('assistant','API error ['+(aErr.type||'unknown')+']: '+(aErr.message||'unknown'));
+      _jarvisThinking=false;
+      if(sendBtn)sendBtn.disabled=false;
+      return;
+    }
+
+    // -- Extract message content --------------------------------
+    var raw='';
+    if(data&&data.content&&Array.isArray(data.content)&&data.content.length>0){
+      // Join all text-type content blocks (model could return multiple)
+      raw=data.content.filter(function(b){return b.type==='text'&&b.text;}).map(function(b){return b.text;}).join('').trim();
+    }
+    if(!raw){
+      _jarvisAddMessage('assistant','Empty response from API. Stop reason: '+(data.stop_reason||'unknown')+'. Check console for full payload.');
+      _jarvisThinking=false;
+      if(sendBtn)sendBtn.disabled=false;
+      return;
+    }
+
+    // Parse JSON response -- robustly extract the JSON object regardless of surrounding text
+    var parsed;
+    try{
+      // Strategy 1: strip markdown fences, try direct parse
+      var clean=raw.replace(/^```json\s*/,'').replace(/^```\s*/,'').replace(/\s*```$/,'').trim();
+      parsed=JSON.parse(clean);
+    }catch(e1){
+      try{
+        // Strategy 2: extract first {...} block from anywhere in the response
+        var start=raw.indexOf('{');
+        var end=raw.lastIndexOf('}');
+        if(start!==-1&&end>start){
+          parsed=JSON.parse(raw.slice(start,end+1));
+        }else{throw new Error('No JSON object found');}
+      }catch(e2){
+        // Strategy 3: treat entire response as plain text reply, no actions
+        parsed={reply:raw,actions:[]};
+      }
+    }
+
+    var reply=parsed.reply||'Done.';
+    var actionSummary=_jarvisExecuteActions(parsed.actions||[]);
+    _jarvisAddMessage('assistant',reply,actionSummary);
+
+  }catch(err){
+    _jarvisHideThinking();
+    var errMsg=err.message||'Unknown error';
+    if(errMsg.includes('Failed to fetch')||errMsg.includes('CORS')||errMsg.includes('NetworkError')){
+      _jarvisAddMessage('assistant','To use Axis on centerpost.app, set your Cloudflare Worker URL in the JARVIS_PROXY_URL constant near the top of the Axis script block. See the jarvis-worker.js and wrangler.toml files for setup instructions.');
+    }else{
+      _jarvisAddMessage('assistant','Something went wrong: '+errMsg);
+    }
+  }
+
+  _jarvisThinking=false;
+  if(sendBtn)sendBtn.disabled=false;
+  var inp2=document.getElementById('jarvisInput');
+  if(inp2)inp2.focus();
+  // Restart wake-word listener once the exchange is complete
+  if(typeof _wakeWordEnabled!=='undefined'&&_wakeWordEnabled&&!_wakeWordActive){
+    setTimeout(_startWakeWord,800);
+  }
+}
+
+// === VOICE INPUT ===
+function jarvisToggleMic(){
+  if(_jarvisListening){_jarvisStopMic();return;}
+  var SR=window.SpeechRecognition||window.webkitSpeechRecognition;
+  if(!SR){toast('Voice input not supported in this browser. Try Chrome.');return;}
+  _jarvisSpeech=new SR();
+  _jarvisSpeech.continuous=false;
+  _jarvisSpeech.interimResults=true;
+  _jarvisSpeech.lang='en-US';
+  var inp=document.getElementById('jarvisInput');
+  _jarvisSpeech.onresult=function(e){
+    var transcript='';
+    for(var i=0;i<e.results.length;i++){transcript+=e.results[i][0].transcript;}
+    if(inp)inp.value=transcript;
+  };
+  _jarvisSpeech.onend=function(){
+    _jarvisListening=false;
+    var btn=document.getElementById('jarvisMicBtn');
+    if(btn)btn.classList.remove('listening');
+    // Auto-send if we got something
+    var val=inp?inp.value.trim():'';
+    if(val)jarvisSend();
+  };
+  _jarvisSpeech.onerror=function(e){
+    _jarvisListening=false;
+    var btn=document.getElementById('jarvisMicBtn');
+    if(btn)btn.classList.remove('listening');
+    if(e.error!=='aborted')toast('Mic error: '+e.error);
+  };
+  _jarvisSpeech.start();
+  _jarvisListening=true;
+  var btn=document.getElementById('jarvisMicBtn');
+  if(btn)btn.classList.add('listening');
+}
+
+function _jarvisStopMic(){
+  if(_jarvisSpeech){try{_jarvisSpeech.stop();}catch(e){}}
+  _jarvisListening=false;
+  var btn=document.getElementById('jarvisMicBtn');
+  if(btn)btn.classList.remove('listening');
+}
+
+// =======================================
+// =======================================================================
+// REMINDER POPUP + AUTO-SCHEDULE ON TIMELINE
+// Runs on app init and on visibility return (handles overnight).
+// =======================================================================
+
+// -- 1. Auto-schedule today's reminders in the first open timeline slot -
+function autoScheduleTodayReminders(){
+  var today=todayStr();
+  var rems=(state.reminders||[]).filter(function(r){
+    return r.date===today && !r._autoScheduled && !r._dismissed;
+  });
+  if(!rems.length)return;
+  if(!state.tlBlocks)state.tlBlocks=[];
+
+  rems.forEach(function(r){
+    // Skip if already on timeline (by linkedId)
+    var alreadyOn=(state.tlBlocks||[]).some(function(b){return b.linkedId===r.id&&b.date===today;});
+    if(alreadyOn){r._autoScheduled=true;return;}
+
+    // Default duration: 30min. If reminder has a time, use that exact slot.
+    var dur=30;
+    var startMin;
+    if(r.time){
+      // Parse HH:MM
+      var parts=r.time.split(':');
+      startMin=parseInt(parts[0],10)*60+(parseInt(parts[1],10)||0);
+    } else {
+      // Find first available 30-min gap from now / 9am, no later than 8pm
+      startMin=_suggestWorkTime?_suggestWorkTime(dur,today):null;
+      if(startMin===null||startMin===undefined){
+        var now=new Date();
+        var nowMin=now.getHours()*60+now.getMinutes();
+        startMin=Math.max(540,Math.ceil(nowMin/30)*30);
+      }
+    }
+
+    var h=Math.floor(startMin/60);
+    var m=startMin%60;
+    var timeStr=(h<10?'0':'')+h+':'+(m<10?'0':'')+m;
+
+    state.tlBlocks.push({
+      id:'rem_tl_'+r.id+'_'+Date.now(),
+      name:'🔔 '+r.text,
+      date:today,
+      time:timeStr,
+      startMin:startMin,
+      duration:dur,
+      projectId:r.projectId||'',
+      projectIds:r.projectIds||[],
+      priority:'med',
+      linkedType:'reminder',
+      linkedId:r.id,
+      color:'#f97316'  // distinct orange so reminders stand out from tasks
+    });
+    r._autoScheduled=true;
+  });
+  save();
+  if(typeof renderTimeline==='function')renderTimeline();
+}
+
+// -- 2. Today reminder popup ---------------------------------------------
+var _reminderPopupShownDate=null;
+
+function checkAndShowReminderPopup(){
+  var today=todayStr();
+  // Only show once per calendar day per session
+  if(_reminderPopupShownDate===today)return;
+  var rems=(state.reminders||[]).filter(function(r){
+    return r.date===today && !r._dismissed && !r._done;
+  });
+  if(!rems.length)return;
+  _reminderPopupShownDate=today;
+  openReminderPopup(rems);
+}
+
+function openReminderPopup(rems){
+  var overlay=document.getElementById('reminderPopupOverlay');
+  var list=document.getElementById('reminderPopupList');
+  var sub=document.getElementById('reminderPopupSub');
+  if(!overlay||!list)return;
+
+  sub.textContent=rems.length+' reminder'+(rems.length>1?'s':'')+' due today';
+  list.innerHTML=rems.map(function(r){
+    var meta=r.time?('⏰ '+_tlFmtTime?_tlFmtTime(_tlParseTime(r.time)):r.time):'No time set';
+    return '<div class="rem-popup-item" id="rpi_'+r.id+'">'+
+      '<div class="rem-popup-item-text">'+esc(r.text)+'</div>'+
+      '<div class="rem-popup-item-meta">'+meta+'</div>'+
+      '<div class="rem-popup-item-actions">'+
+        '<button class="rpa-done" onclick="reminderPopupDone(\''+r.id+'\')">✓ Mark done</button>'+
+        '<button class="rpa-snooze" onclick="reminderPopupToggleSnooze(\''+r.id+'\')">⏰ Move</button>'+
+        '<button onclick="reminderPopupDismiss(\''+r.id+'\')">× Dismiss</button>'+
+      '</div>'+
+      '<div class="rem-popup-snooze-row" id="rps_'+r.id+'">'+
+        '<div class="snooze-inputs">'+
+          '<input type="date" id="rpsd_'+r.id+'" value="">'+
+          '<input type="time" id="rpst_'+r.id+'" value="">'+
+          '<button onclick="reminderPopupSnooze(\''+r.id+'\')">Save</button>'+
+        '</div>'+
+      '</div>'+
+    '</div>';
+  }).join('');
+
+  overlay.classList.remove('hidden');
+}
+
+function closeReminderPopup(){
+  var overlay=document.getElementById('reminderPopupOverlay');
+  if(overlay)overlay.classList.add('hidden');
+}
+
+function _reminderPopupRemoveItem(id){
+  var el=document.getElementById('rpi_'+id);
+  if(el)el.remove();
+  // If no items left, close popup
+  var list=document.getElementById('reminderPopupList');
+  if(list&&!list.querySelector('.rem-popup-item'))closeReminderPopup();
+}
+
+function reminderPopupDone(id){
+  var r=(state.reminders||[]).find(function(r){return r.id===id;});
+  if(r){r._done=true;r._dismissed=true;}
+  // Remove any auto-scheduled timeline block for this reminder
+  state.tlBlocks=(state.tlBlocks||[]).filter(function(b){return b.linkedId!==id;});
+  save();
+  if(typeof renderReminders==='function')renderReminders();
+  if(typeof renderTimeline==='function')renderTimeline();
+  _reminderPopupRemoveItem(id);
+  toast('Reminder marked done');
+}
+
+function reminderPopupDismiss(id){
+  var r=(state.reminders||[]).find(function(r){return r.id===id;});
+  if(r)r._dismissed=true;
+  save();
+  _reminderPopupRemoveItem(id);
+  toast('Reminder dismissed for today');
+}
+
+function reminderPopupToggleSnooze(id){
+  var row=document.getElementById('rps_'+id);
+  if(!row)return;
+  var isOpen=row.classList.contains('open');
+  // Close any other open snooze rows
+  document.querySelectorAll('.rem-popup-snooze-row.open').forEach(function(r){r.classList.remove('open');});
+  if(!isOpen){
+    row.classList.add('open');
+    // Pre-fill with existing date/time
+    var rem=(state.reminders||[]).find(function(r){return r.id===id;});
+    if(rem){
+      document.getElementById('rpsd_'+id).value=rem.date||'';
+      document.getElementById('rpst_'+id).value=rem.time||'';
+    }
+  }
+}
+
+function reminderPopupSnooze(id){
+  var dateEl=document.getElementById('rpsd_'+id);
+  var timeEl=document.getElementById('rpst_'+id);
+  var newDate=dateEl?dateEl.value:'';
+  var newTime=timeEl?timeEl.value:'';
+  if(!newDate){toast('Pick a date first');return;}
+
+  var r=(state.reminders||[]).find(function(r){return r.id===id;});
+  if(r){
+    r.date=newDate;
+    r.time=newTime;
+    r._dismissed=false;
+    r._autoScheduled=false;
+    // Remove the old auto-scheduled block -- new date might be different
+    state.tlBlocks=(state.tlBlocks||[]).filter(function(b){return b.linkedId!==id;});
+    save();
+    if(typeof renderReminders==='function')renderReminders();
+    if(typeof renderTimeline==='function')renderTimeline();
+    _reminderPopupRemoveItem(id);
+    toast('Reminder moved to '+newDate+(newTime?' at '+newTime:''));
+  }
+}
+
+// WAKE WORD -- "Hey Axis" (also accepts "Hey Jarvis" for legacy users)
+// =======================================
+var _wakeWordSR=null;
+var _wakeWordActive=false;       // currently armed and listening for wake word
+var _wakeWordEnabled=false;      // user-toggleable preference (persists); default OFF -- continuous mic listening can cause issues on iOS/Safari
+var _wakeWordRetryTimer=null;
+var _wakeWordSupported=!!(window.SpeechRecognition||window.webkitSpeechRecognition);
+var WAKE_PHRASES=['hey axis','hi axis','hey, axis','okay axis','ok axis','axis','hey jarvis','hi jarvis','hey, jarvis','okay jarvis','ok jarvis','jarvis'];
+
+function _wakeWordMatches(transcript){
+  var t=transcript.toLowerCase().trim();
+  for(var i=0;i<WAKE_PHRASES.length;i++){
+    if(t.indexOf(WAKE_PHRASES[i])>=0)return true;
+  }
+  return false;
+}
+
+function _startWakeWord(){
+  if(!_wakeWordSupported||!_wakeWordEnabled||_wakeWordActive)return;
+  if(_jarvisListening)return; // command mic has priority
+  var SR=window.SpeechRecognition||window.webkitSpeechRecognition;
+  try{
+    _wakeWordSR=new SR();
+    _wakeWordSR.continuous=true;
+    _wakeWordSR.interimResults=true;
+    _wakeWordSR.lang='en-US';
+    _wakeWordSR.onresult=function(e){
+      for(var i=e.resultIndex;i<e.results.length;i++){
+        var transcript=e.results[i][0].transcript;
+        if(_wakeWordMatches(transcript)){
+          _onWakeWordDetected();
+          return;
+        }
+      }
+    };
+    _wakeWordSR.onerror=function(e){
+      // 'no-speech' and 'aborted' are normal; just keep restarting
+      if(e.error==='not-allowed'||e.error==='service-not-allowed'){
+        _wakeWordEnabled=false;
+        _updateWakeWordUI();
+        toast('Mic permission denied. Wake word disabled.');
+      }
+    };
+    _wakeWordSR.onend=function(){
+      _wakeWordActive=false;
+      // Auto-restart if still enabled and command mic isn't active
+      if(_wakeWordEnabled&&!_jarvisListening&&document.visibilityState==='visible'){
+        clearTimeout(_wakeWordRetryTimer);
+        _wakeWordRetryTimer=setTimeout(_startWakeWord,400);
+      }
+    };
+    _wakeWordSR.start();
+    _wakeWordActive=true;
+    _updateWakeWordUI();
+  }catch(err){
+    console.warn('[Wake word] start failed:',err);
+    _wakeWordActive=false;
+  }
+}
+
+function _stopWakeWord(){
+  clearTimeout(_wakeWordRetryTimer);
+  if(_wakeWordSR){try{_wakeWordSR.stop();_wakeWordSR.abort();}catch(e){}}
+  _wakeWordSR=null;
+  _wakeWordActive=false;
+  _updateWakeWordUI();
+}
+
+function _onWakeWordDetected(){
+  // Pause wake word, open Jarvis, start command capture
+  _stopWakeWord();
+  if(!_jarvisOpen)toggleJarvis();
+  // Brief audible cue + auto-start mic for command
+  toast('\u{1F3A4} Listening...');
+  setTimeout(function(){
+    if(!_jarvisListening)jarvisToggleMic();
+  },300);
+}
+
+function toggleWakeWord(){
+  _wakeWordEnabled=!_wakeWordEnabled;
+  if(!state)state={};
+  state.jarvisWakeEnabled=_wakeWordEnabled;
+  if(typeof save==='function')save();
+  if(_wakeWordEnabled){
+    _startWakeWord();
+    toast('Wake word enabled -- say "Hey Axis"');
+  }else{
+    _stopWakeWord();
+    toast('Wake word disabled');
+  }
+  _updateWakeWordUI();
+}
+
+function _updateWakeWordUI(){
+  var btn=document.getElementById('jarvisWakeBtn');
+  if(!btn)return;
+  if(!_wakeWordSupported){
+    btn.style.display='none';
+    return;
+  }
+  btn.title=_wakeWordEnabled?'Wake word ON ("Hey Axis") -- tap to disable':'Wake word OFF -- tap to enable';
+  btn.classList.toggle('enabled',_wakeWordEnabled);
+  btn.classList.toggle('active',_wakeWordActive&&_wakeWordEnabled);
+  btn.textContent=_wakeWordEnabled?'\u{1F3A4}':'\u{1F507}';
+}
+
+// Resume wake word when command mic finishes
+var _origJarvisToggleMic=jarvisToggleMic;
+jarvisToggleMic=function(){
+  // If wake word was listening, pause it while command mic is active
+  if(_wakeWordActive)_stopWakeWord();
+  _origJarvisToggleMic.apply(this,arguments);
+};
+
+// Tab visibility -- pause when hidden, restart when visible
+document.addEventListener('visibilitychange',function(){
+  if(document.visibilityState==='hidden'){
+    if(_wakeWordActive)_stopWakeWord();
+  }else if(document.visibilityState==='visible'){
+    if(_wakeWordEnabled&&!_wakeWordActive&&!_jarvisListening){
+      setTimeout(_startWakeWord,500);
+    }
+  }
+});
+
+// Init wake word on dashboard load -- restore saved preference, auto-start if enabled
+function _initWakeWord(){
+  // Restore from persisted state
+  if(state&&typeof state.jarvisWakeEnabled==='boolean'){
+    _wakeWordEnabled=state.jarvisWakeEnabled;
+  }
+  _updateWakeWordUI();
+  // Only auto-start after a user gesture has occurred at some point;
+  // otherwise some browsers block the mic. Will start on first toggle or after first click.
+  if(_wakeWordEnabled&&_wakeWordSupported){
+    // Defer to give DOM time and avoid auto-start before any user interaction
+    var primed=false;
+    var primer=function(){
+      if(primed)return;
+      primed=true;
+      document.removeEventListener('click',primer);
+      document.removeEventListener('keydown',primer);
+      if(_wakeWordEnabled&&!_wakeWordActive)_startWakeWord();
+    };
+    document.addEventListener('click',primer,{once:true});
+    document.addEventListener('keydown',primer,{once:true});
+  }
+}
+
+// Wait for state to be loaded before init
+setTimeout(_initWakeWord,1500);
+
+// =======================================
+// VOICE READBACK -- TTS for Jarvis replies
+// =======================================
+var _jarvisVoiceEnabled=false;           // user-toggleable preference (persists); default OFF to prevent device issues
+var _jarvisVoiceSupported=!!window.speechSynthesis;
+var _jarvisCurrentUtterance=null;
+var _jarvisCurrentAudio=null;         // HTML Audio element for ElevenLabs TTS
+var _jarvisPreferredVoice=null;
+
+function _jarvisPickVoice(){
+  if(!_jarvisVoiceSupported)return null;
+  var voices=window.speechSynthesis.getVoices();
+  if(!voices||!voices.length)return null;
+  // Preference order: high-quality English voices
+  var prefs=['Google US English','Samantha','Microsoft Aria Online (Natural) - English (United States)','Microsoft Jenny Online (Natural) - English (United States)','Karen','Daniel','Alex'];
+  for(var i=0;i<prefs.length;i++){
+    var v=voices.find(function(vc){return vc.name===prefs[i];});
+    if(v)return v;
+  }
+  // Fallback: first en-US voice
+  var enUS=voices.find(function(v){return v.lang==='en-US';});
+  if(enUS)return enUS;
+  // Fallback: any English voice
+  var en=voices.find(function(v){return v.lang&&v.lang.indexOf('en')===0;});
+  return en||voices[0];
+}
+
+function _jarvisCleanForSpeech(text){
+  if(!text)return '';
+  // Strip markdown, URLs, and special characters that don't speak well
+  return text
+    .replace(/```[\s\S]*?```/g,'')          // code blocks
+    .replace(/`([^`]+)`/g,'$1')             // inline code
+    .replace(/\*\*([^*]+)\*\*/g,'$1')       // bold
+    .replace(/\*([^*]+)\*/g,'$1')           // italics
+    .replace(/\[([^\]]+)\]\([^)]+\)/g,'$1') // markdown links → just text
+    .replace(/https?:\/\/\S+/g,'')          // raw URLs
+    .replace(/#+\s/g,'')                    // headers
+    .replace(/[\u{1F300}-\u{1FAFF}\u{2600}-\u{27BF}]/gu,'') // emoji
+    .replace(/\s+/g,' ')                    // collapse whitespace
+    .trim();
+}
+
+async function _jarvisSpeak(text){
+  if(!_jarvisVoiceEnabled)return;
+  var clean=_jarvisCleanForSpeech(text);
+  if(!clean)return;
+
+  // Stop any in-flight audio before starting new utterance
+  _jarvisStopSpeaking();
+
+  // Pause wake word during speech to avoid feedback loop
+  var wakeWasActive=_wakeWordActive;
+  if(wakeWasActive)_stopWakeWord();
+
+  var voiceBtn=document.getElementById('jarvisVoiceBtn');
+  if(voiceBtn)voiceBtn.classList.add('speaking');
+
+  var _done=function(){
+    _jarvisCurrentAudio=null;
+    if(voiceBtn)voiceBtn.classList.remove('speaking');
+    if(wakeWasActive&&_wakeWordEnabled)setTimeout(_startWakeWord,400);
+  };
+
+  try{
+    var res=await fetch(JARVIS_PROXY_URL+'/ops-speak',{
+      method:'POST',
+      headers:{'Content-Type':'application/json'},
+      body:JSON.stringify({text:clean}),
+    });
+    if(!res.ok)throw new Error('HTTP '+res.status);
+    var blob=await res.blob();
+    var blobUrl=URL.createObjectURL(blob);
+    _jarvisCurrentAudio=new Audio(blobUrl);
+    _jarvisCurrentAudio.onended=function(){URL.revokeObjectURL(blobUrl);_done();};
+    _jarvisCurrentAudio.onerror=function(){URL.revokeObjectURL(blobUrl);_done();};
+    _jarvisCurrentAudio.play();
+  }catch(e){
+    console.warn('[Jarvis voice] ElevenLabs unavailable, falling back to browser TTS:',e.message);
+    if(!_jarvisVoiceSupported){_done();return;}
+    var u=new SpeechSynthesisUtterance(clean);
+    u.rate=1.05;u.pitch=1.0;u.volume=1.0;
+    if(_jarvisPreferredVoice)u.voice=_jarvisPreferredVoice;
+    u.onend=function(){_jarvisCurrentUtterance=null;_done();};
+    u.onerror=function(){_jarvisCurrentUtterance=null;_done();};
+    _jarvisCurrentUtterance=u;
+    try{window.speechSynthesis.speak(u);}catch(err){console.warn('[Jarvis voice] Browser TTS also failed:',err);_done();}
+  }
+}
+
+function _jarvisStopSpeaking(){
+  if(_jarvisCurrentAudio){_jarvisCurrentAudio.pause();_jarvisCurrentAudio=null;}
+  if(_jarvisVoiceSupported){try{window.speechSynthesis.cancel();}catch(e){}}
+  _jarvisCurrentUtterance=null;
+  var voiceBtn=document.getElementById('jarvisVoiceBtn');
+  if(voiceBtn)voiceBtn.classList.remove('speaking');
+}
+
+function toggleJarvisVoice(){
+  // If currently speaking, stop and disable
+  if(_jarvisCurrentAudio||_jarvisCurrentUtterance||(window.speechSynthesis&&window.speechSynthesis.speaking)){
+    _jarvisStopSpeaking();
+    _jarvisVoiceEnabled=false;
+  }else{
+    _jarvisVoiceEnabled=!_jarvisVoiceEnabled;
+  }
+  if(!state)state={};
+  state.jarvisVoiceEnabled=_jarvisVoiceEnabled;
+  if(typeof save==='function')save();
+  _updateVoiceUI();
+  toast(_jarvisVoiceEnabled?'Voice readback enabled':'Voice readback muted');
+}
+
+function _updateVoiceUI(){
+  var btn=document.getElementById('jarvisVoiceBtn');
+  if(!btn)return;
+  if(!_jarvisVoiceSupported){
+    btn.style.display='none';
+    return;
+  }
+  btn.title=_jarvisVoiceEnabled?'Voice readback ON -- tap to mute':'Voice readback OFF -- tap to enable';
+  btn.classList.toggle('enabled',_jarvisVoiceEnabled);
+  btn.textContent=_jarvisVoiceEnabled?'\u{1F50A}':'\u{1F507}';
+}
+
+// Voices in many browsers load asynchronously
+if(_jarvisVoiceSupported){
+  _jarvisPreferredVoice=_jarvisPickVoice();
+  window.speechSynthesis.onvoiceschanged=function(){
+    _jarvisPreferredVoice=_jarvisPickVoice();
+  };
+}
+
+// Hook into _jarvisAddMessage to auto-speak assistant replies
+var _origJarvisAddMessage=_jarvisAddMessage;
+_jarvisAddMessage=function(role,content,actionSummary){
+  _origJarvisAddMessage.apply(this,arguments);
+  if(role==='assistant'&&_jarvisVoiceEnabled){
+    // Speak the reply (action summary is shown visually, not voiced)
+    _jarvisSpeak(content);
+  }
+};
+
+// Stop speaking when panel closes
+var _origToggleJarvis=toggleJarvis;
+toggleJarvis=function(){
+  // If we're closing the panel while speaking, stop the speech
+  if(_jarvisOpen&&_jarvisCurrentUtterance)_jarvisStopSpeaking();
+  _origToggleJarvis.apply(this,arguments);
+};
+
+// Restore preference on load
+function _initJarvisVoice(){
+  if(state&&typeof state.jarvisVoiceEnabled==='boolean'){
+    _jarvisVoiceEnabled=state.jarvisVoiceEnabled;
+  }
+  _updateVoiceUI();
+}
+setTimeout(_initJarvisVoice,1500);
+
+// ===========================================================================
+// CALENDAR SYNC -- Google Calendar (two-way) | Outlook pattern in OUTLOOK_NEXT.md
+// ===========================================================================
+
+// -- CONFIG -----------------------------------------------------------------
+// GOOGLE_CLIENT_ID is defined in config.js
+
+var GOOGLE_SCOPES = 'https://www.googleapis.com/auth/calendar https://www.googleapis.com/auth/userinfo.email';
+var GCAL_CALENDAR_NAME = 'Centerpost';
+var GCAL_API_BASE = 'https://www.googleapis.com/calendar/v3';
+
+// -- INTERNAL STATE ---------------------------------------------------------
+var _gcalTokenClient = null;
+var _gcalAccessToken = null;
+var _gcalTokenExpiry = 0;
+var _gcalGisLoaded = false;
+var _gcalSyncing = false;
+
+// -- GIS BOOTSTRAP ----------------------------------------------------------
+function _gcalLoadGis(){
+  return new Promise(function(resolve, reject){
+    if(window.google && window.google.accounts && window.google.accounts.oauth2){
+      _gcalGisLoaded = true;
+      resolve();
+      return;
+    }
+    var s = document.createElement('script');
+    s.src = 'https://accounts.google.com/gsi/client';
+    s.async = true;
+    s.defer = true;
+    s.onload = function(){ _gcalGisLoaded = true; resolve(); };
+    s.onerror = function(){ reject(new Error('Failed to load Google Identity Services')); };
+    document.head.appendChild(s);
+  });
+}
+
+function _gcalInitTokenClient(){
+  if(!GOOGLE_CLIENT_ID){
+    toast('Set GOOGLE_CLIENT_ID in index.html first (see SETUP_GUIDE.md)');
+    return false;
+  }
+  if(_gcalTokenClient) return true;
+  _gcalTokenClient = google.accounts.oauth2.initTokenClient({
+    client_id: GOOGLE_CLIENT_ID,
+    scope: GOOGLE_SCOPES,
+    callback: function(resp){
+      // If a _gcalEnsureToken promise is waiting, route there.
+      if(_gcalInteractiveCb){ _gcalInteractiveCb(resp); return; }
+      // Otherwise this is an interactive gcalConnect() flow.
+      if(resp.error){
+        toast('Google auth: '+(resp.error_description||resp.error));
+        _gcalSetSyncingUI(false);
+        return;
+      }
+      _gcalAccessToken = resp.access_token;
+      _gcalTokenExpiry = Date.now() + ((resp.expires_in||3600) * 1000) - 60000;
+      _gcalOnAuthSuccess();
+    }
+  });
+  return true;
+}
+
+// -- PUBLIC: CONNECT / DISCONNECT -------------------------------------------
+async function gcalConnect(){
+  try {
+    _gcalSetSyncingUI(true);
+    await _gcalLoadGis();
+    if(!_gcalInitTokenClient()){ _gcalSetSyncingUI(false); return; }
+    // Interactive -- prompts the user to pick account & grant consent
+    _gcalTokenClient.requestAccessToken({ prompt: 'consent' });
+  } catch(e){
+    toast('Connect failed: '+e.message);
+    _gcalSetSyncingUI(false);
+  }
+}
+
+async function _gcalOnAuthSuccess(){
+  // Fetch user email
+  try {
+    var r = await fetch('https://www.googleapis.com/oauth2/v2/userinfo', {
+      headers: { Authorization: 'Bearer '+_gcalAccessToken }
+    });
+    if(r.ok){
+      var info = await r.json();
+      state.gcal.email = info.email || null;
+    }
+  } catch(e){ console.warn('[gcal] userinfo failed', e); }
+  // Ensure dedicated calendar exists
+  await _gcalEnsureCalendar();
+  state.gcal.connected = true;
+  save();
+  _gcalSetSyncingUI(false);
+  _gcalUpdateUI();
+  if(document.getElementById('gcalModal').classList.contains('open')) _gcalRenderModal();
+  toast('Connected to Google Calendar'+(state.gcal.email?' as '+state.gcal.email:''));
+}
+
+function gcalDisconnect(){
+  if(_gcalAccessToken && window.google && google.accounts && google.accounts.oauth2){
+    try { google.accounts.oauth2.revoke(_gcalAccessToken, function(){}); } catch(e){}
+  }
+  _gcalAccessToken = null;
+  _gcalTokenExpiry = 0;
+  _gcalTokenClient = null;
+  state.gcal = {connected:false,email:null,calendarId:null,autoPush:false,showExternal:true,lastPush:null,lastPull:null,pulledEvents:[]};
+  // Clear gcalEventId markers from all items (they reference a calendar we no longer track)
+  (state.tasks||[]).forEach(function(t){ delete t.gcalEventId; });
+  (state.projects||[]).forEach(function(p){
+    delete p.gcalEventId;
+    (p.subtasks||[]).forEach(function(s){ delete s.gcalEventId; });
+  });
+  (state.reminders||[]).forEach(function(r){ delete r.gcalEventId; });
+  save();
+  _gcalUpdateUI();
+  if(typeof renderTimeline === 'function') renderTimeline();
+  if(document.getElementById('gcalModal').classList.contains('open')) _gcalRenderModal();
+  toast('Disconnected from Google Calendar');
+}
+
+// -- TOKEN HANDLING ---------------------------------------------------------
+var _gcalTokenPromise = null;   // single in-flight token request
+var _gcalInteractiveCb = null;  // callback target for the active request
+
+async function _gcalEnsureToken(interactive){
+  if(_gcalAccessToken && Date.now() < _gcalTokenExpiry) return true;
+  if(!GOOGLE_CLIENT_ID) return false;
+
+  // If a token request is already in flight, await the same promise rather than
+  // starting a second one (which would clobber the callback and hang the first).
+  if(_gcalTokenPromise) return _gcalTokenPromise;
+
+  _gcalTokenPromise = (async function(){
+    try {
+      await _gcalLoadGis();
+      if(!_gcalInitTokenClient()) return false;
+    } catch(e){ console.warn('[gcal] GIS load failed', e); return false; }
+
+    return new Promise(function(resolve){
+      // Single shared callback -- set once in _gcalInitTokenClient -- routes here.
+      _gcalInteractiveCb = function(resp){
+        _gcalInteractiveCb = null;
+        if(resp && resp.access_token){
+          _gcalAccessToken = resp.access_token;
+          _gcalTokenExpiry = Date.now() + ((resp.expires_in||3600) * 1000) - 60000;
+          resolve(true);
+        } else {
+          console.warn('[gcal] token request failed', resp && (resp.error||resp));
+          resolve(false);
+        }
+      };
+      try {
+        // Empty prompt = silent if possible. On failure (common on Safari/iOS
+        // third-party cookie blocking) the caller falls back to interactive connect.
+        _gcalTokenClient.requestAccessToken({ prompt: interactive ? 'consent' : '' });
+      } catch(e){
+        console.warn('[gcal] requestAccessToken threw', e);
+        _gcalInteractiveCb = null;
+        resolve(false);
+      }
+    });
+  })();
+
+  var result = await _gcalTokenPromise;
+  _gcalTokenPromise = null;
+  return result;
+}
+
+// -- HTTP HELPER ------------------------------------------------------------
+async function _gcalFetch(method, path, body, _isRetry){
+  var ok = await _gcalEnsureToken();
+  if(!ok){
+    console.warn('[gcal] no valid token for '+method+' '+path);
+    return null;
+  }
+  var opts = {
+    method: method,
+    headers: { Authorization: 'Bearer '+_gcalAccessToken, 'Content-Type': 'application/json' }
+  };
+  if(body) opts.body = JSON.stringify(body);
+  try {
+    var r = await fetch(GCAL_API_BASE+path, opts);
+    if(r.status === 204) return {_deleted:true};
+    // Token rejected mid-flight -- force one refresh and retry exactly once.
+    if(r.status === 401 && !_isRetry){
+      console.warn('[gcal] 401 -- forcing token refresh and retrying once');
+      _gcalAccessToken = null; _gcalTokenExpiry = 0;
+      return _gcalFetch(method, path, body, true);
+    }
+    var data = await r.json();
+    if(data.error){ console.warn('[gcal] '+method+' '+path, r.status, data.error); }
+    return data;
+  } catch(e){
+    console.error('[gcal] fetch error', method, path, e);
+    return null;
+  }
+}
+
+// -- CALENDAR MANAGEMENT ----------------------------------------------------
+async function _gcalEnsureCalendar(){
+  // Check existing
+  if(state.gcal.calendarId){
+    var verify = await _gcalFetch('GET', '/calendars/'+encodeURIComponent(state.gcal.calendarId));
+    if(verify && !verify.error && verify.id) return state.gcal.calendarId;
+  }
+  // Look in calendar list
+  var list = await _gcalFetch('GET', '/users/me/calendarList');
+  if(list && list.items){
+    var found = list.items.find(function(c){ return c.summary === GCAL_CALENDAR_NAME; });
+    if(found){ state.gcal.calendarId = found.id; save(); return found.id; }
+  }
+  // Create new
+  var tz = 'UTC';
+  try { tz = Intl.DateTimeFormat().resolvedOptions().timeZone || 'UTC'; } catch(e){}
+  var created = await _gcalFetch('POST', '/calendars', {
+    summary: GCAL_CALENDAR_NAME,
+    description: 'Auto-synced from Centerpost productivity dashboard',
+    timeZone: tz
+  });
+  if(created && created.id){ state.gcal.calendarId = created.id; save(); return created.id; }
+  return null;
+}
+
+// -- EVENT BUILDER ----------------------------------------------------------
+function _gcalPad2(n){ return n<10?'0'+n:''+n; }
+function _gcalBuildEvent(item){
+  // item: {id, name, date, time?, durMin?, priority?, projectName?, kind, sourceId}
+  var summary = item.name;
+  if(item.projectName) summary = '['+item.projectName+'] '+summary;
+  if(item.priority === 'high' && summary.indexOf('[HIGH]')===-1) summary = '🔴 '+summary;
+  var description = 'Centerpost ' + (item.kind || 'item');
+  if(item.projectName) description += ' -- project: '+item.projectName;
+  if(item.priority) description += '\nPriority: '+item.priority;
+  if(item.durMin) description += '\nTime estimate: '+item.durMin+' min';
+  description += '\n\n(Synced from Centerpost)';
+  // Time handling
+  var start, end;
+  if(item.time){
+    var startDate = new Date(item.date+'T'+item.time+':00');
+    var dur = parseInt(item.durMin||60);
+    var endDate = new Date(startDate.getTime() + dur*60000);
+    start = { dateTime: startDate.toISOString() };
+    end   = { dateTime: endDate.toISOString() };
+  } else {
+    // All-day
+    var d = new Date(item.date+'T00:00:00');
+    var d2 = new Date(d.getTime()); d2.setDate(d2.getDate()+1);
+    start = { date: item.date };
+    end   = { date: d2.getFullYear()+'-'+_gcalPad2(d2.getMonth()+1)+'-'+_gcalPad2(d2.getDate()) };
+  }
+  // Color (Google IDs: 11=red, 5=yellow, 9=blue, 10=green)
+  var colorMap = { high:'11', med:'5', low:'9' };
+  var ev = {
+    summary: summary,
+    description: description,
+    start: start,
+    end: end,
+    extendedProperties: {
+      private: {
+        centerpostId: item.sourceId || item.id,
+        centerpostKind: item.kind || 'item'
+      }
+    }
+  };
+  if(item.priority && colorMap[item.priority]) ev.colorId = colorMap[item.priority];
+  return ev;
+}
+
+// -- PUSH -------------------------------------------------------------------
+async function _gcalPushItem(item){
+  if(!state.gcal.connected || !item.date) return null;
+  var calId = state.gcal.calendarId || await _gcalEnsureCalendar();
+  if(!calId) return null;
+  var payload = _gcalBuildEvent(item);
+  var existing = item.existingEventId;
+  var result;
+  if(existing){
+    result = await _gcalFetch('PUT',
+      '/calendars/'+encodeURIComponent(calId)+'/events/'+existing, payload);
+  } else {
+    result = await _gcalFetch('POST',
+      '/calendars/'+encodeURIComponent(calId)+'/events', payload);
+  }
+  return (result && result.id) ? result.id : null;
+}
+
+async function gcalPushAll(){
+  if(!state.gcal.connected){ openGcalModal(); return; }
+  if(_gcalSyncing) return;
+  _gcalSyncing = true;
+  _gcalSetSyncingUI(true);
+  var pushed = 0, failed = 0;
+
+  try {
+    // -- Pre-flight auth check --------------------------------------------
+    // Validates / silently refreshes the access token ONCE before iterating.
+    // Avoids grinding through N items that all return null on expired auth.
+    var tokenOk = await _gcalEnsureToken();
+    if(!tokenOk){
+      // Silent refresh failed (common on Safari/iOS). Trigger interactive consent.
+      toast('Google session expired -- reconnecting…');
+      _gcalAccessToken = null; _gcalTokenExpiry = 0;
+      tokenOk = await _gcalEnsureToken(true);
+      if(!tokenOk){
+        toast('Could not reconnect to Google -- open Calendar settings to re-authorize');
+        openGcalModal();
+        return;
+      }
+    }
+
+    // 1. Standalone tasks with due date (not done)
+    for(var i=0;i<(state.tasks||[]).length;i++){
+      var t = state.tasks[i];
+      if(!t.due || t.done) continue;
+      var eid = await _gcalPushItem({
+        name: t.name, date: t.due, time: t.time, durMin: parseInt(t.timeEst)||60,
+        priority: t.priority||'med', kind: 'task', sourceId: t.id, existingEventId: t.gcalEventId
+      });
+      if(eid){ t.gcalEventId = eid; pushed++; } else { failed++; }
+    }
+
+    // 2. Project subtasks with due date (not done)
+    for(var p=0;p<(state.projects||[]).length;p++){
+      var proj = state.projects[p];
+      for(var s=0;s<(proj.subtasks||[]).length;s++){
+        var st = proj.subtasks[s];
+        if(!st.due || st.done) continue;
+        var seid = await _gcalPushItem({
+          name: st.name, date: st.due, time: st.time, durMin: parseInt(st.timeEst)||60,
+          priority: st.priority||'med', kind: 'subtask', projectName: proj.name,
+          sourceId: st.id, existingEventId: st.gcalEventId
+        });
+        if(seid){ st.gcalEventId = seid; pushed++; } else { failed++; }
+      }
+    }
+
+    // 3. Reminders with a date
+    for(var r=0;r<(state.reminders||[]).length;r++){
+      var rem = state.reminders[r];
+      if(!rem.date) continue;
+      var reid = await _gcalPushItem({
+        name: rem.text, date: rem.date, time: rem.time, durMin: 30,
+        priority: 'med', kind: 'reminder', sourceId: rem.id, existingEventId: rem.gcalEventId
+      });
+      if(reid){ rem.gcalEventId = reid; pushed++; } else { failed++; }
+    }
+
+    // 4. Manual timeline blocks
+    for(var b=0;b<(state.tlBlocks||[]).length;b++){
+      var blk = state.tlBlocks[b];
+      if(!blk.date || !blk.time) continue;
+      if(blk.linkedId && blk.linkedType){
+        var _dup=false;
+        if(blk.linkedType==='task'){
+          var _lt=(state.tasks||[]).find(function(x){return x.id===blk.linkedId;});
+          if(_lt&&_lt.gcalEventId&&_lt.due===blk.date)_dup=true;
+        }else if(blk.linkedType==='subtask'){
+          var _dupFound=false;
+          for(var _pi=0;_pi<(state.projects||[]).length&&!_dupFound;_pi++){
+            var _lp=state.projects[_pi];
+            var _ls=(_lp.subtasks||[]).find(function(x){return x.id===blk.linkedId;});
+            if(_ls&&_ls.gcalEventId&&_ls.due===blk.date){_dup=true;_dupFound=true;}
+          }
+        }
+        if(_dup)continue;
+      }
+      var projName = '';
+      if(blk.projectId){
+        var bp = (state.projects||[]).find(function(p){return p.id===blk.projectId;});
+        if(bp) projName = bp.name;
+      }
+      var beid = await _gcalPushItem({
+        name: blk.name, date: blk.date, time: blk.time, durMin: parseInt(blk.duration)||60,
+        priority: blk.priority||'med', kind: 'block', projectName: projName,
+        sourceId: blk.id, existingEventId: blk.gcalEventId
+      });
+      if(beid){ blk.gcalEventId = beid; pushed++; } else { failed++; }
+    }
+
+    state.gcal.lastPush = new Date().toISOString();
+    save();
+    toast('Pushed '+pushed+' item'+(pushed===1?'':'s')+' to Google Calendar'+(failed?' ('+failed+' failed)':''));
+
+  } catch(e) {
+    console.error('[gcal] gcalPushAll error', e);
+    toast('Google Calendar push error: '+e.message);
+  } finally {
+    _gcalSyncing = false;
+    _gcalSetSyncingUI(false);
+    _gcalUpdateUI();
+    if(document.getElementById('gcalModal')&&document.getElementById('gcalModal').classList.contains('open'))_gcalRenderModal();
+  }
+}
+
+// -- DELETE PROPAGATION -----------------------------------------------------
+async function _gcalDeleteEvent(eventId){
+  if(!state.gcal.connected || !eventId || !state.gcal.calendarId) return;
+  await _gcalFetch('DELETE',
+    '/calendars/'+encodeURIComponent(state.gcal.calendarId)+'/events/'+eventId);
+}
+
+// -- PULL -------------------------------------------------------------------
+async function gcalPullEvents(){
+  if(!state.gcal.connected){ openGcalModal(); return; }
+  if(_gcalSyncing) return;
+  _gcalSyncing = true;
+  _gcalSetSyncingUI(true);
+
+  try {
+    var tokenOk = await _gcalEnsureToken();
+    if(!tokenOk){
+      toast('Google session expired -- re-authorize in Calendar settings');
+      openGcalModal();
+      return;
+    }
+
+    var now = new Date();
+    var min = new Date(now); min.setDate(min.getDate() - 1); min.setHours(0,0,0,0);
+    var max = new Date(now); max.setDate(max.getDate() + 14); max.setHours(23,59,59,999);
+    var qs = '?timeMin='+encodeURIComponent(min.toISOString())+
+             '&timeMax='+encodeURIComponent(max.toISOString())+
+             '&singleEvents=true&orderBy=startTime&maxResults=100';
+
+    var external = [];
+    var primary = await _gcalFetch('GET', '/calendars/primary/events'+qs);
+    if(primary && primary.items){
+      primary.items.forEach(function(e){
+        var ep = e.extendedProperties && e.extendedProperties.private;
+        if(ep && ep.centerpostId) return;
+        var startDt = e.start && (e.start.dateTime || e.start.date);
+        var endDt   = e.end   && (e.end.dateTime   || e.end.date);
+        if(!startDt) return;
+        external.push({
+          id: 'gcal-'+e.id,
+          eventId: e.id,
+          title: e.summary || '(no title)',
+          start: startDt,
+          end: endDt,
+          location: e.location || '',
+          allDay: !(e.start && e.start.dateTime),
+          source: 'google',
+          htmlLink: e.htmlLink || ''
+        });
+      });
+    }
+    state.gcal.pulledEvents = external;
+    state.gcal.lastPull = new Date().toISOString();
+    save();
+    if(typeof renderTimeline === 'function') renderTimeline();
+    toast('Pulled '+external.length+' external event'+(external.length===1?'':'s')+' from Google Calendar');
+
+  } catch(e){
+    console.error('[gcal] gcalPullEvents error', e);
+    toast('Google Calendar pull error: '+e.message);
+  } finally {
+    _gcalSyncing = false;
+    _gcalSetSyncingUI(false);
+    _gcalUpdateUI();
+    if(document.getElementById('gcalModal')&&document.getElementById('gcalModal').classList.contains('open'))_gcalRenderModal();
+  }
+}
+
+// Helper for timeline integration: returns external GCal events for a given YYYY-MM-DD
+function gcalEventsForDate(dateStr){
+  if(!state.gcal || !state.gcal.connected || !state.gcal.showExternal) return [];
+  return (state.gcal.pulledEvents||[]).filter(function(e){
+    if(e.allDay){ return e.start === dateStr; }
+    // Timed: compare YYYY-MM-DD portion
+    return (e.start||'').slice(0,10) === dateStr;
+  }).map(function(e){
+    var startMin = 0;
+    if(!e.allDay && e.start){
+      var d = new Date(e.start);
+      startMin = d.getHours()*60 + d.getMinutes();
+    }
+    var durMin = 60;
+    if(!e.allDay && e.start && e.end){
+      durMin = Math.max(15, Math.round((new Date(e.end) - new Date(e.start))/60000));
+    }
+    return {
+      id: e.id, name: e.title, startMin: startMin, durMin: durMin,
+      projectId: '', priority: 'med', source: 'gcal-external',
+      external: true, htmlLink: e.htmlLink
+    };
+  });
+}
+
+// -- UI HELPERS -------------------------------------------------------------
+function _gcalSetSyncingUI(on){
+  var chip = document.getElementById('gcalStatusChip');
+  if(chip) chip.classList.toggle('syncing', !!on);
+}
+
+function _gcalUpdateUI(){
+  var chip = document.getElementById('gcalStatusChip');
+  var lbl  = document.getElementById('gcalStatusLabel');
+  if(!chip || !lbl) return;
+  if(state.gcal && state.gcal.connected){
+    chip.classList.add('connected');
+    lbl.textContent = 'Sync: on';
+  } else {
+    chip.classList.remove('connected');
+    lbl.textContent = 'Sync: off';
+  }
+}
+
+function _gcalRelTime(iso){
+  if(!iso) return 'never';
+  var diff = (Date.now() - new Date(iso).getTime())/1000;
+  if(diff < 60) return Math.floor(diff)+'s ago';
+  if(diff < 3600) return Math.floor(diff/60)+' min ago';
+  if(diff < 86400) return Math.floor(diff/3600)+' hr ago';
+  return Math.floor(diff/86400)+' day'+(diff>=172800?'s':'')+' ago';
+}
+
+function openGcalModal(){
+  _gcalRenderModal();
+  var m = document.getElementById('gcalModal');
+  if(m) m.classList.add('open');
+}
+
+function closeGcalModal(){
+  var m = document.getElementById('gcalModal');
+  if(m) m.classList.remove('open');
+}
+
+function _gcalRenderModal(){
+  var body = document.getElementById('gcalModalBody');
+  if(!body) return;
+  var html = '';
+
+  if(!GOOGLE_CLIENT_ID){
+    html += '<div class="gcal-status-row"><span class="gcal-dot"></span><div><strong>Not configured.</strong><br><span style="font-size:12px;color:var(--text-dim);">Open index.html, find <code>GOOGLE_CLIENT_ID</code> near the bottom of the script, and paste your OAuth client ID from Google Cloud Console.</span></div></div>';
+    html += '<div class="gcal-help"><strong>One-time setup:</strong><br>1. Go to <code>console.cloud.google.com</code><br>2. Create a project &amp; enable Google Calendar API<br>3. Create OAuth client ID (Web app)<br>4. Add <code>https://centerpost.app</code> as Authorized JavaScript origin<br>5. Paste the Client ID into <code>GOOGLE_CLIENT_ID</code> and redeploy<br><br>Full guide: see <code>GOOGLE_CALENDAR_SETUP.md</code>.</div>';
+    body.innerHTML = html;
+    return;
+  }
+
+  if(state.gcal && state.gcal.connected){
+    // Check whether the in-memory access token is still valid.
+    // After a page refresh state.gcal.connected stays true but _gcalAccessToken
+    // is null -- show a re-auth prompt rather than letting Push silently fail.
+    var sessionActive = _gcalAccessToken && Date.now() < _gcalTokenExpiry;
+
+    if(!sessionActive){
+      html += '<div class="gcal-status-row" style="border-left:3px solid var(--orange);padding-left:10px;">';
+      html += '<span class="gcal-dot" style="background:var(--orange);"></span>';
+      html += '<div><strong>Session expired.</strong><br><span style="font-size:12px;color:var(--text-dim);">Your Google Calendar connection is saved but the session token needs to be refreshed. This happens after every page reload -- tap Re-authorize to restore sync.</span></div></div>';
+      html += '<dl class="gcal-info-grid"><dt>Account</dt><dd>'+(state.gcal.email||'(saved)')+'</dd>';
+      html += '<dt>Calendar</dt><dd>'+GCAL_CALENDAR_NAME+'</dd>';
+      html += '<dt>Last push</dt><dd>'+_gcalRelTime(state.gcal.lastPush)+'</dd></dl>';
+      html += '<div class="gcal-actions">';
+      html += '<button class="gcal-btn primary" onclick="gcalConnect()">&#128279; Re-authorize</button>';
+      html += '<button class="gcal-btn danger" onclick="_confirmGcalDisconnect()">Disconnect</button>';
+      html += '</div>';
+      body.innerHTML = html;
+      return;
+    }
+
+    html += '<div class="gcal-status-row connected"><span class="gcal-dot"></span><div><strong>Connected.</strong> Your Centerpost items can now sync with Google Calendar.</div></div>';
+    html += '<dl class="gcal-info-grid">';
+    html += '<dt>Account</dt><dd>'+(state.gcal.email||'(unknown)')+'</dd>';
+    html += '<dt>Calendar</dt><dd>'+GCAL_CALENDAR_NAME+'</dd>';
+    html += '<dt>Last push</dt><dd>'+_gcalRelTime(state.gcal.lastPush)+'</dd>';
+    html += '<dt>Last pull</dt><dd>'+_gcalRelTime(state.gcal.lastPull)+'</dd>';
+    if(state.gcal.pulledEvents) html += '<dt>External events</dt><dd>'+state.gcal.pulledEvents.length+' cached</dd>';
+    html += '</dl>';
+
+    html += '<div class="gcal-actions">';
+    html += '<button class="gcal-btn primary" onclick="gcalPushAll()" '+(_gcalSyncing?'disabled':'')+'>&#11014; Push All to Google</button>';
+    html += '<button class="gcal-btn" onclick="gcalPullEvents()" '+(_gcalSyncing?'disabled':'')+'>&#11015; Pull Events from Google</button>';
+    html += '</div>';
+
+    html += '<label class="gcal-toggle-row"><input type="checkbox" '+(state.gcal.showExternal?'checked':'')+' onchange="state.gcal.showExternal=this.checked;save();_gcalUpdateUI();if(typeof renderTimeline===\'function\')renderTimeline();"><div class="gcal-toggle-label">Show external events in Timeline<div class="gcal-toggle-hint">Events from your primary Google Calendar that didn\'t originate in Centerpost.</div></div></label>';
+
+    html += '<label class="gcal-toggle-row"><input type="checkbox" '+(state.gcal.autoPush?'checked':'')+' onchange="state.gcal.autoPush=this.checked;save();"><div class="gcal-toggle-label">Auto-push new items (experimental)<div class="gcal-toggle-hint">When ON, new tasks/subtasks/reminders with a date push automatically. Off by default -- use the manual button until you trust it.</div></div></label>';
+
+    html += '<div class="gcal-actions" style="margin-top:14px;">';
+    html += '<button class="gcal-btn danger" onclick="_confirmGcalDisconnect()">Disconnect</button>';
+    html += '</div>';
+
+    html += '<div class="gcal-help">&#9881; <strong>What syncs:</strong> tasks, project subtasks, reminders, and timeline blocks with a date. Items without a date stay local. <br><br>&#128274; <strong>What doesn\'t sync:</strong> Brain Dump thoughts, notes, journal entries, mood/energy logs, wellness reflections, points/streaks.</div>';
+  } else {
+    html += '<div class="gcal-status-row"><span class="gcal-dot"></span><div><strong>Not connected.</strong><br><span style="font-size:12px;color:var(--text-dim);">Connect to push tasks, subtasks, and reminders to a "'+GCAL_CALENDAR_NAME+'" calendar in your Google account, and pull events back into the Timeline panel.</span></div></div>';
+    html += '<div class="gcal-actions">';
+    html += '<button class="gcal-btn primary" onclick="gcalConnect()" '+(_gcalSyncing?'disabled':'')+'>&#128279; Connect Google Calendar</button>';
+    html += '</div>';
+    html += '<div class="gcal-help"><strong>Privacy:</strong> auth happens in a Google popup. Centerpost never sees your password. The access token lives only in this browser tab and expires in 1 hour. You can disconnect anytime.</div>';
+  }
+  body.innerHTML = html;
+}
+
+// Initialize chip on load
+setTimeout(function(){
+  if(state && state.gcal) _gcalUpdateUI();
+}, 1500);
+
+// ===========================================================================
+// OPTIONAL: Auto-sync hooks. Disabled by default (state.gcal.autoPush=false).
+// When user enables autoPush, these wrappers push individual items on create.
+// Deletes always propagate when connected (independent of autoPush).
+// ===========================================================================
+
+// Wrap addStandaloneTask: auto-push the newly added task if enabled
+(function(){
+  if(typeof addStandaloneTask !== 'function') return;
+  var _orig = addStandaloneTask;
+  addStandaloneTask = function(){
+    var beforeLen = (state.tasks||[]).length;
+    var ret = _orig.apply(this, arguments);
+    try {
+      if(state.gcal && state.gcal.connected && state.gcal.autoPush){
+        // The new task is the last appended to state.tasks
+        var t = state.tasks[state.tasks.length-1];
+        if(t && t.due && !t.done){
+          _gcalPushItem({
+            name: t.name, date: t.due, time: t.time, durMin: parseInt(t.timeEst)||60,
+            priority: t.priority||'med', kind: 'task', sourceId: t.id
+          }).then(function(eid){
+            if(eid){ t.gcalEventId = eid; save(); }
+          });
+        }
+      }
+    } catch(e){ console.warn('[gcal] auto-push task failed', e); }
+    return ret;
+  };
+})();
+
+// Wrap deleteStandaloneTask: propagate delete to Google
+(function(){
+  if(typeof deleteStandaloneTask !== 'function') return;
+  var _orig = deleteStandaloneTask;
+  deleteStandaloneTask = function(id){
+    try {
+      if(state.gcal && state.gcal.connected){
+        var t = (state.tasks||[]).find(function(x){return x.id===id;});
+        if(t && t.gcalEventId) _gcalDeleteEvent(t.gcalEventId);
+      }
+    } catch(e){ console.warn('[gcal] delete propagation failed', e); }
+    return _orig.apply(this, arguments);
+  };
+})();
+
+// Wrap deleteSubtask: propagate delete
+(function(){
+  if(typeof deleteSubtask !== 'function') return;
+  var _orig = deleteSubtask;
+  deleteSubtask = function(pid, sid){
+    try {
+      if(state.gcal && state.gcal.connected){
+        var p = (state.projects||[]).find(function(x){return x.id===pid;});
+        var s = p && p.subtasks.find(function(x){return x.id===sid;});
+        if(s && s.gcalEventId) _gcalDeleteEvent(s.gcalEventId);
+      }
+    } catch(e){ console.warn('[gcal] delete subtask propagation failed', e); }
+    return _orig.apply(this, arguments);
+  };
+})();
+
+// Wrap deleteProject: propagate deletes for all its subtasks
+(function(){
+  if(typeof deleteProject !== 'function') return;
+  var _orig = deleteProject;
+  deleteProject = function(id){
+    try {
+      if(state.gcal && state.gcal.connected){
+        var p = (state.projects||[]).find(function(x){return x.id===id;});
+        if(p){
+          (p.subtasks||[]).forEach(function(s){
+            if(s.gcalEventId) _gcalDeleteEvent(s.gcalEventId);
+          });
+        }
+      }
+    } catch(e){ console.warn('[gcal] delete project propagation failed', e); }
+    return _orig.apply(this, arguments);
+  };
+})();
+
+// ===========================================================================
+// TIMELINE HOOK: inject external Google events into _tlCollectBlocks output.
+// We monkey-patch by wrapping the original and appending external events.
+// ===========================================================================
+(function(){
+  if(typeof _tlCollectBlocks !== 'function') return;
+  var _origCollect = _tlCollectBlocks;
+  _tlCollectBlocks = function(targetDate){
+    var blocks = _origCollect.apply(this, arguments) || [];
+    try {
+      var date = targetDate || (typeof todayStr==='function'?todayStr():null);
+      if(date){
+        var ext = gcalEventsForDate(date);
+        // Avoid duplicating external events that somehow got pushed back
+        blocks = blocks.concat(ext);
+      }
+    } catch(e){ console.warn('[gcal] timeline merge failed', e); }
+    return blocks;
+  };
+})();
+

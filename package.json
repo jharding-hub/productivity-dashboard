@@ -1,0 +1,33 @@
+{
+  "name": "productivity-dashboard",
+  "version": "1.0.0",
+  "description": "",
+  "main": "config.example.js",
+  "scripts": {
+    "dev": "vite",
+    "build": "vite build",
+    "preview": "vite preview",
+    "deploy": "vite build && gh-pages -d dist -b gh-pages --dotfiles"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/jharding-hub/productivity-dashboard.git"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "type": "commonjs",
+  "bugs": {
+    "url": "https://github.com/jharding-hub/productivity-dashboard/issues"
+  },
+  "homepage": "https://github.com/jharding-hub/productivity-dashboard#readme",
+  "devDependencies": {
+    "@vitejs/plugin-react": "^6.0.2",
+    "gh-pages": "^6.3.0",
+    "vite": "^8.0.16"
+  },
+  "dependencies": {
+    "react": "^19.2.7",
+    "react-dom": "^19.2.7"
+  }
+}

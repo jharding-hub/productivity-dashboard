@@ -7,6 +7,7 @@
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Playfair+Display:wght@600;700&family=DM+Sans:wght@300;400;500;600&display=swap" rel="stylesheet">
+<script src="config.js"></script>
 <script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-app-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-auth-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore-compat.js"></script>
@@ -766,14 +767,7 @@ textarea.field{resize:vertical;min-height:80px;}
 // CENTERPOST TEACHER PLANNER — DATA + UI
 // ══════════════════════════════════════════════════════════════════
 
-var FIREBASE_CONFIG = {
-  apiKey: "AIzaSyCgNToGWHbZI8s8OnhF1Z9l2BMXXtfHuC0",
-  authDomain: "productivity-dashboard-f8488.firebaseapp.com",
-  projectId: "productivity-dashboard-f8488",
-  storageBucket: "productivity-dashboard-f8488.firebasestorage.app",
-  messagingSenderId: "921593287670",
-  appId: "1:921593287670:web:eda2ab0cb829ca850f6dd7"
-};
+var FIREBASE_CONFIG = CENTERPOST_FIREBASE_CONFIG;
 
 // ── CONSTANTS ──────────────────────────────────────────────────────
 var DAY_START = 9 * 60;  // 9:00 AM in minutes

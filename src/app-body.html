@@ -1,0 +1,515 @@
+<div id="landing-login-root"></div>
+<!-- APP (hidden until auth) -->
+<div class="app-wrap" id="appWrap">
+<div class="header">
+  <!-- Left: Points Badge + Focus Music system -->
+  <div id="points-focus-music-root"></div>
+  <!-- Center: Bar + title overlay + subtitle below -->
+  <div class="header-center">
+    <div id="day-timeline-banner-root"></div>
+  </div>
+  <!-- Hidden time-left bar (kept for backwards compat with updateTimeLeft fn) -->
+  <div class="time-left-bar" style="display:none;"><div class="time-left-bar-fill" id="timeLeftBar" style="width:100%"></div></div>
+  <!-- Right: Mobile-only inline title + Clock + Task Timer -->
+  <div class="header-right">
+    <div class="mobile-only-title"><span class="mt-name">Centerpost</span><span class="mt-sub">Productivity</span></div>
+    <div class="header-clock-wrap">
+      <div class="header-clock" id="headerClock">--:--</div>
+    </div>
+    <div class="task-timer-wrap" id="taskTimerWrap">
+      <button class="task-timer-btn" id="ttStartBtn" onclick="ttStart()" title="Start task timer">&#9654;</button>
+      <div class="task-timer-display" id="ttDisplay">00:00:00</div>
+      <button class="task-timer-btn" onclick="ttPause()" title="Pause">&#9208;</button>
+      <button class="task-timer-btn" onclick="ttReset()" title="Reset">&#8634;</button>
+    </div>
+  </div>
+</div>
+
+<!-- Fireworks overlay (for tier-up celebration) -->
+<div class="fireworks-overlay" id="fireworksOverlay"></div>
+<!-- Emergency theme overlays (fire/police night themes) -->
+<div id="emsStrobe"></div>
+<div id="emsFire"></div>
+<!-- Starry Night theme overlays -->
+<div id="starryLayer"></div>
+<div id="galaxyLayer"></div>
+<div id="firefliesLayer"></div>
+<!-- Storm theme overlays -->
+<div id="stormLayer"></div>
+<div id="lightningFlash"></div>
+<!-- Point popup container (rendered by PointsFocusMusic component) -->
+
+<div class="dashboard" id="dashboard">
+
+<!-- 1. PROJECTS -->
+<div class="panel panel-tile" data-panel="projects" data-nav="projects" data-tile="1">
+<div class="panel-header"><div class="panel-title"><span class="drag-handle">&#10495;</span><i class="ti ti-folder icon" aria-hidden="true"></i> Projects</div>
+<div style="display:flex;gap:6px;align-items:center;"><button class="breakdown-btn" onclick="openJarvisBreakdown('projects')" title="AI Breakdown — pick a project to break into micro-steps"><span class="bd-spark">&#10022;</span> Breakdown</button><span class="panel-badge" id="projCount">0</span><span class="panel-badge completed-badge" id="projCompletedBadge" style="display:none;">✓ 0</span><button class="expand-btn" onclick="openPanelOverlay('projects')" title="Expand to full view"><span class="expand-arrow">&#9660;</span></button></div></div>
+<div class="panel-tile-summary" id="tile-summary-projects" onclick="openPanelOverlay('projects')" style="cursor:pointer;"></div>
+<label class="upcoming-filter-toggle" onclick="event.stopPropagation();"><input type="checkbox" id="projUpcomingOnly" onchange="renderProjects()"> <span>Show all projects (by priority)</span></label>
+<div class="panel-content" id="pc_projects">
+<div class="project-list" id="projectList"><div class="skel-wrap"><div class="skel-row-item" style="flex-direction:column;gap:6px;align-items:stretch;"><div class="skel skel-line lg" style="width:62%"></div><div class="skel skel-line sm" style="width:44%"></div></div><div class="skel-row-item" style="flex-direction:column;gap:6px;align-items:stretch;"><div class="skel skel-line lg" style="width:78%"></div><div class="skel skel-line sm" style="width:60%"></div></div><div class="skel-row-item" style="flex-direction:column;gap:6px;align-items:stretch;"><div class="skel skel-line lg" style="width:55%"></div><div class="skel skel-line sm" style="width:37%"></div></div></div></div>
+</div>
+<div class="tl-add-form tile-add-region">
+<div class="section-label">Add Project</div>
+<div style="display:flex;gap:6px;"><input type="text" id="newProjName" placeholder="Name this project..." onkeydown="if(event.key==='Enter')addProject()" style="flex:1;"><button class="mic-btn" id="projMicBtn" onclick="toggleMic('newProjName','projMicBtn')" title="Voice input">&#127908;</button></div>
+<div class="tl-add-row">
+<input type="date" id="newProjDue" style="max-width:130px;">
+<button class="btn btn-accent btn-sm" onclick="addProject()">+ Add</button>
+</div>
+</div>
+</div>
+
+<!-- 2. REMINDERS -->
+<div class="panel panel-tile" data-panel="reminders" data-nav="reminders" data-tile="1">
+<div class="panel-header" onclick="openPanelOverlay('reminders')"><div class="panel-title"><span class="drag-handle">&#10495;</span><i class="ti ti-bell icon" aria-hidden="true"></i> Reminders</div>
+<div style="display:flex;gap:6px;align-items:center;"><span class="panel-badge" id="remCount">0</span><button class="expand-btn" onclick="event.stopPropagation();openPanelOverlay('reminders')" title="Expand"><span class="expand-arrow">▼</span></button></div></div>
+<div class="panel-tile-summary" id="tile-summary-reminders" onclick="openPanelOverlay('reminders')"></div>
+<div class="panel-content" id="pc_reminders">
+<div class="reminder-list" id="reminderList"><div class="skel-wrap"><div class="skel-row-item"><div class="skel" style="width:22px;height:22px;border-radius:50%;flex-shrink:0;"></div><div style="flex:1;display:flex;flex-direction:column;gap:5px;"><div class="skel skel-line" style="width:68%"></div><div class="skel skel-line sm" style="width:42%"></div></div></div><div class="skel-row-item"><div class="skel" style="width:22px;height:22px;border-radius:50%;flex-shrink:0;"></div><div style="flex:1;display:flex;flex-direction:column;gap:5px;"><div class="skel skel-line" style="width:82%"></div><div class="skel skel-line sm" style="width:56%"></div></div></div><div class="skel-row-item"><div class="skel" style="width:22px;height:22px;border-radius:50%;flex-shrink:0;"></div><div style="flex:1;display:flex;flex-direction:column;gap:5px;"><div class="skel skel-line" style="width:58%"></div><div class="skel skel-line sm" style="width:32%"></div></div></div><div class="skel-row-item"><div class="skel" style="width:22px;height:22px;border-radius:50%;flex-shrink:0;"></div><div style="flex:1;display:flex;flex-direction:column;gap:5px;"><div class="skel skel-line" style="width:74%"></div><div class="skel skel-line sm" style="width:48%"></div></div></div></div></div>
+</div>
+<div class="tile-add-region">
+<div class="section-label" style="margin-top:10px;">Add Reminder</div>
+<div style="display:flex;gap:6px;margin-bottom:6px;"><input type="text" id="newRemText" placeholder="What do you need to remember?" style="flex:1;"><button class="mic-btn" id="remMicBtn" onclick="toggleMic('newRemText','remMicBtn')" title="Voice input">&#127908;</button></div>
+<div class="add-row" style="margin-top:0;flex-wrap:wrap;gap:6px;"><input type="date" id="newRemDate"><input type="time" id="newRemTime"><div class="proj-multi-picker" id="newRemProjectPicker" data-target="newRemProject" onclick="openProjMultiPicker(event,this)" style="font-size:11px;padding:3px 6px;min-height:26px;flex:1;"><span class="proj-multi-placeholder">+ Projects</span></div><input type="hidden" id="newRemProject" value=""><button class="btn btn-accent" onclick="addReminder()">+</button></div>
+</div>
+</div>
+
+<!-- 3. BRAIN DUMP -->
+<div class="panel panel-narrow" data-panel="brain" data-nav="brain">
+<div class="panel-header"><div class="panel-title"><span class="drag-handle">&#10495;</span><i class="ti ti-brain icon" aria-hidden="true"></i> Brain Dump</div><div class="panel-badge">Working Memory</div></div>
+<p style="font-size:11px;color:var(--text-dim);margin-bottom:6px;">Catch thoughts before they vanish. Press Enter to save. &#8599; promotes to subtask.</p>
+<textarea class="brain-dump-area" id="brainDump" placeholder="Ideas, stray thoughts, that thing you keep forgetting..." onkeydown="handleDumpKey(event)"></textarea>
+<button class="bd-organize-btn" id="bdOrganizeBtn" onclick="bdOrganize()"><i class="ti ti-sparkles" aria-hidden="true"></i> Organize with Axis</button>
+<div class="thought-chips" id="thoughtChips"></div></div>
+
+<div class="panel panel-narrow" data-panel="time" data-nav="time" id="toolkit-panel-root"></div>
+
+
+<!-- 7. ROUTINES -->
+<div class="panel" data-panel="routines" data-nav="routines" id="routines-panel-root"></div>
+
+<!-- 8. NOTES -->
+<div class="panel panel-tile" data-panel="notes" data-nav="notes" data-tile="1">
+<div class="panel-header" onclick="openPanelOverlay('notes')"><div class="panel-title"><span class="drag-handle">&#10495;</span><i class="ti ti-notebook icon" aria-hidden="true"></i> Notes</div>
+<div style="display:flex;gap:6px;align-items:center;flex:1;justify-content:flex-end;">
+<div class="notes-inline-search" onclick="event.stopPropagation()">
+<input type="text" class="note-search" id="noteSearch" placeholder="Search notes..." oninput="renderNotes()" onclick="event.stopPropagation()">
+<select id="noteFilterProj" onchange="renderNotes()" onclick="event.stopPropagation()" style="width:auto;padding:4px 6px;font-size:11px;"><option value="all">All projects</option></select>
+</div>
+<span class="panel-badge notes-tile-badge" id="noteCount">0</span><button class="expand-btn" onclick="event.stopPropagation();openPanelOverlay('notes')" title="Expand"><span class="expand-arrow">▼</span></button></div></div>
+<div class="panel-tile-summary" id="tile-summary-notes" onclick="openPanelOverlay('notes')"></div>
+<div class="note-form tile-add-region">
+<input type="text" id="newNoteLabel" placeholder="Short title...">
+<div class="note-editable" id="newNoteBody" contenteditable="true" data-placeholder="Write your note..."></div>
+<div class="note-fmt-bar" role="toolbar" aria-label="Note formatting"><button type="button" class="note-fmt-btn" title="Bold" onmousedown="event.preventDefault()" onclick="_noteFmt('newNoteBody','bold')"><b>B</b></button><button type="button" class="note-fmt-btn" title="Italic" onmousedown="event.preventDefault()" onclick="_noteFmt('newNoteBody','italic')"><i>I</i></button><button type="button" class="note-fmt-btn" title="Header" onmousedown="event.preventDefault()" onclick="_noteFmt('newNoteBody','header')">H</button><button type="button" class="note-fmt-btn" title="Bullet list" onmousedown="event.preventDefault()" onclick="_noteFmt('newNoteBody','bullet')">&bull;</button><button type="button" class="note-fmt-btn" title="Link" onmousedown="event.preventDefault()" onclick="_noteFmt('newNoteBody','link')">&#128279;</button></div>
+<div class="note-form-row">
+<div class="proj-multi-picker" id="newNoteProjectPicker" data-target="newNoteProject" onclick="openProjMultiPicker(event,this)"><span class="proj-multi-placeholder">+ Tag projects (optional)</span></div>
+<input type="hidden" id="newNoteProject" value="">
+<button class="btn btn-accent" onclick="addNote()">Add Note</button>
+</div></div>
+<div class="panel-content" id="pc_notes">
+<div class="notes-list" id="notesList"><div class="skel-wrap"><div class="skel-row-item" style="flex-direction:column;gap:5px;align-items:stretch;"><div class="skel skel-line" style="width:52%"></div><div class="skel skel-line sm" style="width:82%"></div><div class="skel skel-line sm" style="width:66%"></div></div><div class="skel-row-item" style="flex-direction:column;gap:5px;align-items:stretch;"><div class="skel skel-line" style="width:52%"></div><div class="skel skel-line sm" style="width:82%"></div><div class="skel skel-line sm" style="width:66%"></div></div><div class="skel-row-item" style="flex-direction:column;gap:5px;align-items:stretch;"><div class="skel skel-line" style="width:52%"></div><div class="skel skel-line sm" style="width:82%"></div><div class="skel skel-line sm" style="width:66%"></div></div></div></div>
+</div>
+</div>
+
+
+
+<!-- 12. TASK LIST -->
+<div class="panel panel-tile" data-panel="tasklist" data-nav="tasklist" data-tile="1">
+<div class="panel-header"><div class="panel-title"><span class="drag-handle">&#10495;</span><i class="ti ti-checklist icon" aria-hidden="true"></i> Task List</div>
+<div style="display:flex;gap:6px;align-items:center;"><button class="breakdown-btn" onclick="openJarvisBreakdown('tasks')" title="AI Breakdown — pick a task to break into micro-steps"><span class="bd-spark">&#10022;</span> Breakdown</button><span class="panel-badge" id="taskListCount">0</span><span class="panel-badge completed-badge" id="taskListCompletedBadge" style="display:none;">✓ 0</span><button class="expand-btn" onclick="openPanelOverlay('tasklist')" title="Expand to full view"><span class="expand-arrow">&#9660;</span></button></div></div>
+<div class="panel-tile-summary" id="tile-summary-tasklist" onclick="openPanelOverlay('tasklist')" style="cursor:pointer;"></div>
+<div class="tasklist-controls">
+<select id="tlSortBy" onchange="renderTaskList()" style="width:auto;padding:3px 7px;font-size:11px;">
+<option value="priority">Sort: Priority</option>
+<option value="time">Sort: Time Needed</option>
+<option value="project">Sort: Project</option>
+<option value="due" selected>Sort: Due Date</option>
+</select>
+<select id="tlFilterProj" onchange="renderTaskList()" style="width:auto;padding:3px 7px;font-size:11px;max-width:130px;">
+<option value="all">Projects</option>
+</select>
+<label class="upcoming-filter-toggle" onclick="event.stopPropagation();" style="margin-left:4px;"><input type="checkbox" id="taskUpcomingOnly" onchange="renderTaskList()"> <span style="font-size:11px;">Show all tasks</span></label>
+</div>
+<div class="panel-content" id="pc_tasklist">
+<div class="tl-list" id="taskListItems"><div class="skel-wrap"><div class="skel-row-item"><div class="skel" style="width:14px;height:14px;border-radius:50%;flex-shrink:0;"></div><div style="flex:1;display:flex;flex-direction:column;gap:4px;"><div class="skel skel-line" style="width:70%"></div><div class="skel skel-line sm" style="width:48%"></div></div><div class="skel skel-line sm" style="width:44px;flex-shrink:0;"></div></div><div class="skel-row-item"><div class="skel" style="width:14px;height:14px;border-radius:50%;flex-shrink:0;"></div><div style="flex:1;display:flex;flex-direction:column;gap:4px;"><div class="skel skel-line" style="width:55%"></div><div class="skel skel-line sm" style="width:33%"></div></div><div class="skel skel-line sm" style="width:44px;flex-shrink:0;"></div></div><div class="skel-row-item"><div class="skel" style="width:14px;height:14px;border-radius:50%;flex-shrink:0;"></div><div style="flex:1;display:flex;flex-direction:column;gap:4px;"><div class="skel skel-line" style="width:80%"></div><div class="skel skel-line sm" style="width:58%"></div></div><div class="skel skel-line sm" style="width:44px;flex-shrink:0;"></div></div><div class="skel-row-item"><div class="skel" style="width:14px;height:14px;border-radius:50%;flex-shrink:0;"></div><div style="flex:1;display:flex;flex-direction:column;gap:4px;"><div class="skel skel-line" style="width:65%"></div><div class="skel skel-line sm" style="width:43%"></div></div><div class="skel skel-line sm" style="width:44px;flex-shrink:0;"></div></div><div class="skel-row-item"><div class="skel" style="width:14px;height:14px;border-radius:50%;flex-shrink:0;"></div><div style="flex:1;display:flex;flex-direction:column;gap:4px;"><div class="skel skel-line" style="width:75%"></div><div class="skel skel-line sm" style="width:53%"></div></div><div class="skel skel-line sm" style="width:44px;flex-shrink:0;"></div></div></div></div>
+<div id="taskListCompleted"></div>
+</div>
+<div class="tl-add-form tile-add-region">
+<div class="section-label">Add Task</div>
+<div style="display:flex;gap:6px;"><input type="text" id="tlNewName" placeholder="What needs doing?" onkeydown="if(event.key==='Enter')addStandaloneTask()" style="flex:1;"><button class="mic-btn" id="taskMicBtn" onclick="toggleMic('tlNewName','taskMicBtn')" title="Voice input">&#127908;</button></div>
+<div class="tl-add-row">
+<div class="proj-multi-picker" id="tlNewProjectPicker" data-target="tlNewProject" data-allow-new="1" onclick="openProjMultiPicker(event,this)"><span class="proj-multi-placeholder">+ Projects</span></div>
+<input type="hidden" id="tlNewProject" value="">
+<select id="tlNewPriority"><option value="low">Low</option><option value="med" selected>Med</option><option value="high">High</option></select>
+<select id="tlNewTime" class="time-est-select"><option value="">Time?</option><option value="30">30m</option><option value="60">1hr</option><option value="90">1.5hr</option><option value="120">2hr</option><option value="180">3hr</option><option value="240">4hr</option><option value="360">6hr</option><option value="480">8hr</option><option value="720">12hr</option></select>
+<input type="date" id="tlNewDue" style="max-width:130px;">
+<button class="btn btn-accent btn-sm" onclick="addStandaloneTask()">+</button>
+</div>
+</div>
+</div>
+
+
+<!-- 11. STUCK HELPER -->
+<div class="panel panel-narrow" data-panel="decision" data-nav="help">
+<div class="panel-header"><div class="panel-title"><span class="drag-handle">&#10495;</span><i class="ti ti-help-circle icon" aria-hidden="true"></i> Stuck? Start Here</div><div class="panel-badge">Decision Aid</div></div>
+<div class="decision-prompt" id="decisionPrompt"></div>
+<button class="btn" onclick="newDecisionPrompt()">New prompt</button></div>
+
+<!-- 12. TIMELINE / DAY BLOCKS -->
+<div class="panel" data-panel="timeline" data-nav="timeline" data-tile="0">
+<div class="panel-header"><div class="panel-title"><span class="drag-handle">&#10495;</span><i class="ti ti-calendar-time icon" aria-hidden="true"></i> <span id="tlPanelTitle">Today's Timeline</span></div>
+<div style="display:flex;gap:6px;align-items:center;">
+  <span class="panel-badge" id="tlBlockCount">0</span>
+  <button class="expand-btn" onclick="exportTimelineICS()" title="Export current view as .ics" style="font-size:14px;">&#128229;</button>
+</div></div>
+<div class="tl-day-tabs" style="display:flex;gap:0;margin-bottom:8px;border-radius:6px;overflow:hidden;border:1px solid var(--border);">
+  <button type="button" class="tl-day-tab active" data-day="today" onclick="tlSetViewDay('today')" style="flex:1;padding:8px;border:0;background:rgba(91,232,255,0.18);color:#5be8ff;font-size:12px;font-weight:700;cursor:pointer;border-right:1px solid var(--border);">Today</button>
+  <button type="button" class="tl-day-tab" data-day="tomorrow" onclick="tlSetViewDay('tomorrow')" style="flex:1;padding:8px;border:0;background:var(--surface-raised);color:var(--text-dim);font-size:12px;font-weight:700;cursor:pointer;">Tomorrow</button>
+</div>
+<div class="tl-legend" id="tlLegend"></div>
+<div class="tl-viewport">
+  <div class="tl-grid" id="tlGrid"></div>
+</div>
+<div class="tl-add-form" style="margin-top:10px;padding-top:10px;border-top:1px solid var(--border);">
+  <div class="section-label">Add Block</div>
+  <div style="display:flex;gap:6px;">
+    <input type="text" id="tlBlockName" placeholder="Block name (e.g. 'Deep work — QA review')" onkeydown="if(event.key==='Enter')addTimelineBlock()" style="flex:1;">
+  </div>
+  <div class="tl-add-row" style="flex-wrap:wrap;">
+    <input type="time" id="tlBlockStart" style="max-width:110px;" value="09:00">
+    <select id="tlBlockDur" style="max-width:90px;">
+      <option value="30">30m</option>
+      <option value="60" selected>1hr</option>
+      <option value="90">1.5hr</option>
+      <option value="120">2hr</option>
+      <option value="180">3hr</option>
+      <option value="240">4hr</option>
+      <option value="360">6hr</option>
+      <option value="480">8hr</option>
+      <option value="720">12hr</option>
+    </select>
+    <div class="proj-multi-picker" id="tlBlockProjPicker" data-target="tlBlockProj" onclick="openProjMultiPicker(event,this)" style="font-size:11px;padding:3px 6px;min-height:26px;flex:1;"><span class="proj-multi-placeholder">+ Project (color)</span></div>
+    <input type="hidden" id="tlBlockProj" value="">
+    <button class="btn btn-accent btn-sm" onclick="addTimelineBlock()">+ Add</button>
+  </div>
+  <div style="display:flex;gap:6px;margin-top:6px;flex-wrap:wrap;align-items:center;">
+    <button class="btn btn-sm" onclick="exportTimelineICS()" style="font-size:11px;">&#128197; Download .ics</button>
+    <button class="btn btn-sm" onclick="pushToGoogleCalendar()" style="font-size:11px;" title="Quick: open each block as a pre-filled Google Calendar event (no auth needed)">&#128197; Push to Google</button>
+    <button class="btn btn-sm" onclick="clearTimelineBlocks()" style="font-size:11px;color:var(--text-dim);">Clear manual blocks</button>
+    <span class="gcal-status-chip" id="gcalStatusChip" onclick="openGcalModal()" title="Calendar sync settings"><span class="gcal-dot"></span><span id="gcalStatusLabel">Sync: off</span></span>
+  </div>
+</div>
+</div>
+
+</div>
+
+<div class="dynamic-panels" id="dynamicPanels">
+<!-- 6. WELLNESS TOOLKIT (separate panel, hidden by default) -->
+<div id="grounding-toolkit-root"></div>
+
+
+<!-- 10. ADMIN (only visible to admins) -->
+<div class="panel hidden-panel" data-panel="admin" data-nav="admin" id="adminPanel">
+<div class="panel-header"><div class="panel-title"><span class="drag-handle">&#10495;</span><i class="ti ti-shield icon" aria-hidden="true"></i> Admin</div><div class="panel-badge">Users &amp; Management</div></div>
+<div class="admin-stat-grid" id="adminStats"></div>
+<div class="panel-content" id="pc_admin">
+<table class="admin-table"><thead><tr><th>User</th><th>Status</th><th>Tier</th><th>Last Active</th><th>Actions</th></tr></thead><tbody id="adminUserList"></tbody></table>
+</div>
+<div class="admin-add-form">
+<div class="section-label">Add User</div>
+<div class="admin-add-row">
+<input type="email" id="adminNewEmail" placeholder="Email address...">
+<input type="password" id="adminNewPass" placeholder="Temp password...">
+<button class="btn btn-accent btn-sm" onclick="adminAddUser()">Add</button>
+</div>
+<div class="login-error" id="adminAddError" style="text-align:left;"></div>
+</div>
+
+<!-- INVITE CODES SECTION -->
+<div class="admin-add-form" style="margin-top:18px;">
+<div class="section-label">&#127919; Beta Invite Codes</div>
+<p style="font-size:11px;color:var(--text-dim);margin:4px 0 10px;line-height:1.5;">Share these codes with people you want in the beta. Each code can be single-use or multi-use. Codes appear under the "Beta invite code" field on the public sign-up form.</p>
+<div class="admin-add-row" style="flex-wrap:wrap;">
+<input type="text" id="newInviteCode" placeholder="Code (or leave blank to auto-generate)" style="text-transform:uppercase;flex:1;min-width:160px;">
+<input type="number" id="newInviteMaxUses" placeholder="Max uses" value="1" min="1" max="999" style="width:90px;">
+<input type="text" id="newInviteNote" placeholder="Note (who is this for?)" style="flex:1;min-width:140px;">
+<button class="btn btn-accent btn-sm" onclick="adminCreateInviteCode()">Create</button>
+</div>
+<div class="login-error" id="inviteCreateError" style="text-align:left;"></div>
+<table class="admin-table" style="margin-top:12px;"><thead><tr><th>Code</th><th>Uses</th><th>Status</th><th>Note</th><th>Actions</th></tr></thead><tbody id="inviteCodeList"><tr><td colspan="5" style="text-align:center;color:var(--text-faint);padding:14px;">Loading codes...</td></tr></tbody></table>
+</div>
+
+</div>
+</div>
+
+<!-- MOBILE NAV -->
+<!-- MOBILE BACK BAR -->
+<div class="mobile-back-bar" id="mobileBackBar">
+  <button class="mobile-back-btn" onclick="showMobileHome()">Panels</button>
+</div>
+
+<!-- MOBILE HOME SCREEN (tile grid) -->
+<div class="mobile-home" id="mobileHome">
+  <div class="ptr-indicator" id="ptrIndicator"><span class="ptr-arrow" id="ptrArrow">&#8595;</span></div>
+  <div class="mobile-home-header">
+    <div class="mobile-home-title">Centerpost</div>
+    <div class="mobile-home-subtitle"><span class="hs-prod">Productivity</span><span class="hs-dash"> Dashboard</span></div>
+    <div class="mobile-home-meta">
+      <span class="mhm-time" id="mobileHomeClock"></span>
+    </div>
+  </div>
+  <div class="mobile-panel-grid" id="mobilePanelGrid"></div>
+</div>
+
+
+<div class="modal-overlay" id="modalOverlay" onclick="if(event.target===this)closeModal()"><div class="modal" id="modalContent"></div></div>
+<div class="customize-overlay" id="customizeOverlay" onclick="if(event.target===this)closeCustomize()">
+<div class="customize-box">
+<h3>&#9881; Customize Panels</h3>
+<div class="section-label" style="margin-bottom:8px;">Theme</div>
+<div class="theme-selector" id="themeSelector"></div>
+<div style="border-bottom:1px solid var(--border);margin-bottom:16px;"></div>
+
+<p class="cust-sub">Toggle panels on or off. Hidden panels keep their data and can be re-enabled anytime.</p>
+<div id="panelToggles"></div>
+<div class="customize-actions">
+<button class="btn" onclick="resetPanelVisibility()">Show All</button>
+<button class="btn btn-accent" onclick="closeCustomize()">Done</button>
+</div>
+<div class="cust-build" id="custBuild"></div>
+</div>
+</div>
+<!-- Breathwork overlay + modal (rendered by BreathworkOverlay component) -->
+<div id="breathwork-overlay-root"></div>
+<!-- RADAR MODAL -->
+<!-- WEATHER MODAL -->
+<div class="modal-blur-overlay" id="weatherModal">
+<div class="modal-blur-backdrop" onclick="closeWeatherModal()"></div>
+<div class="modal-blur-panel" style="width:min(620px,95vw);max-height:92vh;">
+  <div class="modal-blur-header">
+    <div class="modal-blur-title">&#127780; Weather</div>
+    <div style="display:flex;gap:8px;align-items:center;">
+      <span id="weatherLocation" style="font-size:11px;color:var(--text-faint);"></span>
+      <button class="modal-blur-close" onclick="closeWeatherModal()">&#10005;</button>
+    </div>
+  </div>
+  <div class="modal-blur-body" id="weatherBody" style="padding:16px 20px;min-height:200px;"></div>
+</div>
+</div>
+
+<!-- WORKOUT MODAL -->
+<div id="workout-modal-root"></div>
+
+<!-- RESTAURANT SPINNER MODAL -->
+<div class="modal-blur-overlay" id="spinnerModal">
+<div class="modal-blur-backdrop" onclick="closeSpinnerModal()"></div>
+<div class="modal-blur-panel" style="width:min(780px,96vw);">
+  <div class="modal-blur-header">
+    <div class="modal-blur-title">&#127869; Dinner Wheel</div>
+    <button class="modal-blur-close" onclick="closeSpinnerModal()">&#10005;</button>
+  </div>
+  <div class="modal-blur-body" id="spinnerBody" style="padding:18px 20px;">
+    <div class="spin-filters">
+      <div class="spin-filter-group">
+        <div class="spin-filter-label">Type</div>
+        <div class="spin-filter-btns">
+          <button class="spin-filter-btn active" data-group="type" data-val="sitdown" onclick="spinToggle(this)">&#127860; Sit Down</button>
+          <button class="spin-filter-btn" data-group="type" data-val="fastfood" onclick="spinToggle(this)">&#127828; Fast Food</button>
+          <button class="spin-filter-btn" data-group="type" data-val="coffee" onclick="spinToggle(this)">&#9749; Coffee</button>
+        </div>
+      </div>
+      <div class="spin-filter-group">
+        <div class="spin-filter-label">Meal</div>
+        <div class="spin-filter-btns">
+          <button class="spin-filter-btn" data-group="meal" data-val="breakfast" onclick="spinToggle(this)">&#9728;&#65039; Breakfast</button>
+          <button class="spin-filter-btn active" data-group="meal" data-val="lunch" onclick="spinToggle(this)">&#9749; Lunch</button>
+          <button class="spin-filter-btn" data-group="meal" data-val="dinner" onclick="spinToggle(this)">&#127769; Dinner</button>
+        </div>
+      </div>
+    </div>
+    <button class="spin-go-btn" id="spinGoBtn" onclick="spinFetchAndBuild()">&#127759; Find Restaurants Near Me</button>
+    <div class="spin-status" id="spinStatus"></div>
+    <div id="spinWheelArea" style="display:none;">
+      <div class="spin-wheel-wrap">
+        <div class="spin-canvas-container">
+          <div class="spin-pointer">&#128971;</div>
+          <canvas id="spinCanvas" width="300" height="300"></canvas>
+        </div>
+        <button class="btn btn-accent" onclick="spinWheel()" id="spinBtn" style="font-size:15px;padding:10px 32px;font-weight:700;">&#9654; Spin!</button>
+      </div>
+      <div id="spinResultArea"></div>
+    </div>
+  </div>
+</div>
+</div>
+
+<!-- PROJECT DETAIL MODAL -->
+<div class="proj-modal-overlay" id="projDetailModal">
+<div class="proj-modal-backdrop" onclick="closeProjectModal()"></div>
+<div class="proj-modal-panel">
+  <div class="proj-modal-header">
+    <div>
+      <div class="proj-modal-title" id="pmdTitle"></div>
+      <div class="proj-modal-meta" id="pmdMeta"></div>
+    </div>
+    <button class="proj-modal-close" onclick="closeProjectModal()">&#10005;</button>
+  </div>
+  <div class="proj-modal-body" id="pmdBody"></div>
+</div>
+</div>
+
+<!-- PANEL EXPANSION OVERLAY (shared by Projects/Reminders/Notes/Tasks) -->
+<div class="panel-overlay" id="panelOverlay">
+<div class="panel-overlay-backdrop" onclick="closePanelOverlay()"></div>
+<div class="panel-overlay-frame">
+  <div class="panel-overlay-header">
+    <div class="panel-overlay-title" id="panelOverlayTitle">Panel</div>
+    <button class="panel-overlay-close" onclick="closePanelOverlay()">&#10005;</button>
+  </div>
+  <div class="panel-overlay-body" id="panelOverlayBody">
+    <!-- Expanded panel content gets moved here, then back -->
+  </div>
+</div>
+</div>
+
+<!-- HALT+ MODAL -->
+<div id="halt-modal-root"></div>
+
+<!-- WELLNESS WHEEL MODAL -->
+<div class="modal-blur-overlay" id="wellnessModal">
+<div class="modal-blur-backdrop" onclick="closeWellnessModal()"></div>
+<div class="modal-blur-panel" style="width:min(620px,95vw);">
+  <div class="modal-blur-header">
+    <div class="modal-blur-title">&#9784;&#65039; Wellness Wheel</div>
+    <button class="modal-blur-close" onclick="closeWellnessModal()">&#10005;</button>
+  </div>
+  <div class="modal-blur-body" style="padding:16px 20px;" id="wellnessBody">
+  </div>
+</div>
+</div>
+
+<!-- ENERGY & MOOD + MOOD HISTORY MODALS -->
+<div id="energy-mood-modal-root"></div>
+
+<!-- BRAIN DUMP ORGANIZER MODAL -->
+<div class="modal-blur-overlay" id="bdOrgModal">
+<div class="modal-blur-backdrop" onclick="bdOrgClose()"></div>
+<div class="modal-blur-panel bd-org-panel">
+  <div class="bd-org-head">
+    <i class="ti ti-sparkles" aria-hidden="true"></i>
+    <div class="bd-org-title">Organize Brain Dump</div>
+    <button class="modal-blur-close" onclick="bdOrgClose()">&#10005;</button>
+  </div>
+  <div class="bd-org-body" id="bdOrgBody"></div>
+  <div class="bd-org-foot" id="bdOrgFoot" style="display:none;">
+    <button class="btn" onclick="bdOrgClose()">Cancel</button>
+    <button class="btn btn-accent-solid" id="bdOrgApplyBtn" onclick="bdOrgApply()">Apply</button>
+  </div>
+</div>
+</div>
+
+<!-- CONFIRM DIALOG — replaces all native browser confirm() calls -->
+<div class="modal-blur-overlay" id="confirmDialog">
+<div class="modal-blur-backdrop" id="confirmDialogBd" onclick="_confirmCancel()"></div>
+<div class="modal-blur-panel confirm-dialog-panel">
+  <div class="confirm-dialog-icon" id="confirmDialogIcon"><i class="ti ti-help-circle" aria-hidden="true"></i></div>
+  <div class="confirm-dialog-msg" id="confirmDialogMsg"></div>
+  <div class="confirm-dialog-btns">
+    <button class="btn" id="confirmCancelBtn" onclick="_confirmCancel()">Cancel</button>
+    <button class="btn" id="confirmAltBtn" onclick="_confirmAlt()" style="display:none"></button>
+    <button class="btn btn-accent-solid" id="confirmOkBtn" onclick="_confirmDo()">Confirm</button>
+  </div>
+</div>
+</div>
+
+<!-- BRAIN DUMP ORGANIZER MODAL -->
+<div class="modal-blur-overlay" id="bdOrganizeModal">
+<div class="modal-blur-backdrop" onclick="bdOrganizeClose()"></div>
+<div class="modal-blur-panel bdo-panel">
+  <div class="modal-blur-header">
+    <div class="modal-blur-title"><i class="ti ti-sparkles" aria-hidden="true" style="color:var(--accent);margin-right:6px;"></i>Organize Brain Dump</div>
+    <button class="modal-blur-close" onclick="bdOrganizeClose()">&#10005;</button>
+  </div>
+  <div class="bdo-body" id="bdoBody">
+    <div class="bdo-status"><div class="bdo-spinner"></div> Axis is reading your thoughts…</div>
+  </div>
+  <div class="bdo-footer" id="bdoFooter" style="display:none;">
+    <button class="btn" onclick="bdOrganizeClose()">Cancel</button>
+    <button class="btn btn-accent-solid" id="bdoApplyBtn" onclick="bdOrganizeApply()">Apply Organization</button>
+  </div>
+</div>
+</div>
+
+<!-- Breathwork picker modal (rendered by BreathworkOverlay component) -->
+
+<!-- TIMER MODAL -->
+<!-- JOURNAL OVERLAY -->
+<div id="journal-overlay-root"></div>
+<div class="toast" id="toast"></div>
+</div><!-- end app-wrap -->
+<div class="status-bar" id="statusBar"><div id="status-bar-root"></div></div>
+<!-- JARVIS AI ASSISTANT -->
+<div id="axis-assistant-root"></div>
+
+<div id="calendar-sync-modal-root"></div>
+
+<!-- WORK TODAY MODAL -->
+<div class="modal-blur-overlay" id="workTodayModal">
+<div class="modal-blur-backdrop" onclick="closeWorkTodayModal()"></div>
+<div class="modal-blur-panel" style="max-width:420px;">
+  <div class="modal-blur-header">
+    <div class="modal-blur-title" id="wtModalTitle">&#128197; Schedule</div>
+    <button class="modal-blur-close" onclick="closeWorkTodayModal()">&#10005;</button>
+  </div>
+  <div class="modal-blur-body">
+    <div id="wtItemName" style="font-size:14px;font-weight:600;color:var(--text);margin-bottom:14px;padding:10px 12px;background:var(--surface-raised);border-radius:6px;border-left:3px solid var(--teal);"></div>
+    
+    <div class="section-label" style="margin-bottom:6px;">Day</div>
+    <div class="wt-day-toggle" id="wtDayToggle" style="display:flex;gap:0;margin-bottom:14px;border-radius:6px;overflow:hidden;border:1px solid var(--border);">
+      <button type="button" class="wt-day-btn active" data-day="today" onclick="wtSetDay('today')" style="flex:1;padding:9px;border:0;background:rgba(91,232,255,0.18);color:#5be8ff;font-size:13px;font-weight:700;cursor:pointer;border-right:1px solid var(--border);">Today</button>
+      <button type="button" class="wt-day-btn" data-day="tomorrow" onclick="wtSetDay('tomorrow')" style="flex:1;padding:9px;border:0;background:var(--surface-raised);color:var(--text-dim);font-size:13px;font-weight:700;cursor:pointer;">Tomorrow</button>
+    </div>
+    
+    <div class="section-label" style="margin-bottom:6px;">When?</div>
+    <div style="display:flex;gap:8px;align-items:stretch;margin-bottom:14px;">
+      <input type="time" id="wtTime" style="flex:0 0 150px;width:150px;min-width:150px;font-size:16px;padding:10px 12px;border:1px solid var(--border);border-radius:8px;background:var(--surface-raised);color:var(--text);cursor:text;font-family:inherit;box-sizing:border-box;">
+      <select id="wtDuration" style="flex:1;min-width:90px;font-size:14px;padding:10px 8px;border:1px solid var(--border);border-radius:8px;background:var(--surface-raised);color:var(--text);cursor:pointer;font-family:inherit;box-sizing:border-box;">
+        <option value="15">15m</option>
+        <option value="30" selected>30m</option>
+        <option value="60">1hr</option>
+        <option value="90">1.5hr</option>
+        <option value="120">2hr</option>
+        <option value="180">3hr</option>
+        <option value="240">4hr</option>
+        <option value="360">6hr</option>
+        <option value="480">8hr</option>
+        <option value="720">12hr</option>
+      </select>
+    </div>
+    
+    <div id="wtSuggestion" style="font-size:11px;color:var(--text-dim);margin-bottom:14px;padding:8px 10px;background:rgba(91,232,255,0.05);border:1px solid rgba(91,232,255,0.15);border-radius:4px;font-style:italic;"></div>
+    
+    <div id="wtConflict" style="display:none;font-size:11px;color:#e88c6a;margin-bottom:10px;padding:6px 10px;background:rgba(232,140,106,0.08);border-radius:4px;"></div>
+    
+    <div style="display:flex;gap:8px;justify-content:flex-end;">
+      <button class="btn btn-sm" onclick="closeWorkTodayModal()" style="font-size:12px;">Cancel</button>
+      <button class="btn btn-accent btn-sm" id="wtScheduleBtn" onclick="confirmWorkToday()" style="font-size:12px;background:#5be8ff;color:#02141a;">Schedule</button>
+    </div>
+  </div>
+</div>
+</div>
+
+<!-- Music Streaming Modal (rendered by PointsFocusMusic component) -->
+
+<!-- REMINDER POPUP -->
+<div class="rem-popup-overlay hidden" id="reminderPopupOverlay" onclick="if(event.target===this)closeReminderPopup()">
+  <div class="rem-popup" id="reminderPopup">
+    <div class="rem-popup-title">🔔 Reminders for today</div>
+    <div class="rem-popup-sub" id="reminderPopupSub"></div>
+    <div id="reminderPopupList"></div>
+    <button class="rem-popup-close" onclick="closeReminderPopup()">Dismiss all — I'll handle these later</button>
+  </div>
+</div>
+

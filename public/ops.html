@@ -4,6 +4,7 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>CENTERPOST // OPS</title>
+<script src="config.js"></script>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Orbitron:wght@400;700&family=Share+Tech+Mono&display=swap">
 <style>
@@ -507,7 +508,7 @@ const WORKERS = [
   // ← add more workers here
 ];
 
-const JARVIS_ENDPOINT = 'https://centerpost-jarvis.medicjth.workers.dev/ops-chat';
+const JARVIS_ENDPOINT = JARVIS_PROXY_URL+'/ops-chat';
 
 // ════════════════════════════════════════════════════════════════════════
 // STATE
@@ -1058,7 +1059,7 @@ async function speak(text) {
   if (_currentAudio) { _currentAudio.pause(); _currentAudio = null; }
 
   try {
-    const res = await fetch('https://centerpost-jarvis.medicjth.workers.dev/ops-speak', {
+    const res = await fetch(JARVIS_PROXY_URL+'/ops-speak', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ text }),
@@ -1098,7 +1099,7 @@ function toggleListen() {
 // ════════════════════════════════════════════════════════════════════════
 // ANALYTICS
 // ════════════════════════════════════════════════════════════════════════
-const AN_ENDPOINT = 'https://centerpost-jarvis.medicjth.workers.dev';
+const AN_ENDPOINT = JARVIS_PROXY_URL;
 let anPeriod = 7;
 
 // Human-readable names for panel IDs used in index.html

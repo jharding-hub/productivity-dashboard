@@ -14,6 +14,7 @@
 <link rel="manifest" href="kids-manifest.json">
 <title>Centerpost Kids</title>
 <!-- Firebase (loaded for OPTIONAL cross-device sync; app works fully offline if these fail) -->
+<script src="config.js"></script>
 <script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-app-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-auth-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore-compat.js"></script>
@@ -4492,14 +4493,7 @@ _refreshOnDayChange();
 //    preferring whichever has the higher lifetimePoints (anti-rollback).
 // ═══════════════════════════════════════════════════════════════════════
 
-var KIDS_FIREBASE_CONFIG = {
-  apiKey: "AIzaSyCgNToGWHbZI8s8OnhF1Z9l2BMXXtfHuC0",
-  authDomain: "productivity-dashboard-f8488.firebaseapp.com",
-  projectId: "productivity-dashboard-f8488",
-  storageBucket: "productivity-dashboard-f8488.firebasestorage.app",
-  messagingSenderId: "921593287670",
-  appId: "1:921593287670:web:eda2ab0cb829ca850f6dd7"
-};
+var KIDS_FIREBASE_CONFIG = CENTERPOST_FIREBASE_CONFIG;
 var _kidsFirebaseReady=false;
 var _kidsFirebaseUser=null;
 var _kidsFirebaseDb=null;
