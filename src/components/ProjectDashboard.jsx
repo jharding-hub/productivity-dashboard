@@ -319,6 +319,129 @@ function ProjectDropdown({ projects, selectedId, onSelect, onAddNew }) {
   );
 }
 
+const BANNER_HOUR_MARKERS = [
+  { pct: '6.67%', label: '6a' }, { pct: '13.33%', label: '7a' },
+  { pct: '20%', label: '8a' }, { pct: '26.67%', label: '9a' },
+  { pct: '33.33%', label: '10a' }, { pct: '40%', label: '11a' },
+  { pct: '46.67%', label: '12p' }, { pct: '53.33%', label: '1p' },
+  { pct: '60%', label: '2p' }, { pct: '66.67%', label: '3p' },
+  { pct: '73.33%', label: '4p' }, { pct: '80%', label: '5p' },
+  { pct: '86.67%', label: '6p' }, { pct: '93.33%', label: '7p' },
+];
+
+const BLOCK_PALETTE = ['#5b8ce8','#7fb3a0','#e88c6a','#c77dba','#a0a0aa','#9e7bff','#5be8ff','#ff6b9d'];
+
+function tlProjectColor(projectId) {
+  if (!projectId) return null;
+  let hash = 0;
+  for (let i = 0; i < projectId.length; i++) hash = ((hash << 5) - hash + projectId.charCodeAt(i)) | 0;
+  return Math.abs(hash) % 8;
+}
+
+function tlParseTime(hhmm) {
+  if (!hhmm || !hhmm.includes(':')) return null;
+  const [h, m] = hhmm.split(':');
+  return parseInt(h) * 60 + parseInt(m);
+}
+
+function collectTodayBlocks() {
+  const s = getState();
+  const today = todayStr();
+  const blocks = [];
+  (s.tlBlocks || []).forEach(b => {
+    if (b.date === today) {
+      const startMin = tlParseTime(b.time);
+      if (startMin == null) return;
+      blocks.push({
+        id: b.id, name: b.name, startMin, durMin: parseInt(b.duration || 60),
+        projectId: b.projectId || '',
+      });
+    }
+  });
+  return blocks;
+}
+
+function useClock() {
+  const [clock, setClock] = useState('');
+  const [timer, setTimer] = useState('00:00:00');
+  const [timerRunning, setTimerRunning] = useState(false);
+
+  useEffect(() => {
+    const update = () => {
+      setClock(new Date().toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit', hour12: true }));
+      const el = document.getElementById('ttDisplay');
+      if (el) {
+        setTimer(el.textContent || '00:00:00');
+        setTimerRunning(el.classList.contains('running'));
+      }
+    };
+    update();
+    const id = setInterval(update, 1000);
+    return () => clearInterval(id);
+  }, []);
+
+  return { clock, timer, timerRunning };
+}
+
+function ProjectBanner({ tick }) {
+  const [elapsed, setElapsed] = useState(0);
+  const [nowPct, setNowPct] = useState(0);
+
+  useEffect(() => {
+    const update = () => {
+      const now = new Date();
+      const mins = now.getHours() * 60 + now.getMinutes();
+      const pct = Math.max(0, Math.min(100, ((mins - 300) / 900) * 100));
+      setElapsed(pct);
+      setNowPct(pct);
+    };
+    update();
+    const id = setInterval(update, 60000);
+    return () => clearInterval(id);
+  }, []);
+
+  const blocks = collectTodayBlocks();
+  const BANNER_START = 300, BANNER_RANGE = 900;
+
+  return (
+    <div className="day-progress-bar" style={{ height: 64, borderRadius: 10 }}>
+      <div className="day-progress-elapsed" style={{ width: `${elapsed}%` }} />
+      <span className="day-progress-edge-label start">5a</span>
+      <span className="day-progress-edge-label end">8p</span>
+      {BANNER_HOUR_MARKERS.map(({ pct, label }) => (
+        <div key={label} className="day-progress-marker" style={{ left: pct }}>
+          <span className="day-progress-marker-label">{label}</span>
+        </div>
+      ))}
+      <div className="day-progress-now" style={{ left: `${nowPct}%` }} />
+      <div className="header-title-on-bar">Centerpost</div>
+      <div className="header-subtitle">
+        <span className="hs-prod">Productivity</span>
+        <span className="hs-dash">&nbsp;Dashboard</span>
+      </div>
+      {blocks.length > 0 && (
+        <div className="day-progress-bar-blocks">
+          {blocks.map(b => {
+            const endMin = b.startMin + b.durMin;
+            if (endMin <= BANNER_START || b.startMin >= BANNER_START + BANNER_RANGE) return null;
+            const clippedStart = Math.max(b.startMin, BANNER_START);
+            const clippedEnd = Math.min(endMin, BANNER_START + BANNER_RANGE);
+            const leftPct = ((clippedStart - BANNER_START) / BANNER_RANGE) * 100;
+            const widthPct = ((clippedEnd - clippedStart) / BANNER_RANGE) * 100;
+            const colorIdx = tlProjectColor(b.projectId);
+            const color = colorIdx == null ? 'rgba(255,255,255,0.4)' : BLOCK_PALETTE[colorIdx];
+            return (
+              <div key={b.id} className="dpb-block" style={{
+                left: `${leftPct}%`, width: `${widthPct}%`, background: color,
+              }} title={b.name} />
+            );
+          })}
+        </div>
+      )}
+    </div>
+  );
+}
+
 export default function ProjectDashboard({ open, onClose }) {
   const [selectedId, setSelectedId] = useState(null);
   const [tick, setTick] = useState(0);
@@ -330,6 +453,7 @@ export default function ProjectDashboard({ open, onClose }) {
   const [scheduleFor, setScheduleFor] = useState(null);
   const taskInputRef = useRef(null);
   const noteEditorRef = useRef(null);
+  const { clock, timer, timerRunning } = useClock();
 
   const refresh = useCallback(() => setTick(t => t + 1), []);
 
@@ -453,48 +577,79 @@ export default function ProjectDashboard({ open, onClose }) {
       fontFamily: "'DM Sans', sans-serif",
       color: 'var(--text)',
     }}>
-      {/* Top bar */}
+      {/* Header with banner */}
       <div style={{
-        display: 'flex', alignItems: 'center', gap: 12,
-        padding: '10px 20px',
-        borderBottom: '1px solid var(--border)',
-        background: 'var(--surface)',
         flexShrink: 0,
+        background: 'var(--surface)',
+        borderBottom: '1px solid var(--border)',
       }}>
-        <button onClick={onClose} style={{
-          background: 'none', border: '1px solid var(--border)', borderRadius: 'var(--radius-sm)',
-          color: 'var(--text-dim)', cursor: 'pointer', padding: '6px 14px', fontSize: 13,
-          fontFamily: 'inherit', display: 'flex', alignItems: 'center', gap: 6,
+        {/* Banner + clock row */}
+        <div style={{
+          display: 'flex', alignItems: 'center', gap: 12,
+          padding: '8px 20px 6px',
         }}>
-          <span style={{ fontSize: 16 }}>←</span> Dashboard
-        </button>
-
-        <ProjectDropdown
-          projects={projects}
-          selectedId={selectedId}
-          onSelect={setSelectedId}
-          onAddNew={addProject}
-        />
-
-        {selected && (
-          <div style={{ display: 'flex', alignItems: 'center', gap: 8, flex: 1, minWidth: 0 }}>
-            <button onClick={() => {
-              const name = prompt('Rename project:', selected.name);
-              if (name && name.trim()) {
-                selected.name = name.trim(); save(); refresh(); syncLegacy();
-              }
-            }} style={{
-              background: 'none', border: 'none', color: 'var(--text-faint)',
-              cursor: 'pointer', fontSize: 13, padding: 4, flexShrink: 0,
-            }} title="Rename">
-              <i className="ti ti-pencil" />
-            </button>
-            <span style={{ fontSize: 12, color: 'var(--text-dim)' }}>
-              {doneCount}/{totalCount} tasks
-              {selected.due ? ` · Due ${fmtDate(selected.due)}` : ''}
-            </span>
+          <div style={{ flex: 1, minWidth: 0 }}>
+            <ProjectBanner tick={tick} />
           </div>
-        )}
+          <div className="header-right" style={{ flexShrink: 0 }}>
+            <div className="header-clock-wrap">
+              <div className="header-clock">{clock}</div>
+            </div>
+            <div className="task-timer-wrap">
+              <button className="task-timer-btn"
+                onClick={() => { if (typeof window.ttStart === 'function') window.ttStart(); }}
+                title="Start task timer">▶</button>
+              <div className={`task-timer-display${timerRunning ? ' running' : ''}`}>{timer}</div>
+              <button className="task-timer-btn"
+                onClick={() => { if (typeof window.ttPause === 'function') window.ttPause(); }}
+                title="Pause">⏸</button>
+              <button className="task-timer-btn"
+                onClick={() => { if (typeof window.ttReset === 'function') window.ttReset(); }}
+                title="Reset">↺</button>
+            </div>
+          </div>
+        </div>
+
+        {/* Nav row */}
+        <div style={{
+          display: 'flex', alignItems: 'center', gap: 12,
+          padding: '4px 20px 8px',
+        }}>
+          <button onClick={onClose} style={{
+            background: 'none', border: '1px solid var(--border)', borderRadius: 'var(--radius-sm)',
+            color: 'var(--text-dim)', cursor: 'pointer', padding: '6px 14px', fontSize: 13,
+            fontFamily: 'inherit', display: 'flex', alignItems: 'center', gap: 6,
+          }}>
+            <span style={{ fontSize: 16 }}>←</span> Dashboard
+          </button>
+
+          <ProjectDropdown
+            projects={projects}
+            selectedId={selectedId}
+            onSelect={setSelectedId}
+            onAddNew={addProject}
+          />
+
+          {selected && (
+            <div style={{ display: 'flex', alignItems: 'center', gap: 8, flex: 1, minWidth: 0 }}>
+              <button onClick={() => {
+                const name = prompt('Rename project:', selected.name);
+                if (name && name.trim()) {
+                  selected.name = name.trim(); save(); refresh(); syncLegacy();
+                }
+              }} style={{
+                background: 'none', border: 'none', color: 'var(--text-faint)',
+                cursor: 'pointer', fontSize: 13, padding: 4, flexShrink: 0,
+              }} title="Rename">
+                <i className="ti ti-pencil" />
+              </button>
+              <span style={{ fontSize: 12, color: 'var(--text-dim)' }}>
+                {doneCount}/{totalCount} tasks
+                {selected.due ? ` · Due ${fmtDate(selected.due)}` : ''}
+              </span>
+            </div>
+          )}
+        </div>
       </div>
 
       {/* 2-column body */}
