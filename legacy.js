@@ -1480,7 +1480,7 @@ async function _bdoRequestPlan(){
   var endpoint = (typeof JARVIS_PROXY_URL!=='undefined' && JARVIS_PROXY_URL) || '';
   var res = await fetch(endpoint, {
     method:'POST',
-    headers:{'Content-Type':'application/json'},
+    headers:await _jarvisAuthHeaders(),
     body:JSON.stringify({
       model:'claude-haiku-4-5-20251001',
       max_tokens:2000,
@@ -8102,6 +8102,14 @@ setTimeout(checkShareTarget, 400); // slight delay so panels render first
 
 // -- Proxy config -----------------------------------------------------
 // JARVIS_PROXY_URL is defined in config.js
+async function _jarvisAuthHeaders(){
+  var h={'Content-Type':'application/json'};
+  try{
+    var user=firebase.auth().currentUser;
+    if(user){h['Authorization']='Bearer '+(await user.getIdToken());}
+  }catch(e){console.warn('[Jarvis] getIdToken failed:',e);}
+  return h;
+}
 var _jarvisOpen=false;
 var _jarvisHistory=[]; // {role:'user'|'assistant', content:'...'}
 var _jarvisThinking=false;
@@ -8644,7 +8652,7 @@ async function jarvisSend(){
     var endpoint = JARVIS_PROXY_URL || 'https://api.anthropic.com/v1/messages';
     var res=await fetch(endpoint,{
       method:'POST',
-      headers:{'Content-Type':'application/json'},
+      headers:await _jarvisAuthHeaders(),
       body:JSON.stringify({
         model:'claude-haiku-4-5-20251001',
         max_tokens:1000,

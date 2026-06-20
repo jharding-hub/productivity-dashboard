@@ -5,6 +5,8 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>CENTERPOST // OPS</title>
 <script src="config.js"></script>
+<script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-auth-compat.js"></script>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Orbitron:wght@400;700&family=Share+Tech+Mono&display=swap">
 <style>
@@ -453,6 +455,22 @@ body { background: var(--bg); color: var(--text); font-family: var(--mono); font
 </div>
 
 <script>
+// ════════════════════════════════════════════════════════════════════════
+// FIREBASE AUTH — initialize and provide auth headers for Jarvis calls
+// ════════════════════════════════════════════════════════════════════════
+if (typeof firebase !== 'undefined' && CENTERPOST_FIREBASE_CONFIG) {
+  firebase.initializeApp(CENTERPOST_FIREBASE_CONFIG);
+  firebase.auth().signInAnonymously().catch(e => console.warn('[Ops] Firebase anon auth failed:', e));
+}
+async function _opsAuthHeaders() {
+  const h = { 'Content-Type': 'application/json' };
+  try {
+    const user = firebase.auth().currentUser;
+    if (user) h['Authorization'] = 'Bearer ' + (await user.getIdToken());
+  } catch (e) { console.warn('[Ops] getIdToken failed:', e); }
+  return h;
+}
+
 // ════════════════════════════════════════════════════════════════════════
 // CONFIGURATION — add a worker object to WORKERS to add a new agent card
 // ════════════════════════════════════════════════════════════════════════
@@ -1017,7 +1035,7 @@ async function sendChat(override) {
   try {
     const res = await fetch(JARVIS_ENDPOINT, {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
+      headers: await _opsAuthHeaders(),
       body: JSON.stringify({ message: msg, context: ctx, history: S.history.slice(-10) }),
       mode: 'cors',
     });
@@ -1325,7 +1343,7 @@ Return ONLY a raw JSON array (no markdown). Each object must have:
   try {
     const res = await fetch(`${AN_ENDPOINT}/ops-chat`, {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
+      headers: await _opsAuthHeaders(),
       body: JSON.stringify({
         message: prompt,
         context: 'You are Jarvis, admin analytics AI for Centerpost ADHD productivity app.',
