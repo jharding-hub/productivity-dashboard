@@ -16,12 +16,14 @@ import CalendarSyncModal from './components/CalendarSyncModal';
 import ToolKitPanel from './components/ToolKitPanel';
 import LandingLogin from './components/LandingLogin';
 import StatusBar from './components/StatusBar';
+import ProjectDashboard from './components/ProjectDashboard';
 
 let legacyLoaded = false;
 
 export default function App() {
   const ref = useRef(null);
   const [mounts, setMounts] = useState({});
+  const [projectDashboardOpen, setProjectDashboardOpen] = useState(false);
 
   useEffect(() => {
     if (!ref.current || legacyLoaded) return;
@@ -47,6 +49,16 @@ export default function App() {
 
     const script = document.createElement('script');
     script.src = '/legacy.js';
+    script.onload = () => {
+      const origOpen = window.openPanelOverlay;
+      window.openPanelOverlay = function(panelKey) {
+        if (panelKey === 'projects') {
+          setProjectDashboardOpen(true);
+          return;
+        }
+        if (origOpen) origOpen(panelKey);
+      };
+    };
     document.body.appendChild(script);
   }, []);
 
@@ -67,6 +79,10 @@ export default function App() {
       {mounts.toolkit && createPortal(<ToolKitPanel />, mounts.toolkit)}
       {mounts.landingLogin && createPortal(<LandingLogin />, mounts.landingLogin)}
       {mounts.statusBar && createPortal(<StatusBar />, mounts.statusBar)}
+      <ProjectDashboard
+        open={projectDashboardOpen}
+        onClose={() => setProjectDashboardOpen(false)}
+      />
     </>
   );
 }
