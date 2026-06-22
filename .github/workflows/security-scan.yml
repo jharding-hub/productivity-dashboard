@@ -1,0 +1,44 @@
+name: Security Scan
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+
+jobs:
+  trufflehog:
+    name: Secret Scanning (TruffleHog)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - uses: trufflesecurity/trufflehog@v3.88.26
+        with:
+          extra_args: --only-verified
+
+  npm-audit:
+    name: Dependency Audit
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+      - run: npm ci
+      - run: npm audit --audit-level=high
+
+  hardcoded-secrets:
+    name: Hardcoded Secret Patterns
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Scan src/ for hardcoded secrets
+        run: |
+          PATTERNS='sk-ant-|sk-live-|AIzaSy|Bearer [A-Za-z0-9_\-]{20,}|AKIA[0-9A-Z]{16}|ghp_[A-Za-z0-9]{36}|xox[bpras]-[A-Za-z0-9\-]+'
+          if grep -rEn "$PATTERNS" src/ --include='*.js' --include='*.jsx' --include='*.ts' --include='*.tsx'; then
+            echo "::error::Hardcoded secret pattern detected in src/. See matches above."
+            exit 1
+          fi
+          echo "No hardcoded secret patterns found."
