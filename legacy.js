@@ -6009,7 +6009,33 @@ var WO_EXERCISES={
   sprint_intervals:{name:'Sprint Intervals (Outdoor)',muscles:'Power · VO2 Max · Legs',
     steps:['Warm up 5 min easy jog.','Sprint 30 sec at 85-90% effort.','Recover 90 sec walking.','Repeat 6-8 rounds. Cool down 5 min.'],
     tip:'Best evidence-based cardio for first-responder fitness. Mimics scene-burst physiology. Outdoor track or open field.',
-    alts:['jump_rope','tabata_burpees','box_jump','emom_squats']}
+    alts:['jump_rope','tabata_burpees','box_jump','emom_squats']},
+
+  // KETTLEBELL
+  kb_turkish_getup:{name:'KB Turkish Get-Up',muscles:'Full Body · Core · Shoulder Stabilizers · Hips',
+    steps:['Lie on back, KB pressed overhead in one hand, same-side knee bent.','Roll onto opposite elbow, then hand. Bridge hips up.','Sweep back leg under you to kneeling. Stand up.','Reverse every step back to the floor. That is 1 rep.'],
+    tip:'The single best exercise for total-body stabilizer strength (Liebenson, 2011). Go slow -- each rep should take 30-45 seconds. Master the pattern with no weight first.',
+    alts:['kb_windmill','kb_gladiator','plank','dead_bug']},
+  kb_clean_press:{name:'KB Clean & Press',muscles:'Full Body · Shoulders · Core · Glutes',
+    steps:['KB on floor between feet. Hike and clean it to rack position in one motion -- elbow tight to body.','From rack, press overhead to full lockout, bicep near ear.','Lower to rack, then drop back to hike position.','All reps one side, then switch.'],
+    tip:'The clean is a fast hip hinge, not an arm curl. Let the hip snap do the work. The press is strict -- no leg drive (Lake & Lauder, 2012).',
+    alts:['db_shoulder_press','arnold_press','kb_swing','kb_turkish_getup']},
+  kb_windmill:{name:'KB Windmill',muscles:'Obliques · Hips · Shoulder Stability · Hamstrings',
+    steps:['KB pressed overhead, feet angled 45° away from the loaded side.','Push hip out toward the KB side. Slowly hinge and rotate torso down.','Free hand slides down the inside of the front leg toward the floor.','Drive back up through the hip, eyes on the KB throughout.'],
+    tip:'Deep lateral core and hip stability under load (McGill, 2010). Start light -- this exposes mobility limits fast. Keep the overhead arm locked and packed.',
+    alts:['kb_turkish_getup','kb_gladiator','side_plank','dead_bug']},
+  kb_renegade_row:{name:'KB Renegade Row',muscles:'Lats · Rhomboids · Anti-Rotation Core · Triceps',
+    steps:['Two KBs on floor, shoulder width. Get into high plank on the handles.','Shift weight to one arm, row the other KB to hip. Minimize hip rotation.','Lower with control, repeat other side. That is 1 rep.','Keep feet wide for stability -- narrow feet make it harder.'],
+    tip:'One of the highest anti-rotation core demands of any exercise. The row is secondary -- resisting rotation is the point. If hips sway, go lighter.',
+    alts:['db_row','plank','dead_bug','kb_gladiator']},
+  kb_halo:{name:'KB Halo',muscles:'Shoulders · Rotator Cuff · Core · Thoracic Mobility',
+    steps:['Hold KB by the horns, bottoms-up at chest height.','Circle the KB around your head -- close to the skull, elbows tight.','Complete a full orbit, then reverse direction.','Keep core braced and ribs down throughout.'],
+    tip:'Outstanding shoulder mobility and stability warmup. Use as the first exercise or between heavy sets. Light weight -- this is about control, not load.',
+    alts:['face_pull','lateral_raise','kb_windmill','kb_turkish_getup']},
+  kb_gladiator:{name:'KB Gladiator',muscles:'Obliques · Glutes · Shoulder Stability · Full Body',
+    steps:['Start in side plank on one hand, KB in top hand pressed overhead.','Top leg steps forward into a lunge position while maintaining the overhead hold.','Drive back to side plank, then rotate into a push-up position and through to the other side.','The full sequence is: side plank → lunge → push-up → opposite side plank. That is 1 rep.'],
+    tip:'An advanced full-body stabilizer chain exercise. Combines anti-lateral flexion, overhead stability, and hip control in one movement. Master the side plank hold with KB overhead before attempting the full flow. Scale by removing the lunge or doing it unloaded.',
+    alts:['kb_turkish_getup','kb_windmill','kb_renegade_row','plank']}
 };
 
 // -- 3-Day Evidence-Based Whole-Body Program -------------------------------
@@ -6147,11 +6173,61 @@ var WO_PROGRAM_BODYWEIGHT=[
   }
 ];
 
+// -- KETTLEBELL (Option 4: Full-body functional, core + stabilizers) ----------
+// Evidence basis: KB training produces significant improvements in core stability,
+// posterior chain power, and shoulder stabilizer endurance (Jay et al., 2011;
+// Lake & Lauder, 2012). Unilateral loading and offset center of mass demand
+// constant anti-rotation and anti-lateral-flexion from the deep core.
+var WO_PROGRAM_KETTLEBELL=[
+  {
+    day:'A',name:'KB Push + Core Stability',
+    rationale:'Turkish Get-Up builds full-body stabilizer strength through every plane. Clean & Press develops overhead power. Windmill and Gladiator target deep lateral core and hip stability under load.',
+    exercises:[
+      {id:'kb_halo',sets:'2×8 each direction',rest:'30 sec',note:'Shoulder mobility warmup'},
+      {id:'kb_turkish_getup',sets:'3×2 each side',rest:'90 sec',note:'Full-body stabilizer — go slow'},
+      {id:'kb_clean_press',sets:'3×6–8 each side',rest:'90 sec',note:'Power + overhead strength'},
+      {id:'goblet_squat',sets:'3×10–12',rest:'90 sec',note:'Knee-dominant lower'},
+      {id:'kb_windmill',sets:'3×5 each side',rest:'60 sec',note:'Lateral core + hip stability'},
+      {id:'kb_gladiator',sets:'2×3 each side',rest:'90 sec',note:'Advanced stabilizer chain'},
+      {id:'plank',sets:'3×30–45 sec',rest:'45 sec',note:'Anti-extension finisher'}
+    ]
+  },
+  {
+    day:'B',name:'KB Pull + Posterior Chain',
+    rationale:'Swing is the foundational KB hip hinge — explosive posterior chain power. Renegade rows demand anti-rotation core. Single-leg work builds balance and addresses asymmetries.',
+    exercises:[
+      {id:'kb_halo',sets:'2×8 each direction',rest:'30 sec',note:'Shoulder mobility warmup'},
+      {id:'kb_swing',sets:'5×15',rest:'60 sec',note:'Posterior chain power — hip snap'},
+      {id:'kb_renegade_row',sets:'3×6–8 each side',rest:'90 sec',note:'Anti-rotation core + back'},
+      {id:'single_leg_rdl',sets:'3×8 each side',rest:'60 sec',note:'Unilateral posterior chain + balance'},
+      {id:'kb_turkish_getup',sets:'2×2 each side',rest:'90 sec',note:'Stabilizer maintenance'},
+      {id:'kb_gladiator',sets:'2×3 each side',rest:'90 sec',note:'Full-body stabilizer flow'},
+      {id:'dead_bug',sets:'3×8 each side',rest:'45 sec',note:'Deep core finisher'}
+    ]
+  },
+  {
+    day:'C',name:'KB Full-Body Flow',
+    rationale:'Every major movement pattern in one session — hinge, squat, press, pull, carry, and rotational stability. High demand on core and stabilizers throughout. The session firefighters and first responders benefit from most.',
+    exercises:[
+      {id:'kb_halo',sets:'2×8 each direction',rest:'30 sec',note:'Shoulder mobility warmup'},
+      {id:'kb_turkish_getup',sets:'3×2 each side',rest:'90 sec',note:'Full-body stabilizer prime mover'},
+      {id:'kb_swing',sets:'4×15',rest:'60 sec',note:'Posterior chain power'},
+      {id:'kb_clean_press',sets:'3×6–8 each side',rest:'90 sec',note:'Upper-body power'},
+      {id:'goblet_squat',sets:'3×10–12',rest:'90 sec',note:'Quad-dominant lower'},
+      {id:'kb_renegade_row',sets:'3×6–8 each side',rest:'90 sec',note:'Anti-rotation pull'},
+      {id:'kb_windmill',sets:'3×5 each side',rest:'60 sec',note:'Lateral core under load'},
+      {id:'kb_gladiator',sets:'2×3 each side',rest:'90 sec',note:'Advanced full-body flow'},
+      {id:'farmer_carry',sets:'3×30–40 sec',rest:'60 sec',note:'Grip + core + occupational carry'}
+    ]
+  }
+];
+
 // Track registry -- all available program variations
 var WO_TRACKS={
   primary:{name:'Primary',icon:'💪',label:'Gym · Push/Pull/Full-body',program:WO_PROGRAM},
   bodysplit:{name:'Body Split',icon:'🏋️',label:'Gym · Chest+Tri / Back+Bi / Legs+Shoulders',program:WO_PROGRAM_BODYSPLIT},
-  bodyweight:{name:'Bodyweight + HIIT',icon:'🤸',label:'No gym · BW + HIIT, 30–40 min',program:WO_PROGRAM_BODYWEIGHT}
+  bodyweight:{name:'Bodyweight + HIIT',icon:'🤸',label:'No gym · BW + HIIT, 30–40 min',program:WO_PROGRAM_BODYWEIGHT},
+  kettlebell:{name:'Kettlebell',icon:'🔔',label:'KB · Full-body functional, core + stabilizers',program:WO_PROGRAM_KETTLEBELL}
 };
 
 var WO_COOLDOWN=[
