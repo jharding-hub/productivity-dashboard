@@ -817,7 +817,7 @@ function applyPanelOrder(){const dash=document.getElementById('dashboard');const
 function initDragDrop(){document.querySelectorAll('.panel').forEach(panel=>{panel.addEventListener('dragstart',e=>{if(state.panelsLocked){e.preventDefault();return;}dragSrcPanel=panel;panel.classList.add('dragging');e.dataTransfer.effectAllowed='move';e.dataTransfer.setData('text/plain',panel.dataset.panel);});panel.addEventListener('dragend',()=>{panel.classList.remove('dragging');document.querySelectorAll('.panel').forEach(p=>p.classList.remove('drag-over'));dragSrcPanel=null;});panel.addEventListener('dragover',e=>{if(state.panelsLocked)return;e.preventDefault();e.dataTransfer.dropEffect='move';if(panel!==dragSrcPanel)panel.classList.add('drag-over');});panel.addEventListener('dragleave',()=>{panel.classList.remove('drag-over');});panel.addEventListener('drop',e=>{e.preventDefault();panel.classList.remove('drag-over');if(!dragSrcPanel||dragSrcPanel===panel)return;const dash=document.getElementById('dashboard');const all=[...dash.querySelectorAll('.panel')];const fi=all.indexOf(dragSrcPanel);const ti=all.indexOf(panel);if(fi<ti)panel.after(dragSrcPanel);else panel.before(dragSrcPanel);state.panelOrder=[...dash.querySelectorAll('.panel')].map(p=>p.dataset.panel);save();toast('Panel moved');});});}
 
 // CLOCK
-function updateClock(){const now=new Date();const t=now.toLocaleTimeString('en-US',{hour12:true});const clk=document.getElementById('clock');if(clk)clk.textContent=t;const cd=document.getElementById('clockDate');if(cd)cd.textContent=now.toLocaleDateString('en-US',{weekday:'long',year:'numeric',month:'long',day:'numeric'});const mhc=document.getElementById('mobileHomeClock');if(mhc)mhc.textContent=t;const hc=document.getElementById('headerClock');if(hc)hc.textContent=now.toLocaleTimeString('en-US',{hour:'numeric',minute:'2-digit',hour12:true});}
+function updateClock(){const now=new Date();const t=now.toLocaleTimeString('en-US',{hour12:true});const clk=document.getElementById('clock');if(clk)clk.textContent=t;const cd=document.getElementById('clockDate');if(cd)cd.textContent=now.toLocaleDateString('en-US',{weekday:'long',year:'numeric',month:'long',day:'numeric'});const mhc=document.getElementById('mobileHomeClock');if(mhc)mhc.textContent=t;var timeStr=now.toLocaleTimeString('en-US',{hour:'numeric',minute:'2-digit',hour12:true});if(!timerRunning&&timerLeft===timerTotal){['headerTimerLabel','pdHeaderTimerLabel'].forEach(function(id){var el=document.getElementById(id);if(el)el.textContent=timeStr;});}}
 
 // TIMER (with soft alarm)
 // =======================================
@@ -847,31 +847,26 @@ function _timerFmtLabel(){
 }
 
 function updateTimerDisplay(){
-  var lbl=document.getElementById('timerBtnLabel');
-  var icon=document.getElementById('timerStateIcon');
-  var btn=document.getElementById('timerBtn');
-  var ctrls=document.getElementById('timerControls');
-  if(!lbl)return;
-
-  lbl.textContent=_timerFmtLabel();
-
-  // Show controls once timer has been used
-  if(ctrls)ctrls.style.display=(timerRunning||timerLeft<timerTotal)?'inline-flex':'none';
-
-  // State icon: ⏸ when running, ▶ when paused
-  if(icon)icon.textContent=timerRunning?'\u23F8':'\u25B6';
-
-  // Green tint when running
-  if(btn)btn.classList.toggle('timer-running',timerRunning);
+  var m=Math.floor(timerLeft/60),s=timerLeft%60;
+  var countdownStr=String(m).padStart(2,'0')+':'+String(s).padStart(2,'0');
+  ['headerTimerLabel','pdHeaderTimerLabel'].forEach(function(id){
+    var el=document.getElementById(id);if(!el)return;
+    if(timerRunning||timerLeft<timerTotal){
+      el.textContent=countdownStr;
+      el.classList.toggle('ht-running',timerRunning);
+    }else{
+      el.classList.remove('ht-running');
+    }
+  });
 
   if(timerLeft<=0&&timerRunning){
     timerRunning=false;clearInterval(timerInterval);timerInterval=null;timerEndAt=null;
-    if(btn)btn.classList.remove('timer-running');
-    if(ctrls)ctrls.style.display='none';
-    if(lbl)lbl.textContent='Done!';
+    ['headerTimerLabel','pdHeaderTimerLabel'].forEach(function(id){
+      var el=document.getElementById(id);if(el){el.textContent='Done!';el.classList.remove('ht-running');}
+    });
     playAlarm();
-    toast('\u23F0 Focus session complete! +3 pts');
-    addPoints('timer',document.getElementById('timerBtn'));
+    toast('⏰ Focus session complete! +3 pts');
+    addPoints('timer',document.getElementById('headerTimerBtn'));
     timerAlarmTimeout=setTimeout(function(){
       stopAlarm();
       timerLeft=timerTotal;
@@ -885,15 +880,6 @@ function _tickTimer(){
     timerLeft=Math.max(0,Math.round((timerEndAt-Date.now())/1000));
   }
   updateTimerDisplay();
-}
-
-function timerHandleClick(){
-  // If dropdown is open, close it
-  var dd=document.getElementById('timerDropdown');
-  if(dd&&dd.style.display==='block'){dd.style.display='none';return;}
-  // Otherwise toggle play/pause
-  if(timerRunning){pauseTimer();}
-  else{startTimer();}
 }
 
 function startTimer(){
@@ -920,26 +906,34 @@ function resetTimer(){
   updateTimerDisplay();
 }
 
-function timerToggleDropdown(){
-  var dd=document.getElementById('timerDropdown');
+function headerTimerClick(){
+  var dd=document.getElementById('headerTimerDropdown');
+  if(dd&&dd.style.display==='block'){dd.style.display='none';}
+  var dd2=document.getElementById('pdHeaderTimerDropdown');
+  if(dd2&&dd2.style.display==='block'){dd2.style.display='none';}
+  if(timerRunning){pauseTimer();}
+  else if(timerLeft<timerTotal){startTimer();}
+}
+
+function headerTimerToggleDropdown(variant){
+  var ddId=variant==='pd'?'pdHeaderTimerDropdown':'headerTimerDropdown';
+  var dd=document.getElementById(ddId);
   if(!dd)return;
   if(dd.style.display==='block'){dd.style.display='none';return;}
-
   var html=TIMER_PRESETS.map(function(p,i){
-    var cur=i===timerCurrentPresetIdx;
-    return '<div class="timer-dropdown-item'+(cur?' current':'')+'" onclick="event.stopPropagation();timerSelectPreset('+i+')">'
-      +'<span class="td-icon">'+p.icon+'</span>'
-      +'<span class="td-name">'+p.label+'</span>'
-      +(cur?'<span class="td-check">&#9654; set</span>':'')
+    return '<div class="ht-dropdown-item" onclick="event.stopPropagation();headerTimerSelectPreset('+i+')">'
+      +'<span class="ht-dd-icon">'+p.icon+'</span>'
+      +'<span class="ht-dd-name">'+p.label+'</span>'
       +'</div>';
   }).join('');
+  if(timerRunning||timerLeft<timerTotal){
+    html+='<div class="ht-dropdown-item ht-dd-reset" onclick="event.stopPropagation();headerTimerReset()"><span class="ht-dd-icon">↺</span><span class="ht-dd-name">Reset</span></div>';
+  }
   dd.innerHTML=html;
   dd.style.display='block';
-
   setTimeout(function(){
     var handler=function(e){
-      var wrap=document.querySelector('.toolkit-timer-wrap');
-      if(!wrap||!wrap.contains(e.target)){
+      if(!dd.contains(e.target)&&!e.target.classList.contains('header-timer-arrow')){
         dd.style.display='none';
         document.removeEventListener('click',handler);
       }
@@ -948,29 +942,25 @@ function timerToggleDropdown(){
   },10);
 }
 
-function timerSelectPreset(idx){
-  var dd=document.getElementById('timerDropdown');
-  if(dd)dd.style.display='none';
+function headerTimerSelectPreset(idx){
+  document.querySelectorAll('.header-timer-dropdown').forEach(function(d){d.style.display='none';});
   timerCurrentPresetIdx=idx;
   pauseTimer();stopAlarm();
   timerTotal=TIMER_PRESETS[idx].minutes*60;
   timerLeft=timerTotal;timerEndAt=null;
   updateTimerDisplay();
-  // Auto-start immediately after selecting
   startTimer();
 }
 
-// Keep these for any legacy calls
-function setTimerPreset(){
-  var v=parseInt(document.getElementById('timerPreset').value);
-  timerTotal=v*60;timerLeft=timerTotal;timerEndAt=null;
-  pauseTimer();stopAlarm();updateTimerDisplay();
+function headerTimerReset(){
+  document.querySelectorAll('.header-timer-dropdown').forEach(function(d){d.style.display='none';});
+  resetTimer();
 }
-function setTimerPresetDirect(min,el){
-  timerTotal=min*60;timerLeft=timerTotal;timerEndAt=null;
-  pauseTimer();stopAlarm();updateTimerDisplay();
-}
-function openTimerModal(){timerToggleDropdown();}
+
+function timerHandleClick(){headerTimerClick();}
+function timerToggleDropdown(){headerTimerToggleDropdown();}
+function timerSelectPreset(idx){headerTimerSelectPreset(idx);}
+function openTimerModal(){headerTimerToggleDropdown();}
 function closeTimerModal(){}
 
 // Reconcile after sleep/tab switch
@@ -5036,34 +5026,9 @@ function _spawnBurst(parent,cx,cy,color){
 // =======================================
 // TASK TIMER (elapsed stopwatch)
 // =======================================
-var _ttRunning=false,_ttElapsed=0,_ttStart=null,_ttTick=null,_ttAwarded=false;
-function _ttFmt(ms){var s=Math.floor(ms/1000),h=Math.floor(s/3600);s=s%3600;var m=Math.floor(s/60);s=s%60;return (h<10?'0':'')+h+':'+(m<10?'0':'')+m+':'+(s<10?'0':'')+s;}
-function ttStart(){
-  if(_ttRunning)return;
-  _ttRunning=true;_ttStart=Date.now()-_ttElapsed;
-  _ttTick=setInterval(function(){
-    _ttElapsed=Date.now()-_ttStart;
-    var el=document.getElementById('ttDisplay');if(el){el.textContent=_ttFmt(_ttElapsed);el.className='task-timer-display running';}
-  },500);
-  var btn=document.getElementById('ttStartBtn');if(btn)btn.textContent='\u23F8';
-}
-function ttPause(){
-  if(!_ttRunning)return;
-  _ttRunning=false;clearInterval(_ttTick);_ttTick=null;
-  _ttElapsed=Date.now()-_ttStart;
-  var el=document.getElementById('ttDisplay');if(el)el.className='task-timer-display';
-  var btn=document.getElementById('ttStartBtn');if(btn)btn.textContent='\u25B6';
-  // Award once per session if ran 5+ minutes
-  if(!_ttAwarded&&_ttElapsed>=300000){
-    _ttAwarded=true;
-    addPoints('timer');
-  }
-}
-function ttReset(){
-  ttPause();_ttElapsed=0;_ttStart=null;_ttAwarded=false;
-  var el=document.getElementById('ttDisplay');if(el){el.textContent='00:00:00';el.className='task-timer-display';}
-  var btn=document.getElementById('ttStartBtn');if(btn)btn.textContent='\u25B6';
-}
+function ttStart(){}
+function ttPause(){}
+function ttReset(){}
 
 // -- Custom confirm dialog -- replaces all browser confirm() calls ------
 var _confirmOnDo=null,_confirmOnAlt=null;
@@ -5144,6 +5109,7 @@ function closeTimerModal(){
   document.getElementById('timerModal').classList.remove('open');
   _unblurDashboard();
 }
+function setTimerPreset(){}
 function setTimerPresetDirect(mins,btn){
   document.getElementById('timerPreset').value=String(mins);
   setTimerPreset();
