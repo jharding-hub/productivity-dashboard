@@ -682,9 +682,15 @@ function startRealtimeSync(){
       // by an onSnapshot firing with stale Firestore data (race condition fix)
       const localVP=state.visiblePanels;
       const localKP=state.knownPanels;
+      const localRoutineReset=state.lastRoutineReset;
+      const localRoutines=state.routines;
       state={...state,...cloud};
       state.visiblePanels=Object.assign({},cloud.visiblePanels||{},localVP);
       state.knownPanels=localKP&&localKP.length>=(cloud.knownPanels||[]).length?localKP:cloud.knownPanels||localKP;
+      var _today=todayStr();
+      if(localRoutineReset===_today&&cloud.lastRoutineReset!==_today){
+        state.routines=localRoutines;state.lastRoutineReset=_today;
+      }
 
       // Re-apply any gcalEventIds that were wiped by the cloud spread
       (state.tasks||[]).forEach(function(t){if(!t.gcalEventId&&_gcalLocal['t:'+t.id])t.gcalEventId=_gcalLocal['t:'+t.id];});
@@ -2251,12 +2257,12 @@ function checkDailyRoutineReset(){
   renderRoutines();
 }
 function switchRoutineTab(tab,btn){state.currentRoutineTab=tab;document.querySelectorAll('.tab-btn').forEach(b=>b.classList.remove('active'));btn.classList.add('active');renderRoutines();}
-function toggleRoutine(tab,id){const r=state.routines[tab].find(r=>r.id===id);if(r){var wasUndone=!r.done;r.done=!r.done;if(wasUndone&&r.done){var srcEl=document.querySelector('.r-check[onclick*="'+id+'"]');addPoints('routine',srcEl);_trackEvent('tool_use','routine_check','Routine Check');}}save();renderRoutines();}
+function toggleRoutine(tab,id,e){if(e){var t=e.target;if(t.classList.contains('r-delete')||t.classList.contains('r-name')||t.closest('.r-delete')||t.closest('.r-name'))return;}const r=state.routines[tab].find(r=>r.id===id);if(r){var wasUndone=!r.done;r.done=!r.done;if(wasUndone&&r.done){var srcEl=document.querySelector('[data-rid="'+id+'"] .r-check');addPoints('routine',srcEl);_trackEvent('tool_use','routine_check','Routine Check');}}save();renderRoutines();}
 function addRoutine(){const n=document.getElementById('newRoutineName').value.trim();if(!n)return;state.routines[state.currentRoutineTab].push({id:'r'+Date.now(),name:n,done:false});document.getElementById('newRoutineName').value='';save();renderRoutines();}
 function deleteRoutine(tab,id){state.routines[tab]=state.routines[tab].filter(r=>r.id!==id);save();renderRoutines();}
 function resetRoutines(){state.routines[state.currentRoutineTab].forEach(r=>r.done=false);save();renderRoutines();toast('Routines reset');}
 function editRoutineName(tab,id,v){if(!v)return;const r=state.routines[tab].find(r=>r.id===id);if(r)r.name=v;save();}
-function renderRoutines(){const tab=state.currentRoutineTab,items=state.routines[tab]||[];const el=document.getElementById('routineList');if(items.length===0){el.innerHTML='<div class="empty-state">No routine items.</div>';}else{el.innerHTML=items.map(r=>'<div class="routine-item '+(r.done?'r-done':'')+'"><div class="r-check '+(r.done?'r-checked':'')+'" onclick="toggleRoutine(\''+tab+"','"+r.id+'\')">'+(r.done?'\u2713':'')+'</div><span class="r-name editable" id="rn_'+r.id+'">'+esc(r.name)+'</span><span class="r-delete" onclick="deleteRoutine(\''+tab+"','"+r.id+'\')">\u2715</span></div>').join('');}const done=items.filter(r=>r.done).length;document.getElementById('routineProgress').textContent=done+'/'+items.length;items.forEach(r=>{const e=document.getElementById('rn_'+r.id);if(e)makeEditable(e,v=>editRoutineName(tab,r.id,v));});refreshEditables();}
+function renderRoutines(){const tab=state.currentRoutineTab,items=state.routines[tab]||[];const el=document.getElementById('routineList');if(items.length===0){el.innerHTML='<div class="empty-state">No routine items.</div>';}else{el.innerHTML=items.map(r=>'<div class="routine-item '+(r.done?'r-done':'')+'" data-rid="'+r.id+'" onclick="toggleRoutine(\''+tab+"','"+r.id+"',event)\""+' style="cursor:pointer"><div class="r-check '+(r.done?'r-checked':'')+'">'+(r.done?'\u2713':'')+'</div><span class="r-name editable" id="rn_'+r.id+'">'+esc(r.name)+'</span><span class="r-delete" onclick="event.stopPropagation();deleteRoutine(\''+tab+"','"+r.id+'\')">\u2715</span></div>').join('');}const done=items.filter(r=>r.done).length;document.getElementById('routineProgress').textContent=done+'/'+items.length;items.forEach(r=>{const e=document.getElementById('rn_'+r.id);if(e)makeEditable(e,v=>editRoutineName(tab,r.id,v));});refreshEditables();}
 
 // DECISION
 var prompts=['<strong>Can\'t start?</strong> 2-minute rule: commit to just 2 minutes.','<strong>Overwhelmed?</strong> Brain Dump everything. Then pick the smallest item.','<strong>Can\'t decide?</strong> "Which will I regret NOT doing tomorrow?"','<strong>Procrastinating?</strong> Name the feeling behind it.','<strong>Task too big?</strong> Break it down until each step feels silly.','<strong>Context switching?</strong> Write one sentence about where you left off.','<strong>Forgetting?</strong> Under 2 min \u2192 do now. Otherwise \u2192 Brain Dump.','<strong>Stuck in a loop?</strong> Change your physical state.','<strong>Perfectionism?</strong> C-minus draft. Done > perfect.','<strong>No motivation?</strong> Motivation follows action.','<strong>Decision fatigue?</strong> Top 3 only.','<strong>Emotional flooding?</strong> Try 5-4-3-2-1 grounding.','<strong>Avoiding a follow-up?</strong> Draft it now. Sending is separate.'];
