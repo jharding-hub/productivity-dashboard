@@ -1225,6 +1225,72 @@ function editProjectDue(pid,v){const p=state.projects.find(p=>p.id===pid);if(p){
 function editSubtaskDue(pid,sid,v){const p=state.projects.find(p=>p.id===pid);const s=p&&p.subtasks.find(s=>s.id===sid);if(s){s.due=v;save();renderProjects();renderTaskList();var modalOpen=document.getElementById('projDetailModal').classList.contains('open');if(modalOpen)openProjectModal(pid);}}
 function editStandaloneTaskName(id,v){if(!v)return;var t=(state.tasks||[]).find(function(x){return x.id===id;});if(t){t.name=v;save();renderTaskList();var modalOpen=document.getElementById('projDetailModal').classList.contains('open');if(modalOpen&&t.projectId)openProjectModal(t.projectId);else if(modalOpen&&t.projectIds&&t.projectIds.length)openProjectModal(t.projectIds[0]);}}
 function editStandaloneTaskDue(id,v){var t=(state.tasks||[]).find(function(x){return x.id===id;});if(t){t.due=v;save();renderTaskList();var modalOpen=document.getElementById('projDetailModal').classList.contains('open');if(modalOpen&&t.projectId)openProjectModal(t.projectId);else if(modalOpen&&t.projectIds&&t.projectIds.length)openProjectModal(t.projectIds[0]);}}
+function editTaskTimeEst(taskId,source,projectId,val){
+  if(source==='standalone'){
+    var t=(state.tasks||[]).find(function(x){return x.id===taskId;});
+    if(t){t.timeEst=val;save();renderTaskList();}
+  }else{
+    var p=state.projects.find(function(x){return x.id===projectId;});
+    if(p){var s=p.subtasks.find(function(x){return x.id===taskId;});if(s){s.timeEst=val;save();renderProjects();renderTaskList();}}
+  }
+}
+function editTaskProject(taskId,source,oldProjectId,newProjectId){
+  if(source==='standalone'){
+    var t=(state.tasks||[]).find(function(x){return x.id===taskId;});
+    if(!t)return;
+    if(newProjectId){
+      var p=state.projects.find(function(x){return x.id===newProjectId;});
+      if(!p)return;
+      p.subtasks.push({id:t.id,name:t.name,due:t.due,priority:t.priority,timeEst:t.timeEst||'',done:t.done});
+      state.tasks=state.tasks.filter(function(x){return x.id!==taskId;});
+    }else{
+      t.projectId='';t.projectIds=[];
+    }
+  }else{
+    var op=state.projects.find(function(x){return x.id===oldProjectId;});
+    if(!op)return;
+    var si=op.subtasks.findIndex(function(x){return x.id===taskId;});
+    if(si<0)return;
+    var sub=op.subtasks.splice(si,1)[0];
+    if(newProjectId){
+      var np=state.projects.find(function(x){return x.id===newProjectId;});
+      if(np)np.subtasks.push(sub);
+    }else{
+      state.tasks.push({id:sub.id,name:sub.name,due:sub.due,priority:sub.priority,timeEst:sub.timeEst||'',projectId:'',projectIds:[],done:sub.done});
+    }
+  }
+  save();renderProjects();renderTaskList();
+}
+function showTaskTimePicker(taskId,source,projectId,el){
+  var existing=document.querySelector('.tl-inline-picker');
+  if(existing)existing.remove();
+  var opts=[{v:'',l:'None'},{v:'30',l:'30m'},{v:'60',l:'1hr'},{v:'90',l:'1.5hr'},{v:'120',l:'2hr'},{v:'180',l:'3hr'},{v:'240',l:'4hr'},{v:'360',l:'6hr'},{v:'480',l:'8hr'},{v:'720',l:'12hr'}];
+  var dd=document.createElement('div');
+  dd.className='tl-inline-picker';
+  dd.innerHTML=opts.map(function(o){return '<div class="tl-pick-item" onclick="event.stopPropagation();editTaskTimeEst(\''+taskId+'\',\''+source+'\',\''+projectId+'\',\''+o.v+'\')">'+o.l+'</div>';}).join('');
+  el.style.position='relative';
+  el.appendChild(dd);
+  setTimeout(function(){
+    var close=function(e){if(!dd.contains(e.target)){dd.remove();document.removeEventListener('click',close);}};
+    document.addEventListener('click',close);
+  },10);
+}
+function showTaskProjectPicker(taskId,source,projectId,el){
+  var existing=document.querySelector('.tl-inline-picker');
+  if(existing)existing.remove();
+  var projs=_sortedProjects();
+  var dd=document.createElement('div');
+  dd.className='tl-inline-picker';
+  var html='<div class="tl-pick-item" onclick="event.stopPropagation();editTaskProject(\''+taskId+'\',\''+source+'\',\''+projectId+'\',\'\')">None</div>';
+  html+=projs.map(function(p){return '<div class="tl-pick-item'+(p.id===projectId?' tl-pick-current':'')+'" onclick="event.stopPropagation();editTaskProject(\''+taskId+'\',\''+source+'\',\''+projectId+'\',\''+p.id+'\')">'+esc(p.name)+'</div>';}).join('');
+  dd.innerHTML=html;
+  el.style.position='relative';
+  el.appendChild(dd);
+  setTimeout(function(){
+    var close=function(e){if(!dd.contains(e.target)){dd.remove();document.removeEventListener('click',close);}};
+    document.addEventListener('click',close);
+  },10);
+}
 function editReminderDate(id,v){const r=state.reminders.find(r=>r.id===id);if(r){r.date=v;save();renderReminders();}}
 function editReminderTime(id,v){const r=state.reminders.find(r=>r.id===id);if(r){r.time=v;save();renderReminders();}}
 function makeDateClickable(el,currentVal,onSave){
@@ -3201,8 +3267,9 @@ function renderTaskList(){
       return '<div class="tl-item">'+
         '<div class="tl-check" onclick="toggleTaskDone(\''+t.id+'\',\''+t.source+'\',\''+t.projectId+'\')"></div>'+
         '<div class="tl-body"><div class="tl-name"><span class="priority-dot clickable priority-'+t.priority+'" onclick="event.stopPropagation();'+(t.source==='standalone'?'cycleTaskPriority(\''+t.id+'\',event)':'cycleSubtaskPriority(\''+t.projectId+'\',\''+t.id+'\',event)')+'" title="Click to change priority"></span><span class="editable" id="'+nameId+'">'+esc(t.name)+'</span></div>'+
-        '<div class="tl-meta">'+(t.projectName?'<span class="tl-proj-badge">'+esc(t.projectName)+'</span>':'')+
-        (t.timeEst?'<span class="tl-time-badge">'+fmtTimeEst(t.timeEst)+'</span>':'')+
+        '<div class="tl-meta">'+
+        '<span class="tl-proj-badge tl-editable-badge" id="tlproj_'+t.id+'" onclick="event.stopPropagation();showTaskProjectPicker(\''+t.id+'\',\''+t.source+'\',\''+(t.projectId||'')+'\',this)">'+(t.projectName?esc(t.projectName):'+ project')+'</span>'+
+        '<span class="tl-time-badge tl-editable-badge" id="tltime_'+t.id+'" onclick="event.stopPropagation();showTaskTimePicker(\''+t.id+'\',\''+t.source+'\',\''+(t.projectId||'')+'\',this)">'+(t.timeEst?fmtTimeEst(t.timeEst):'+ time')+'</span>'+
         dueHTML+
         '</div></div>'+
         '<span class="wt-clock-btn '+(_isScheduledToday(t.id)?'scheduled':'')+'" onclick="event.stopPropagation();handleWorkTodayClick(\''+(t.source==='standalone'?'task':'subtask')+'\',\''+t.id+'\',\''+(t.projectId||'')+'\')" title="Work on this today">&#128197;</span>'+
