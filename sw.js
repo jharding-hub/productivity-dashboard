@@ -1,5 +1,5 @@
 // ═══════════════════════════════════════════════════════════════════════
-// Centerpost Service Worker — v15 (network-first HTML + background refresh)
+// Centerpost Service Worker (network-first HTML + background refresh)
 // ═══════════════════════════════════════════════════════════════════════
 //
 // STRATEGY
@@ -16,12 +16,11 @@
 //       Never cached. Always go straight to network.
 //
 // DEPLOY NOTE
-//   When you ship a new version of this file, bump CACHE_VERSION so
-//   old caches are wiped. The current value also doubles as a cache-bust
-//   marker — old clients will see the version change and force-update.
+//   CACHE_VERSION is stamped automatically at build time from the git
+//   short hash. Never edit it by hand — run `make build` instead.
 // ═══════════════════════════════════════════════════════════════════════
 
-const CACHE_VERSION = 'centerpost-v9';
+const CACHE_VERSION = 'centerpost-db65c0a';
 
 // Assets to pre-cache on install (offline-ready essentials).
 // Failures are tolerated individually — one missing icon won't break install.
