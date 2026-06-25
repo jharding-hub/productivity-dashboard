@@ -4,11 +4,11 @@ dev:
 
 # Production build into dist/
 build:
-	npx vite build
+	npx vite build && node scripts/stamp-sw.js
 
 # Build and deploy to GitHub Pages (gh-pages branch)
 deploy:
-	npx vite build && npx gh-pages -d dist -b gh-pages --dotfiles
+	npx vite build && node scripts/stamp-sw.js && npx gh-pages -d dist -b gh-pages --dotfiles
 
 # Remove build artifacts
 clean:

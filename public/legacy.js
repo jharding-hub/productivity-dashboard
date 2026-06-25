@@ -682,9 +682,15 @@ function startRealtimeSync(){
       // by an onSnapshot firing with stale Firestore data (race condition fix)
       const localVP=state.visiblePanels;
       const localKP=state.knownPanels;
+      const localRoutineReset=state.lastRoutineReset;
+      const localRoutines=state.routines;
       state={...state,...cloud};
       state.visiblePanels=Object.assign({},cloud.visiblePanels||{},localVP);
       state.knownPanels=localKP&&localKP.length>=(cloud.knownPanels||[]).length?localKP:cloud.knownPanels||localKP;
+      var _today=todayStr();
+      if(localRoutineReset===_today&&cloud.lastRoutineReset!==_today){
+        state.routines=localRoutines;state.lastRoutineReset=_today;
+      }
 
       // Re-apply any gcalEventIds that were wiped by the cloud spread
       (state.tasks||[]).forEach(function(t){if(!t.gcalEventId&&_gcalLocal['t:'+t.id])t.gcalEventId=_gcalLocal['t:'+t.id];});
@@ -811,7 +817,7 @@ function applyPanelOrder(){const dash=document.getElementById('dashboard');const
 function initDragDrop(){document.querySelectorAll('.panel').forEach(panel=>{panel.addEventListener('dragstart',e=>{if(state.panelsLocked){e.preventDefault();return;}dragSrcPanel=panel;panel.classList.add('dragging');e.dataTransfer.effectAllowed='move';e.dataTransfer.setData('text/plain',panel.dataset.panel);});panel.addEventListener('dragend',()=>{panel.classList.remove('dragging');document.querySelectorAll('.panel').forEach(p=>p.classList.remove('drag-over'));dragSrcPanel=null;});panel.addEventListener('dragover',e=>{if(state.panelsLocked)return;e.preventDefault();e.dataTransfer.dropEffect='move';if(panel!==dragSrcPanel)panel.classList.add('drag-over');});panel.addEventListener('dragleave',()=>{panel.classList.remove('drag-over');});panel.addEventListener('drop',e=>{e.preventDefault();panel.classList.remove('drag-over');if(!dragSrcPanel||dragSrcPanel===panel)return;const dash=document.getElementById('dashboard');const all=[...dash.querySelectorAll('.panel')];const fi=all.indexOf(dragSrcPanel);const ti=all.indexOf(panel);if(fi<ti)panel.after(dragSrcPanel);else panel.before(dragSrcPanel);state.panelOrder=[...dash.querySelectorAll('.panel')].map(p=>p.dataset.panel);save();toast('Panel moved');});});}
 
 // CLOCK
-function updateClock(){const now=new Date();const t=now.toLocaleTimeString('en-US',{hour12:true});const clk=document.getElementById('clock');if(clk)clk.textContent=t;const cd=document.getElementById('clockDate');if(cd)cd.textContent=now.toLocaleDateString('en-US',{weekday:'long',year:'numeric',month:'long',day:'numeric'});const mhc=document.getElementById('mobileHomeClock');if(mhc)mhc.textContent=t;const hc=document.getElementById('headerClock');if(hc)hc.textContent=now.toLocaleTimeString('en-US',{hour:'numeric',minute:'2-digit',hour12:true});}
+function updateClock(){const now=new Date();const t=now.toLocaleTimeString('en-US',{hour12:true});const clk=document.getElementById('clock');if(clk)clk.textContent=t;const cd=document.getElementById('clockDate');if(cd)cd.textContent=now.toLocaleDateString('en-US',{weekday:'long',year:'numeric',month:'long',day:'numeric'});const mhc=document.getElementById('mobileHomeClock');if(mhc)mhc.textContent=t;var timeStr=now.toLocaleTimeString('en-US',{hour:'numeric',minute:'2-digit',hour12:true});if(!timerRunning&&timerLeft===timerTotal){['headerTimerLabel','pdHeaderTimerLabel'].forEach(function(id){var el=document.getElementById(id);if(el)el.textContent=timeStr;});}}
 
 // TIMER (with soft alarm)
 // =======================================
@@ -841,31 +847,26 @@ function _timerFmtLabel(){
 }
 
 function updateTimerDisplay(){
-  var lbl=document.getElementById('timerBtnLabel');
-  var icon=document.getElementById('timerStateIcon');
-  var btn=document.getElementById('timerBtn');
-  var ctrls=document.getElementById('timerControls');
-  if(!lbl)return;
-
-  lbl.textContent=_timerFmtLabel();
-
-  // Show controls once timer has been used
-  if(ctrls)ctrls.style.display=(timerRunning||timerLeft<timerTotal)?'inline-flex':'none';
-
-  // State icon: ⏸ when running, ▶ when paused
-  if(icon)icon.textContent=timerRunning?'\u23F8':'\u25B6';
-
-  // Green tint when running
-  if(btn)btn.classList.toggle('timer-running',timerRunning);
+  var m=Math.floor(timerLeft/60),s=timerLeft%60;
+  var countdownStr=String(m).padStart(2,'0')+':'+String(s).padStart(2,'0');
+  ['headerTimerLabel','pdHeaderTimerLabel'].forEach(function(id){
+    var el=document.getElementById(id);if(!el)return;
+    if(timerRunning||timerLeft<timerTotal){
+      el.textContent=countdownStr;
+      el.classList.toggle('ht-running',timerRunning);
+    }else{
+      el.classList.remove('ht-running');
+    }
+  });
 
   if(timerLeft<=0&&timerRunning){
     timerRunning=false;clearInterval(timerInterval);timerInterval=null;timerEndAt=null;
-    if(btn)btn.classList.remove('timer-running');
-    if(ctrls)ctrls.style.display='none';
-    if(lbl)lbl.textContent='Done!';
+    ['headerTimerLabel','pdHeaderTimerLabel'].forEach(function(id){
+      var el=document.getElementById(id);if(el){el.textContent='Done!';el.classList.remove('ht-running');}
+    });
     playAlarm();
-    toast('\u23F0 Focus session complete! +3 pts');
-    addPoints('timer',document.getElementById('timerBtn'));
+    toast('⏰ Focus session complete! +3 pts');
+    addPoints('timer',document.getElementById('headerTimerBtn'));
     timerAlarmTimeout=setTimeout(function(){
       stopAlarm();
       timerLeft=timerTotal;
@@ -879,15 +880,6 @@ function _tickTimer(){
     timerLeft=Math.max(0,Math.round((timerEndAt-Date.now())/1000));
   }
   updateTimerDisplay();
-}
-
-function timerHandleClick(){
-  // If dropdown is open, close it
-  var dd=document.getElementById('timerDropdown');
-  if(dd&&dd.style.display==='block'){dd.style.display='none';return;}
-  // Otherwise toggle play/pause
-  if(timerRunning){pauseTimer();}
-  else{startTimer();}
 }
 
 function startTimer(){
@@ -914,26 +906,34 @@ function resetTimer(){
   updateTimerDisplay();
 }
 
-function timerToggleDropdown(){
-  var dd=document.getElementById('timerDropdown');
+function headerTimerClick(){
+  var dd=document.getElementById('headerTimerDropdown');
+  if(dd&&dd.style.display==='block'){dd.style.display='none';}
+  var dd2=document.getElementById('pdHeaderTimerDropdown');
+  if(dd2&&dd2.style.display==='block'){dd2.style.display='none';}
+  if(timerRunning){pauseTimer();}
+  else if(timerLeft<timerTotal){startTimer();}
+}
+
+function headerTimerToggleDropdown(variant){
+  var ddId=variant==='pd'?'pdHeaderTimerDropdown':'headerTimerDropdown';
+  var dd=document.getElementById(ddId);
   if(!dd)return;
   if(dd.style.display==='block'){dd.style.display='none';return;}
-
   var html=TIMER_PRESETS.map(function(p,i){
-    var cur=i===timerCurrentPresetIdx;
-    return '<div class="timer-dropdown-item'+(cur?' current':'')+'" onclick="event.stopPropagation();timerSelectPreset('+i+')">'
-      +'<span class="td-icon">'+p.icon+'</span>'
-      +'<span class="td-name">'+p.label+'</span>'
-      +(cur?'<span class="td-check">&#9654; set</span>':'')
+    return '<div class="ht-dropdown-item" onclick="event.stopPropagation();headerTimerSelectPreset('+i+')">'
+      +'<span class="ht-dd-icon">'+p.icon+'</span>'
+      +'<span class="ht-dd-name">'+p.label+'</span>'
       +'</div>';
   }).join('');
+  if(timerRunning||timerLeft<timerTotal){
+    html+='<div class="ht-dropdown-item ht-dd-reset" onclick="event.stopPropagation();headerTimerReset()"><span class="ht-dd-icon">↺</span><span class="ht-dd-name">Reset</span></div>';
+  }
   dd.innerHTML=html;
   dd.style.display='block';
-
   setTimeout(function(){
     var handler=function(e){
-      var wrap=document.querySelector('.toolkit-timer-wrap');
-      if(!wrap||!wrap.contains(e.target)){
+      if(!dd.contains(e.target)&&!e.target.classList.contains('header-timer-arrow')){
         dd.style.display='none';
         document.removeEventListener('click',handler);
       }
@@ -942,29 +942,25 @@ function timerToggleDropdown(){
   },10);
 }
 
-function timerSelectPreset(idx){
-  var dd=document.getElementById('timerDropdown');
-  if(dd)dd.style.display='none';
+function headerTimerSelectPreset(idx){
+  document.querySelectorAll('.header-timer-dropdown').forEach(function(d){d.style.display='none';});
   timerCurrentPresetIdx=idx;
   pauseTimer();stopAlarm();
   timerTotal=TIMER_PRESETS[idx].minutes*60;
   timerLeft=timerTotal;timerEndAt=null;
   updateTimerDisplay();
-  // Auto-start immediately after selecting
   startTimer();
 }
 
-// Keep these for any legacy calls
-function setTimerPreset(){
-  var v=parseInt(document.getElementById('timerPreset').value);
-  timerTotal=v*60;timerLeft=timerTotal;timerEndAt=null;
-  pauseTimer();stopAlarm();updateTimerDisplay();
+function headerTimerReset(){
+  document.querySelectorAll('.header-timer-dropdown').forEach(function(d){d.style.display='none';});
+  resetTimer();
 }
-function setTimerPresetDirect(min,el){
-  timerTotal=min*60;timerLeft=timerTotal;timerEndAt=null;
-  pauseTimer();stopAlarm();updateTimerDisplay();
-}
-function openTimerModal(){timerToggleDropdown();}
+
+function timerHandleClick(){headerTimerClick();}
+function timerToggleDropdown(){headerTimerToggleDropdown();}
+function timerSelectPreset(idx){headerTimerSelectPreset(idx);}
+function openTimerModal(){headerTimerToggleDropdown();}
 function closeTimerModal(){}
 
 // Reconcile after sleep/tab switch
@@ -1229,6 +1225,72 @@ function editProjectDue(pid,v){const p=state.projects.find(p=>p.id===pid);if(p){
 function editSubtaskDue(pid,sid,v){const p=state.projects.find(p=>p.id===pid);const s=p&&p.subtasks.find(s=>s.id===sid);if(s){s.due=v;save();renderProjects();renderTaskList();var modalOpen=document.getElementById('projDetailModal').classList.contains('open');if(modalOpen)openProjectModal(pid);}}
 function editStandaloneTaskName(id,v){if(!v)return;var t=(state.tasks||[]).find(function(x){return x.id===id;});if(t){t.name=v;save();renderTaskList();var modalOpen=document.getElementById('projDetailModal').classList.contains('open');if(modalOpen&&t.projectId)openProjectModal(t.projectId);else if(modalOpen&&t.projectIds&&t.projectIds.length)openProjectModal(t.projectIds[0]);}}
 function editStandaloneTaskDue(id,v){var t=(state.tasks||[]).find(function(x){return x.id===id;});if(t){t.due=v;save();renderTaskList();var modalOpen=document.getElementById('projDetailModal').classList.contains('open');if(modalOpen&&t.projectId)openProjectModal(t.projectId);else if(modalOpen&&t.projectIds&&t.projectIds.length)openProjectModal(t.projectIds[0]);}}
+function editTaskTimeEst(taskId,source,projectId,val){
+  if(source==='standalone'){
+    var t=(state.tasks||[]).find(function(x){return x.id===taskId;});
+    if(t){t.timeEst=val;save();renderTaskList();}
+  }else{
+    var p=state.projects.find(function(x){return x.id===projectId;});
+    if(p){var s=p.subtasks.find(function(x){return x.id===taskId;});if(s){s.timeEst=val;save();renderProjects();renderTaskList();}}
+  }
+}
+function editTaskProject(taskId,source,oldProjectId,newProjectId){
+  if(source==='standalone'){
+    var t=(state.tasks||[]).find(function(x){return x.id===taskId;});
+    if(!t)return;
+    if(newProjectId){
+      var p=state.projects.find(function(x){return x.id===newProjectId;});
+      if(!p)return;
+      p.subtasks.push({id:t.id,name:t.name,due:t.due,priority:t.priority,timeEst:t.timeEst||'',done:t.done});
+      state.tasks=state.tasks.filter(function(x){return x.id!==taskId;});
+    }else{
+      t.projectId='';t.projectIds=[];
+    }
+  }else{
+    var op=state.projects.find(function(x){return x.id===oldProjectId;});
+    if(!op)return;
+    var si=op.subtasks.findIndex(function(x){return x.id===taskId;});
+    if(si<0)return;
+    var sub=op.subtasks.splice(si,1)[0];
+    if(newProjectId){
+      var np=state.projects.find(function(x){return x.id===newProjectId;});
+      if(np)np.subtasks.push(sub);
+    }else{
+      state.tasks.push({id:sub.id,name:sub.name,due:sub.due,priority:sub.priority,timeEst:sub.timeEst||'',projectId:'',projectIds:[],done:sub.done});
+    }
+  }
+  save();renderProjects();renderTaskList();
+}
+function showTaskTimePicker(taskId,source,projectId,el){
+  var existing=document.querySelector('.tl-inline-picker');
+  if(existing)existing.remove();
+  var opts=[{v:'',l:'None'},{v:'30',l:'30m'},{v:'60',l:'1hr'},{v:'90',l:'1.5hr'},{v:'120',l:'2hr'},{v:'180',l:'3hr'},{v:'240',l:'4hr'},{v:'360',l:'6hr'},{v:'480',l:'8hr'},{v:'720',l:'12hr'}];
+  var dd=document.createElement('div');
+  dd.className='tl-inline-picker';
+  dd.innerHTML=opts.map(function(o){return '<div class="tl-pick-item" onclick="event.stopPropagation();editTaskTimeEst(\''+taskId+'\',\''+source+'\',\''+projectId+'\',\''+o.v+'\')">'+o.l+'</div>';}).join('');
+  el.style.position='relative';
+  el.appendChild(dd);
+  setTimeout(function(){
+    var close=function(e){if(!dd.contains(e.target)){dd.remove();document.removeEventListener('click',close);}};
+    document.addEventListener('click',close);
+  },10);
+}
+function showTaskProjectPicker(taskId,source,projectId,el){
+  var existing=document.querySelector('.tl-inline-picker');
+  if(existing)existing.remove();
+  var projs=_sortedProjects();
+  var dd=document.createElement('div');
+  dd.className='tl-inline-picker';
+  var html='<div class="tl-pick-item" onclick="event.stopPropagation();editTaskProject(\''+taskId+'\',\''+source+'\',\''+projectId+'\',\'\')">None</div>';
+  html+=projs.map(function(p){return '<div class="tl-pick-item'+(p.id===projectId?' tl-pick-current':'')+'" onclick="event.stopPropagation();editTaskProject(\''+taskId+'\',\''+source+'\',\''+projectId+'\',\''+p.id+'\')">'+esc(p.name)+'</div>';}).join('');
+  dd.innerHTML=html;
+  el.style.position='relative';
+  el.appendChild(dd);
+  setTimeout(function(){
+    var close=function(e){if(!dd.contains(e.target)){dd.remove();document.removeEventListener('click',close);}};
+    document.addEventListener('click',close);
+  },10);
+}
 function editReminderDate(id,v){const r=state.reminders.find(r=>r.id===id);if(r){r.date=v;save();renderReminders();}}
 function editReminderTime(id,v){const r=state.reminders.find(r=>r.id===id);if(r){r.time=v;save();renderReminders();}}
 function makeDateClickable(el,currentVal,onSave){
@@ -1480,7 +1542,7 @@ async function _bdoRequestPlan(){
   var endpoint = (typeof JARVIS_PROXY_URL!=='undefined' && JARVIS_PROXY_URL) || '';
   var res = await fetch(endpoint, {
     method:'POST',
-    headers:{'Content-Type':'application/json'},
+    headers:await _jarvisAuthHeaders(),
     body:JSON.stringify({
       model:'claude-haiku-4-5-20251001',
       max_tokens:2000,
@@ -2251,12 +2313,12 @@ function checkDailyRoutineReset(){
   renderRoutines();
 }
 function switchRoutineTab(tab,btn){state.currentRoutineTab=tab;document.querySelectorAll('.tab-btn').forEach(b=>b.classList.remove('active'));btn.classList.add('active');renderRoutines();}
-function toggleRoutine(tab,id){const r=state.routines[tab].find(r=>r.id===id);if(r){var wasUndone=!r.done;r.done=!r.done;if(wasUndone&&r.done){var srcEl=document.querySelector('.r-check[onclick*="'+id+'"]');addPoints('routine',srcEl);_trackEvent('tool_use','routine_check','Routine Check');}}save();renderRoutines();}
+function toggleRoutine(tab,id,e){if(e){var t=e.target;if(t.classList.contains('r-delete')||t.classList.contains('r-name')||t.closest('.r-delete')||t.closest('.r-name'))return;}const r=state.routines[tab].find(r=>r.id===id);if(r){var wasUndone=!r.done;r.done=!r.done;if(wasUndone&&r.done){var srcEl=document.querySelector('[data-rid="'+id+'"] .r-check');addPoints('routine',srcEl);_trackEvent('tool_use','routine_check','Routine Check');}}save();renderRoutines();}
 function addRoutine(){const n=document.getElementById('newRoutineName').value.trim();if(!n)return;state.routines[state.currentRoutineTab].push({id:'r'+Date.now(),name:n,done:false});document.getElementById('newRoutineName').value='';save();renderRoutines();}
 function deleteRoutine(tab,id){state.routines[tab]=state.routines[tab].filter(r=>r.id!==id);save();renderRoutines();}
 function resetRoutines(){state.routines[state.currentRoutineTab].forEach(r=>r.done=false);save();renderRoutines();toast('Routines reset');}
 function editRoutineName(tab,id,v){if(!v)return;const r=state.routines[tab].find(r=>r.id===id);if(r)r.name=v;save();}
-function renderRoutines(){const tab=state.currentRoutineTab,items=state.routines[tab]||[];const el=document.getElementById('routineList');if(items.length===0){el.innerHTML='<div class="empty-state">No routine items.</div>';}else{el.innerHTML=items.map(r=>'<div class="routine-item '+(r.done?'r-done':'')+'"><div class="r-check '+(r.done?'r-checked':'')+'" onclick="toggleRoutine(\''+tab+"','"+r.id+'\')">'+(r.done?'\u2713':'')+'</div><span class="r-name editable" id="rn_'+r.id+'">'+esc(r.name)+'</span><span class="r-delete" onclick="deleteRoutine(\''+tab+"','"+r.id+'\')">\u2715</span></div>').join('');}const done=items.filter(r=>r.done).length;document.getElementById('routineProgress').textContent=done+'/'+items.length;items.forEach(r=>{const e=document.getElementById('rn_'+r.id);if(e)makeEditable(e,v=>editRoutineName(tab,r.id,v));});refreshEditables();}
+function renderRoutines(){const tab=state.currentRoutineTab,items=state.routines[tab]||[];const el=document.getElementById('routineList');if(items.length===0){el.innerHTML='<div class="empty-state">No routine items.</div>';}else{el.innerHTML=items.map(r=>'<div class="routine-item '+(r.done?'r-done':'')+'" data-rid="'+r.id+'" onclick="toggleRoutine(\''+tab+"','"+r.id+"',event)\""+' style="cursor:pointer"><div class="r-check '+(r.done?'r-checked':'')+'">'+(r.done?'\u2713':'')+'</div><span class="r-name editable" id="rn_'+r.id+'">'+esc(r.name)+'</span><span class="r-delete" onclick="event.stopPropagation();deleteRoutine(\''+tab+"','"+r.id+'\')">\u2715</span></div>').join('');}const done=items.filter(r=>r.done).length;document.getElementById('routineProgress').textContent=done+'/'+items.length;items.forEach(r=>{const e=document.getElementById('rn_'+r.id);if(e)makeEditable(e,v=>editRoutineName(tab,r.id,v));});refreshEditables();}
 
 // DECISION
 var prompts=['<strong>Can\'t start?</strong> 2-minute rule: commit to just 2 minutes.','<strong>Overwhelmed?</strong> Brain Dump everything. Then pick the smallest item.','<strong>Can\'t decide?</strong> "Which will I regret NOT doing tomorrow?"','<strong>Procrastinating?</strong> Name the feeling behind it.','<strong>Task too big?</strong> Break it down until each step feels silly.','<strong>Context switching?</strong> Write one sentence about where you left off.','<strong>Forgetting?</strong> Under 2 min \u2192 do now. Otherwise \u2192 Brain Dump.','<strong>Stuck in a loop?</strong> Change your physical state.','<strong>Perfectionism?</strong> C-minus draft. Done > perfect.','<strong>No motivation?</strong> Motivation follows action.','<strong>Decision fatigue?</strong> Top 3 only.','<strong>Emotional flooding?</strong> Try 5-4-3-2-1 grounding.','<strong>Avoiding a follow-up?</strong> Draft it now. Sending is separate.'];
@@ -3205,8 +3267,9 @@ function renderTaskList(){
       return '<div class="tl-item">'+
         '<div class="tl-check" onclick="toggleTaskDone(\''+t.id+'\',\''+t.source+'\',\''+t.projectId+'\')"></div>'+
         '<div class="tl-body"><div class="tl-name"><span class="priority-dot clickable priority-'+t.priority+'" onclick="event.stopPropagation();'+(t.source==='standalone'?'cycleTaskPriority(\''+t.id+'\',event)':'cycleSubtaskPriority(\''+t.projectId+'\',\''+t.id+'\',event)')+'" title="Click to change priority"></span><span class="editable" id="'+nameId+'">'+esc(t.name)+'</span></div>'+
-        '<div class="tl-meta">'+(t.projectName?'<span class="tl-proj-badge">'+esc(t.projectName)+'</span>':'')+
-        (t.timeEst?'<span class="tl-time-badge">'+fmtTimeEst(t.timeEst)+'</span>':'')+
+        '<div class="tl-meta">'+
+        '<span class="tl-proj-badge tl-editable-badge" id="tlproj_'+t.id+'" onclick="event.stopPropagation();showTaskProjectPicker(\''+t.id+'\',\''+t.source+'\',\''+(t.projectId||'')+'\',this)">'+(t.projectName?esc(t.projectName):'+ project')+'</span>'+
+        '<span class="tl-time-badge tl-editable-badge" id="tltime_'+t.id+'" onclick="event.stopPropagation();showTaskTimePicker(\''+t.id+'\',\''+t.source+'\',\''+(t.projectId||'')+'\',this)">'+(t.timeEst?fmtTimeEst(t.timeEst):'+ time')+'</span>'+
         dueHTML+
         '</div></div>'+
         '<span class="wt-clock-btn '+(_isScheduledToday(t.id)?'scheduled':'')+'" onclick="event.stopPropagation();handleWorkTodayClick(\''+(t.source==='standalone'?'task':'subtask')+'\',\''+t.id+'\',\''+(t.projectId||'')+'\')" title="Work on this today">&#128197;</span>'+
@@ -5030,34 +5093,9 @@ function _spawnBurst(parent,cx,cy,color){
 // =======================================
 // TASK TIMER (elapsed stopwatch)
 // =======================================
-var _ttRunning=false,_ttElapsed=0,_ttStart=null,_ttTick=null,_ttAwarded=false;
-function _ttFmt(ms){var s=Math.floor(ms/1000),h=Math.floor(s/3600);s=s%3600;var m=Math.floor(s/60);s=s%60;return (h<10?'0':'')+h+':'+(m<10?'0':'')+m+':'+(s<10?'0':'')+s;}
-function ttStart(){
-  if(_ttRunning)return;
-  _ttRunning=true;_ttStart=Date.now()-_ttElapsed;
-  _ttTick=setInterval(function(){
-    _ttElapsed=Date.now()-_ttStart;
-    var el=document.getElementById('ttDisplay');if(el){el.textContent=_ttFmt(_ttElapsed);el.className='task-timer-display running';}
-  },500);
-  var btn=document.getElementById('ttStartBtn');if(btn)btn.textContent='\u23F8';
-}
-function ttPause(){
-  if(!_ttRunning)return;
-  _ttRunning=false;clearInterval(_ttTick);_ttTick=null;
-  _ttElapsed=Date.now()-_ttStart;
-  var el=document.getElementById('ttDisplay');if(el)el.className='task-timer-display';
-  var btn=document.getElementById('ttStartBtn');if(btn)btn.textContent='\u25B6';
-  // Award once per session if ran 5+ minutes
-  if(!_ttAwarded&&_ttElapsed>=300000){
-    _ttAwarded=true;
-    addPoints('timer');
-  }
-}
-function ttReset(){
-  ttPause();_ttElapsed=0;_ttStart=null;_ttAwarded=false;
-  var el=document.getElementById('ttDisplay');if(el){el.textContent='00:00:00';el.className='task-timer-display';}
-  var btn=document.getElementById('ttStartBtn');if(btn)btn.textContent='\u25B6';
-}
+function ttStart(){}
+function ttPause(){}
+function ttReset(){}
 
 // -- Custom confirm dialog -- replaces all browser confirm() calls ------
 var _confirmOnDo=null,_confirmOnAlt=null;
@@ -5138,6 +5176,7 @@ function closeTimerModal(){
   document.getElementById('timerModal').classList.remove('open');
   _unblurDashboard();
 }
+function setTimerPreset(){}
 function setTimerPresetDirect(mins,btn){
   document.getElementById('timerPreset').value=String(mins);
   setTimerPreset();
@@ -6009,7 +6048,33 @@ var WO_EXERCISES={
   sprint_intervals:{name:'Sprint Intervals (Outdoor)',muscles:'Power · VO2 Max · Legs',
     steps:['Warm up 5 min easy jog.','Sprint 30 sec at 85-90% effort.','Recover 90 sec walking.','Repeat 6-8 rounds. Cool down 5 min.'],
     tip:'Best evidence-based cardio for first-responder fitness. Mimics scene-burst physiology. Outdoor track or open field.',
-    alts:['jump_rope','tabata_burpees','box_jump','emom_squats']}
+    alts:['jump_rope','tabata_burpees','box_jump','emom_squats']},
+
+  // KETTLEBELL
+  kb_turkish_getup:{name:'KB Turkish Get-Up',muscles:'Full Body · Core · Shoulder Stabilizers · Hips',
+    steps:['Lie on back, KB pressed overhead in one hand, same-side knee bent.','Roll onto opposite elbow, then hand. Bridge hips up.','Sweep back leg under you to kneeling. Stand up.','Reverse every step back to the floor. That is 1 rep.'],
+    tip:'The single best exercise for total-body stabilizer strength (Liebenson, 2011). Go slow -- each rep should take 30-45 seconds. Master the pattern with no weight first.',
+    alts:['kb_windmill','kb_gladiator','plank','dead_bug']},
+  kb_clean_press:{name:'KB Clean & Press',muscles:'Full Body · Shoulders · Core · Glutes',
+    steps:['KB on floor between feet. Hike and clean it to rack position in one motion -- elbow tight to body.','From rack, press overhead to full lockout, bicep near ear.','Lower to rack, then drop back to hike position.','All reps one side, then switch.'],
+    tip:'The clean is a fast hip hinge, not an arm curl. Let the hip snap do the work. The press is strict -- no leg drive (Lake & Lauder, 2012).',
+    alts:['db_shoulder_press','arnold_press','kb_swing','kb_turkish_getup']},
+  kb_windmill:{name:'KB Windmill',muscles:'Obliques · Hips · Shoulder Stability · Hamstrings',
+    steps:['KB pressed overhead, feet angled 45° away from the loaded side.','Push hip out toward the KB side. Slowly hinge and rotate torso down.','Free hand slides down the inside of the front leg toward the floor.','Drive back up through the hip, eyes on the KB throughout.'],
+    tip:'Deep lateral core and hip stability under load (McGill, 2010). Start light -- this exposes mobility limits fast. Keep the overhead arm locked and packed.',
+    alts:['kb_turkish_getup','kb_gladiator','side_plank','dead_bug']},
+  kb_renegade_row:{name:'KB Renegade Row',muscles:'Lats · Rhomboids · Anti-Rotation Core · Triceps',
+    steps:['Two KBs on floor, shoulder width. Get into high plank on the handles.','Shift weight to one arm, row the other KB to hip. Minimize hip rotation.','Lower with control, repeat other side. That is 1 rep.','Keep feet wide for stability -- narrow feet make it harder.'],
+    tip:'One of the highest anti-rotation core demands of any exercise. The row is secondary -- resisting rotation is the point. If hips sway, go lighter.',
+    alts:['db_row','plank','dead_bug','kb_gladiator']},
+  kb_halo:{name:'KB Halo',muscles:'Shoulders · Rotator Cuff · Core · Thoracic Mobility',
+    steps:['Hold KB by the horns, bottoms-up at chest height.','Circle the KB around your head -- close to the skull, elbows tight.','Complete a full orbit, then reverse direction.','Keep core braced and ribs down throughout.'],
+    tip:'Outstanding shoulder mobility and stability warmup. Use as the first exercise or between heavy sets. Light weight -- this is about control, not load.',
+    alts:['face_pull','lateral_raise','kb_windmill','kb_turkish_getup']},
+  kb_gladiator:{name:'KB Gladiator',muscles:'Obliques · Glutes · Shoulder Stability · Full Body',
+    steps:['Start in side plank on one hand, KB in top hand pressed overhead.','Top leg steps forward into a lunge position while maintaining the overhead hold.','Drive back to side plank, then rotate into a push-up position and through to the other side.','The full sequence is: side plank → lunge → push-up → opposite side plank. That is 1 rep.'],
+    tip:'An advanced full-body stabilizer chain exercise. Combines anti-lateral flexion, overhead stability, and hip control in one movement. Master the side plank hold with KB overhead before attempting the full flow. Scale by removing the lunge or doing it unloaded.',
+    alts:['kb_turkish_getup','kb_windmill','kb_renegade_row','plank']}
 };
 
 // -- 3-Day Evidence-Based Whole-Body Program -------------------------------
@@ -6147,11 +6212,61 @@ var WO_PROGRAM_BODYWEIGHT=[
   }
 ];
 
+// -- KETTLEBELL (Option 4: Full-body functional, core + stabilizers) ----------
+// Evidence basis: KB training produces significant improvements in core stability,
+// posterior chain power, and shoulder stabilizer endurance (Jay et al., 2011;
+// Lake & Lauder, 2012). Unilateral loading and offset center of mass demand
+// constant anti-rotation and anti-lateral-flexion from the deep core.
+var WO_PROGRAM_KETTLEBELL=[
+  {
+    day:'A',name:'KB Push + Core Stability',
+    rationale:'Turkish Get-Up builds full-body stabilizer strength through every plane. Clean & Press develops overhead power. Windmill and Gladiator target deep lateral core and hip stability under load.',
+    exercises:[
+      {id:'kb_halo',sets:'2×8 each direction',rest:'30 sec',note:'Shoulder mobility warmup'},
+      {id:'kb_turkish_getup',sets:'3×2 each side',rest:'90 sec',note:'Full-body stabilizer — go slow'},
+      {id:'kb_clean_press',sets:'3×6–8 each side',rest:'90 sec',note:'Power + overhead strength'},
+      {id:'goblet_squat',sets:'3×10–12',rest:'90 sec',note:'Knee-dominant lower'},
+      {id:'kb_windmill',sets:'3×5 each side',rest:'60 sec',note:'Lateral core + hip stability'},
+      {id:'kb_gladiator',sets:'2×3 each side',rest:'90 sec',note:'Advanced stabilizer chain'},
+      {id:'plank',sets:'3×30–45 sec',rest:'45 sec',note:'Anti-extension finisher'}
+    ]
+  },
+  {
+    day:'B',name:'KB Pull + Posterior Chain',
+    rationale:'Swing is the foundational KB hip hinge — explosive posterior chain power. Renegade rows demand anti-rotation core. Single-leg work builds balance and addresses asymmetries.',
+    exercises:[
+      {id:'kb_halo',sets:'2×8 each direction',rest:'30 sec',note:'Shoulder mobility warmup'},
+      {id:'kb_swing',sets:'5×15',rest:'60 sec',note:'Posterior chain power — hip snap'},
+      {id:'kb_renegade_row',sets:'3×6–8 each side',rest:'90 sec',note:'Anti-rotation core + back'},
+      {id:'single_leg_rdl',sets:'3×8 each side',rest:'60 sec',note:'Unilateral posterior chain + balance'},
+      {id:'kb_turkish_getup',sets:'2×2 each side',rest:'90 sec',note:'Stabilizer maintenance'},
+      {id:'kb_gladiator',sets:'2×3 each side',rest:'90 sec',note:'Full-body stabilizer flow'},
+      {id:'dead_bug',sets:'3×8 each side',rest:'45 sec',note:'Deep core finisher'}
+    ]
+  },
+  {
+    day:'C',name:'KB Full-Body Flow',
+    rationale:'Every major movement pattern in one session — hinge, squat, press, pull, carry, and rotational stability. High demand on core and stabilizers throughout. The session firefighters and first responders benefit from most.',
+    exercises:[
+      {id:'kb_halo',sets:'2×8 each direction',rest:'30 sec',note:'Shoulder mobility warmup'},
+      {id:'kb_turkish_getup',sets:'3×2 each side',rest:'90 sec',note:'Full-body stabilizer prime mover'},
+      {id:'kb_swing',sets:'4×15',rest:'60 sec',note:'Posterior chain power'},
+      {id:'kb_clean_press',sets:'3×6–8 each side',rest:'90 sec',note:'Upper-body power'},
+      {id:'goblet_squat',sets:'3×10–12',rest:'90 sec',note:'Quad-dominant lower'},
+      {id:'kb_renegade_row',sets:'3×6–8 each side',rest:'90 sec',note:'Anti-rotation pull'},
+      {id:'kb_windmill',sets:'3×5 each side',rest:'60 sec',note:'Lateral core under load'},
+      {id:'kb_gladiator',sets:'2×3 each side',rest:'90 sec',note:'Advanced full-body flow'},
+      {id:'farmer_carry',sets:'3×30–40 sec',rest:'60 sec',note:'Grip + core + occupational carry'}
+    ]
+  }
+];
+
 // Track registry -- all available program variations
 var WO_TRACKS={
   primary:{name:'Primary',icon:'💪',label:'Gym · Push/Pull/Full-body',program:WO_PROGRAM},
   bodysplit:{name:'Body Split',icon:'🏋️',label:'Gym · Chest+Tri / Back+Bi / Legs+Shoulders',program:WO_PROGRAM_BODYSPLIT},
-  bodyweight:{name:'Bodyweight + HIIT',icon:'🤸',label:'No gym · BW + HIIT, 30–40 min',program:WO_PROGRAM_BODYWEIGHT}
+  bodyweight:{name:'Bodyweight + HIIT',icon:'🤸',label:'No gym · BW + HIIT, 30–40 min',program:WO_PROGRAM_BODYWEIGHT},
+  kettlebell:{name:'Kettlebell',icon:'🔔',label:'KB · Full-body functional, core + stabilizers',program:WO_PROGRAM_KETTLEBELL}
 };
 
 var WO_COOLDOWN=[
@@ -8102,6 +8217,14 @@ setTimeout(checkShareTarget, 400); // slight delay so panels render first
 
 // -- Proxy config -----------------------------------------------------
 // JARVIS_PROXY_URL is defined in config.js
+async function _jarvisAuthHeaders(){
+  var h={'Content-Type':'application/json'};
+  try{
+    var user=firebase.auth().currentUser;
+    if(user){h['Authorization']='Bearer '+(await user.getIdToken());}
+  }catch(e){console.warn('[Jarvis] getIdToken failed:',e);}
+  return h;
+}
 var _jarvisOpen=false;
 var _jarvisHistory=[]; // {role:'user'|'assistant', content:'...'}
 var _jarvisThinking=false;
@@ -8644,7 +8767,7 @@ async function jarvisSend(){
     var endpoint = JARVIS_PROXY_URL || 'https://api.anthropic.com/v1/messages';
     var res=await fetch(endpoint,{
       method:'POST',
-      headers:{'Content-Type':'application/json'},
+      headers:await _jarvisAuthHeaders(),
       body:JSON.stringify({
         model:'claude-haiku-4-5-20251001',
         max_tokens:1000,

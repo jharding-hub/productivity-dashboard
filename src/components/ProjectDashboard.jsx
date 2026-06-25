@@ -363,24 +363,17 @@ function collectTodayBlocks() {
 
 function useClock() {
   const [clock, setClock] = useState('');
-  const [timer, setTimer] = useState('00:00:00');
-  const [timerRunning, setTimerRunning] = useState(false);
 
   useEffect(() => {
     const update = () => {
       setClock(new Date().toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit', hour12: true }));
-      const el = document.getElementById('ttDisplay');
-      if (el) {
-        setTimer(el.textContent || '00:00:00');
-        setTimerRunning(el.classList.contains('running'));
-      }
     };
     update();
     const id = setInterval(update, 1000);
     return () => clearInterval(id);
   }, []);
 
-  return { clock, timer, timerRunning };
+  return { clock };
 }
 
 function ProjectBanner({ tick }) {
@@ -451,9 +444,10 @@ export default function ProjectDashboard({ open, onClose }) {
   const [newTaskTime, setNewTaskTime] = useState('');
   const [newNoteName, setNewNoteName] = useState('');
   const [scheduleFor, setScheduleFor] = useState(null);
+  const [expandedNotes, setExpandedNotes] = useState(new Set());
   const taskInputRef = useRef(null);
   const noteEditorRef = useRef(null);
-  const { clock, timer, timerRunning } = useClock();
+  const { clock } = useClock();
 
   const refresh = useCallback(() => setTick(t => t + 1), []);
 
@@ -478,12 +472,17 @@ export default function ProjectDashboard({ open, onClose }) {
   const reminders = selected ? getLinkedReminders(selectedId) : [];
   const today = todayStr();
 
+  const priRank = { high: 0, med: 1, low: 2 };
   const sortedTasks = [...allTasks].sort((a, b) => {
     if (a.done !== b.done) return a.done ? 1 : -1;
-    if (a.due && b.due) return a.due.localeCompare(b.due);
-    if (a.due) return -1;
-    if (b.due) return 1;
-    return 0;
+    const aHasDue = !!a.due, bHasDue = !!b.due;
+    if (aHasDue && bHasDue) {
+      const dc = a.due.localeCompare(b.due);
+      if (dc !== 0) return dc;
+      return (priRank[a.priority] ?? 1) - (priRank[b.priority] ?? 1);
+    }
+    if (aHasDue !== bHasDue) return aHasDue ? -1 : 1;
+    return (priRank[a.priority] ?? 1) - (priRank[b.priority] ?? 1);
   });
 
   const doneCount = allTasks.filter(t => t.done).length;
@@ -592,20 +591,19 @@ export default function ProjectDashboard({ open, onClose }) {
             <ProjectBanner tick={tick} />
           </div>
           <div className="header-right" style={{ flexShrink: 0 }}>
-            <div className="header-clock-wrap">
-              <div className="header-clock">{clock}</div>
-            </div>
-            <div className="task-timer-wrap">
-              <button className="task-timer-btn"
-                onClick={() => { if (typeof window.ttStart === 'function') window.ttStart(); }}
-                title="Start task timer">▶</button>
-              <div className={`task-timer-display${timerRunning ? ' running' : ''}`}>{timer}</div>
-              <button className="task-timer-btn"
-                onClick={() => { if (typeof window.ttPause === 'function') window.ttPause(); }}
-                title="Pause">⏸</button>
-              <button className="task-timer-btn"
-                onClick={() => { if (typeof window.ttReset === 'function') window.ttReset(); }}
-                title="Reset">↺</button>
+            <div className="header-timer-outer">
+              <span className="header-timer-label-tag">Timer</span>
+              <div className="header-timer-wrap">
+                <button className="header-timer-btn"
+                  onClick={() => { if (typeof window.headerTimerClick === 'function') window.headerTimerClick(); }}
+                  title="Focus timer">
+                  <span className="header-timer-label" id="pdHeaderTimerLabel">{clock}</span>
+                </button>
+                <button className="header-timer-arrow"
+                  onClick={() => { if (typeof window.headerTimerToggleDropdown === 'function') window.headerTimerToggleDropdown('pd'); }}
+                  title="Pick duration">▾</button>
+                <div className="header-timer-dropdown" id="pdHeaderTimerDropdown" style={{ display: 'none' }}></div>
+              </div>
             </div>
           </div>
         </div>
@@ -653,7 +651,7 @@ export default function ProjectDashboard({ open, onClose }) {
       </div>
 
       {/* 2-column body */}
-      <div style={{ display: 'flex', flex: 1, overflow: 'hidden' }}>
+      <div className="pd-body" style={{ display: 'flex', flex: 1, overflow: 'hidden' }}>
 
         {!selected ? (
           <div style={{ flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'var(--text-faint)' }}>
@@ -665,7 +663,7 @@ export default function ProjectDashboard({ open, onClose }) {
         ) : (
           <>
             {/* Column 1: Tasks (~37%) */}
-            <div style={{
+            <div className="pd-col-tasks" style={{
               flex: '0 0 37%', minWidth: 0,
               borderRight: '1px solid var(--border)',
               display: 'flex', flexDirection: 'column',
@@ -797,7 +795,7 @@ export default function ProjectDashboard({ open, onClose }) {
             </div>
 
             {/* Column 2: Notes (remaining ~63%) */}
-            <div style={{
+            <div className="pd-col-notes" style={{
               flex: '1 1 0', minWidth: 0,
               display: 'flex', flexDirection: 'column',
               overflow: 'hidden',
@@ -835,35 +833,50 @@ export default function ProjectDashboard({ open, onClose }) {
                     No notes yet
                   </div>
                 )}
-                {allNotes.map(n => (
-                  <div key={n.id} style={{
-                    padding: '10px 14px', marginBottom: 6,
-                    background: 'var(--surface-raised)', border: '1px solid var(--border)',
-                    borderRadius: 'var(--radius-sm)',
-                  }}>
-                    <div style={{
-                      display: 'flex', alignItems: 'center', justifyContent: 'space-between',
-                      marginBottom: 4,
+                {allNotes.map(n => {
+                  const isOpen = expandedNotes.has(n.id);
+                  return (
+                    <div key={n.id} style={{
+                      marginBottom: 6,
+                      background: 'var(--surface-raised)', border: '1px solid var(--border)',
+                      borderRadius: 'var(--radius-sm)', overflow: 'hidden',
                     }}>
-                      <span style={{ fontSize: 13, fontWeight: 600 }}>{n.label || 'Note'}</span>
-                      <span style={{ fontSize: 10, color: 'var(--text-faint)' }}>
-                        {n.date && fmtDate(n.date)}{n.time ? ` · ${n.time}` : ''}
-                      </span>
+                      <div
+                        onClick={() => setExpandedNotes(prev => {
+                          const next = new Set(prev);
+                          next.has(n.id) ? next.delete(n.id) : next.add(n.id);
+                          return next;
+                        })}
+                        style={{
+                          display: 'flex', alignItems: 'center', gap: 6,
+                          padding: '8px 14px', cursor: 'pointer', userSelect: 'none',
+                        }}
+                      >
+                        <span style={{ fontSize: 11, color: 'var(--text-faint)', width: 12, textAlign: 'center' }}>
+                          {isOpen ? '▾' : '▸'}
+                        </span>
+                        <span style={{ fontSize: 13, fontWeight: 600, flex: 1, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                          {n.label || 'Note'}
+                        </span>
+                        <span style={{ fontSize: 10, color: 'var(--text-faint)', flexShrink: 0 }}>
+                          {n.date && fmtDate(n.date)}{n.time ? ` · ${n.time}` : ''}
+                        </span>
+                      </div>
+                      {isOpen && n.body && (
+                        <div className="note-editable" style={{
+                          fontSize: 12, color: 'var(--text-dim)', lineHeight: 1.6,
+                          wordBreak: 'break-word', border: 'none', padding: '0 14px 10px 32px',
+                          minHeight: 'auto', background: 'transparent',
+                        }}
+                        dangerouslySetInnerHTML={
+                          n.body.includes('<') ? { __html: n.body } : undefined
+                        }
+                        children={n.body.includes('<') ? undefined : n.body}
+                        />
+                      )}
                     </div>
-                    {n.body && (
-                      <div className="note-editable" style={{
-                        fontSize: 12, color: 'var(--text-dim)', lineHeight: 1.6,
-                        wordBreak: 'break-word', border: 'none', padding: 0,
-                        minHeight: 'auto', background: 'transparent',
-                      }}
-                      dangerouslySetInnerHTML={
-                        n.body.includes('<') ? { __html: n.body } : undefined
-                      }
-                      children={n.body.includes('<') ? undefined : n.body}
-                      />
-                    )}
-                  </div>
-                ))}
+                  );
+                })}
               </div>
             </div>
           </>

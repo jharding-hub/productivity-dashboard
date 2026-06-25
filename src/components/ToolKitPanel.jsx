@@ -52,28 +52,6 @@ export default function ToolKitPanel() {
           <i className="ti ti-wind" aria-hidden="true"></i>
           <span>Breathwork</span>
         </button>
-        <div className="toolkit-timer-wrap">
-          <button
-            className="toolkit-btn toolkit-timer"
-            id="timerBtn"
-            onClick={() => window.timerHandleClick()}
-            title="Click to start/pause • Use ☰ to pick duration"
-          >
-            <span id="timerBtnIcon">&#9201;</span>
-            <span id="timerBtnLabel">Timer</span>
-            <span className="timer-controls" id="timerControls" style={{ display: 'none' }}>
-              <span className="timer-ctrl-btn" id="timerStateIcon">&#9654;</span>
-              <span
-                className="timer-ctrl-btn timer-menu"
-                onClick={e => { e.stopPropagation(); window.timerToggleDropdown(); }}
-                title="Pick duration"
-                role="button"
-                tabIndex={0}
-              >&#9776;</span>
-            </span>
-          </button>
-          <div className="timer-dropdown" id="timerDropdown" style={{ display: 'none' }}></div>
-        </div>
         <button className="toolkit-btn toolkit-mood" onClick={() => window.openEnergyModal()}>
           <i className="ti ti-bolt" aria-hidden="true"></i>
           <span>Energy &amp; Mood</span>

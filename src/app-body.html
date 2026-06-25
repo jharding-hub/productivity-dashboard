@@ -13,14 +13,15 @@
   <!-- Right: Mobile-only inline title + Clock + Task Timer -->
   <div class="header-right">
     <div class="mobile-only-title"><span class="mt-name">Centerpost</span><span class="mt-sub">Productivity</span></div>
-    <div class="header-clock-wrap">
-      <div class="header-clock" id="headerClock">--:--</div>
+    <div class="header-timer-outer">
+      <span class="header-timer-label-tag">Timer</span>
+    <div class="header-timer-wrap" id="headerTimerWrap">
+      <button class="header-timer-btn" id="headerTimerBtn" onclick="headerTimerClick()" title="Focus timer">
+        <span id="headerTimerLabel">--:--</span>
+      </button>
+      <button class="header-timer-arrow" onclick="headerTimerToggleDropdown()" title="Pick duration">&#9662;</button>
+      <div class="header-timer-dropdown" id="headerTimerDropdown" style="display:none"></div>
     </div>
-    <div class="task-timer-wrap" id="taskTimerWrap">
-      <button class="task-timer-btn" id="ttStartBtn" onclick="ttStart()" title="Start task timer">&#9654;</button>
-      <div class="task-timer-display" id="ttDisplay">00:00:00</div>
-      <button class="task-timer-btn" onclick="ttPause()" title="Pause">&#9208;</button>
-      <button class="task-timer-btn" onclick="ttReset()" title="Reset">&#8634;</button>
     </div>
   </div>
 </div>
