@@ -20,7 +20,7 @@
 //   short hash. Never edit it by hand — run `make build` instead.
 // ═══════════════════════════════════════════════════════════════════════
 
-const CACHE_VERSION = 'centerpost-d3fe05b';
+const CACHE_VERSION = 'centerpost-__COMMIT__';
 
 // Assets to pre-cache on install (offline-ready essentials).
 // Failures are tolerated individually — one missing icon won't break install.
@@ -34,6 +34,9 @@ const PRECACHE_ASSETS = [
   './kids-icon.png',
   './kids-icon-192.png',
   './kids-icon-512.png',
+  './ops.html',
+  './howto.html',
+  './teacher.html',
   'https://cdn.jsdelivr.net/npm/@tabler/icons-webfont@3.0.0/dist/tabler-icons.min.css',
   'https://fonts.googleapis.com/css2?family=DM+Sans:ital,wght@0,400;0,500;0,600;0,700&family=Fraunces:ital,opsz,wght@0,9..144,400;0,9..144,600;0,9..144,700;1,9..144,400&display=swap',
   'https://fonts.googleapis.com/css2?family=Press+Start+2P&family=VT323&display=swap',
@@ -135,10 +138,17 @@ async function networkFirst(req) {
     // refreshes the cache in the background for the next load.
     const cached = await cache.match(req);
     if (cached) return cached;
-    // Last resort for navigations: serve the cached root
+    // Last resort for navigations: only fall back to cached root for
+    // root-level requests — don't silently swap ops.html or other pages
+    // with the main dashboard
     if (req.mode === 'navigate' || req.destination === 'document') {
-      const root = await cache.match('./') || await cache.match('./index.html');
-      if (root) return root;
+      const path = new URL(req.url).pathname;
+      if (path === '/' || path === '/index.html') {
+        const root = await cache.match('./') || await cache.match('./index.html');
+        if (root) return root;
+      }
+      const cached2 = await cache.match(req);
+      if (cached2) return cached2;
     }
     // Genuinely offline with nothing cached
     return new Response(
