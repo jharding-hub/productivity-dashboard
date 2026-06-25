@@ -451,6 +451,24 @@ Error generating stack: `+e.message+`
 </div>
 </div>
 
+<!-- NOTES ORGANIZER MODAL -->
+<div class="modal-blur-overlay" id="noteOrganizeModal">
+<div class="modal-blur-backdrop" onclick="noteOrganizeClose()"></div>
+<div class="modal-blur-panel bdo-panel">
+  <div class="modal-blur-header">
+    <div class="modal-blur-title"><i class="ti ti-sparkles" aria-hidden="true" style="color:var(--accent);margin-right:6px;"></i>Organize Notes</div>
+    <button class="modal-blur-close" onclick="noteOrganizeClose()">&#10005;</button>
+  </div>
+  <div class="bdo-body" id="norgBody">
+    <div class="bdo-status"><div class="bdo-spinner"></div> Axis is reviewing your notes…</div>
+  </div>
+  <div class="bdo-footer" id="norgFooter" style="display:none;">
+    <button class="btn" onclick="noteOrganizeClose()">Cancel</button>
+    <button class="btn btn-accent-solid" id="norgApplyBtn" onclick="noteOrganizeApply()">Apply Organization</button>
+  </div>
+</div>
+</div>
+
 <!-- Breathwork picker modal (rendered by BreathworkOverlay component) -->
 
 <!-- TIMER MODAL -->
