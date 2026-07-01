@@ -1808,9 +1808,9 @@ function bdOrganizeApply(){
       var existing = (state.projects||[]).find(function(p){return p.name.toLowerCase()===pname.toLowerCase();});
       if(existing){
         existing.subtasks=existing.subtasks||[];
-        existing.subtasks.push({id:'st'+Date.now()+Math.random().toString(36).slice(2,6),name:it.text,due:'',priority:it.priority||'med',timeEst:'',done:false});
+        existing.subtasks.push({id:'st'+Date.now()+Math.random().toString(36).slice(2,6),name:it.text,due:'',priority:_safePriority(it.priority),timeEst:'',done:false});
       } else {
-        state.projects.push({id:'p'+Date.now()+Math.random().toString(36).slice(2,6),name:pname,due:'',expanded:true,subtasks:[{id:'st'+Date.now()+Math.random().toString(36).slice(2,6),name:it.text,due:'',priority:it.priority||'med',timeEst:'',done:false}]});
+        state.projects.push({id:'p'+Date.now()+Math.random().toString(36).slice(2,6),name:pname,due:'',expanded:true,subtasks:[{id:'st'+Date.now()+Math.random().toString(36).slice(2,6),name:it.text,due:'',priority:_safePriority(it.priority),timeEst:'',done:false}]});
         counts.project++;
       }
       counts.task++;
@@ -1820,14 +1820,14 @@ function bdOrganizeApply(){
         var proj = (state.projects||[]).find(function(p){return p.name.toLowerCase()===it.project.toLowerCase();});
         if(proj){
           proj.subtasks=proj.subtasks||[];
-          proj.subtasks.push({id:'st'+Date.now()+Math.random().toString(36).slice(2,6),name:it.text,due:'',priority:it.priority||'med',timeEst:'',done:false});
+          proj.subtasks.push({id:'st'+Date.now()+Math.random().toString(36).slice(2,6),name:it.text,due:'',priority:_safePriority(it.priority),timeEst:'',done:false});
         } else {
           state.tasks=state.tasks||[];
-          state.tasks.push({id:'t'+Date.now()+Math.random().toString(36).slice(2,6),name:it.text,due:'',priority:it.priority||'med',timeEst:'',done:false});
+          state.tasks.push({id:'t'+Date.now()+Math.random().toString(36).slice(2,6),name:it.text,due:'',priority:_safePriority(it.priority),timeEst:'',done:false});
         }
       } else {
         state.tasks=state.tasks||[];
-        state.tasks.push({id:'t'+Date.now()+Math.random().toString(36).slice(2,6),name:it.text,due:'',priority:it.priority||'med',timeEst:'',done:false});
+        state.tasks.push({id:'t'+Date.now()+Math.random().toString(36).slice(2,6),name:it.text,due:'',priority:_safePriority(it.priority),timeEst:'',done:false});
       }
       counts.task++;
     }
@@ -2063,14 +2063,14 @@ function noteOrganizeApply(){
         var p=(state.projects||[]).find(function(x){return x.name.toLowerCase()===projName.toLowerCase();});
         if(p){
           p.subtasks=p.subtasks||[];
-          p.subtasks.push({id:'st'+Date.now()+Math.random().toString(36).slice(2,6),name:it.text,due:'',priority:it.priority||'med',timeEst:'',done:false});
+          p.subtasks.push({id:'st'+Date.now()+Math.random().toString(36).slice(2,6),name:it.text,due:'',priority:_safePriority(it.priority),timeEst:'',done:false});
         } else {
           state.tasks=state.tasks||[];
-          state.tasks.push({id:'t'+Date.now()+Math.random().toString(36).slice(2,6),name:it.text,due:'',priority:it.priority||'med',timeEst:'',projectId:'',projectIds:[],done:false});
+          state.tasks.push({id:'t'+Date.now()+Math.random().toString(36).slice(2,6),name:it.text,due:'',priority:_safePriority(it.priority),timeEst:'',projectId:'',projectIds:[],done:false});
         }
       } else {
         state.tasks=state.tasks||[];
-        state.tasks.push({id:'t'+Date.now()+Math.random().toString(36).slice(2,6),name:it.text,due:'',priority:it.priority||'med',timeEst:'',projectId:'',projectIds:[],done:false});
+        state.tasks.push({id:'t'+Date.now()+Math.random().toString(36).slice(2,6),name:it.text,due:'',priority:_safePriority(it.priority),timeEst:'',projectId:'',projectIds:[],done:false});
       }
       counts.task++;
     }
@@ -2765,7 +2765,12 @@ window.addEventListener('resize',function(){
 });
 
 // UTILITY
-function esc(s){const d=document.createElement('div');d.textContent=s;return d.innerHTML;}
+function esc(s){const d=document.createElement('div');d.textContent=s;return d.innerHTML.replace(/"/g,'&quot;');}
+// Validators for fields the AI (or a tampered payload) can set. Values land in
+// class/attribute positions, so whitelist instead of escaping at every render.
+function _safePriority(p){return p==='low'||p==='high'?p:'med';}
+function _safeDateStr(d){return /^\d{4}-\d{2}-\d{2}$/.test(d||'')?d:'';}
+function _safeTimeStr(t){return /^\d{1,2}:\d{2}$/.test(t||'')?t:'';}
 function todayStr(){var d=new Date();var pad=function(n){return n<10?'0'+n:''+n;};return d.getFullYear()+'-'+pad(d.getMonth()+1)+'-'+pad(d.getDate());}
 function fmtDate(d){return new Date(d+'T00:00:00').toLocaleDateString('en-US',{month:'short',day:'numeric',year:'numeric'});}
 function fmtTime(t){const[h,m]=t.split(':');const hr=parseInt(h);return(hr>12?hr-12:hr||12)+':'+m+(hr>=12?' PM':' AM');}
@@ -2947,8 +2952,10 @@ async function renderAdminPanel(){
       const lastActive=u.lastActive?u.lastActive.toDate().toLocaleDateString('en-US',{month:'short',day:'numeric'}):'Never';
       const isSelf=u.uid===currentUser.uid;
       const tier=u.accountTier||'free';
-      const tierLabel={free:'Free',pro:'Pro',premium:'Premium',legacy:'Legacy',owner:'Owner'}[tier]||tier;
+      // esc: accountTier comes from the user's own profile doc -- treat as untrusted
+      const tierLabel=esc({free:'Free',pro:'Pro',premium:'Premium',legacy:'Legacy',owner:'Owner'}[tier]||tier);
       const isLegacy=u.accountTier==='legacy';
+      const emailJs=esc(u.email).replace(/'/g,"\\'");
       return '<tr>'+
         '<td>'+esc(u.email)+(u.admin?' <span class="admin-badge admin">Admin</span>':'')+'</td>'+
         '<td><span class="admin-badge '+(u.disabled?'disabled':'active')+'">'+(u.disabled?'Disabled':'Active')+'</span></td>'+
@@ -2957,11 +2964,11 @@ async function renderAdminPanel(){
         '<td><div class="admin-actions">'+
         (!isSelf&&!u.disabled?'<button class="admin-action danger" onclick="adminDisableUser(\''+u.uid+'\')">Disable</button>':'')+
         (!isSelf&&u.disabled?'<button class="admin-action" onclick="adminEnableUser(\''+u.uid+'\')">Enable</button>':'')+
-        '<button class="admin-action" onclick="adminResetPassword(\''+esc(u.email)+'\')">Reset PW</button>'+
+        '<button class="admin-action" onclick="adminResetPassword(\''+emailJs+'\')">Reset PW</button>'+
         (!isSelf&&!u.admin?'<button class="admin-action" onclick="adminMakeAdmin(\''+u.uid+'\')">Make Admin</button>':'')+
         (!isSelf&&!isLegacy?'<button class="admin-action" style="background:rgba(5,150,105,0.12);border-color:rgba(5,150,105,0.5);color:#059669;" onclick="adminGrantLegacy(\''+u.uid+'\')">Grant Legacy</button>':'')+
         (!isSelf&&isLegacy?'<button class="admin-action" onclick="adminRevokeLegacy(\''+u.uid+'\')">Revoke Legacy</button>':'')+
-        (!isSelf?'<button class="admin-action danger" onclick="adminDeleteUser(\''+u.uid+'\',\''+esc(u.email)+'\')">Delete</button>':'')+
+        (!isSelf?'<button class="admin-action danger" onclick="adminDeleteUser(\''+u.uid+'\',\''+emailJs+'\')">Delete</button>':'')+
         '</div></td></tr>';
     }).join('');
   }catch(e){console.log('Admin render error:',e);}
@@ -3148,17 +3155,18 @@ async function renderInviteCodes(){
         statusBadge='<span class="admin-badge active">Active</span>';
       }
       var note=d.note?esc(d.note):'<span style="color:var(--text-faint);">--</span>';
+      var codeJs=esc(d.code||doc.id).replace(/'/g,"\\'");
       rows.push(
         '<tr><td><code style="background:rgba(91,232,255,0.1);color:#5be8ff;padding:2px 8px;border-radius:4px;font-family:ui-monospace,monospace;font-size:12px;letter-spacing:1px;">'+esc(d.code||doc.id)+'</code></td>'+
         '<td>'+usesTxt+'</td>'+
         '<td>'+statusBadge+'</td>'+
         '<td>'+note+'</td>'+
         '<td><div class="admin-actions">'+
-          '<button class="admin-action" onclick="adminCopyInviteCode(\''+(d.code||doc.id)+'\')">Copy</button>'+
+          '<button class="admin-action" onclick="adminCopyInviteCode(\''+codeJs+'\')">Copy</button>'+
           (d.disabled
-            ? '<button class="admin-action" onclick="adminToggleInviteCode(\''+(d.code||doc.id)+'\',false)">Enable</button>'
-            : '<button class="admin-action" onclick="adminToggleInviteCode(\''+(d.code||doc.id)+'\',true)">Disable</button>')+
-          '<button class="admin-action danger" onclick="adminDeleteInviteCode(\''+(d.code||doc.id)+'\')">Delete</button>'+
+            ? '<button class="admin-action" onclick="adminToggleInviteCode(\''+codeJs+'\',false)">Enable</button>'
+            : '<button class="admin-action" onclick="adminToggleInviteCode(\''+codeJs+'\',true)">Disable</button>')+
+          '<button class="admin-action danger" onclick="adminDeleteInviteCode(\''+codeJs+'\')">Delete</button>'+
         '</div></td></tr>'
       );
     });
@@ -4243,7 +4251,7 @@ function _loadWeather(){
     })
     .catch(function(e){
       console.warn('NWS error:',e);
-      body.innerHTML='<div class="wx-loading" style="color:var(--red);">&#10060; Weather unavailable.<br><span style="font-size:12px;color:var(--text-faint);">'+e.message+'</span></div>';
+      body.innerHTML='<div class="wx-loading" style="color:var(--red);">&#10060; Weather unavailable.<br><span style="font-size:12px;color:var(--text-faint);">'+esc(e.message)+'</span></div>';
     });
   }
 
@@ -4269,7 +4277,7 @@ function _renderWeather(data){
   var icon=_wxIcon(data.description);
   var details=[];
   if(data.humidity!==null)details.push('Humidity: '+data.humidity+'%');
-  if(data.wind)details.push('Wind: '+(data.windDir||'')+' '+data.wind);
+  if(data.wind)details.push('Wind: '+(data.windDir||'')+' '+esc(data.wind));
 
   var html='<div class="wx-current">'
     +'<div class="wx-icon">'+icon+'</div>'
@@ -4294,11 +4302,11 @@ function _renderWeather(data){
       var ni=data.periods.indexOf(p)+1;
       if(ni<data.periods.length&&!data.periods[ni].isDaytime)low=data.periods[ni].temperature;
       html+='<div class="wx-day">'
-        +'<div class="wx-day-name">'+p.name.substring(0,3)+'</div>'
+        +'<div class="wx-day-name">'+esc(p.name.substring(0,3))+'</div>'
         +'<div class="wx-day-icon">'+_wxIcon(p.shortForecast)+'</div>'
         +'<div class="wx-day-temp">'+p.temperature+'\u00B0</div>'
         +(low!==null?'<div class="wx-day-low">'+low+'\u00B0</div>':'')
-        +'<div class="wx-day-desc">'+p.shortForecast+'</div>'
+        +'<div class="wx-day-desc">'+esc(p.shortForecast)+'</div>'
         +'</div>';
     });
     html+='</div>';
@@ -4582,10 +4590,10 @@ function _spinShowResult(finalAngle){
   var mapsUrl='https://www.google.com/maps/search/'+encodeURIComponent(restaurant.name+' '+restaurant.address);
   var yelpBtn=restaurant.yelpUrl?'<a href="'+restaurant.yelpUrl+'" target="_blank" rel="noopener">&#127381; View on Yelp</a>':'';
   var html='<div class="spin-result">'
-    +'<div class="spin-result-name">'+restaurant.name+'</div>'
+    +'<div class="spin-result-name">'+esc(restaurant.name)+'</div>'
     +'<div class="spin-result-meta">'
-    +'<strong>'+stars+'</strong> '+restaurant.rating.toFixed(1)+' &bull; '+restaurant.cuisine+'<br>'
-    +restaurant.address
+    +'<strong>'+stars+'</strong> '+(restaurant.rating?restaurant.rating.toFixed(1):'')+' &bull; '+esc(restaurant.cuisine)+'<br>'
+    +esc(restaurant.address)
     +'</div>'
     +'<div class="spin-result-actions">'
     +'<a href="'+mapsUrl+'" target="_blank" rel="noopener">&#128205; Maps</a>'
@@ -9297,13 +9305,13 @@ function _jarvisExecuteActions(actions){
   actions.forEach(function(a){
     try{
       if(a.type==='add_task'){
-        var t={id:'t'+Date.now()+Math.random().toString(36).slice(2),name:a.name,priority:a.priority||'med',due:a.due||'',projectId:'',projectIds:[],source:'standalone',done:false};
+        var t={id:'t'+Date.now()+Math.random().toString(36).slice(2),name:a.name,priority:_safePriority(a.priority),due:_safeDateStr(a.due),projectId:'',projectIds:[],source:'standalone',done:false};
         if(!state.tasks)state.tasks=[];
         state.tasks.unshift(t);
         done.push('Added task: "'+a.name+'"');
         save();renderTaskList();
       }else if(a.type==='add_project'){
-        var p={id:'p'+Date.now()+Math.random().toString(36).slice(2),name:a.name,due:a.due||'',subtasks:[],expanded:false};
+        var p={id:'p'+Date.now()+Math.random().toString(36).slice(2),name:a.name,due:_safeDateStr(a.due),subtasks:[],expanded:false};
         if(!state.projects)state.projects=[];
         state.projects.push(p);
         done.push('Added project: "'+a.name+'"');
@@ -9311,7 +9319,7 @@ function _jarvisExecuteActions(actions){
       }else if(a.type==='add_subtask'){
         var proj=(state.projects||[]).find(function(p){return p.name.toLowerCase().includes((a.projectName||'').toLowerCase());});
         if(proj){
-          var st={id:'st'+Date.now()+Math.random().toString(36).slice(2),name:a.name,priority:a.priority||'med',due:a.due||'',done:false};
+          var st={id:'st'+Date.now()+Math.random().toString(36).slice(2),name:a.name,priority:_safePriority(a.priority),due:_safeDateStr(a.due),done:false};
           proj.subtasks.push(st);
           done.push('Added subtask "'+a.name+'" to '+proj.name);
           save();renderProjects();renderTaskList();
@@ -9323,7 +9331,7 @@ function _jarvisExecuteActions(actions){
         done.push('Added note: "'+(a.label||a.body.slice(0,30))+'"');
         save();renderNotes();
       }else if(a.type==='add_reminder'){
-        var r={id:'r'+Date.now()+Math.random().toString(36).slice(2),text:a.text,date:a.date||'',time:a.time||'',projectIds:[]};
+        var r={id:'r'+Date.now()+Math.random().toString(36).slice(2),text:a.text,date:_safeDateStr(a.date),time:_safeTimeStr(a.time),projectIds:[]};
         if(!state.reminders)state.reminders=[];
         state.reminders.push(r);
         done.push('Added reminder: "'+a.text+'"');
@@ -10581,7 +10589,7 @@ function _gcalRenderModal(){
       html += '<div class="gcal-status-row" style="border-left:3px solid var(--orange);padding-left:10px;">';
       html += '<span class="gcal-dot" style="background:var(--orange);"></span>';
       html += '<div><strong>Session expired.</strong><br><span style="font-size:12px;color:var(--text-dim);">Your Google Calendar connection is saved but the session token needs to be refreshed. This happens after every page reload -- tap Re-authorize to restore sync.</span></div></div>';
-      html += '<dl class="gcal-info-grid"><dt>Account</dt><dd>'+(state.gcal.email||'(saved)')+'</dd>';
+      html += '<dl class="gcal-info-grid"><dt>Account</dt><dd>'+esc(state.gcal.email||'(saved)')+'</dd>';
       html += '<dt>Calendar</dt><dd>'+GCAL_CALENDAR_NAME+'</dd>';
       html += '<dt>Last push</dt><dd>'+_gcalRelTime(state.gcal.lastPush)+'</dd></dl>';
       html += '<div class="gcal-actions">';
@@ -10594,7 +10602,7 @@ function _gcalRenderModal(){
 
     html += '<div class="gcal-status-row connected"><span class="gcal-dot"></span><div><strong>Connected.</strong> Your Centerpost items can now sync with Google Calendar.</div></div>';
     html += '<dl class="gcal-info-grid">';
-    html += '<dt>Account</dt><dd>'+(state.gcal.email||'(unknown)')+'</dd>';
+    html += '<dt>Account</dt><dd>'+esc(state.gcal.email||'(unknown)')+'</dd>';
     html += '<dt>Calendar</dt><dd>'+GCAL_CALENDAR_NAME+'</dd>';
     html += '<dt>Last push</dt><dd>'+_gcalRelTime(state.gcal.lastPush)+'</dd>';
     html += '<dt>Last pull</dt><dd>'+_gcalRelTime(state.gcal.lastPull)+'</dd>';
