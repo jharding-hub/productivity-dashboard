@@ -40,6 +40,12 @@
 <div id="lightningFlash"></div>
 <!-- Point popup container (rendered by PointsFocusMusic component) -->
 
+<div class="focus-banner" id="focusBanner" style="display:none;">
+  <div class="focus-banner-inner">
+    <div class="focus-banner-label" id="focusBannerLabel">UP NEXT</div>
+    <div class="focus-banner-task" id="focusBannerTask">Loading timeline...</div>
+  </div>
+</div>
 <div class="dashboard" id="dashboard">
 
 <!-- 1. PROJECTS -->
@@ -279,6 +285,7 @@
 <button class="btn" onclick="resetPanelVisibility()">Show All</button>
 <button class="btn btn-accent" onclick="closeCustomize()">Done</button>
 </div>
+<div id="devTierSettingsWrap" style="display:none;"></div>
 <div class="cust-build" id="custBuild"></div>
 </div>
 </div>
@@ -394,6 +401,9 @@
 <!-- ENERGY & MOOD + MOOD HISTORY MODALS -->
 <div id="energy-mood-modal-root"></div>
 
+<!-- POINTS INSIGHTS OVERLAY (points x mood/energy x panel-usage correlation) -->
+<div id="points-insights-overlay-root"></div>
+
 <!-- BRAIN DUMP ORGANIZER MODAL -->
 <div class="modal-blur-overlay" id="bdOrgModal">
 <div class="modal-blur-backdrop" onclick="bdOrgClose()"></div>
@@ -439,6 +449,24 @@
   <div class="bdo-footer" id="bdoFooter" style="display:none;">
     <button class="btn" onclick="bdOrganizeClose()">Cancel</button>
     <button class="btn btn-accent-solid" id="bdoApplyBtn" onclick="bdOrganizeApply()">Apply Organization</button>
+  </div>
+</div>
+</div>
+
+<!-- NOTES ORGANIZER MODAL -->
+<div class="modal-blur-overlay" id="noteOrganizeModal">
+<div class="modal-blur-backdrop" onclick="noteOrganizeClose()"></div>
+<div class="modal-blur-panel bdo-panel">
+  <div class="modal-blur-header">
+    <div class="modal-blur-title"><i class="ti ti-sparkles" aria-hidden="true" style="color:var(--accent);margin-right:6px;"></i>Organize Notes</div>
+    <button class="modal-blur-close" onclick="noteOrganizeClose()">&#10005;</button>
+  </div>
+  <div class="bdo-body" id="norgBody">
+    <div class="bdo-status"><div class="bdo-spinner"></div> Axis is reviewing your notes…</div>
+  </div>
+  <div class="bdo-footer" id="norgFooter" style="display:none;">
+    <button class="btn" onclick="noteOrganizeClose()">Cancel</button>
+    <button class="btn btn-accent-solid" id="norgApplyBtn" onclick="noteOrganizeApply()">Apply Organization</button>
   </div>
 </div>
 </div>

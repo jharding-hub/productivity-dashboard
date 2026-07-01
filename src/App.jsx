@@ -8,6 +8,7 @@ import WorkoutModal from './components/WorkoutModal';
 import EnergyMoodModal from './components/EnergyMoodModal';
 import GroundingToolkit from './components/GroundingToolkit';
 import PointsFocusMusic from './components/PointsFocusMusic';
+import PointsInsightsOverlay from './components/PointsInsightsOverlay';
 import JournalOverlay from './components/JournalOverlay';
 import AxisAssistant from './components/AxisAssistant';
 import HaltModal from './components/HaltModal';
@@ -37,6 +38,7 @@ export default function App() {
       energyMood: document.getElementById('energy-mood-modal-root'),
       grounding: document.getElementById('grounding-toolkit-root'),
       pointsMusic: document.getElementById('points-focus-music-root'),
+      pointsInsights: document.getElementById('points-insights-overlay-root'),
       journal: document.getElementById('journal-overlay-root'),
       axis: document.getElementById('axis-assistant-root'),
       halt: document.getElementById('halt-modal-root'),
@@ -71,6 +73,7 @@ export default function App() {
       {mounts.energyMood && createPortal(<EnergyMoodModal />, mounts.energyMood)}
       {mounts.grounding && createPortal(<GroundingToolkit />, mounts.grounding)}
       {mounts.pointsMusic && createPortal(<PointsFocusMusic />, mounts.pointsMusic)}
+      {mounts.pointsInsights && createPortal(<PointsInsightsOverlay />, mounts.pointsInsights)}
       {mounts.journal && createPortal(<JournalOverlay />, mounts.journal)}
       {mounts.axis && createPortal(<AxisAssistant />, mounts.axis)}
       {mounts.halt && createPortal(<HaltModal />, mounts.halt)}

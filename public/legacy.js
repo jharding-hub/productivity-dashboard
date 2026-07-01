@@ -217,35 +217,30 @@ function _tierUpgradeToast(tier){
 }
 
 function _renderDevSwitcher(){
-  // Only render for the owner UID
   if(!currentUser||currentUser.uid!==DEV_UID)return;
   var existing=document.getElementById('devTierSwitcher');
   if(existing)existing.parentNode.removeChild(existing);
-
+}
+function _renderDevSwitcherInSettings(){
+  var target=document.getElementById('devTierSettingsWrap');
+  if(!target)return;
+  if(!currentUser||currentUser.uid!==DEV_UID){target.style.display='none';return;}
+  target.style.display='block';
   var active=getActiveTier();
-  var cfg=getTierConfig();
-  var wrap=document.createElement('div');
-  wrap.id='devTierSwitcher';
-  wrap.innerHTML=
-    '<div class="dev-tier-badge" onclick="this.parentNode.querySelector(\'.dev-tier-menu\').classList.toggle(\'open\')">'+
-      '<span style="color:'+cfg.color+'">⬡</span> '+cfg.label+' <span style="font-size:9px;opacity:0.6;">DEV</span>'+
-    '</div>'+
-    '<div class="dev-tier-menu">'+
-      '<div class="dev-tier-menu-title">Simulate Tier</div>'+
-      Object.keys(TIER_CONFIG).map(function(k){
-        var t=TIER_CONFIG[k];
-        return '<button class="dev-tier-opt'+(k===active?' active':'')+'" onclick="_setDevTier(\''+k+'\')">'+
-          '<span style="color:'+t.color+'">⬡</span> '+t.label+'</button>';
-      }).join('')+
+  target.innerHTML='<div class="section-label" style="margin-top:12px;margin-bottom:8px;">Developer</div>'+
+    '<div style="display:flex;flex-wrap:wrap;gap:6px;">'+
+    Object.keys(TIER_CONFIG).map(function(k){
+      var t=TIER_CONFIG[k];
+      return '<button class="dev-tier-opt'+(k===active?' active':'')+'" onclick="_setDevTier(\''+k+'\')" style="font-size:11px;">'+
+        '<span style="color:'+t.color+'">⬡</span> '+t.label+'</button>';
+    }).join('')+
     '</div>';
-  document.body.appendChild(wrap);
 }
 
 function _setDevTier(tier){
   localStorage.setItem('devTierOverride',tier);
   applyTierGating();
-  var m=document.querySelector('.dev-tier-menu');
-  if(m)m.classList.remove('open');
+  _renderDevSwitcherInSettings();
   if(typeof toast==='function')toast('Tier → '+TIER_CONFIG[tier].label);
 }
 // -----------------------------------------------------------------------------
@@ -543,10 +538,10 @@ try {
 
 // ── SCRIPT 3: APP LOGIC ─────────────────────────────────────────
 // STATE
-var state={projects:[],reminders:[],thoughts:[],notes:[],moodLog:[],tasks:[],completedTasks:[],journal:[],journalPin:'',workoutLog:{},completedWorkouts:[],focusPlaylistId:null,points:{current:0,monthKey:'',lastTier:'bronze',totalsByDay:{},lastLoginDate:'',lifetimeTotal:0},routines:{morning:[{id:'m1',name:'Hydrate \u2014 glass of water',done:false},{id:'m2',name:"Review today's calendar",done:false},{id:'m3',name:'Pick top 3 priorities',done:false},{id:'m4',name:'Quick workspace tidy',done:false}],evening:[{id:'e1',name:'Review what got done today',done:false},{id:'e2',name:"Brain dump tomorrow's thoughts",done:false},{id:'e3',name:"Set out tomorrow's essentials",done:false},{id:'e4',name:'Wind-down activity',done:false}],custom:[]},currentRoutineTab:'morning',energy:null,mood:null,panelOrder:['projects','reminders','time','tasklist','notes','brain','routines','wellness','decision','admin'],panelsLocked:true,lastRoutineReset:null,visiblePanels:{},knownPanels:[]};
+var state={projects:[],reminders:[],thoughts:[],notes:[],moodLog:[],tasks:[],completedTasks:[],journal:[],journalPin:'',workoutLog:{},completedWorkouts:[],focusPlaylistId:null,points:{current:0,monthKey:'',lastTier:'bronze',totalsByDay:{},lastLoginDate:'',lifetimeTotal:0,monthlyTotals:{}},panelUseLog:{},usageMonthlyTotals:{},routines:{morning:[{id:'m1',name:'Hydrate \u2014 glass of water',done:false},{id:'m2',name:"Review today's calendar",done:false},{id:'m3',name:'Pick top 3 priorities',done:false},{id:'m4',name:'Quick workspace tidy',done:false}],evening:[{id:'e1',name:'Review what got done today',done:false},{id:'e2',name:"Brain dump tomorrow's thoughts",done:false},{id:'e3',name:"Set out tomorrow's essentials",done:false},{id:'e4',name:'Wind-down activity',done:false}],custom:[]},currentRoutineTab:'morning',energy:null,mood:null,panelOrder:['projects','reminders','time','tasklist','notes','brain','routines','wellness','decision','admin'],panelsLocked:true,lastRoutineReset:null,visiblePanels:{},knownPanels:[]};
 
 // SYNC STATUS
-function setSyncStatus(status,label){const el=document.getElementById('syncStatus');if(!el)return;el.className='sync-status '+status;el.innerHTML='<span class="sync-dot"></span> '+label;}
+function setSyncStatus(status,label){const el=document.getElementById('syncStatus');if(!el)return;el.className='sync-status '+status;var icon={synced:'✓',syncing:'↻',error:'⚠',offline:'•'}[status]||'•';el.innerHTML='<span class="sync-icon">'+icon+'</span> '+label;}
 
 // SAVE -- writes to localStorage + Firestore (per-user)
 var saveTimer=null;
@@ -623,6 +618,7 @@ async function load(){
   if(!state.routines)state.routines={morning:[],evening:[],custom:[]};
   if(!state.reminders)state.reminders=[];
   if(!state.notes)state.notes=[];if(!state.moodLog)state.moodLog=[];if(!state.tasks)state.tasks=[];if(!state.visiblePanels)state.visiblePanels={};if(!state.knownPanels)state.knownPanels=[];
+  if(!state.panelUseLog)state.panelUseLog={};if(!state.usageMonthlyTotals)state.usageMonthlyTotals={};if(!state.points.monthlyTotals)state.points.monthlyTotals={};
   // Backfill any note missing a created timestamp (older notes) so sorts can't crash
   state.notes.forEach(function(n){if(n&&!n.created)n.created=n.updated||n.date||new Date(0).toISOString();});
   if(!state.journal)state.journal=[];if(!state.journalPin)state.journalPin='';
@@ -682,15 +678,29 @@ function startRealtimeSync(){
       // by an onSnapshot firing with stale Firestore data (race condition fix)
       const localVP=state.visiblePanels;
       const localKP=state.knownPanels;
+      const localFocusMode=state.focusMode;
+      const localSavedVis=state._savedPanelVis;
       const localRoutineReset=state.lastRoutineReset;
-      const localRoutines=state.routines;
+      const localRoutines=JSON.parse(JSON.stringify(state.routines||{}));
       state={...state,...cloud};
+      state.focusMode=localFocusMode;
+      if(localSavedVis)state._savedPanelVis=localSavedVis;else delete state._savedPanelVis;
       state.visiblePanels=Object.assign({},cloud.visiblePanels||{},localVP);
       state.knownPanels=localKP&&localKP.length>=(cloud.knownPanels||[]).length?localKP:cloud.knownPanels||localKP;
       var _today=todayStr();
       if(localRoutineReset===_today&&cloud.lastRoutineReset!==_today){
         state.routines=localRoutines;state.lastRoutineReset=_today;
       }
+      ['morning','evening','custom'].forEach(function(tab){
+        var local=localRoutines[tab]||[];
+        var merged=state.routines[tab]||[];
+        local.forEach(function(lr){
+          if(lr.done){
+            var mr=merged.find(function(x){return x.id===lr.id;});
+            if(mr)mr.done=true;
+          }
+        });
+      });
 
       // Re-apply any gcalEventIds that were wiped by the cloud spread
       (state.tasks||[]).forEach(function(t){if(!t.gcalEventId&&_gcalLocal['t:'+t.id])t.gcalEventId=_gcalLocal['t:'+t.id];});
@@ -721,24 +731,28 @@ var ALL_PANELS=[
   {id:'brain',icon:'\u{1F9E0}',name:'Brain Dump',desc:'Capture fleeting thoughts'},
   {id:'routines',icon:'\u{1F501}',name:'Routines',desc:'Morning, evening, and custom checklists'},
   {id:'wellness',icon:'\u{1F9FA}',name:'Grounding Toolkit',desc:'Breathing and grounding techniques (auto-shows when needed)'},
-  {id:'decision',icon:'\u{1F9ED}',name:'Stuck? Start Here',desc:'Decision aid prompts'},
-  {id:'admin',icon:'\u{1F6E1}',name:'Admin Panel',desc:'User management (admin only)'}
+  {id:'decision',icon:'\u{1F9ED}',name:'Stuck? Start Here',desc:'Decision aid prompts'}
 ];
 function getPanelIds(){return ALL_PANELS.map(p=>p.id);}
 
+var FOCUS_DEFAULT_PANELS=['brain','projects'];
 function initPanelVisibility(){
   const ids=getPanelIds();
-  // Default all to visible if not set
-  ids.forEach(id=>{
-    if(state.visiblePanels[id]===undefined) state.visiblePanels[id]=true;
-  });
-  // Detect new panels the user hasn't seen
   if(!state.knownPanels)state.knownPanels=[];
-  const newPanels=ids.filter(id=>!state.knownPanels.includes(id));
-  if(newPanels.length>0&&state.knownPanels.length>0){
-    // There are genuinely new panels (not first run)
-    newPanels.forEach(id=>{state.visiblePanels[id]=false;}); // default hidden, user opts in
-    toast('New panels available! Tap \u2699 Panels to activate.');
+  var isFirstRun=state.knownPanels.length===0;
+  if(isFirstRun){
+    ids.forEach(id=>{
+      state.visiblePanels[id]=FOCUS_DEFAULT_PANELS.includes(id);
+    });
+  }else{
+    ids.forEach(id=>{
+      if(state.visiblePanels[id]===undefined) state.visiblePanels[id]=true;
+    });
+    const newPanels=ids.filter(id=>!state.knownPanels.includes(id));
+    if(newPanels.length>0){
+      newPanels.forEach(id=>{state.visiblePanels[id]=false;});
+      toast('New panels available! Tap \u2699 Settings to activate.');
+    }
   }
   state.knownPanels=ids.slice();
   save();
@@ -747,7 +761,8 @@ function initPanelVisibility(){
 function applyPanelVisibility(){
   document.querySelectorAll('.panel[data-panel]').forEach(p=>{
     const id=p.dataset.panel;
-    if(id==='wellness'||id==='admin')return; // these have their own logic
+    if(id==='wellness')return; // wellness has its own logic
+    if(id==='admin'){p.classList.add('hidden-panel');return;}
     if(state.visiblePanels[id]===false){
       p.classList.add('user-hidden');
     }else{
@@ -756,6 +771,7 @@ function applyPanelVisibility(){
   });
   // Rebuild mobile home tiles to reflect visibility changes
   if(_isMobile())buildMobileHome();
+  updateFocusBanner();
 }
 
 function openCustomize(){
@@ -763,17 +779,20 @@ function openCustomize(){
   const ids=getPanelIds();
   const newPanels=ids.filter(id=>state.knownPanels&&!state.knownPanels.includes(id));
   el.innerHTML=ALL_PANELS.filter(p=>{
-    if(p.id==='admin'&&!isAdmin)return false;
-    if(p.id==='wellness')return false; // wellness is auto-controlled
+    if(p.id==='wellness')return false;
     return true;
   }).map(p=>{
     const checked=state.visiblePanels[p.id]!==false;
     const isNew=newPanels.includes(p.id);
     return '<div class="panel-toggle"><span class="pt-icon">'+p.icon+'</span><div class="pt-info"><div class="pt-name">'+p.name+(isNew?'<span class="pt-new">NEW</span>':'')+'</div><div class="pt-desc">'+p.desc+'</div></div><label class="toggle-switch"><input type="checkbox" '+(checked?'checked':'')+' onchange="togglePanelVisibility(\''+p.id+'\',this.checked)"><span class="toggle-slider"></span></label></div>';
   }).join('');
+  if(isAdmin){
+    el.innerHTML+='<div class="panel-toggle" style="border-top:1px solid var(--border);margin-top:8px;padding-top:12px;cursor:pointer;" onclick="closeCustomize();openAdminRoute()"><span class="pt-icon">\u{1F6E1}</span><div class="pt-info"><div class="pt-name">Admin Panel</div><div class="pt-desc">User management, invite codes (opens full page)</div></div><span style="color:var(--text-dim);font-size:18px;">→</span></div>';
+  }
   document.getElementById('customizeOverlay').classList.add('show');
   var _cb=document.getElementById('custBuild');
   if(_cb)_cb.textContent='Build '+APP_BUILD;
+  _renderDevSwitcherInSettings();
 }
 
 function closeCustomize(){
@@ -786,11 +805,80 @@ function togglePanelVisibility(id,visible){
   applyPanelVisibility();
 }
 
+function updateFocusBanner(){
+  var banner=document.getElementById('focusBanner');
+  if(!banner)return;
+  if(!state.focusMode){banner.style.display='none';return;}
+  banner.style.display='block';
+  var taskEl=document.getElementById('focusBannerTask');
+  var labelEl=document.getElementById('focusBannerLabel');
+  if(!taskEl)return;
+  var now=new Date();
+  var nowMin=now.getHours()*60+now.getMinutes();
+  var blocks=(typeof _tlCollectBlocks==='function')?_tlCollectBlocks(todayStr()):[];
+  blocks.sort(function(a,b){return a.startMin-b.startMin;});
+  var current=null,next=null;
+  for(var i=0;i<blocks.length;i++){
+    var b=blocks[i];
+    if(nowMin>=b.startMin&&nowMin<b.startMin+b.durMin){current=b;next=blocks[i+1]||null;break;}
+    if(b.startMin>nowMin){next=b;break;}
+  }
+  if(current){
+    if(labelEl)labelEl.textContent='NOW';
+    var endH=Math.floor((current.startMin+current.durMin)/60),endM=(current.startMin+current.durMin)%60;
+    var endStr=(endH>12?endH-12:endH)+':'+(endM<10?'0':'')+endM+(endH>=12?'p':'a');
+    var proj=_tlBlockProject(current);
+    taskEl.innerHTML=esc(current.name)+'<span class="focus-time">until '+endStr+'</span>'+(proj?'<span class="focus-proj">'+esc(proj)+'</span>':'');
+  }else if(next){
+    if(labelEl)labelEl.textContent='UP NEXT';
+    var sh=Math.floor(next.startMin/60),sm=next.startMin%60;
+    var startStr=(sh>12?sh-12:sh)+':'+(sm<10?'0':'')+sm+(sh>=12?'p':'a');
+    var proj=_tlBlockProject(next);
+    taskEl.innerHTML=esc(next.name)+'<span class="focus-time">at '+startStr+'</span>'+(proj?'<span class="focus-proj">'+esc(proj)+'</span>':'');
+  }else{
+    if(labelEl)labelEl.textContent='ALL DONE';
+    taskEl.innerHTML='No more blocks scheduled today.';
+  }
+}
+function _tlBlockProject(block){
+  if(!block.projectId)return '';
+  var p=(state.projects||[]).find(function(pr){return pr.id===block.projectId;});
+  return p?p.name:'';
+}
+function toggleFocusMode(){
+  if(state.focusMode){
+    state.focusMode=false;
+    if(state._savedPanelVis){
+      state.visiblePanels=JSON.parse(JSON.stringify(state._savedPanelVis));
+      delete state._savedPanelVis;
+    }else{
+      getPanelIds().concat(['timeline']).forEach(function(id){state.visiblePanels[id]=true;});
+    }
+    toast('Full dashboard restored');
+  }else{
+    state._savedPanelVis=JSON.parse(JSON.stringify(state.visiblePanels));
+    state.focusMode=true;
+    getPanelIds().concat(['timeline']).forEach(function(id){
+      state.visiblePanels[id]=FOCUS_DEFAULT_PANELS.includes(id);
+    });
+    toast('Focus mode — brain dump & projects');
+  }
+  save();applyPanelVisibility();updateFocusModeUI();
+}
+function updateFocusModeUI(){
+  var btn=document.getElementById('focusModeBtn');
+  if(!btn)return;
+  if(state.focusMode){btn.textContent='☀ Focus';btn.classList.add('focus-active');}
+  else{btn.textContent='⊞ All Panels';btn.classList.remove('focus-active');}
+}
 function resetPanelVisibility(){
+  state.focusMode=false;
   getPanelIds().forEach(id=>{state.visiblePanels[id]=true;});
+  delete state._savedPanelVis;
   save();
   applyPanelVisibility();
-  openCustomize(); // refresh the modal toggles
+  updateFocusModeUI();
+  openCustomize();
   toast('All panels visible');
 }
 
@@ -1196,7 +1284,7 @@ function toggleSubtask(pid,sid){
   addPoints('subtask',srcEl);
   save();renderProjects();renderTaskList();
 }
-function deleteSubtask(pid,sid){const p=state.projects.find(p=>p.id===pid);if(p)p.subtasks=p.subtasks.filter(s=>s.id!==sid);save();renderProjects();renderTaskList();}
+function deleteSubtask(pid,sid){_confirm('Delete this subtask?',function(){const p=state.projects.find(p=>p.id===pid);if(p)p.subtasks=p.subtasks.filter(s=>s.id!==sid);save();renderProjects();renderTaskList();},{destructive:true,confirmText:'Delete'});}
 
 // Cycle priority low → med → high → low on click. Works for subtasks.
 function cycleSubtaskPriority(pid,sid,ev){
@@ -1342,7 +1430,7 @@ var upcomingEl=document.getElementById('projUpcomingOnly');
 var showAll=!inOverlay&&upcomingEl&&upcomingEl.checked;
 // Always sort alphabetically regardless of showAll / overlay mode
 var visibleProjects=_sortedProjects();
-if(state.projects.length===0){el.innerHTML='<div class="empty-state">No projects yet.</div>'+_renderCompletedProjectsSection();document.getElementById('projCount').textContent='0';var emptyProjCompCount=(state.completedTasks||[]).filter(function(t){return t.source==='project';}).length;var emptyProjCompBadge=document.getElementById('projCompletedBadge');if(emptyProjCompBadge){emptyProjCompBadge.textContent='✓ '+emptyProjCompCount;emptyProjCompBadge.style.display=emptyProjCompCount>0?'inline-flex':'none';}updateNoteSelectors();if(typeof _updateTileSummaryProjects==='function')_updateTileSummaryProjects();return;}
+if(state.projects.length===0){el.innerHTML='<div class="empty-state"><p style="margin:0 0 8px;color:var(--text-dim);">No projects yet. Create one to start tracking goals and subtasks.</p><button class="btn btn-accent btn-sm" onclick="document.getElementById(\'newProjName\').focus()" style="margin:0 auto;display:block;">+ Create your first project</button></div>'+_renderCompletedProjectsSection();document.getElementById('projCount').textContent='0';var emptyProjCompCount=(state.completedTasks||[]).filter(function(t){return t.source==='project';}).length;var emptyProjCompBadge=document.getElementById('projCompletedBadge');if(emptyProjCompBadge){emptyProjCompBadge.textContent='✓ '+emptyProjCompCount;emptyProjCompBadge.title=emptyProjCompCount+' completed subtask'+(emptyProjCompCount!==1?'s':'');emptyProjCompBadge.style.display=emptyProjCompCount>0?'inline-flex':'none';}updateNoteSelectors();if(typeof _updateTileSummaryProjects==='function')_updateTileSummaryProjects();return;}
 var pcpEl=document.getElementById('pc_projects');
 // Tile mode, unchecked -- blank panel so add-form anchors to bottom
 if(!inOverlay&&!showAll){
@@ -1401,6 +1489,7 @@ var projCompCount=(state.completedTasks||[]).filter(function(t){return t.source=
 var projCompBadge=document.getElementById('projCompletedBadge');
 if(projCompBadge){
   projCompBadge.textContent='✓ '+projCompCount;
+  projCompBadge.title=projCompCount+' completed subtask'+(projCompCount!==1?'s':'');
   projCompBadge.style.display=projCompCount>0?'inline-flex':'none';
 }
 // Subtask name editing (still works when unlocked)
@@ -1420,7 +1509,7 @@ function promptEditProject(pid){
 
 // REMINDERS
 function addReminder(){const t=document.getElementById('newRemText').value.trim();if(!t)return;const projVal=document.getElementById('newRemProject').value;const projIds=projVal?projVal.split(',').filter(Boolean):[];state.reminders.push({id:'rem'+Date.now(),text:t,date:document.getElementById('newRemDate').value,time:document.getElementById('newRemTime').value,projectId:projIds[0]||'',projectIds:projIds});document.getElementById('newRemText').value='';document.getElementById('newRemDate').value='';document.getElementById('newRemTime').value='';document.getElementById('newRemProject').value='';renderProjMultiPickerChips(document.getElementById('newRemProjectPicker'));save();renderReminders();renderProjects();if(projIds.length>1)toast('Reminder added to '+projIds.length+' projects');}
-function deleteReminder(id){state.reminders=state.reminders.filter(r=>r.id!==id);save();renderReminders();}
+function deleteReminder(id){_confirm('Delete this reminder?',function(){state.reminders=state.reminders.filter(r=>r.id!==id);save();renderReminders();},{destructive:true,confirmText:'Delete'});}
 function clearPastReminders(){state.reminders=state.reminders.filter(r=>!r.date||r.date>=todayStr());save();renderReminders();toast('Past cleared');}
 function editReminderText(id,v){if(!v)return;const r=state.reminders.find(r=>r.id===id);if(r)r.text=v;save();}
 function renderReminders(){const el=document.getElementById('reminderList');const today=todayStr();const sorted=[...state.reminders].sort((a,b)=>{if(a.date&&b.date){const d=a.date.localeCompare(b.date);if(d!==0)return d;}if(a.date&&!b.date)return -1;if(!a.date&&b.date)return 1;if(a.time&&b.time)return a.time.localeCompare(b.time);return 0;});
@@ -1442,7 +1531,7 @@ function exportReminderICS(id){const r=state.reminders.find(r=>r.id===id);if(!r)
 
 // BRAIN DUMP
 function handleDumpKey(e){if(e.key==='Enter'&&!e.shiftKey){e.preventDefault();const t=document.getElementById('brainDump').value.trim();if(!t)return;state.thoughts.push({id:'th'+Date.now(),text:t});document.getElementById('brainDump').value='';save();renderThoughts();_trackEvent('tool_use','brain_dump','Brain Dump');}}
-function deleteThought(id){state.thoughts=state.thoughts.filter(t=>t.id!==id);save();renderThoughts();}
+function deleteThought(id){_confirm('Delete this thought?',function(){state.thoughts=state.thoughts.filter(t=>t.id!==id);save();renderThoughts();},{destructive:true,confirmText:'Delete'});}
 function promoteThought(id){const th=state.thoughts.find(t=>t.id===id);if(!th)return;if(state.projects.length>0){const sp=_sortedProjects();const c=prompt('Promote to which project?\n\n'+sp.map((p,i)=>(i+1)+'. '+p.name).join('\n')+'\n\n(0 = reminders)','1');if(c===null)return;const idx=parseInt(c)-1;if(idx>=0&&idx<sp.length){sp[idx].subtasks.push({id:'st'+Date.now(),name:th.text,due:'',priority:'med',timeEst:'',done:false});deleteThought(id);renderProjects();renderTaskList();toast('Added to '+sp[idx].name);return;}}state.reminders.push({id:'rem'+Date.now(),text:th.text,date:'',time:''});deleteThought(id);renderReminders();toast('Moved to reminders');}
 function editThought(id,v){if(!v)return;const t=state.thoughts.find(t=>t.id===id);if(t)t.text=v;save();}
 
@@ -1777,6 +1866,230 @@ function bdOrganizeClose(){
   _bdoPlan = null;
 }
 
+// ── NOTES ORGANIZER (Organize with Axis for Notes) ──────────────────────
+var _norgPlan = null;
+
+async function noteOrganize(noteId){
+  var note = (state.notes||[]).find(function(n){return n.id===noteId;});
+  if(!note){
+    toast('Note not found');
+    return;
+  }
+
+  document.getElementById('norgBody').innerHTML='<div class="bdo-status"><div class="bdo-spinner"></div> Axis is reviewing this note…</div>';
+  document.getElementById('norgFooter').style.display='none';
+  document.getElementById('noteOrganizeModal').classList.add('open');
+
+  try {
+    var plan = await _norgRequestPlan(noteId);
+    _norgPlan = plan;
+    _norgRenderPlan(plan);
+  } catch(e){
+    console.error('[norg] organize error', e);
+    document.getElementById('norgBody').innerHTML='<div class="bdo-empty">Axis couldn\'t organize right now.<br><span style="font-size:11px;">'+esc(e.message||'Unknown error')+'</span></div>';
+  }
+}
+
+async function _norgRequestPlan(noteId){
+  var projects = (state.projects||[]).map(function(p){ return p.name; });
+  var srcNote = state.notes.find(function(n){return n.id===noteId;});
+  if(!srcNote) return {items:[]};
+  var noteData = {id:srcNote.id, label:srcNote.label||'', body:_stripHtml(srcNote.body||'').slice(0,800), projects:(srcNote.projectIds||[]).map(function(pid){var p=(state.projects||[]).find(function(x){return x.id===pid;});return p?p.name:'';}).filter(Boolean)};
+
+  var sys = 'You are Axis, organizing a note for an ADHD user of the Centerpost productivity app. '
+    + 'Break the note into individual actionable lines. Output ONLY raw JSON (no markdown, no code fences).\n\n'
+    + 'EXISTING PROJECTS: '+(projects.length?JSON.stringify(projects):'(none yet)')+'\n\n'
+    + 'For EACH distinct idea, bullet point, or actionable line in the note, create one item.\n'
+    + 'Decide a destination for each:\n'
+    + '- "task": actionable to-do item\n'
+    + '- "reminder": time-sensitive item the user should be reminded about\n'
+    + '- "ignore": informational only, no action needed\n\n'
+    + 'For each item, also assign a project from the EXISTING PROJECTS list if it fits. Leave project empty string if none fit.\n\n'
+    + 'IMPORTANT: The original note is NEVER deleted. You are extracting action items from it.\n\n'
+    + 'Return this exact JSON shape:\n'
+    + '{"items":[\n'
+    + '  {"text":"<clear actionable restatement>","dest":"task|reminder|ignore","project":"<existing project name or empty>","priority":"low|med|high"}\n'
+    + ']}\n\n'
+    + 'Keep text concise and actionable. Bias toward creating tasks from anything that looks like a to-do.';
+
+  var userMsg = 'Break this note into actionable items:\nTitle: '+noteData.label+'\nBody: '+noteData.body
+    +(noteData.projects.length?'\nTagged projects: '+noteData.projects.join(', '):'');
+
+  var endpoint = (typeof JARVIS_PROXY_URL!=='undefined' && JARVIS_PROXY_URL) || '';
+  var res = await fetch(endpoint, {
+    method:'POST',
+    headers:await _jarvisAuthHeaders(),
+    body:JSON.stringify({
+      model:'claude-haiku-4-5-20251001',
+      max_tokens:2000,
+      system:sys,
+      messages:[{role:'user',content:userMsg}]
+    })
+  });
+
+  var raw = await res.text();
+  if(!res.ok) throw new Error('HTTP '+res.status+' -- '+raw.slice(0,120));
+
+  var data; try{ data=JSON.parse(raw); }catch(e){ throw new Error('Bad response from Axis'); }
+
+  var txt='';
+  if(data.content && Array.isArray(data.content)){
+    txt = data.content.filter(function(b){return b.type==='text';}).map(function(b){return b.text;}).join('');
+  } else if(typeof data.reply==='string'){
+    txt = data.reply;
+  }
+  txt = txt.replace(/```json|```/g,'').trim();
+
+  var plan; try{ plan=JSON.parse(txt); }catch(e){ throw new Error('Axis returned unparseable plan'); }
+  if(!plan.items) plan.items=[];
+  return plan;
+}
+
+function _norgRenderPlan(plan){
+  var body = document.getElementById('norgBody');
+
+  if(plan.items.length===0){
+    body.innerHTML='<div class="bdo-empty">Nothing actionable found in this note.</div>';
+    return;
+  }
+
+  var html='<div class="bdo-section"><div class="bdo-section-label">Proposed organization -- tap to change any</div>';
+
+  plan.items.forEach(function(it, ii){
+    var presel = it.dest==='reminder' ? 'reminder' : (it.dest==='ignore' ? 'ignore' : 'task');
+    it._userDest = presel;
+    it._userProject = it.project || '';
+
+    var projLabel = it._userProject ? ' <span class="bdo-dest-tag project" style="font-size:10px;cursor:pointer;" onclick="_norgPickProject('+ii+',this)">'+esc(it._userProject)+'</span>' : '';
+
+    html+='<div class="bdo-item" id="norgi_'+ii+'">';
+    html+='<div class="bdo-item-body">';
+    html+='<div class="bdo-item-text">'+esc(it.text)+'</div>';
+    html+='<div class="bdo-iopt-row">';
+    html+='<button class="bdo-iopt'+(presel==='task'?' sel-task':'')+'" onclick="_norgPickDest('+ii+',\'task\',this)"><i class="ti ti-checklist" aria-hidden="true"></i> Task</button>';
+    html+='<button class="bdo-iopt'+(presel==='reminder'?' sel-note':'')+'" onclick="_norgPickDest('+ii+',\'reminder\',this)"><i class="ti ti-bell" aria-hidden="true"></i> Reminder</button>';
+    html+='<button class="bdo-iopt'+(presel==='ignore'?' sel-ignore':'')+'" onclick="_norgPickDest('+ii+',\'ignore\',this)">Ignore</button>';
+    html+='<span class="norg-proj-wrap" id="norgproj_'+ii+'" style="margin-left:4px;display:inline-flex;align-items:center;">'+projLabel+'</span>';
+    html+='<button class="bdo-iopt" style="margin-left:auto;font-size:10px;padding:2px 6px;" onclick="_norgPickProject('+ii+',this)"><i class="ti ti-folder" aria-hidden="true"></i> '+(it._userProject?'Change':'+ Project')+'</button>';
+    html+='</div>';
+    html+='</div>';
+    html+='</div>';
+  });
+
+  html+='</div>';
+  body.innerHTML=html;
+  document.getElementById('norgFooter').style.display='flex';
+}
+
+function _norgPickDest(ii, dest, btnEl){
+  var it = _norgPlan && _norgPlan.items[ii];
+  if(!it) return;
+  it._userDest = dest;
+  var card = document.getElementById('norgi_'+ii);
+  if(card){
+    card.querySelectorAll('.bdo-iopt').forEach(function(b){
+      b.classList.remove('sel-task','sel-note','sel-ignore');
+    });
+    if(dest==='task') btnEl.classList.add('sel-task');
+    else if(dest==='reminder') btnEl.classList.add('sel-note');
+    else if(dest==='ignore') btnEl.classList.add('sel-ignore');
+    if(dest==='ignore') card.classList.add('bdo-ignored');
+    else card.classList.remove('bdo-ignored');
+  }
+}
+
+function _norgPickProject(ii, btnEl){
+  var it = _norgPlan && _norgPlan.items[ii];
+  if(!it) return;
+  var existing = document.getElementById('norgProjPicker_'+ii);
+  if(existing){ existing.remove(); return; }
+
+  var projects = _sortedProjects ? _sortedProjects() : (state.projects||[]);
+  var wrap = document.createElement('div');
+  wrap.id = 'norgProjPicker_'+ii;
+  wrap.style.cssText = 'position:absolute;z-index:10;background:var(--surface-raised);border:1px solid var(--border);border-radius:6px;padding:4px 0;max-height:200px;overflow-y:auto;min-width:160px;box-shadow:0 8px 24px rgba(0,0,0,0.4);';
+
+  var html = '<div style="padding:4px 10px;font-size:11px;cursor:pointer;color:var(--text-dim);" onclick="_norgSetProject('+ii+',\'\')">None (remove)</div>';
+  projects.forEach(function(p){
+    var sel = (it._userProject||'').toLowerCase()===(p.name||'').toLowerCase();
+    html+='<div style="padding:4px 10px;font-size:11px;cursor:pointer;color:'+(sel?'var(--accent)':'var(--text)')+';font-weight:'+(sel?'700':'400')+';" onclick="_norgSetProject('+ii+',\''+esc(p.name).replace(/'/g,"\\'")+'\')">'+esc(p.name)+'</div>';
+  });
+  wrap.innerHTML = html;
+
+  var row = btnEl.closest('.bdo-iopt-row');
+  row.style.position = 'relative';
+  row.appendChild(wrap);
+
+  setTimeout(function(){ document.addEventListener('click', function closer(e){ if(!wrap.contains(e.target)&&e.target!==btnEl){ wrap.remove(); document.removeEventListener('click',closer); } }); },0);
+}
+
+function _norgSetProject(ii, projName){
+  var it = _norgPlan && _norgPlan.items[ii];
+  if(!it) return;
+  it._userProject = projName;
+
+  var projWrap = document.getElementById('norgproj_'+ii);
+  if(projWrap){
+    projWrap.innerHTML = projName ? '<span class="bdo-dest-tag project" style="font-size:10px;cursor:pointer;" onclick="_norgPickProject('+ii+',this)">'+esc(projName)+'</span>' : '';
+  }
+  var card = document.getElementById('norgi_'+ii);
+  if(card){
+    var projBtn = card.querySelector('.bdo-iopt-row button:last-child');
+    if(projBtn){ projBtn.innerHTML = '<i class="ti ti-folder" aria-hidden="true"></i> '+(projName?'Change':'+ Project'); }
+  }
+  var picker = document.getElementById('norgProjPicker_'+ii);
+  if(picker) picker.remove();
+}
+
+function noteOrganizeApply(){
+  if(!_norgPlan) return;
+  var counts = {task:0,reminder:0};
+
+  _norgPlan.items.forEach(function(it){
+    var dest = it._userDest || it.dest;
+    if(dest==='ignore') return;
+
+    var projName = it._userProject || '';
+
+    if(dest==='task'){
+      if(projName){
+        var p=(state.projects||[]).find(function(x){return x.name.toLowerCase()===projName.toLowerCase();});
+        if(p){
+          p.subtasks=p.subtasks||[];
+          p.subtasks.push({id:'st'+Date.now()+Math.random().toString(36).slice(2,6),name:it.text,due:'',priority:it.priority||'med',timeEst:'',done:false});
+        } else {
+          state.tasks=state.tasks||[];
+          state.tasks.push({id:'t'+Date.now()+Math.random().toString(36).slice(2,6),name:it.text,due:'',priority:it.priority||'med',timeEst:'',projectId:'',projectIds:[],done:false});
+        }
+      } else {
+        state.tasks=state.tasks||[];
+        state.tasks.push({id:'t'+Date.now()+Math.random().toString(36).slice(2,6),name:it.text,due:'',priority:it.priority||'med',timeEst:'',projectId:'',projectIds:[],done:false});
+      }
+      counts.task++;
+    }
+    else if(dest==='reminder'){
+      state.reminders=state.reminders||[];
+      state.reminders.push({id:'rem'+Date.now()+Math.random().toString(36).slice(2,6),text:it.text,date:'',time:'',projectId:'',projectIds:[]});
+      counts.reminder++;
+    }
+  });
+
+  save();
+  renderNotes(); renderProjects(); renderTaskList(); renderReminders();
+
+  var parts=[];
+  if(counts.task)parts.push(counts.task+' task'+(counts.task===1?'':'s')+' created');
+  if(counts.reminder)parts.push(counts.reminder+' reminder'+(counts.reminder===1?'':'s')+' created');
+  toast(parts.length ? parts.join(', ') : 'No changes applied');
+
+  noteOrganizeClose();
+}
+
+function noteOrganizeClose(){
+  document.getElementById('noteOrganizeModal').classList.remove('open');
+  _norgPlan = null;
+}
+
 function renderThoughts(){document.getElementById('thoughtChips').innerHTML=state.thoughts.map(t=>'<div class="thought-chip"><span class="editable" id="tt_'+t.id+'">'+esc(t.text)+'</span><span class="chip-promote" onclick="promoteThought(\''+t.id+'\')">\u2197</span><span class="chip-x" onclick="deleteThought(\''+t.id+'\')">\u00D7</span></div>').join('');state.thoughts.forEach(t=>{const e=document.getElementById('tt_'+t.id);if(e)makeEditable(e,v=>editThought(t.id,v));});refreshEditables();}
 
 // ENERGY & MOOD
@@ -1947,7 +2260,7 @@ function _noteToolbarHtml(targetId,extraId){
 }
 
 function addNote(){const label=document.getElementById('newNoteLabel').value.trim();const bodyEl=document.getElementById('newNoteBody');const body=_sanitizeNoteHtml(bodyEl?bodyEl.innerHTML:'');const bodyText=_stripHtml(body);if(!label&&!bodyText)return;const projVal=document.getElementById('newNoteProject').value;const projIds=projVal?projVal.split(',').filter(Boolean):[];const now=new Date();state.notes.push({id:'n'+Date.now(),label:label||'Untitled',body:body,rich:true,projectId:projIds[0]||'',projectIds:projIds,created:now.toISOString(),date:now.toLocaleDateString('en-US',{month:'short',day:'numeric',year:'numeric'}),time:now.toLocaleTimeString('en-US',{hour:'numeric',minute:'2-digit'})});document.getElementById('newNoteLabel').value='';if(bodyEl)bodyEl.innerHTML='';document.getElementById('newNoteProject').value='';renderProjMultiPickerChips(document.getElementById('newNoteProjectPicker'));save();renderNotes();renderProjects();if(projIds.length>1)toast('Note added to '+projIds.length+' projects');_trackEvent('tool_use','add_note','Add Note');}
-function deleteNote(id){state.notes=state.notes.filter(n=>n.id!==id);save();renderNotes();}
+function deleteNote(id){_confirm('Delete this note?',function(){state.notes=state.notes.filter(n=>n.id!==id);save();renderNotes();},{destructive:true,confirmText:'Delete'});}
 function editNoteLabel(id,v){if(!v)return;const n=state.notes.find(n=>n.id===id);if(n){n.label=v;save();}}
 function editNoteBody(id,v){const n=state.notes.find(n=>n.id===id);if(n){n.body=v;save();}}
 
@@ -2244,6 +2557,7 @@ function renderNotes(){if(_migrateNotesRich())save();
       '<div class="note-header">'+
         '<input class="note-label-input" id="nl_'+n.id+'" value="'+esc(n.label)+'" placeholder="Short title..." />'+
         '<button class="note-edit-toggle" id="nbtoggle_'+n.id+'" onclick="toggleNoteEdit(\''+n.id+'\')"><i class="ti ti-pencil" aria-hidden="true"></i>Edit</button>'+
+        '<button class="note-org-btn" onclick="noteOrganize(\''+n.id+'\')"><i class="ti ti-sparkles" aria-hidden="true"></i>Organize</button>'+
         '<span class="note-date">'+n.date+' '+n.time+'</span>'+
       '</div>'+
       '<div class="note-body-rendered" id="nbr_'+n.id+'" onclick="toggleNoteEdit(\''+n.id+'\')">'+_renderNoteBody(n)+'</div>'+
@@ -2316,7 +2630,7 @@ function switchRoutineTab(tab,btn){state.currentRoutineTab=tab;document.querySel
 function toggleRoutine(tab,id,e){if(e){var t=e.target;if(t.classList.contains('r-delete')||t.classList.contains('r-name')||t.closest('.r-delete')||t.closest('.r-name'))return;}const r=state.routines[tab].find(r=>r.id===id);if(r){var wasUndone=!r.done;r.done=!r.done;if(wasUndone&&r.done){var srcEl=document.querySelector('[data-rid="'+id+'"] .r-check');addPoints('routine',srcEl);_trackEvent('tool_use','routine_check','Routine Check');}}save();renderRoutines();}
 function addRoutine(){const n=document.getElementById('newRoutineName').value.trim();if(!n)return;state.routines[state.currentRoutineTab].push({id:'r'+Date.now(),name:n,done:false});document.getElementById('newRoutineName').value='';save();renderRoutines();}
 function deleteRoutine(tab,id){state.routines[tab]=state.routines[tab].filter(r=>r.id!==id);save();renderRoutines();}
-function resetRoutines(){state.routines[state.currentRoutineTab].forEach(r=>r.done=false);save();renderRoutines();toast('Routines reset');}
+function resetRoutines(){if(!confirm('Reset all routine checkmarks?'))return;state.routines[state.currentRoutineTab].forEach(r=>r.done=false);save();renderRoutines();toast('Routines reset');}
 function editRoutineName(tab,id,v){if(!v)return;const r=state.routines[tab].find(r=>r.id===id);if(r)r.name=v;save();}
 function renderRoutines(){const tab=state.currentRoutineTab,items=state.routines[tab]||[];const el=document.getElementById('routineList');if(items.length===0){el.innerHTML='<div class="empty-state">No routine items.</div>';}else{el.innerHTML=items.map(r=>'<div class="routine-item '+(r.done?'r-done':'')+'" data-rid="'+r.id+'" onclick="toggleRoutine(\''+tab+"','"+r.id+"',event)\""+' style="cursor:pointer"><div class="r-check '+(r.done?'r-checked':'')+'">'+(r.done?'\u2713':'')+'</div><span class="r-name editable" id="rn_'+r.id+'">'+esc(r.name)+'</span><span class="r-delete" onclick="event.stopPropagation();deleteRoutine(\''+tab+"','"+r.id+'\')">\u2715</span></div>').join('');}const done=items.filter(r=>r.done).length;document.getElementById('routineProgress').textContent=done+'/'+items.length;items.forEach(r=>{const e=document.getElementById('rn_'+r.id);if(e)makeEditable(e,v=>editRoutineName(tab,r.id,v));});refreshEditables();}
 
@@ -2349,7 +2663,7 @@ var MOBILE_PANELS=[
   {id:'routines', icon:'<i class="ti ti-repeat" aria-hidden="true"></i>',   label:'Routines',    badge:null},
   {id:'time',     icon:'<i class="ti ti-tool" aria-hidden="true"></i>',     label:'Tool Kit',    badge:null, wide:true},
   {id:'decision', icon:'<i class="ti ti-help-circle" aria-hidden="true"></i>',label:'Stuck? Help',badge:null},
-  {id:'admin',    icon:'<i class="ti ti-shield" aria-hidden="true"></i>',   label:'Admin',       badge:null, adminOnly:true}
+  {id:'admin',    icon:'<i class="ti ti-shield" aria-hidden="true"></i>',   label:'Admin',       badge:null, adminOnly:true, route:'#/admin'}
 ];
 
 function buildMobileHome(){
@@ -2366,7 +2680,8 @@ function buildMobileHome(){
       if(el)badgeVal=el.textContent||'';
     }
     var badgeHtml=badgeVal&&badgeVal!=='0'?'<span class="mpt-badge visible">'+badgeVal+'</span>':'<span class="mpt-badge"></span>';
-    html+='<div class="mobile-panel-tile'+wideClass+'" onclick="showMobilePanel(\''+p.id+'\')">'
+    var tileAction=p.route?'window.location.hash=\''+p.route+'\'':"showMobilePanel('"+p.id+"')";
+    html+='<div class="mobile-panel-tile'+wideClass+'" onclick="'+tileAction+'">'
       +badgeHtml
       +'<span class="mpt-icon">'+p.icon+'</span>'
       +'<span class="mpt-label">'+p.label+'</span>'
@@ -2568,15 +2883,40 @@ function showAdminPanel(){
   const ap=document.getElementById('adminPanel');
   if(!ap)return;
   if(isAdmin){
+    ap.classList.add('admin-route-overlay');
     ap.classList.remove('hidden-panel');
-    if(_isMobile())buildMobileHome(); // rebuild tiles in case admin tile visibility changed
+    document.body.classList.add('admin-overlay-open');
+    if(!ap.querySelector('.admin-close-btn')){
+      var closeBtn=document.createElement('button');
+      closeBtn.className='admin-close-btn';
+      closeBtn.textContent='← Back to Dashboard';
+      closeBtn.onclick=function(){closeAdminPanel();};
+      ap.insertBefore(closeBtn,ap.firstChild);
+    }
     renderAdminPanel();
     _bootstrapInviteCodesIfEmpty().then(function(){renderInviteCodes();});
   }else{
     ap.classList.add('hidden-panel');
-    if(_isMobile())buildMobileHome();
+    ap.classList.remove('admin-route-overlay');
+    document.body.classList.remove('admin-overlay-open');
   }
 }
+function closeAdminPanel(){
+  var ap=document.getElementById('adminPanel');
+  if(ap){ap.classList.remove('admin-route-overlay');ap.classList.add('hidden-panel');}
+  document.body.classList.remove('admin-overlay-open');
+  if(window.location.hash==='#/admin')history.replaceState(null,'',window.location.pathname);
+}
+function openAdminRoute(){
+  if(!isAdmin){toast('Admin access required');return;}
+  window.location.hash='#/admin';
+}
+window.addEventListener('hashchange',function(){
+  if(window.location.hash==='#/admin'){showAdminPanel();}
+  else{closeAdminPanel();}
+});
+window.closeAdminPanel=closeAdminPanel;
+window.openAdminRoute=openAdminRoute;
 
 async function renderAdminPanel(){
   if(!isAdmin||!db)return;
@@ -2843,7 +3183,9 @@ async function _bootstrapInviteCodesIfEmpty(){
 
 async function adminDisableUser(uid){
   if(!isAdmin)return;
-  try{await db.collection('users').doc(uid).update({disabled:true});toast('User disabled');renderAdminPanel();}catch(e){toast('Error: '+e.message);}
+  _confirm('Disable this user? They will not be able to sign in.',async function(){
+    try{await db.collection('users').doc(uid).update({disabled:true});toast('User disabled');renderAdminPanel();}catch(e){toast('Error: '+e.message);}
+  },{destructive:true,confirmText:'Disable'});
 }
 async function adminEnableUser(uid){
   if(!isAdmin)return;
@@ -2851,7 +3193,9 @@ async function adminEnableUser(uid){
 }
 async function adminResetPassword(email){
   if(!isAdmin)return;
-  try{await firebase.auth().sendPasswordResetEmail(email);toast('Password reset sent to '+email);}catch(e){toast('Error: '+e.message);}
+  _confirm('Send a password reset email to '+email+'?',async function(){
+    try{await firebase.auth().sendPasswordResetEmail(email);toast('Password reset sent to '+email);}catch(e){toast('Error: '+e.message);}
+  },{confirmText:'Reset Password'});
 }
 async function adminMakeAdmin(uid){
   if(!isAdmin)return;
@@ -3306,6 +3650,7 @@ function renderTaskList(){
   var compBadge=document.getElementById('taskListCompletedBadge');
   if(compBadge){
     compBadge.textContent='✓ '+compCount;
+    compBadge.title=compCount+' completed task'+(compCount!==1?'s':'');
     compBadge.style.display=compCount>0?'inline-flex':'none';
   }
   // Completed archive folder
@@ -3418,8 +3763,10 @@ function addStandaloneTask(){
 }
 
 function deleteStandaloneTask(id){
-  state.tasks=state.tasks.filter(function(t){return t.id!==id;});
-  save();renderTaskList();
+  _confirm('Delete this task?',function(){
+    state.tasks=state.tasks.filter(function(t){return t.id!==id;});
+    save();renderTaskList();
+  },{destructive:true,confirmText:'Delete'});
 }
 
 function clearDoneTasks(){
@@ -3454,6 +3801,7 @@ var _panelOverlayCurrent=null;
 
 // -- Usage analytics -- fire-and-forget to Jarvis /ops-track ----------
 function _trackEvent(type,id,name){
+  _logLocalUsage(id);
   try{
     fetch(JARVIS_PROXY_URL+'/ops-track',{
       method:'POST',
@@ -3461,6 +3809,32 @@ function _trackEvent(type,id,name){
       body:JSON.stringify({type,id,name:name||id})
     }).catch(function(){});
   }catch(e){}
+}
+
+// Local (device-side) usage counter -- powers the Points Insights overlay.
+// Separate from the remote ops beacon above, which the client can't read back.
+function _logLocalUsage(sourceId){
+  if(!state.panelUseLog)state.panelUseLog={};
+  var today=_dayKey();
+  if(!state.panelUseLog[today])state.panelUseLog[today]={};
+  state.panelUseLog[today][sourceId]=(state.panelUseLog[today][sourceId]||0)+1;
+  save();
+}
+
+// _trackEvent only fires for a handful of named actions (add note, log mood,
+// routine check, etc). Most real engagement with a panel -- typing, checking
+// things off, just working in it -- never hits one of those. This delegated
+// listener catches any click inside any dashboard panel so "panel uses" on
+// the Insights overlay reflects actual day-to-day use, not just the narrow
+// set of specially-instrumented actions.
+var _panelUsageListenerBound=false;
+function _bindPanelUsageTracking(){
+  if(_panelUsageListenerBound)return;
+  _panelUsageListenerBound=true;
+  document.addEventListener('click',function(e){
+    var panelEl=e.target.closest&&e.target.closest('.panel[data-panel]');
+    if(panelEl&&panelEl.dataset.panel)_logLocalUsage('panel:'+panelEl.dataset.panel);
+  },true);
 }
 
 function openPanelOverlay(panelKey){
@@ -3544,8 +3918,8 @@ function updateAllTileSummaries(){
   _updateTileSummaryTasklist();
 }
 
-function _summaryPill(text,cls){
-  return '<span class="panel-tile-summary-pill'+(cls?' '+cls:'')+'">'+text+'</span>';
+function _summaryPill(text,cls,title){
+  return '<span class="panel-tile-summary-pill'+(cls?' '+cls:'')+'"'+(title?' title="'+title+'"':'')+'>'+text+'</span>';
 }
 
 function _updateTileSummaryProjects(){
@@ -3555,7 +3929,7 @@ function _updateTileSummaryProjects(){
   var done=(state.completedProjects||[]).length;
   var html='';
   if(active>0)html+=_summaryPill(active+' active');
-  if(done>0)html+=_summaryPill('\u2713 '+done+' done');
+  if(done>0)html+=_summaryPill('\u2713 '+done+' done','',done+' completed project'+(done!==1?'s':''));
   if(!html)html='<span style="color:var(--text-faint);font-style:italic;">No projects yet</span>';
   el.innerHTML=html;
 }
@@ -3613,7 +3987,7 @@ function _updateTileSummaryTasklist(){
   if(overdue>0)html+=_summaryPill(overdue+' overdue','urgent');
   if(dueToday>0)html+=_summaryPill(dueToday+' today','warn');
   if(highPri>0)html+=_summaryPill('\u26a0 '+highPri+' high pri');
-  if(done>0)html+=_summaryPill('\u2713 '+done+' done');
+  if(done>0)html+=_summaryPill('\u2713 '+done+' done','',done+' completed task'+(done!==1?'s':''));
   if(!html)html='<span style="color:var(--text-faint);font-style:italic;">No tasks yet</span>';
   el.innerHTML=html;
 }
@@ -4884,11 +5258,27 @@ function checkMonthReset(){
     state.points.current=0;
     state.points.monthKey=nowKey;
     state.points.lastTier='bronze';
-    // Trim totalsByDay to last 90 days
+    // Trim totalsByDay to last 90 days -- but fold anything falling off the
+    // window into a permanent per-month archive first, so the Lifetime view
+    // keeps its monthly breakdown instead of losing it to a single running total.
     var cutoff=new Date();cutoff.setDate(cutoff.getDate()-90);
     var cutKey=_dayKey(cutoff);
     Object.keys(state.points.totalsByDay).forEach(function(k){
-      if(k<cutKey)delete state.points.totalsByDay[k];
+      if(k<cutKey){
+        var mk=k.slice(0,7);
+        state.points.monthlyTotals[mk]=(state.points.monthlyTotals[mk]||0)+state.points.totalsByDay[k];
+        delete state.points.totalsByDay[k];
+      }
+    });
+    if(!state.panelUseLog)state.panelUseLog={};
+    if(!state.usageMonthlyTotals)state.usageMonthlyTotals={};
+    Object.keys(state.panelUseLog).forEach(function(k){
+      if(k<cutKey){
+        var umk=k.slice(0,7);
+        var dayTotal=Object.keys(state.panelUseLog[k]).reduce(function(sum,src){return sum+state.panelUseLog[k][src];},0);
+        state.usageMonthlyTotals[umk]=(state.usageMonthlyTotals[umk]||0)+dayTotal;
+        delete state.panelUseLog[k];
+      }
     });
     save();
   }
@@ -5033,8 +5423,218 @@ function renderPointsPopup(){
     +'</div>'
     +'<div class="points-popup-section">'
     +'<div class="points-popup-row"><span class="points-popup-label">Lifetime</span><span class="points-popup-value">'+(state.points.lifetimeTotal+pts)+' pts</span></div>'
+    +'</div>'
+    +'<div class="points-popup-actions">'
+    +'<button class="btn btn-sm" onclick="togglePointsPopup();openPointsInsights();">📈 View Insights</button>'
     +'</div>';
   pop.innerHTML=html;
+}
+
+// =======================================
+// POINTS INSIGHTS OVERLAY
+// Correlates points, mood/energy, and panel/tool usage over week/month/lifetime
+// so the user can see whether more Centerpost use tracks with better mood.
+// =======================================
+var _piActivePeriod='week';
+var _PI_ENERGY_NUM={high:4,good:3,low:2,crashed:1};
+var _PI_MOOD_NUM={focused:4,calm:3,scattered:2,anxious:1};
+
+function openPointsInsights(){
+  document.getElementById('pointsInsightsModal').classList.add('open');
+  renderPointsInsights(_piActivePeriod);
+}
+function closePointsInsights(){
+  document.getElementById('pointsInsightsModal').classList.remove('open');
+}
+
+function _usageTotalForDay(dayKey){
+  var day=state.panelUseLog[dayKey];
+  if(!day)return 0;
+  return Object.keys(day).reduce(function(sum,src){return sum+day[src];},0);
+}
+
+// Returns an ordered array of {label,dateKey,points,energy,mood,usage} rows
+// for 'week' (7 days), 'month' (30 days), or 'lifetime' (one row per month).
+function getInsightsSeries(period){
+  if(period==='lifetime'){
+    var monthKeys={};
+    Object.keys(state.points.monthlyTotals).forEach(function(k){monthKeys[k]=true;});
+    Object.keys(state.usageMonthlyTotals).forEach(function(k){monthKeys[k]=true;});
+    Object.keys(state.points.totalsByDay).forEach(function(k){monthKeys[k.slice(0,7)]=true;});
+    Object.keys(state.panelUseLog).forEach(function(k){monthKeys[k.slice(0,7)]=true;});
+    (state.moodLog||[]).forEach(function(e){if(e.date)monthKeys[e.date.slice(0,7)]=true;});
+    var months=Object.keys(monthKeys).sort();
+    return months.map(function(mk){
+      var pts=(state.points.monthlyTotals[mk]||0);
+      Object.keys(state.points.totalsByDay).forEach(function(k){if(k.slice(0,7)===mk)pts+=state.points.totalsByDay[k];});
+      var usage=(state.usageMonthlyTotals[mk]||0);
+      Object.keys(state.panelUseLog).forEach(function(k){if(k.slice(0,7)===mk)usage+=_usageTotalForDay(k);});
+      var energyVals=[],moodVals=[];
+      (state.moodLog||[]).forEach(function(e){
+        if(e.date&&e.date.slice(0,7)===mk){
+          if(e.energy&&_PI_ENERGY_NUM[e.energy])energyVals.push(_PI_ENERGY_NUM[e.energy]);
+          if(e.mood&&_PI_MOOD_NUM[e.mood])moodVals.push(_PI_MOOD_NUM[e.mood]);
+        }
+      });
+      var avg=function(arr){return arr.length?arr.reduce(function(a,b){return a+b;},0)/arr.length:null;};
+      var d=new Date(mk+'-15T12:00:00Z');
+      return {label:d.toLocaleDateString('en-US',{month:'short',year:'2-digit'}),dateKey:mk,points:pts,energy:avg(energyVals),mood:avg(moodVals),usage:usage};
+    });
+  }
+
+  var days=period==='month'?30:7;
+  var rows=[];
+  var today=new Date();
+  for(var i=days-1;i>=0;i--){
+    var d=new Date(today);d.setDate(d.getDate()-i);
+    var dk=_dayKey(d);
+    var entry=(state.moodLog||[]).find(function(e){return e.date===dk;});
+    rows.push({
+      label:i===0?'Today':(d.getMonth()+1)+'/'+d.getDate(),
+      dateKey:dk,
+      points:state.points.totalsByDay[dk]||0,
+      energy:entry&&entry.energy?_PI_ENERGY_NUM[entry.energy]:null,
+      mood:entry&&entry.mood?_PI_MOOD_NUM[entry.mood]:null,
+      usage:_usageTotalForDay(dk)
+    });
+  }
+  return rows;
+}
+
+// Plain-English correlation callout: splits rows into more-active/less-active
+// halves by usage and compares average mood between them.
+function getUsageMoodInsight(rows){
+  var withMood=rows.filter(function(r){return r.mood!==null&&r.mood!==undefined;});
+  if(withMood.length<4)return 'Keep logging mood and using Centerpost -- insights unlock after a few more days of data.';
+  var sorted=rows.slice().sort(function(a,b){return b.usage-a.usage;});
+  var half=Math.floor(sorted.length/2);
+  var moreActive=sorted.slice(0,half).filter(function(r){return r.mood!==null;});
+  var lessActive=sorted.slice(sorted.length-half).filter(function(r){return r.mood!==null;});
+  if(moreActive.length<2||lessActive.length<2)return 'Keep logging mood and using Centerpost -- insights unlock after a few more days of data.';
+  var avg=function(arr){return arr.reduce(function(s,r){return s+r.mood;},0)/arr.length;};
+  var moreAvg=avg(moreActive),lessAvg=avg(lessActive);
+  var diff=moreAvg-lessAvg;
+  if(Math.abs(diff)<0.15)return 'Your mood looks fairly steady regardless of how much you use Centerpost on a given day.';
+  if(diff>0)return 'On your most active days, mood averaged '+moreAvg.toFixed(1)+'/4 vs '+lessAvg.toFixed(1)+'/4 on your least active days -- more engagement is tracking with a better mood.';
+  return 'On your least active days, mood averaged '+lessAvg.toFixed(1)+'/4 vs '+moreAvg.toFixed(1)+'/4 on your most active days -- worth noticing what is different on the low-use days.';
+}
+
+function getProductivityTips(rows){
+  var tips=[];
+  var withUsage=rows.filter(function(r){return r.usage>0;});
+  var avgUsage=withUsage.length?withUsage.reduce(function(s,r){return s+r.usage;},0)/rows.length:0;
+  var loggedDays=rows.filter(function(r){return r.mood!==null;}).length;
+  if(loggedDays<rows.length*0.5){
+    tips.push('You are only logging mood/energy on about '+Math.round(loggedDays/rows.length*100)+'% of days shown -- logging daily (even a quick tap) makes these patterns much clearer.');
+  }
+  if(avgUsage>0&&avgUsage<2){
+    tips.push('Usage is light in this window. Try a single 25-minute focus-timer session on your next task -- it is a quick, low-friction way to re-engage and earn points.');
+  }
+  var lowUsageLowMood=rows.filter(function(r){return r.usage<=1&&r.mood!==null&&r.mood<=2;});
+  if(lowUsageLowMood.length>=2){
+    tips.push('Low-usage days tend to coincide with lower mood -- on tough days, body-doubling (working alongside the app open, even without finishing tasks) can help more than pushing through alone.');
+  }
+  if(tips.length<2)tips.push('Breaking work into subtasks earns points more often than waiting for one big task to finish -- frequent small wins are proven to help sustain ADHD motivation better than large infrequent ones.');
+  return tips.slice(0,2);
+}
+
+function renderInsightsChart(rows){
+  var wrap=document.getElementById('piChartWrap');
+  var noData=document.getElementById('piNoData');
+  if(!wrap)return;
+  var hasAny=rows.some(function(r){return r.points>0||r.usage>0||r.mood!==null||r.energy!==null;});
+  if(noData)noData.style.display=hasAny?'none':'block';
+  wrap.style.display=hasAny?'block':'none';
+  if(!hasAny){wrap.innerHTML='';return;}
+
+  var W=640,H=220,padL=20,padR=20,padT=16,padB=34;
+  var cW=W-padL-padR,cH=H-padT-padB;
+  var n=rows.length;
+  var stepX=n>1?cW/(n-1):cW;
+  function xp(i){return padL+i*stepX;}
+  function yp1to4(v){return padT+cH-((v-1)/3)*cH;}
+
+  var maxPoints=Math.max(1,Math.max.apply(null,rows.map(function(r){return r.points;})));
+  var maxUsage=Math.max(1,Math.max.apply(null,rows.map(function(r){return r.usage;})));
+  var barW=Math.max(3,Math.min(18,stepX*0.55));
+
+  var svg='<svg viewBox="0 0 '+W+' '+H+'" xmlns="http://www.w3.org/2000/svg" style="width:100%;height:auto;display:block;">';
+
+  [1,2,3,4].forEach(function(v){
+    var y=yp1to4(v);
+    svg+='<line x1="'+padL+'" y1="'+y+'" x2="'+(W-padR)+'" y2="'+y+'" stroke="rgba(128,128,128,0.12)" stroke-width="1"/>';
+  });
+
+  // Points bars (own scale, drawn from the baseline)
+  rows.forEach(function(r,i){
+    if(r.points<=0)return;
+    var h=(r.points/maxPoints)*cH;
+    var x=xp(i)-barW/2,y=padT+cH-h;
+    svg+='<rect x="'+x+'" y="'+y+'" width="'+barW+'" height="'+h+'" rx="2" fill="#c77dba" opacity="0.55"><title>'+r.label+': '+r.points+' pts</title></rect>';
+  });
+
+  // Panel/tool usage line (own scale)
+  var uPts=rows.map(function(r,i){return {x:xp(i),y:padT+cH-((r.usage/maxUsage)*cH),i:i,v:r.usage};});
+  for(var u=1;u<uPts.length;u++){
+    svg+='<line x1="'+uPts[u-1].x+'" y1="'+uPts[u-1].y+'" x2="'+uPts[u].x+'" y2="'+uPts[u].y+'" stroke="#5fbf80" stroke-width="2" stroke-dasharray="4,3" opacity="0.85"/>';
+  }
+  uPts.forEach(function(p){
+    if(p.v<=0)return;
+    svg+='<circle cx="'+p.x+'" cy="'+p.y+'" r="3.5" fill="#5fbf80"><title>'+rows[p.i].label+': '+p.v+' uses</title></circle>';
+  });
+
+  // Energy line (1-4 scale, gaps skipped)
+  var ePts=[];
+  rows.forEach(function(r,i){if(r.energy!==null&&r.energy!==undefined)ePts.push({x:xp(i),y:yp1to4(r.energy),i:i,v:r.energy});});
+  for(var e=1;e<ePts.length;e++){
+    if(ePts[e].i-ePts[e-1].i<=1)
+      svg+='<line x1="'+ePts[e-1].x+'" y1="'+ePts[e-1].y+'" x2="'+ePts[e].x+'" y2="'+ePts[e].y+'" stroke="#d4a853" stroke-width="2.5" stroke-linecap="round" opacity="0.9"/>';
+  }
+  ePts.forEach(function(p){
+    svg+='<circle cx="'+p.x+'" cy="'+p.y+'" r="4" fill="#d4a853" stroke="var(--surface-raised)" stroke-width="2"><title>'+rows[p.i].label+' energy: '+p.v.toFixed(1)+'/4</title></circle>';
+  });
+
+  // Mood line (1-4 scale, gaps skipped)
+  var mPts=[];
+  rows.forEach(function(r,i){if(r.mood!==null&&r.mood!==undefined)mPts.push({x:xp(i),y:yp1to4(r.mood),i:i,v:r.mood});});
+  for(var m=1;m<mPts.length;m++){
+    if(mPts[m].i-mPts[m-1].i<=1)
+      svg+='<line x1="'+mPts[m-1].x+'" y1="'+mPts[m-1].y+'" x2="'+mPts[m].x+'" y2="'+mPts[m].y+'" stroke="#5f8fc7" stroke-width="2.5" stroke-linecap="round" opacity="0.9"/>';
+  }
+  mPts.forEach(function(p){
+    svg+='<circle cx="'+p.x+'" cy="'+p.y+'" r="4" fill="#5f8fc7" stroke="var(--surface-raised)" stroke-width="2"><title>'+rows[p.i].label+' mood: '+p.v.toFixed(1)+'/4</title></circle>';
+  });
+
+  // X-axis labels
+  var step=n<=7?1:n<=14?2:Math.ceil(n/10);
+  rows.forEach(function(r,i){
+    if(i%step===0||i===n-1){
+      svg+='<text x="'+xp(i)+'" y="'+(H-10)+'" text-anchor="middle" font-size="9" fill="rgba(128,128,128,0.7)">'+r.label+'</text>';
+    }
+  });
+
+  svg+='</svg>';
+  wrap.innerHTML=svg;
+}
+
+function renderPointsInsights(period){
+  _piActivePeriod=period;
+  var wkBtn=document.getElementById('piBtnWeek'),moBtn=document.getElementById('piBtnMonth'),lfBtn=document.getElementById('piBtnLifetime');
+  if(wkBtn)wkBtn.classList.toggle('active',period==='week');
+  if(moBtn)moBtn.classList.toggle('active',period==='month');
+  if(lfBtn)lfBtn.classList.toggle('active',period==='lifetime');
+
+  var rows=getInsightsSeries(period);
+  renderInsightsChart(rows);
+
+  var insightEl=document.getElementById('piInsightText');
+  if(insightEl)insightEl.textContent=getUsageMoodInsight(rows);
+
+  var tipsEl=document.getElementById('piTips');
+  if(tipsEl){
+    var tips=getProductivityTips(rows);
+    tipsEl.innerHTML=tips.map(function(t){return '<div class="pi-tip">'+'💡 '+t+'</div>';}).join('');
+  }
 }
 
 function triggerTierUp(tier){
@@ -7336,6 +7936,12 @@ function renderTimeline(){
     grid.appendChild(div);
   });
   
+  if(blocks.length===0){
+    var emptyDiv=document.createElement('div');
+    emptyDiv.className='tl-empty-state';
+    emptyDiv.innerHTML='<p>Your timeline is clear. Add a block to plan your day.</p><button class="btn btn-accent btn-sm" onclick="document.getElementById(\'tlBlockName\').focus()">+ Add a time block</button>';
+    grid.appendChild(emptyDiv);
+  }
   // Update count badge + legend
   var countEl=document.getElementById('tlBlockCount');
   if(countEl)countEl.textContent=blocks.length;
@@ -7971,6 +8577,7 @@ function _applySavedTheme(){
 async function initApp(){
 await load();
 initPanelVisibility();applyPanelOrder();applyPanelVisibility();updateLockUI();updateClock();updateTimeLeft();setInterval(updateClock,1000);setInterval(updateTimeLeft,30000);updateTimerDisplay();renderPointsBadge();awardDailyLogin();
+_bindPanelUsageTracking();
 // -- DAILY ROUTINE RESET -- robust against tabs left open overnight --
 // 1. Run once immediately after load so stale checks clear before the user sees them.
 // 2. Poll every 60s for the date change.
@@ -8136,13 +8743,13 @@ setTimeout(function(){
 
 document.addEventListener('visibilitychange',function(){if(!document.hidden){awardDailyLogin();renderTimeline();}});
 
-renderProjects();renderReminders();renderThoughts();renderNotes();renderRoutines();renderTaskList();renderTimeline();checkDailyRoutineReset();newDecisionPrompt();initDragDrop();updateAllTileSummaries();_applySavedTheme();renderThemeSelector();applyTierGating();
+renderProjects();renderReminders();renderThoughts();renderNotes();renderRoutines();renderTaskList();renderTimeline();checkDailyRoutineReset();newDecisionPrompt();initDragDrop();updateAllTileSummaries();_applySavedTheme();renderThemeSelector();applyTierGating();updateFocusBanner();updateFocusModeUI();
 if(_isMobile()){showMobileHome();}else{document.querySelector('.header')&&document.querySelector('.header').classList.add('mobile-visible');}
 if(state.energy){const c=document.querySelectorAll('#energyPills .em-pill');const m=['high','good','low','crashed'];const i=m.indexOf(state.energy);if(i>=0)c[i].classList.add('selected');}
 if(state.mood){const c=document.querySelectorAll('#moodPills .em-pill');const m=['focused','scattered','anxious','calm'];const i=m.indexOf(state.mood);if(i>=0)c[i].classList.add('selected');}
 showStateAdvice();updateWellnessVisibility();
 startRealtimeSync();
-showAdminPanel();
+if(window.location.hash==='#/admin')showAdminPanel();
 // --- Service Worker registration + one-time auto-reload on update ---
 // When the SW updates (e.g. you ship a new sw.js or bump CACHE_VERSION),
 // `controllerchange` fires once a new SW takes control. We reload the
@@ -9918,10 +10525,10 @@ function _gcalUpdateUI(){
   if(!chip || !lbl) return;
   if(state.gcal && state.gcal.connected){
     chip.classList.add('connected');
-    lbl.textContent = 'Sync: on';
+    lbl.textContent = '✓ Sync: on';
   } else {
     chip.classList.remove('connected');
-    lbl.textContent = 'Sync: off';
+    lbl.textContent = '✗ Sync: off';
   }
 }
 

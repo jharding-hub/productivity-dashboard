@@ -462,6 +462,10 @@ export default function ProjectDashboard({ open, onClose }) {
     return () => { document.body.style.overflow = ''; };
   }, [open]);
 
+  useEffect(() => {
+    if (open && typeof window._logLocalUsage === 'function') window._logLocalUsage('panel:projects');
+  }, [open]);
+
   if (!open) return null;
 
   const s = getState();
