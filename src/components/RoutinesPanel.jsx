@@ -8,12 +8,12 @@ export default function RoutinesPanel() {
           <span className="drag-handle">&#10495;</span>
           <i className="ti ti-repeat icon" aria-hidden="true"></i> Routines
         </div>
-        <div style={{ display: 'flex', gap: '5px' }}>
+        <div style={{ display: 'flex', gap: '5px', alignItems: 'center' }}>
           <span className="panel-badge" id="routineProgress">0/0</span>
           <button className="expand-btn" onClick={e => window.toggleExpand(e.currentTarget)} title="Expand/collapse">
             <span className="expand-arrow">{'▼'}</span>
           </button>
-          <button className="btn btn-sm" onClick={() => window.resetRoutines()}>Reset</button>
+          <button className="btn btn-sm" onClick={() => window.resetRoutines()} style={{ flexShrink: 0 }}>Reset</button>
         </div>
       </div>
 

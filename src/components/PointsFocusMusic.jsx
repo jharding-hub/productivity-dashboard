@@ -7,10 +7,12 @@ export default function PointsFocusMusic() {
           className="points-badge points-badge-lg"
           id="pointsBadge"
           onClick={() => window.togglePointsPopup()}
-          title="Click for breakdown"
+          title="Focus &amp; productivity points — click for breakdown"
+          style={{ cursor: 'pointer' }}
         >
           <span className="points-tier-icon" id="ptTierIcon">{'🥉'}</span>
           <span className="points-value" id="ptValue">0</span>
+          <span className="points-label" style={{ fontSize: 9, opacity: 0.7, letterSpacing: '0.5px', textTransform: 'uppercase', fontWeight: 600 }}>pts</span>
         </div>
         <div className="points-popup" id="pointsPopup" style={{ display: 'none' }}></div>
       </div>
