@@ -105,20 +105,27 @@ var TOOLKIT_CLASS_MAP={
 };
 
 function getActiveTier(){
-  // Dev override wins (allows testing from dev switcher)
-  var devOverride=localStorage.getItem('devTierOverride');
-  if(devOverride&&TIER_CONFIG[devOverride])return devOverride;
-  // Owner UID is always owner
-  if(currentUser&&currentUser.uid===DEV_UID)return'owner';
+  // Dev override is honored ONLY for the owner account, so a non-owner
+  // can't self-promote from the console via localStorage.
+  if(currentUser&&currentUser.uid===DEV_UID){
+    var devOverride=localStorage.getItem('devTierOverride');
+    if(devOverride&&TIER_CONFIG[devOverride])return devOverride;
+    return'owner';
+  }
   // Legacy tier: stored in Firestore profile as accountTier:'legacy'
   if(currentUser&&window._profileAccountTier&&TIER_CONFIG[window._profileAccountTier])
     return window._profileAccountTier;
-  // Default: owner for now (will map to signup tier when billing is live)
-  return'owner';
+  // Fail closed: unknown accounts get the lowest tier.
+  // TODO(S-2, server-side): client gating is cosmetic. The centerpost-jarvis
+  // Worker must enforce tier before serving AI beyond the free quota — after
+  // verifying the Firebase ID token, look up the caller's accountTier
+  // (Firestore profile or custom claim, never a client-sent header) and
+  // reject requests past the free quota unless the tier includes aiAssistant.
+  return'free';
 }
 
 function getTierConfig(){
-  return TIER_CONFIG[getActiveTier()]||TIER_CONFIG.owner;
+  return TIER_CONFIG[getActiveTier()]||TIER_CONFIG.free;
 }
 
 function applyTierGating(){
