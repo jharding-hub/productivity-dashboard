@@ -554,12 +554,32 @@ function setSyncStatus(status,label){const el=document.getElementById('syncStatu
 // SAVE -- writes to localStorage + Firestore (per-user)
 var saveTimer=null;
 var _saveSkipCount=0; // consecutive writes skipped because cloud was newer (E-1)
+
+// E-2: size telemetry -- warn well before Firestore's 1 MiB doc limit.
+// Saves are never blocked; this only makes growth visible in time to act.
+var _sizeWarnedDate=null;
+var _lastStateKB=0;
+function _checkStateSize(bytes){
+  _lastStateKB=Math.round(bytes/1024);
+  if(_lastStateKB>950){
+    if(typeof toast==='function')toast('⚠ Storage almost full ('+_lastStateKB+' KB of 1024) — export your data and archive old items');
+  }else if(_lastStateKB>700){
+    var t=todayStr();
+    if(_sizeWarnedDate!==t){
+      _sizeWarnedDate=t;
+      if(typeof toast==='function')toast('⚠ Dashboard data is getting large ('+_lastStateKB+' KB of a 1024 KB limit)');
+    }
+  }
+}
+
 function save(){
   const uid=currentUser?currentUser.uid:'local';
   // E-1: stamp the state itself so every copy carries the time of the last
   // edit it reflects -- this is what the write guard below compares.
   state._updatedAt=Date.now();
-  try{localStorage.setItem('prodDash_'+uid,JSON.stringify(state));}catch(e){}
+  const blob=JSON.stringify(state);
+  try{localStorage.setItem('prodDash_'+uid,blob);}catch(e){}
+  _checkStateSize(blob.length);
   if(!firebaseReady||!db||!currentUser)return;
   clearTimeout(saveTimer);
   saveTimer=setTimeout(async()=>{
@@ -584,7 +604,9 @@ function save(){
       });
       if(wrote){
         _saveSkipCount=0;
-        setSyncStatus('synced','Synced');
+        // Keep the storage warning visible in the pill once it's serious
+        if(_lastStateKB>950)setSyncStatus('error','Synced -- storage almost full');
+        else setSyncStatus('synced','Synced');
       }else if(++_saveSkipCount<=3){
         setSyncStatus('syncing','Merging newer cloud data...');
         setTimeout(save,2500); // listener merge lands first, then re-push
@@ -592,7 +614,17 @@ function save(){
         _saveSkipCount=0;
         setSyncStatus('error','Sync conflict -- refresh this tab');
       }
-    }catch(e){console.log('Firestore save error:',e);setSyncStatus('error','Sync error');}
+    }catch(e){
+      // E-2: Firestore hard-rejects docs over 1 MiB -- surface that clearly
+      // instead of a generic sync error (local copy is still saved above).
+      var _m=(e&&e.message)||'';
+      if(_m.indexOf('exceeds the maximum')>=0||_m.indexOf('maximum allowed size')>=0||_m.indexOf('too large')>=0){
+        setSyncStatus('error','Storage full -- not syncing');
+        if(typeof toast==='function')toast('⚠ Sync failed: data exceeds the cloud size limit. Export your data and archive old items.');
+      }else{
+        console.log('Firestore save error:',e);setSyncStatus('error','Sync error');
+      }
+    }
   },1000);
 }
 
@@ -653,6 +685,14 @@ async function load(){
   }
   // Ensure data integrity
   if(!state._updatedAt)state._updatedAt=0; // pre-E-1 states have no stamp
+  // E-2: prune timeline blocks older than 14 days. The Timeline UI only
+  // renders today/tomorrow, so past-dated blocks are unreachable dead weight
+  // (their Google Calendar events, if any, live on in Google untouched).
+  if(Array.isArray(state.tlBlocks)){
+    var _tlCut=new Date();_tlCut.setDate(_tlCut.getDate()-14);
+    var _tlCutKey=_dayKey(_tlCut);
+    state.tlBlocks=state.tlBlocks.filter(function(b){return b&&(!b.date||b.date>=_tlCutKey);});
+  }
   if(!state.routines)state.routines={morning:[],evening:[],custom:[]};
   if(!state.reminders)state.reminders=[];
   if(!state.notes)state.notes=[];if(!state.moodLog)state.moodLog=[];if(!state.tasks)state.tasks=[];if(!state.visiblePanels)state.visiblePanels={};if(!state.knownPanels)state.knownPanels=[];
@@ -663,6 +703,8 @@ async function load(){
   if(!state.workoutLog)state.workoutLog={};
   if(!state.completedTasks)state.completedTasks=[];
   if(!state.completedWorkouts)state.completedWorkouts=[];
+  // E-2: one-time migrate -- lifetime count seeded from the uncapped array
+  if(state.workoutLifetimeCount===undefined)state.workoutLifetimeCount=state.completedWorkouts.length;
   if(state.focusPlaylistId===undefined)state.focusPlaylistId=null;
   if(!state.points)state.points={current:0,monthKey:'',lastTier:'bronze',totalsByDay:{},lastLoginDate:'',lifetimeTotal:0};
   if(!state.points.totalsByDay)state.points.totalsByDay={};
@@ -7233,6 +7275,9 @@ function completeWorkout(type,dayIndex){
   };
   
   state.completedWorkouts.push(record);
+  // Lifetime counter survives the cap below (counter UI reads this, not .length)
+  state.workoutLifetimeCount=(state.workoutLifetimeCount||state.completedWorkouts.length-1)+1;
+  if(state.completedWorkouts.length>100)state.completedWorkouts=state.completedWorkouts.slice(-100);
   save();
   
   // Award points
@@ -7246,7 +7291,7 @@ function completeWorkout(type,dayIndex){
 function updateCompletedWorkoutsCounter(){
   var counter=document.getElementById('completedWorkoutsCounter');
   if(counter){
-    counter.textContent=state.completedWorkouts.length;
+    counter.textContent=Math.max(state.workoutLifetimeCount||0,state.completedWorkouts.length);
   }
 }
 
