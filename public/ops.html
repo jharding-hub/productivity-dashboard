@@ -474,7 +474,6 @@ body { background: var(--bg); color: var(--text); font-family: var(--mono); font
 // ════════════════════════════════════════════════════════════════════════
 if (typeof firebase !== 'undefined' && CENTERPOST_FIREBASE_CONFIG) {
   firebase.initializeApp(CENTERPOST_FIREBASE_CONFIG);
-  firebase.auth().signInAnonymously().catch(e => console.warn('[Ops] Firebase anon auth failed:', e));
 }
 async function _opsAuthHeaders() {
   const h = { 'Content-Type': 'application/json' };
@@ -483,6 +482,61 @@ async function _opsAuthHeaders() {
     if (user) h['Authorization'] = 'Bearer ' + (await user.getIdToken());
   } catch (e) { console.warn('[Ops] getIdToken failed:', e); }
   return h;
+}
+
+// ── SIGN-IN GATE ─────────────────────────────────────────────────────────
+// The worker admin routes require the owner's Firebase ID token, so this
+// page needs a real session. Same origin as the main app, so an existing
+// centerpost.app session is restored automatically; otherwise show a
+// sign-in overlay. Anonymous sessions are treated as signed out.
+function _opsShowSignIn(msg) {
+  let ov = document.getElementById('ops-signin');
+  if (!ov) {
+    ov = document.createElement('div');
+    ov.id = 'ops-signin';
+    ov.style.cssText = 'position:fixed;inset:0;z-index:999;display:flex;align-items:center;justify-content:center;background:rgba(1,12,26,0.92);backdrop-filter:blur(4px);';
+    ov.innerHTML =
+      '<form id="ops-signin-form" style="background:var(--surface);border:1px solid var(--cyan-dim);border-radius:10px;padding:28px 26px;width:300px;box-shadow:0 0 40px var(--cyan-dim);">' +
+        '<div style="font-family:Orbitron,sans-serif;color:var(--cyan);font-size:14px;letter-spacing:2px;margin-bottom:4px;">CENTERPOST // OPS</div>' +
+        '<div style="color:#8aa;font-size:11px;margin-bottom:16px;">Owner sign-in required</div>' +
+        '<input id="ops-si-email" type="email" placeholder="Email" autocomplete="username" required style="width:100%;box-sizing:border-box;margin-bottom:8px;padding:9px 10px;background:var(--s2);border:1px solid var(--cyan-dim);border-radius:6px;color:#dff6ff;font-size:13px;">' +
+        '<input id="ops-si-pass" type="password" placeholder="Password" autocomplete="current-password" required style="width:100%;box-sizing:border-box;margin-bottom:12px;padding:9px 10px;background:var(--s2);border:1px solid var(--cyan-dim);border-radius:6px;color:#dff6ff;font-size:13px;">' +
+        '<button type="submit" style="width:100%;padding:9px 0;background:var(--cyan);border:none;border-radius:6px;color:#02141a;font-weight:700;font-size:13px;cursor:pointer;">AUTHENTICATE</button>' +
+        '<div id="ops-si-err" style="color:#ef4444;font-size:11px;margin-top:10px;min-height:14px;"></div>' +
+      '</form>';
+    document.body.appendChild(ov);
+    document.getElementById('ops-signin-form').addEventListener('submit', async (e) => {
+      e.preventDefault();
+      const err = document.getElementById('ops-si-err');
+      err.textContent = '';
+      try {
+        await firebase.auth().signInWithEmailAndPassword(
+          document.getElementById('ops-si-email').value.trim(),
+          document.getElementById('ops-si-pass').value
+        );
+        // onAuthStateChanged in _opsRequireSignIn resolves the gate
+      } catch (ex) {
+        err.textContent = ex.message || 'Sign-in failed';
+      }
+    });
+  }
+  if (msg) document.getElementById('ops-si-err').textContent = msg;
+  ov.style.display = 'flex';
+}
+
+function _opsRequireSignIn() {
+  return new Promise((resolve) => {
+    firebase.auth().onAuthStateChanged((user) => {
+      if (user && !user.isAnonymous) {
+        const ov = document.getElementById('ops-signin');
+        if (ov) ov.style.display = 'none';
+        resolve(user);
+      } else {
+        if (user && user.isAnonymous) firebase.auth().signOut().catch(() => {});
+        _opsShowSignIn();
+      }
+    });
+  });
 }
 
 // ════════════════════════════════════════════════════════════════════════
@@ -891,7 +945,7 @@ async function fetchAgent(id, silent) {
   const dot = document.getElementById(`d-${id}`);
   if (dot) dot.className = 'card-dot scan';
   try {
-    const r = await fetch(w.endpoint, { mode: 'cors' });
+    const r = await fetch(w.endpoint, { mode: 'cors', headers: await _opsAuthHeaders() });
     if (!r.ok) throw new Error(`HTTP ${r.status}`);
     const d = await r.json();
     S.data[id] = d;
@@ -902,7 +956,9 @@ async function fetchAgent(id, silent) {
   } catch (e) {
     const msg = e.message.includes('Failed to fetch') || e.message.includes('NetworkError')
       ? '/data endpoint not set up yet'
-      : e.message.slice(0, 60);
+      : (e.message.includes('401') || e.message.includes('403'))
+        ? 'NOT AUTHORIZED — owner sign-in required'
+        : e.message.slice(0, 60);
     setCard(id, null, msg);
     return null;
   }
@@ -996,7 +1052,7 @@ async function runSecSweep() {
   res.innerHTML = '<div style="color:var(--text-dim);font-size:10px;font-family:var(--mono)">Scanning 24 h of security telemetry…</div>';
 
   try {
-    const r = await fetch(SEC_ENDPOINT);
+    const r = await fetch(SEC_ENDPOINT, { headers: await _opsAuthHeaders() });
     if (!r.ok) throw new Error('HTTP ' + r.status);
     const data = await r.json();
     renderSweepResults(data);
@@ -1269,7 +1325,7 @@ async function loadAnalytics(days) {
 
   try {
     const res = await fetch(`${AN_ENDPOINT}/ops-analytics?days=${days}`, {
-      headers: { 'Origin': 'https://centerpost.app' }
+      headers: await _opsAuthHeaders()
     });
     if (!res.ok) throw new Error(`HTTP ${res.status}`);
     const d = await res.json();
@@ -1507,6 +1563,12 @@ function setBlobState(s){
   initClock();
   Blob.init(document.getElementById('blob-canvas'));
   setBlobState('idle');
+
+  // Data loading waits for a real (non-anonymous) session — the worker
+  // admin routes reject everything else. Cosmetic init above still runs
+  // as the backdrop behind the sign-in overlay.
+  await _opsRequireSignIn();
+
   renderCards();
   renderQuickActions();
   loadAnalytics(anPeriod);
