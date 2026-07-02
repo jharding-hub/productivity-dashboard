@@ -685,6 +685,14 @@ async function load(){
   }
   // Ensure data integrity
   if(!state._updatedAt)state._updatedAt=0; // pre-E-1 states have no stamp
+  // E-2: prune timeline blocks older than 14 days. The Timeline UI only
+  // renders today/tomorrow, so past-dated blocks are unreachable dead weight
+  // (their Google Calendar events, if any, live on in Google untouched).
+  if(Array.isArray(state.tlBlocks)){
+    var _tlCut=new Date();_tlCut.setDate(_tlCut.getDate()-14);
+    var _tlCutKey=_dayKey(_tlCut);
+    state.tlBlocks=state.tlBlocks.filter(function(b){return b&&(!b.date||b.date>=_tlCutKey);});
+  }
   if(!state.routines)state.routines={morning:[],evening:[],custom:[]};
   if(!state.reminders)state.reminders=[];
   if(!state.notes)state.notes=[];if(!state.moodLog)state.moodLog=[];if(!state.tasks)state.tasks=[];if(!state.visiblePanels)state.visiblePanels={};if(!state.knownPanels)state.knownPanels=[];
