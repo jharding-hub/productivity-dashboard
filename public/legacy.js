@@ -119,11 +119,9 @@ function getActiveTier(){
   if(currentUser&&window._profileAccountTier&&TIER_CONFIG[window._profileAccountTier])
     return window._profileAccountTier;
   // Fail closed: unknown accounts get the lowest tier.
-  // TODO(S-2, server-side): client gating is cosmetic. The centerpost-jarvis
-  // Worker must enforce tier before serving AI beyond the free quota — after
-  // verifying the Firebase ID token, look up the caller's accountTier
-  // (Firestore profile or custom claim, never a client-sent header) and
-  // reject requests past the free quota unless the tier includes aiAssistant.
+  // Server-side enforcement (S-2) lives in the centerpost-jarvis Worker:
+  // a KV tier registry (synced by the admin panel via /admin-set-tier)
+  // caps free accounts at a daily AI quota. This client gating is UX only.
   return'free';
 }
 
@@ -3006,10 +3004,28 @@ async function adminAddUser(){
 }
 
 // --- Legacy tier grant / revoke -------------------------------------------
+// Firestore holds the tier for the UI; the Jarvis Worker's KV tier registry
+// is what actually enforces AI access (S-2) -- sync both on every change.
+async function _syncWorkerTier(uid,tier){
+  try{
+    var res=await fetch(JARVIS_PROXY_URL+'/admin-set-tier',{
+      method:'POST',
+      headers:await _jarvisAuthHeaders(),
+      body:JSON.stringify({uid:uid,tier:tier})
+    });
+    if(!res.ok)throw new Error('HTTP '+res.status);
+    return true;
+  }catch(e){
+    console.warn('[admin] worker tier sync failed:',e.message);
+    toast('⚠ Tier saved, but Worker sync failed — AI access won’t change until you re-grant');
+    return false;
+  }
+}
 async function adminGrantLegacy(uid){
   if(!isAdmin)return;
   try{
     await db.collection('users').doc(uid).update({accountTier:'legacy'});
+    await _syncWorkerTier(uid,'legacy');
     toast('Legacy access granted');
     renderAdminPanel();
   }catch(e){toast('Error: '+e.message);}
@@ -3018,6 +3034,7 @@ async function adminRevokeLegacy(uid){
   if(!isAdmin)return;
   try{
     await db.collection('users').doc(uid).update({accountTier:firebase.firestore.FieldValue.delete()});
+    await _syncWorkerTier(uid,'');
     toast('Legacy access revoked');
     renderAdminPanel();
   }catch(e){toast('Error: '+e.message);}
@@ -9412,6 +9429,14 @@ async function jarvisSend(){
 
     // -- HTTP-level errors ---------------------------------------
     if(!res.ok){
+      // Free-tier daily AI quota reached (Worker returns code:'ai_quota')
+      if(res.status===403&&data&&data.code==='ai_quota'){
+        _jarvisAddMessage('assistant','You’ve used today’s free Axis requests. Your quota resets tomorrow — or upgrade for unlimited access.');
+        if(typeof toast==='function')toast('⚡ Free AI quota reached for today');
+        _jarvisThinking=false;
+        if(sendBtn)sendBtn.disabled=false;
+        return;
+      }
       var statusMsg='HTTP '+res.status;
       var detail='';
       if(data&&data.error){
