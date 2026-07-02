@@ -553,16 +553,45 @@ function setSyncStatus(status,label){const el=document.getElementById('syncStatu
 
 // SAVE -- writes to localStorage + Firestore (per-user)
 var saveTimer=null;
+var _saveSkipCount=0; // consecutive writes skipped because cloud was newer (E-1)
 function save(){
   const uid=currentUser?currentUser.uid:'local';
+  // E-1: stamp the state itself so every copy carries the time of the last
+  // edit it reflects -- this is what the write guard below compares.
+  state._updatedAt=Date.now();
   try{localStorage.setItem('prodDash_'+uid,JSON.stringify(state));}catch(e){}
   if(!firebaseReady||!db||!currentUser)return;
   clearTimeout(saveTimer);
   saveTimer=setTimeout(async()=>{
     try{
       setSyncStatus('syncing','Syncing...');
-      await db.collection('users').doc(currentUser.uid).collection('data').doc('dashboard').set({state:JSON.stringify(state),updated:firebase.firestore.FieldValue.serverTimestamp()});
-      setSyncStatus('synced','Synced');
+      const ref=db.collection('users').doc(currentUser.uid).collection('data').doc('dashboard');
+      // E-1: sync-by-timestamp. A stale tab (e.g. waking from sleep with an
+      // old queued save) must not overwrite newer cloud data. Inside a
+      // transaction: if the cloud blob is newer than the state this tab holds,
+      // skip the write -- the realtime listener merges the newer doc, then the
+      // retry below pushes the merged result.
+      const wrote=await db.runTransaction(async tx=>{
+        const doc=await tx.get(ref);
+        if(doc.exists&&doc.data().state){
+          try{
+            const cloudTs=JSON.parse(doc.data().state)._updatedAt||0;
+            if(cloudTs>state._updatedAt)return false;
+          }catch(e){}
+        }
+        tx.set(ref,{state:JSON.stringify(state),updated:firebase.firestore.FieldValue.serverTimestamp()});
+        return true;
+      });
+      if(wrote){
+        _saveSkipCount=0;
+        setSyncStatus('synced','Synced');
+      }else if(++_saveSkipCount<=3){
+        setSyncStatus('syncing','Merging newer cloud data...');
+        setTimeout(save,2500); // listener merge lands first, then re-push
+      }else{
+        _saveSkipCount=0;
+        setSyncStatus('error','Sync conflict -- refresh this tab');
+      }
     }catch(e){console.log('Firestore save error:',e);setSyncStatus('error','Sync error');}
   },1000);
 }
@@ -623,6 +652,7 @@ async function load(){
     setSyncStatus('offline','Local only');
   }
   // Ensure data integrity
+  if(!state._updatedAt)state._updatedAt=0; // pre-E-1 states have no stamp
   if(!state.routines)state.routines={morning:[],evening:[],custom:[]};
   if(!state.reminders)state.reminders=[];
   if(!state.notes)state.notes=[];if(!state.moodLog)state.moodLog=[];if(!state.tasks)state.tasks=[];if(!state.visiblePanels)state.visiblePanels={};if(!state.knownPanels)state.knownPanels=[];
@@ -690,7 +720,11 @@ function startRealtimeSync(){
       const localSavedVis=state._savedPanelVis;
       const localRoutineReset=state.lastRoutineReset;
       const localRoutines=JSON.parse(JSON.stringify(state.routines||{}));
+      const localUpdatedAt=state._updatedAt||0;
       state={...state,...cloud};
+      // E-1: keep the newest stamp -- local unsaved edits may be newer than
+      // the cloud doc this snapshot delivered.
+      state._updatedAt=Math.max(localUpdatedAt,cloud._updatedAt||0);
       state.focusMode=localFocusMode;
       if(localSavedVis)state._savedPanelVis=localSavedVis;else delete state._savedPanelVis;
       state.visiblePanels=Object.assign({},cloud.visiblePanels||{},localVP);
