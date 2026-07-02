@@ -13,6 +13,10 @@ Two repos:
 - Shared config lives in a committed config.js holding PUBLIC keys only.
   Do NOT introduce .env / import.meta.env for shared config — the static
   pages can't access it. config.js is the correct pattern for this setup.
+- public/config.js is the ONLY config.js — canonical for both `vite dev`
+  (served from publicDir) and the production build (copied to dist/).
+  A duplicate root-level config.js was removed 2026-07-01; don't recreate it.
+  config.example.js at the root is just the template for new checkouts.
 - Backend = four Cloudflare Workers (in the separate centerpost-workers repo):
   - centerpost-jarvis  — proxies the Claude API for the in-app assistant
     (Axis/Jarvis). Verifies Firebase ID tokens via Google JWKs.
