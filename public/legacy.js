@@ -3,6 +3,9 @@
 // ═══════════════════════════════════════════════════════════════
 
 // ── SCRIPT 1: AUTH ──────────────────────────────────────────────
+// DEBUG gates verbose payload logging. Keep false in production; even when
+// true, never log the Firebase ID token or Authorization headers.
+var DEBUG=false;
 var currentUser=null;
 var isAdmin=false;
 var userProfile=null;
@@ -9403,7 +9406,8 @@ async function jarvisSend(){
     var data;
     try{data=JSON.parse(rawText);}catch(e){data={parseError:true,raw:rawText};}
     
-    console.log('[Jarvis] HTTP',res.status,data);
+    console.log('[Jarvis] HTTP',res.status);
+    if(DEBUG)console.log('[Jarvis] response payload',data);
     _jarvisHideThinking();
 
     // -- HTTP-level errors ---------------------------------------
@@ -10188,7 +10192,7 @@ async function _gcalEnsureToken(interactive){
           _gcalTokenExpiry = Date.now() + ((resp.expires_in||3600) * 1000) - 60000;
           resolve(true);
         } else {
-          console.warn('[gcal] token request failed', resp && (resp.error||resp));
+          console.warn('[gcal] token request failed', (resp&&resp.error)||'no error detail');
           resolve(false);
         }
       };
