@@ -2504,7 +2504,8 @@ var DEFAULT_STATE={
   theme:'rainbow',
   activeRoutineTab:'morning',
   timerDuration:15,
-  parentPin:'1234',
+  // parentPin is legacy plaintext — replaced by parentPinHash/parentPinSalt
+  // (see PARENT PIN section). Fresh installs default to '1234' at migration.
   sync:{enabled:false,email:null,lastSync:null},
   electronics:{
     sessionMins:15,       // length of each session (parent sets)
@@ -2538,7 +2539,8 @@ var SACRED_KEYS = [
   'feelings', 'feelingsLastPointDate',
   'breathLastDate',
   'tasks',
-  'parentPin',
+  'parentPin',          // legacy plaintext — kept so old cloud snapshots migrate
+  'parentPinHash', 'parentPinSalt',
   'sync'  // Firebase sync settings
 ];
 
@@ -4013,6 +4015,43 @@ function renderReading(){
   }).join('');
 }
 
+// ═══ PARENT PIN (S-4: salted SHA-256 — the PIN itself is never stored) ═══
+// Stops the PIN being read out of localStorage/devtools. A determined kid
+// can still wipe state entirely — inherent to a client-only page.
+async function _hashPin(pin,salt){
+  var buf=await crypto.subtle.digest('SHA-256',new TextEncoder().encode(salt+':'+pin));
+  return Array.from(new Uint8Array(buf)).map(function(b){return b.toString(16).padStart(2,'0');}).join('');
+}
+function _newPinSalt(){
+  var a=new Uint8Array(16);crypto.getRandomValues(a);
+  return Array.from(a).map(function(b){return b.toString(16).padStart(2,'0');}).join('');
+}
+async function _setPin(pin){
+  state.parentPinSalt=_newPinSalt();
+  state.parentPinHash=await _hashPin(pin,state.parentPinSalt);
+  delete state.parentPin;
+  save();
+}
+async function _verifyPin(pin){
+  if(state.parentPinHash&&state.parentPinSalt){
+    return (await _hashPin(pin,state.parentPinSalt))===state.parentPinHash;
+  }
+  // Legacy plaintext state (pre-hash, or an old cloud snapshot): compare,
+  // and migrate to a hash on first successful unlock.
+  var legacy=state.parentPin||'1234';
+  if(pin===legacy){await _setPin(pin);return true;}
+  return false;
+}
+// One-time migration: hash any plaintext PIN (or the '1234' default) on boot
+// and again after a sync pull, since old Firestore snapshots carry plaintext.
+async function _migratePinHash(){
+  try{
+    if(state.parentPin){await _setPin(state.parentPin);return;}
+    if(!state.parentPinHash)await _setPin('1234');
+  }catch(e){/* non-secure context — legacy compare path still works */}
+}
+_migratePinHash();
+
 // ═══ PARENT SETTINGS ═══
 function openParentGate(){
   var body=document.getElementById('parentModalBody');
@@ -4029,9 +4068,9 @@ function openParentGate(){
     if(pin){pin.focus();pin.addEventListener('keydown',function(e){if(e.key==='Enter')checkPin();});}
   },100);
 }
-function checkPin(){
+async function checkPin(){
   var pin=document.getElementById('pinInput').value;
-  if(pin===state.parentPin){renderParentSettings();}
+  if(await _verifyPin(pin)){renderParentSettings();}
   else{toast('Wrong PIN');}
 }
 function renderParentSettings(){
@@ -4069,7 +4108,7 @@ function renderParentSettings(){
     +'</div>'
     +'<button class="parent-btn" onclick="resetStreak()">Reset streak to 0</button>'
     +'<h3>PIN</h3>'
-    +'<input class="parent-input" type="text" id="newPin" placeholder="New PIN (numbers)" inputmode="numeric" maxlength="6" value="'+state.parentPin+'">'
+    +'<input class="parent-input" type="password" id="newPin" placeholder="New PIN (4–6 digits)" inputmode="numeric" maxlength="6">'
     +'<button class="parent-btn" onclick="updatePin()">Save PIN</button>'
     +'<h3>DANGER ZONE</h3>'
     +'<button class="parent-btn danger" onclick="resetAllData()">Reset all kid data</button>';
@@ -4369,10 +4408,12 @@ function removeReward(tier,idx){
   save();
   renderParentRewards();
 }
-function updatePin(){
+async function updatePin(){
   var v=document.getElementById('newPin').value.trim();
   if(!/^\d{4,6}$/.test(v)){toast('PIN must be 4–6 digits');return;}
-  state.parentPin=v;save();toast('PIN updated');
+  await _setPin(v);
+  document.getElementById('newPin').value='';
+  toast('PIN updated');
 }
 function resetStreak(){
   if(!confirm('Reset streak to 0? (rewards stay)'))return;
@@ -4791,6 +4832,8 @@ async function _pullFromFirebase(){
       await _pushToFirebase();
       toast('Pushed local data to cloud');
     }
+    // An old cloud snapshot may have restored a plaintext parentPin — re-hash it.
+    _migratePinHash();
     _renderParentSettingsIfOpen();
   } catch(e){console.warn('[sync] pull failed',e);}
 }
