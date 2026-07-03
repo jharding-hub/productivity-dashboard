@@ -7,9 +7,12 @@ on:
       - 'firestore.rules'
       - 'test/**'
       - 'firebase.json'
+      - 'package.json'
+      - 'package-lock.json'
       - '.github/workflows/firestore-rules.yml'
   pull_request:
     branches: [main]
+  workflow_dispatch:
 
 jobs:
   rules-tests:
