@@ -58,6 +58,26 @@ database, read that user's `users/{uid}/data/dashboard` doc from it, and write
 it back to `(default)` by hand (console or a one-off script) instead of a full
 import.
 
+## Backfilling missing user profiles
+
+Invite-code signups before commit 22b6ef2 have an Auth account but no
+`users/{uid}` Firestore profile (the old signup write was denied by the
+`create` rule). `scripts/backfill-profiles.mjs` creates the missing docs.
+
+1. Firebase console → Project settings → Service accounts → **Generate new
+   private key**. Save it OUTSIDE the repo (e.g. `~/keys/centerpost-sa.json`).
+   The key is gitignored, but never move it into the repo.
+2. Dry run first (writes nothing):
+   ```bash
+   GOOGLE_APPLICATION_CREDENTIALS=~/keys/centerpost-sa.json node scripts/backfill-profiles.mjs
+   ```
+3. Review the "would create" list, then apply:
+   ```bash
+   GOOGLE_APPLICATION_CREDENTIALS=~/keys/centerpost-sa.json node scripts/backfill-profiles.mjs --commit
+   ```
+4. Verify in the admin panel that the previously-missing users now appear, and
+   re-grant AI tiers as needed. Backfilled docs carry a `backfilledAt` field.
+
 ## Uptime monitoring
 
 - `https://centerpost.app/health.json` returns 200 with `{"status":"ok"}` —

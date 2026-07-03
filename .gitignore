@@ -1,3 +1,9 @@
 node_modules/
 dist/
 .DS_Store
+
+# Service-account keys and secrets — NEVER commit
+*serviceAccount*.json
+*service-account*.json
+serviceAccountKey.json
+.secrets/
