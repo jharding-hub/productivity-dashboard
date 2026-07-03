@@ -501,12 +501,18 @@ async function doSignup(){
       });
     } catch(e){console.warn('[signup] code increment failed (non-fatal)',e);}
 
-    // -- Step 4: Tag profile with the code used (helps admin audit) --
+    // -- Step 4: Create the user's profile. admin:false / disabled:false
+    //    are REQUIRED by the Firestore `create` rule (see firestore.rules);
+    //    a merge-tag write that omitted them was silently denied, leaving
+    //    invite-code users with no profile doc. invitedWith aids admin audit.
     try {
       await db.collection('users').doc(cred.user.uid).set({
+        email:email,admin:false,disabled:false,
+        createdAt:firebase.firestore.FieldValue.serverTimestamp(),
+        lastActive:firebase.firestore.FieldValue.serverTimestamp(),
         invitedWith:inviteCode
-      },{merge:true});
-    } catch(e){console.warn('[signup] profile tag failed (non-fatal)',e);}
+      });
+    } catch(e){console.error('[signup] profile create failed',e);}
 
     // onAuthStateChanged fires next, takes user to dashboard
     successEl.textContent='Account created! Loading your workspace...';
