@@ -1,0 +1,30 @@
+name: Firestore Rules
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - 'firestore.rules'
+      - 'test/**'
+      - 'firebase.json'
+      - '.github/workflows/firestore-rules.yml'
+  pull_request:
+    branches: [main]
+
+jobs:
+  rules-tests:
+    name: Emulator rules tests
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+      # The Firestore emulator is a JVM process.
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: 17
+      - run: npm ci
+      - run: npm run test:rules

@@ -1,0 +1,69 @@
+rules_version = '2';
+
+// ─────────────────────────────────────────────────────────────────────
+// Centerpost Firestore security rules.
+//
+// Source of truth: mirrors the rules deployed in the Firebase console
+// (productivity-dashboard-f8488) as of 2026-07-03, checked into the repo
+// so they are version-controlled and covered by emulator tests
+// (test/firestore.rules.test.js). Deploy from the console or
+// `firebase deploy --only firestore:rules`; keep this file in sync.
+// ─────────────────────────────────────────────────────────────────────
+
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    function isSignedIn() {
+      return request.auth != null;
+    }
+    function isAdmin() {
+      return isSignedIn()
+        && exists(/databases/$(database)/documents/users/$(request.auth.uid))
+        && get(/databases/$(database)/documents/users/$(request.auth.uid)).data.admin == true;
+    }
+
+    // Users
+    match /users/{userId} {
+
+      // Read your own profile only; admins may read/list everyone.
+      allow read: if isSignedIn() && (request.auth.uid == userId || isAdmin());
+
+      // Create your own profile, but NOT as admin and NOT pre-disabled.
+      // Admins may create anyone's profile.
+      allow create: if isSignedIn() && (
+        (request.auth.uid == userId
+          && request.resource.data.admin == false
+          && request.resource.data.disabled == false)
+        || isAdmin()
+      );
+
+      // Update your own profile, but you may NOT touch the privileged
+      // fields. Admins may change anything.
+      allow update: if isSignedIn() && (
+        (request.auth.uid == userId
+          && !request.resource.data.diff(resource.data).affectedKeys()
+                .hasAny(['admin','disabled','accountTier']))
+        || isAdmin()
+      );
+
+      // Delete: admins only.
+      allow delete: if isAdmin();
+
+      // Per-user dashboard data — owner only.
+      match /data/{doc} {
+        allow read, write: if isSignedIn() && request.auth.uid == userId;
+      }
+    }
+
+    // Invite Codes
+    match /inviteCodes/{code} {
+      allow get: if true;
+      allow list: if isAdmin();
+      allow update: if isSignedIn()
+                    && request.resource.data.diff(resource.data).affectedKeys()
+                         .hasOnly(['used','lastUsedAt','lastUsedBy','lastUsedEmail'])
+                    && request.resource.data.used == resource.data.used + 1;
+      allow create, delete: if isAdmin();
+    }
+  }
+}
