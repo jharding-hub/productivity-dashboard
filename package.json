@@ -22,11 +22,13 @@
   },
   "homepage": "https://github.com/jharding-hub/productivity-dashboard#readme",
   "devDependencies": {
+    "@sentry/vite-plugin": "^5.3.0",
     "@vitejs/plugin-react": "^6.0.2",
     "gh-pages": "^6.3.0",
     "vite": "^8.0.16"
   },
   "dependencies": {
+    "@sentry/react": "^10.63.0",
     "react": "^19.2.7",
     "react-dom": "^19.2.7"
   }

@@ -16,3 +16,6 @@ var CENTERPOST_FIREBASE_CONFIG = {
 var GOOGLE_CLIENT_ID = 'YOUR_OAUTH_CLIENT_ID.apps.googleusercontent.com';
 
 var JARVIS_PROXY_URL = 'https://your-worker.your-subdomain.workers.dev';
+
+// Optional — leave empty to disable error reporting.
+var SENTRY_DSN = 'https://YOUR_KEY@YOUR_ORG.ingest.us.sentry.io/YOUR_PROJECT_ID';
