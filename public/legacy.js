@@ -316,6 +316,62 @@ function doLogout(){
   firebase.auth().signOut();
 }
 
+// -- Self-serve data export + account deletion (Settings > Account & data) --
+// Export runs fully client-side: the signed-in user already has read access
+// to everything under users/{uid}. If data ever nests deeper than
+// users/{uid}/data/*, extend the gather step below.
+async function exportMyData(){
+  if(!currentUser){toast('Sign in first');return;}
+  toast('Preparing your export…');
+  try{
+    var profileSnap=await db.collection('users').doc(currentUser.uid).get();
+    var dataSnap=await db.collection('users').doc(currentUser.uid).collection('data').get();
+    var docs={};
+    dataSnap.forEach(function(d){docs[d.id]=d.data();});
+    // dashboard state is stored as a JSON string — inline it so the export is readable
+    if(docs.dashboard&&typeof docs.dashboard.state==='string'){
+      try{docs.dashboard.state=JSON.parse(docs.dashboard.state);}catch(e){}
+    }
+    var bundle={
+      exportedAt:new Date().toISOString(),
+      account:{uid:currentUser.uid,email:currentUser.email,created:currentUser.metadata&&currentUser.metadata.creationTime},
+      profile:profileSnap.exists?profileSnap.data():null,
+      data:docs
+    };
+    var blob=new Blob([JSON.stringify(bundle,null,2)],{type:'application/json'});
+    var u=URL.createObjectURL(blob);
+    var a=document.createElement('a');
+    a.href=u;a.download='centerpost-export-'+todayStr()+'.json';
+    document.body.appendChild(a);a.click();document.body.removeChild(a);
+    URL.revokeObjectURL(u);
+    toast('✓ Export downloaded');
+  }catch(e){toast('Export failed: '+(e.message||e.code||'unknown error'));}
+}
+
+// Deletion is done server-side (the Worker verifies the ID token, then
+// removes Firestore docs, Jarvis KV entries, and the Auth user) because the
+// client cannot clean up Worker KV and shouldn't rely on rules allowing
+// self-delete. Until the Worker endpoint exists, a 404 is handled kindly.
+function deleteMyAccount(){
+  if(!currentUser){toast('Sign in first');return;}
+  _confirm('Permanently delete your Centerpost account? All of your data — dashboard, journals, kids mode, everything — will be erased.',function(){
+    _confirm('Last check: this really is forever and cannot be undone. Export your data first if you want a copy. Delete everything?',_performAccountDeletion,{destructive:true,confirmText:'Yes, delete everything',icon:'ti-trash-x'});
+  },{destructive:true,confirmText:'Delete my account'});
+}
+async function _performAccountDeletion(){
+  try{
+    var idToken=await currentUser.getIdToken(true);
+    var resp=await fetch(JARVIS_PROXY_URL+'/account/delete',{method:'POST',headers:{'Authorization':'Bearer '+idToken}});
+    if(resp.status===404){toast('Account deletion isn’t live yet — no changes were made.');return;}
+    if(!resp.ok){
+      var body=await resp.text();
+      throw new Error('HTTP '+resp.status+(body?' — '+body.slice(0,120):''));
+    }
+    toast('Account deleted. Take care of yourself out there.');
+    setTimeout(function(){firebase.auth().signOut();},1500);
+  }catch(e){toast('Deletion failed: '+(e.message||'unknown error')+'. Try again or contact support.');}
+}
+
 function showApp(){
   document.getElementById('loginGate').classList.add('hidden');
   document.getElementById('appWrap').classList.add('visible');
