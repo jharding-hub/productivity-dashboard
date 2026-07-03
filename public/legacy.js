@@ -8864,11 +8864,24 @@ if(state.mood){const c=document.querySelectorAll('#moodPills .em-pill');const m=
 showStateAdvice();updateWellnessVisibility();
 startRealtimeSync();
 if(window.location.hash==='#/admin')showAdminPanel();
-// --- Service Worker registration + one-time auto-reload on update ---
+// --- Service Worker registration + update-available toast ---
 // When the SW updates (e.g. you ship a new sw.js or bump CACHE_VERSION),
-// `controllerchange` fires once a new SW takes control. We reload the
-// page so it picks up the latest index.html. Guarded by sessionStorage
-// so it can't loop within a session.
+// `controllerchange` fires once the new SW takes control. The new version
+// is already active in the background at that point; instead of reloading
+// the page out from under the user, show a tap-to-refresh toast and let
+// them choose the moment.
+function showUpdateToast(){
+  var el=document.getElementById('updateToast');
+  if(!el){
+    el=document.createElement('div');
+    el.id='updateToast';
+    el.className='toast update-toast';
+    el.textContent='Update available — tap to refresh';
+    el.onclick=function(){window.location.reload();};
+    document.body.appendChild(el);
+  }
+  requestAnimationFrame(function(){el.classList.add('show');});
+}
 if('serviceWorker' in navigator){
   navigator.serviceWorker.register('sw.js', {updateViaCache:'none'})
     .then(function(reg){
@@ -8895,10 +8908,12 @@ if('serviceWorker' in navigator){
       if(reg){ try{ reg.update(); }catch(e){} }
     });
   });
+  // On a first-ever install `controllerchange` also fires (clients.claim),
+  // but the page is already the newest version — no toast for that case.
+  var _hadSW = !!navigator.serviceWorker.controller;
   navigator.serviceWorker.addEventListener('controllerchange', function(){
-    if (sessionStorage.getItem('_swReloaded')) return;
-    sessionStorage.setItem('_swReloaded', '1');
-    window.location.reload();
+    if(!_hadSW){ _hadSW=true; return; }
+    showUpdateToast();
   });
 }
 // --- iOS: zoom back out when leaving a text field (no rotation needed) ---

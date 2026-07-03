@@ -1969,6 +1969,7 @@ body[data-theme="storm-dark"] .tl-hour-label{
 ::-webkit-scrollbar-thumb{background:var(--border);border-radius:3px;}::-webkit-scrollbar-thumb:hover{background:var(--border-focus);}
 .toast{position:fixed;bottom:80px;right:24px;background:var(--green);color:var(--bg);padding:10px 18px;border-radius:var(--radius);font-size:13px;font-weight:600;opacity:0;transform:translateY(10px);transition:all 0.3s;pointer-events:none;z-index:999;}
 .toast.show{opacity:1;transform:translateY(0);}
+.toast.update-toast{pointer-events:auto;cursor:pointer;bottom:130px;z-index:10002;}
 /* SHARE INBOX BANNER */
 .share-inbox{position:fixed;top:72px;left:50%;transform:translateX(-50%);z-index:400;background:var(--surface);border:1px solid var(--accent-dim);border-radius:var(--radius);padding:16px 20px;min-width:320px;max-width:90vw;box-shadow:0 8px 32px rgba(0,0,0,0.5);animation:slideDown 0.35s cubic-bezier(0.22,1,0.36,1) both;}
 @keyframes slideDown{from{opacity:0;transform:translateX(-50%) translateY(-12px)}to{opacity:1;transform:translateX(-50%) translateY(0)}}
