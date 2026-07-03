@@ -30,9 +30,14 @@ Two repos:
 
 ## Build / test / deploy
 - Dev server (Vite + HMR):  make dev     -> npx vite
-- Production build:          make build   -> npx vite build (outputs to dist/)
-- Deploy to production:      make deploy  -> builds, then pushes dist/ to the
-  gh-pages branch (npx gh-pages -d dist -b gh-pages --dotfiles).
+- Production build:          make build   -> npm run build (vite build, then
+  esbuild-minify dist/legacy.js, then scripts/stamp-sw.js stamps the SW
+  version from the git short hash; outputs to dist/)
+- Deploy to production:      make deploy  -> npm run deploy (runs the build,
+  then pushes dist/ to the gh-pages branch:
+  gh-pages -d dist -b gh-pages --dotfiles).
+  The npm scripts in package.json are the canonical pipeline; the Makefile
+  targets just delegate to them, so make and npm produce identical output.
   Production = gh-pages branch, custom domain centerpost.app.
 - Clean build artifacts:     make clean   -> rm -rf dist node_modules/.cache
 - The --dotfiles flag on deploy is required (keeps .nojekyll / CNAME). Do not

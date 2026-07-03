@@ -2,13 +2,13 @@
 dev:
 	npx vite
 
-# Production build into dist/
+# Production build into dist/ (vite build -> minify legacy.js -> stamp SW version)
 build:
-	npx vite build && node scripts/stamp-sw.js
+	npm run build
 
 # Build and deploy to GitHub Pages (gh-pages branch)
 deploy:
-	npx vite build && node scripts/stamp-sw.js && npx gh-pages -d dist -b gh-pages --dotfiles
+	npm run deploy
 
 # Remove build artifacts
 clean:
