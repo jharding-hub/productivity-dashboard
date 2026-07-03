@@ -16,3 +16,5 @@ var CENTERPOST_FIREBASE_CONFIG = {
 var GOOGLE_CLIENT_ID = '1065593793454-57q4unojejuafv4rihajmoas77ucr6q8.apps.googleusercontent.com';
 
 var JARVIS_PROXY_URL = 'https://centerpost-jarvis.medicjth.workers.dev';
+
+var SENTRY_DSN = 'https://fa11403c0d7a9449b1749d199dc90395@o4511667943505920.ingest.us.sentry.io/4511668027129856';
