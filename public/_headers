@@ -1,0 +1,23 @@
+# ─────────────────────────────────────────────────────────────────────
+# Security headers for Cloudflare Pages.
+# NO EFFECT on GitHub Pages — GitHub Pages cannot serve custom headers.
+# This file is inert until hosting moves to Cloudflare Pages, where it
+# is picked up automatically from the build output root.
+#
+# The Content-Security-Policy is Report-Only: violations are logged to
+# the browser console and reported to Sentry, nothing is blocked. After
+# a clean week of normal use, rename it to Content-Security-Policy to
+# enforce, and add: frame-ancestors 'none' (ignored in Report-Only mode,
+# which is why it is left out below; X-Frame-Options covers framing
+# until then).
+#
+# 'unsafe-inline' in script-src is required by legacy.js's inline
+# onclick handlers; the origin allowlist still restricts where external
+# scripts can load from.
+# ─────────────────────────────────────────────────────────────────────
+
+/*
+  Strict-Transport-Security: max-age=31536000; includeSubDomains
+  X-Frame-Options: DENY
+  X-Content-Type-Options: nosniff
+  Content-Security-Policy-Report-Only: default-src 'self'; script-src 'self' 'unsafe-inline' https://www.gstatic.com https://accounts.google.com https://www.youtube.com; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com https://cdn.jsdelivr.net; font-src 'self' https://fonts.gstatic.com https://cdn.jsdelivr.net; img-src 'self' data: blob:; connect-src 'self' https://centerpost-jarvis.medicjth.workers.dev https://centerpost-guardian.medicjth.workers.dev https://centerpost-sentinel.medicjth.workers.dev https://centerpost-pulse.medicjth.workers.dev https://*.googleapis.com https://api.weather.gov https://overpass-api.de https://o4511667943505920.ingest.us.sentry.io; frame-src https://accounts.google.com https://www.youtube.com; worker-src 'self'; manifest-src 'self'; object-src 'none'; base-uri 'self'; report-uri https://o4511667943505920.ingest.us.sentry.io/api/4511668027129856/security/?sentry_key=fa11403c0d7a9449b1749d199dc90395
