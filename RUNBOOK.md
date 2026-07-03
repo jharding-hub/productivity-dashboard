@@ -5,12 +5,13 @@ Project: `productivity-dashboard-f8488` · Firestore database: `(default)`
 
 ## Firestore backups
 
-Configured 2026-07 per the architecture evaluation (rec 4.1):
+Configured 2026-07-03 per the architecture evaluation (rec 4.1), via the
+Firebase console (Firestore → Disaster recovery):
 
-- **Schedule:** daily automatic backup, 14-day retention, created with:
-  ```bash
-  gcloud firestore backups schedules create --database='(default)' --recurrence=daily --retention=14d
-  ```
+- **Schedule:** daily automatic backup, 98-day retention.
+- **Point-in-time recovery: enabled**, 7-day window — restores any
+  minute-granularity moment in the last week, covering corruption between
+  daily snapshots. Earliest recoverable version: 2026-07-03.
 - **Verify the schedule:** `gcloud firestore backups schedules list --database='(default)'`
 - **Verify backups exist:** `gcloud firestore backups list --format="table(name, database, state)"`
 - Backups do NOT include security rules or TTL policies — rules live in the
