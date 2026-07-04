@@ -1,0 +1,328 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Centerpost architecture</title>
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@tabler/icons-webfont@3.44.0/dist/tabler-icons.min.css">
+<style>
+:root{
+--text-primary:#1a1a1a;--text-secondary:#5f5e5a;--text-muted:#8a8880;--border:#e4e2da;
+--surface-0:#faf9f6;--surface-1:#f1efe8;--surface-2:#ffffff;--radius:8px;
+--cp-structural-bg:#F1EFE8;--cp-structural-border:#5F5E5A;--cp-structural-title:#444441;--cp-structural-sub:#5F5E5A;
+--cp-frontend-bg:#EEEDFE;--cp-frontend-border:#534AB7;--cp-frontend-title:#3C3489;--cp-frontend-sub:#534AB7;
+--cp-hosting-bg:#E1F5EE;--cp-hosting-border:#0F6E56;--cp-hosting-title:#085041;--cp-hosting-sub:#0F6E56;
+--cp-security-bg:#FAECE7;--cp-security-border:#993C1D;--cp-security-title:#712B13;--cp-security-sub:#993C1D;
+--cp-backend-bg:#FBEAF0;--cp-backend-border:#993556;--cp-backend-title:#72243E;--cp-backend-sub:#993556;
+--cp-data-bg:#E6F1FB;--cp-data-border:#185FA5;--cp-data-title:#0C447C;--cp-data-sub:#185FA5;
+--cp-external-bg:#FAEEDA;--cp-external-border:#854F0B;--cp-external-title:#633806;--cp-external-sub:#854F0B;
+}
+@media (prefers-color-scheme: dark){
+:root{
+--text-primary:#f1efe8;--text-secondary:#c2c0b6;--text-muted:#8a8880;--border:#3a3937;
+--surface-0:#1c1c1a;--surface-1:#26251f;--surface-2:#2c2b26;
+--cp-structural-bg:#444441;--cp-structural-border:#B4B2A9;--cp-structural-title:#D3D1C7;--cp-structural-sub:#B4B2A9;
+--cp-frontend-bg:#3C3489;--cp-frontend-border:#AFA9EC;--cp-frontend-title:#CECBF6;--cp-frontend-sub:#AFA9EC;
+--cp-hosting-bg:#085041;--cp-hosting-border:#5DCAA5;--cp-hosting-title:#9FE1CB;--cp-hosting-sub:#5DCAA5;
+--cp-security-bg:#712B13;--cp-security-border:#F0997B;--cp-security-title:#F5C4B3;--cp-security-sub:#F0997B;
+--cp-backend-bg:#72243E;--cp-backend-border:#ED93B1;--cp-backend-title:#F4C0D1;--cp-backend-sub:#ED93B1;
+--cp-data-bg:#0C447C;--cp-data-border:#85B7EB;--cp-data-title:#B5D4F4;--cp-data-sub:#85B7EB;
+--cp-external-bg:#633806;--cp-external-border:#EF9F27;--cp-external-title:#FAC775;--cp-external-sub:#EF9F27;
+}
+}
+*{box-sizing:border-box}
+body{margin:0;background:var(--surface-0);color:var(--text-primary);font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Helvetica,Arial,sans-serif}
+.page{max-width:760px;margin:0 auto;padding:2.5rem 1.5rem 4rem}
+.page-header{margin-bottom:1.75rem}
+.page-header h1{font-size:22px;font-weight:500;margin:0 0 6px}
+.page-header p{font-size:14px;color:var(--text-secondary);margin:0}
+.sr-only{position:absolute;width:1px;height:1px;padding:0;margin:-1px;overflow:hidden;clip:rect(0,0,0,0);white-space:nowrap;border:0}
+.legend{display:flex;flex-wrap:wrap;gap:14px;margin:0 0 1.25rem}
+.legend-item{display:flex;align-items:center;gap:6px;font-size:12px;color:var(--text-secondary)}
+.legend-dot{width:9px;height:9px;border-radius:50%;flex-shrink:0}
+.lane{margin-bottom:6px}
+.lane-label{font-size:12px;font-weight:500;color:var(--text-muted);margin:0 0 8px}
+.lane-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(140px,1fr));gap:10px;margin-bottom:14px}
+.node-card{display:flex;flex-direction:column;align-items:flex-start;gap:3px;padding:10px 12px;border-radius:var(--radius);border:1px solid;cursor:pointer;text-align:left;font-family:inherit;background:none;min-height:64px}
+.node-card:hover{filter:brightness(0.97)}
+.node-card[aria-pressed="true"]{border-width:2px}
+.node-card.planned{border-style:dashed}
+.node-card i{font-size:16px}
+.node-title{font-size:13px;font-weight:500;line-height:1.3}
+.node-sub{font-size:11px;line-height:1.3}
+.node-tag{font-size:11px;color:var(--text-muted);margin-top:1px}
+.flow-arrow{display:flex;justify-content:center;color:var(--text-muted);margin:2px 0 10px}
+.flow-arrow i{font-size:18px}
+.divider{border:none;border-top:1px solid var(--border);margin:18px 0 16px}
+.pipeline-row{display:flex;align-items:stretch;gap:8px;flex-wrap:wrap}
+.pipeline-row .node-card{flex:1;min-width:140px}
+.pipeline-arrow{display:flex;align-items:center;color:var(--text-muted)}
+.pipeline-arrow i{font-size:16px}
+.detail-panel{margin-top:1.25rem;padding:1rem 1.25rem;border-radius:12px;background:var(--surface-1)}
+.detail-badge{display:inline-block;font-size:11px;font-weight:500;padding:3px 10px;border-radius:var(--radius);margin-bottom:10px}
+.detail-title{font-size:16px;font-weight:500;margin:0 0 10px;color:var(--text-primary)}
+.detail-section-label{font-size:12px;font-weight:500;color:var(--text-muted);margin:12px 0 4px}
+.detail-text{font-size:14px;line-height:1.6;color:var(--text-primary);margin:0}
+.detail-list{margin:4px 0 0;padding-left:18px;font-size:13px;line-height:1.6;color:var(--text-secondary)}
+.ask-btn{margin-top:14px;font-size:13px;padding:7px 14px;border-radius:var(--radius);border:1px solid var(--border);background:var(--surface-2);color:var(--text-primary);cursor:pointer}
+.ask-btn:hover{background:var(--surface-1)}
+.page-footer{margin-top:2.5rem;padding-top:1rem;border-top:1px solid var(--border);font-size:12px;color:var(--text-muted)}
+</style>
+</head>
+<body>
+<div class="page">
+<div class="page-header">
+<h1>Centerpost architecture</h1>
+<p>Client, front end, hosting, security, backend workers, data, and external services. Click any component for details.</p>
+</div>
+<h2 class="sr-only">Interactive diagram of Centerpost's architecture: the client, front end, hosting, security gate, backend workers, data layer, external services, cross-cutting security practices, and deploy pipeline. Click any component for details.</h2>
+<div class="legend">
+<div class="legend-item"><span class="legend-dot" style="background:var(--cp-structural-border)"></span>Core / process</div>
+<div class="legend-item"><span class="legend-dot" style="background:var(--cp-frontend-border)"></span>Front end</div>
+<div class="legend-item"><span class="legend-dot" style="background:var(--cp-hosting-border)"></span>Hosting & delivery</div>
+<div class="legend-item"><span class="legend-dot" style="background:var(--cp-security-border)"></span>Security</div>
+<div class="legend-item"><span class="legend-dot" style="background:var(--cp-backend-border)"></span>Backend worker</div>
+<div class="legend-item"><span class="legend-dot" style="background:var(--cp-data-border)"></span>Data storage</div>
+<div class="legend-item"><span class="legend-dot" style="background:var(--cp-external-border)"></span>External service</div>
+</div>
+<div class="lane">
+<p class="lane-label">Client</p>
+<div class="lane-grid">
+<button class="node-card" id="card-client-device" aria-pressed="true" style="background:var(--cp-structural-bg);border-color:var(--cp-structural-border)" onclick="showDetail('client-device')">
+<i class="ti ti-device-mobile" aria-hidden="true" style="color:var(--cp-structural-title)"></i>
+<span class="node-title" style="color:var(--cp-structural-title)">User's device</span>
+<span class="node-sub" style="color:var(--cp-structural-sub)">Browser or installed PWA</span>
+</button>
+</div>
+</div>
+<div class="flow-arrow"><i class="ti ti-chevron-down" aria-hidden="true"></i></div>
+<div class="lane">
+<p class="lane-label">Front end</p>
+<div class="lane-grid">
+<button class="node-card" id="card-app-shell" aria-pressed="false" style="background:var(--cp-frontend-bg);border-color:var(--cp-frontend-border)" onclick="showDetail('app-shell')">
+<i class="ti ti-browser" aria-hidden="true" style="color:var(--cp-frontend-title)"></i>
+<span class="node-title" style="color:var(--cp-frontend-title)">App shell</span>
+<span class="node-sub" style="color:var(--cp-frontend-sub)">React + Vite</span>
+</button>
+<button class="node-card" id="card-legacy-js" aria-pressed="false" style="background:var(--cp-frontend-bg);border-color:var(--cp-frontend-border)" onclick="showDetail('legacy-js')">
+<i class="ti ti-code" aria-hidden="true" style="color:var(--cp-frontend-title)"></i>
+<span class="node-title" style="color:var(--cp-frontend-title)">legacy.js</span>
+<span class="node-sub" style="color:var(--cp-frontend-sub)">Core app logic file</span>
+</button>
+<button class="node-card" id="card-service-worker" aria-pressed="false" style="background:var(--cp-frontend-bg);border-color:var(--cp-frontend-border)" onclick="showDetail('service-worker')">
+<i class="ti ti-refresh" aria-hidden="true" style="color:var(--cp-frontend-title)"></i>
+<span class="node-title" style="color:var(--cp-frontend-title)">Service worker</span>
+<span class="node-sub" style="color:var(--cp-frontend-sub)">Offline + auto-updates</span>
+</button>
+</div>
+</div>
+<div class="flow-arrow"><i class="ti ti-chevron-down" aria-hidden="true"></i></div>
+<div class="lane">
+<p class="lane-label">Hosting & delivery</p>
+<div class="lane-grid">
+<button class="node-card" id="card-github-pages" aria-pressed="false" style="background:var(--cp-hosting-bg);border-color:var(--cp-hosting-border)" onclick="showDetail('github-pages')">
+<i class="ti ti-brand-github" aria-hidden="true" style="color:var(--cp-hosting-title)"></i>
+<span class="node-title" style="color:var(--cp-hosting-title)">GitHub Pages</span>
+<span class="node-sub" style="color:var(--cp-hosting-sub)">Current static host</span>
+</button>
+<button class="node-card" id="card-cf-dns" aria-pressed="false" style="background:var(--cp-hosting-bg);border-color:var(--cp-hosting-border)" onclick="showDetail('cf-dns')">
+<i class="ti ti-world" aria-hidden="true" style="color:var(--cp-hosting-title)"></i>
+<span class="node-title" style="color:var(--cp-hosting-title)">Cloudflare DNS</span>
+<span class="node-sub" style="color:var(--cp-hosting-sub)">Domain + edge network</span>
+</button>
+<button class="node-card planned" id="card-cf-pages" aria-pressed="false" style="background:var(--cp-hosting-bg);border-color:var(--cp-hosting-border)" onclick="showDetail('cf-pages')">
+<i class="ti ti-cloud" aria-hidden="true" style="color:var(--cp-hosting-title)"></i>
+<span class="node-title" style="color:var(--cp-hosting-title)">Cloudflare Pages</span>
+<span class="node-sub" style="color:var(--cp-hosting-sub)">Future static host</span>
+<span class="node-tag">Planned</span>
+</button>
+</div>
+</div>
+<div class="flow-arrow"><i class="ti ti-chevron-down" aria-hidden="true"></i></div>
+<div class="lane">
+<p class="lane-label">Security gate</p>
+<div class="lane-grid">
+<button class="node-card" id="card-firebase-auth" aria-pressed="false" style="background:var(--cp-security-bg);border-color:var(--cp-security-border)" onclick="showDetail('firebase-auth')">
+<i class="ti ti-key" aria-hidden="true" style="color:var(--cp-security-title)"></i>
+<span class="node-title" style="color:var(--cp-security-title)">Firebase Authentication</span>
+<span class="node-sub" style="color:var(--cp-security-sub)">Sign-in & identity</span>
+</button>
+<button class="node-card" id="card-workers-entry" aria-pressed="false" style="background:var(--cp-security-bg);border-color:var(--cp-security-border)" onclick="showDetail('workers-entry')">
+<i class="ti ti-route" aria-hidden="true" style="color:var(--cp-security-title)"></i>
+<span class="node-title" style="color:var(--cp-security-title)">Cloudflare Workers</span>
+<span class="node-sub" style="color:var(--cp-security-sub)">Backend's entry point</span>
+</button>
+</div>
+</div>
+<div class="flow-arrow"><i class="ti ti-chevron-down" aria-hidden="true"></i></div>
+<div class="lane">
+<p class="lane-label">Backend workers</p>
+<div class="lane-grid">
+<button class="node-card" id="card-jarvis" aria-pressed="false" style="background:var(--cp-backend-bg);border-color:var(--cp-backend-border)" onclick="showDetail('jarvis')">
+<i class="ti ti-robot" aria-hidden="true" style="color:var(--cp-backend-title)"></i>
+<span class="node-title" style="color:var(--cp-backend-title)">Jarvis</span>
+<span class="node-sub" style="color:var(--cp-backend-sub)">AI request proxy</span>
+</button>
+<button class="node-card" id="card-guardian" aria-pressed="false" style="background:var(--cp-backend-bg);border-color:var(--cp-backend-border)" onclick="showDetail('guardian')">
+<i class="ti ti-shield-lock" aria-hidden="true" style="color:var(--cp-backend-title)"></i>
+<span class="node-title" style="color:var(--cp-backend-title)">Guardian</span>
+<span class="node-sub" style="color:var(--cp-backend-sub)">Behavioral sweep cron</span>
+</button>
+<button class="node-card" id="card-sentinel" aria-pressed="false" style="background:var(--cp-backend-bg);border-color:var(--cp-backend-border)" onclick="showDetail('sentinel')">
+<i class="ti ti-eye" aria-hidden="true" style="color:var(--cp-backend-title)"></i>
+<span class="node-title" style="color:var(--cp-backend-title)">Sentinel</span>
+<span class="node-sub" style="color:var(--cp-backend-sub)">Uptime monitoring</span>
+</button>
+<button class="node-card" id="card-pulse" aria-pressed="false" style="background:var(--cp-backend-bg);border-color:var(--cp-backend-border)" onclick="showDetail('pulse')">
+<i class="ti ti-activity" aria-hidden="true" style="color:var(--cp-backend-title)"></i>
+<span class="node-title" style="color:var(--cp-backend-title)">Pulse</span>
+<span class="node-sub" style="color:var(--cp-backend-sub)">Daily briefing email</span>
+</button>
+</div>
+</div>
+<div class="flow-arrow"><i class="ti ti-chevron-down" aria-hidden="true"></i></div>
+<div class="lane">
+<p class="lane-label">Data layer</p>
+<div class="lane-grid">
+<button class="node-card" id="card-firestore" aria-pressed="false" style="background:var(--cp-data-bg);border-color:var(--cp-data-border)" onclick="showDetail('firestore')">
+<i class="ti ti-database" aria-hidden="true" style="color:var(--cp-data-title)"></i>
+<span class="node-title" style="color:var(--cp-data-title)">Firestore</span>
+<span class="node-sub" style="color:var(--cp-data-sub)">User data storage</span>
+</button>
+<button class="node-card" id="card-cf-kv" aria-pressed="false" style="background:var(--cp-data-bg);border-color:var(--cp-data-border)" onclick="showDetail('cf-kv')">
+<i class="ti ti-bolt" aria-hidden="true" style="color:var(--cp-data-title)"></i>
+<span class="node-title" style="color:var(--cp-data-title)">Cloudflare KV</span>
+<span class="node-sub" style="color:var(--cp-data-sub)">Edge key-value store</span>
+</button>
+</div>
+</div>
+<div class="flow-arrow"><i class="ti ti-chevron-down" aria-hidden="true"></i></div>
+<div class="lane">
+<p class="lane-label">External services</p>
+<div class="lane-grid">
+<button class="node-card" id="card-anthropic" aria-pressed="false" style="background:var(--cp-external-bg);border-color:var(--cp-external-border)" onclick="showDetail('anthropic')">
+<i class="ti ti-cpu" aria-hidden="true" style="color:var(--cp-external-title)"></i>
+<span class="node-title" style="color:var(--cp-external-title)">Anthropic API</span>
+<span class="node-sub" style="color:var(--cp-external-sub)">Powers AI features</span>
+</button>
+<button class="node-card" id="card-sendgrid" aria-pressed="false" style="background:var(--cp-external-bg);border-color:var(--cp-external-border)" onclick="showDetail('sendgrid')">
+<i class="ti ti-mail" aria-hidden="true" style="color:var(--cp-external-title)"></i>
+<span class="node-title" style="color:var(--cp-external-title)">SendGrid</span>
+<span class="node-sub" style="color:var(--cp-external-sub)">Transactional email</span>
+</button>
+</div>
+</div>
+<hr class="divider"/>
+<div class="lane">
+<p class="lane-label">Security practices (cross-cutting)</p>
+<div class="lane-grid">
+<button class="node-card" id="card-token-verify" aria-pressed="false" style="background:var(--cp-security-bg);border-color:var(--cp-security-border)" onclick="showDetail('token-verify')">
+<i class="ti ti-shield-check" aria-hidden="true" style="color:var(--cp-security-title)"></i>
+<span class="node-title" style="color:var(--cp-security-title)">Token verification</span>
+<span class="node-sub" style="color:var(--cp-security-sub)">Checked on every request</span>
+</button>
+<button class="node-card" id="card-rate-limit" aria-pressed="false" style="background:var(--cp-security-bg);border-color:var(--cp-security-border)" onclick="showDetail('rate-limit')">
+<i class="ti ti-gauge" aria-hidden="true" style="color:var(--cp-security-title)"></i>
+<span class="node-title" style="color:var(--cp-security-title)">Rate limiting</span>
+<span class="node-sub" style="color:var(--cp-security-sub)">Caps abuse & cost</span>
+</button>
+<button class="node-card" id="card-tier-gate" aria-pressed="false" style="background:var(--cp-security-bg);border-color:var(--cp-security-border)" onclick="showDetail('tier-gate')">
+<i class="ti ti-filter" aria-hidden="true" style="color:var(--cp-security-title)"></i>
+<span class="node-title" style="color:var(--cp-security-title)">Tier gating</span>
+<span class="node-sub" style="color:var(--cp-security-sub)">Free vs. paid features</span>
+</button>
+<button class="node-card" id="card-sanitize" aria-pressed="false" style="background:var(--cp-security-bg);border-color:var(--cp-security-border)" onclick="showDetail('sanitize')">
+<i class="ti ti-scissors" aria-hidden="true" style="color:var(--cp-security-title)"></i>
+<span class="node-title" style="color:var(--cp-security-title)">Input sanitization</span>
+<span class="node-sub" style="color:var(--cp-security-sub)">Strips unsafe content</span>
+</button>
+<button class="node-card" id="card-secrets" aria-pressed="false" style="background:var(--cp-security-bg);border-color:var(--cp-security-border)" onclick="showDetail('secrets')">
+<i class="ti ti-lock" aria-hidden="true" style="color:var(--cp-security-title)"></i>
+<span class="node-title" style="color:var(--cp-security-title)">Secret management</span>
+<span class="node-sub" style="color:var(--cp-security-sub)">Keys never in code</span>
+</button>
+</div>
+</div>
+<hr class="divider"/>
+<div class="lane">
+<p class="lane-label">Deploy pipeline</p>
+<div class="pipeline-row">
+<button class="node-card" id="card-github-repo" aria-pressed="false" style="background:var(--cp-structural-bg);border-color:var(--cp-structural-border)" onclick="showDetail('github-repo')">
+<i class="ti ti-brand-github" aria-hidden="true" style="color:var(--cp-structural-title)"></i>
+<span class="node-title" style="color:var(--cp-structural-title)">GitHub</span>
+<span class="node-sub" style="color:var(--cp-structural-sub)">Version control, 2 repos</span>
+</button>
+<div class="pipeline-arrow"><i class="ti ti-arrow-right" aria-hidden="true"></i></div>
+<button class="node-card" id="card-gh-actions" aria-pressed="false" style="background:var(--cp-structural-bg);border-color:var(--cp-structural-border)" onclick="showDetail('gh-actions')">
+<i class="ti ti-checklist" aria-hidden="true" style="color:var(--cp-structural-title)"></i>
+<span class="node-title" style="color:var(--cp-structural-title)">GitHub Actions</span>
+<span class="node-sub" style="color:var(--cp-structural-sub)">Automated CI checks</span>
+</button>
+<div class="pipeline-arrow"><i class="ti ti-arrow-right" aria-hidden="true"></i></div>
+<button class="node-card" id="card-deploy" aria-pressed="false" style="background:var(--cp-structural-bg);border-color:var(--cp-structural-border)" onclick="showDetail('deploy')">
+<i class="ti ti-rocket" aria-hidden="true" style="color:var(--cp-structural-title)"></i>
+<span class="node-title" style="color:var(--cp-structural-title)">Deploy pipeline</span>
+<span class="node-sub" style="color:var(--cp-structural-sub)">make deploy, one command</span>
+</button>
+</div>
+</div>
+<div class="detail-panel" id="detail-panel" aria-live="polite">
+<span class="detail-badge" style="background:var(--cp-structural-bg);color:var(--cp-structural-title)">Core / process</span>
+<p class="detail-title">User's device</p>
+<p class="detail-section-label">What it is</p>
+<p class="detail-text">The phone, tablet, or laptop where Centerpost actually runs, either in a browser tab or as an installed PWA.</p>
+<p class="detail-section-label">Why it exists</p>
+<p class="detail-text">Centerpost is a Progressive Web App, so it reaches every platform from one codebase without needing App Store review to get started.</p>
+<p class="detail-section-label">General info</p>
+<ul class="detail-list"><li>Works on iOS, Android, and desktop browsers</li><li>A Capacitor.js path to native App Store listings has been evaluated for later</li></ul>
+</div>
+<div class="page-footer">Centerpost architecture map. Update this page when structural changes land — see CLAUDE.md.</div>
+</div>
+<script>
+var nodeData={
+"client-device":{cat:"structural",title:"User's device",what:"The phone, tablet, or laptop where Centerpost actually runs, either in a browser tab or as an installed PWA.",why:"Centerpost is a Progressive Web App, so it reaches every platform from one codebase without needing App Store review to get started.",info:["Works on iOS, Android, and desktop browsers","A Capacitor.js path to native App Store listings has been evaluated for later"]},
+"app-shell":{cat:"frontend",title:"App shell",what:"The visual interface, screens, buttons, and themes, built with React components and bundled by Vite.",why:"React's component model keeps the UI organized as Centerpost grows, and Vite gives fast local development plus a small production build.",info:["Migrated from a single index.html file to a modular structure","Includes theme variants such as Storm and Halloween"]},
+"legacy-js":{cat:"frontend",title:"legacy.js",what:"A large JavaScript file holding most of the app's day-to-day logic, including tasks, projects, journal, and AI features.",why:"A deliberate bridge pattern: the original logic stays in one file while the surrounding shell modernizes to React and Vite, avoiding an all-at-once rewrite.",info:["Around 10,000 lines","Functions are gradually extracted into smaller modules as features are touched"]},
+"service-worker":{cat:"frontend",title:"Service worker",what:"A background script that caches the app's files so it works offline and loads instantly on repeat visits.",why:"PWAs need this to feel like a native app: instant load, offline support, and controlled updates.",info:["Cache version is auto-stamped with the git commit SHA on every build","Ensures users get the latest version instead of a stale cached copy"]},
+"github-pages":{cat:"hosting",title:"GitHub Pages",what:"A free static file host that serves the built app files to every visitor's browser.",why:"Zero-cost, zero-maintenance hosting for a static PWA, with no servers to patch or pay for.",info:["Backed by Fastly's CDN","Can't set custom HTTP security headers, a known limitation"]},
+"cf-dns":{cat:"hosting",title:"Cloudflare DNS",what:"The service that points centerpost.app at the right servers and manages domain records.",why:"Cloudflare is also where the backend Workers live, so keeping DNS there keeps everything in one dashboard.",info:["Domain registered via Cloudflare","Also hosts the Workers and KV storage described below"]},
+"cf-pages":{cat:"hosting",title:"Cloudflare Pages",what:"Cloudflare's own static hosting product, a drop-in replacement for GitHub Pages.",why:"Unlike GitHub Pages, it can send custom security headers and gives free preview deployments per branch.",info:["Identified as a near-term upgrade","Status: planned, not yet live"]},
+"firebase-auth":{cat:"security",title:"Firebase Authentication",what:"Handles user sign-in and issues a signed ID token proving who someone is.",why:"Firebase Auth is a proven, managed service that plugs directly into the rest of the Firebase and Google Cloud stack already in use.",info:["Every request to the Workers carries this token","Anonymous sign-in exists in one place worth tightening"]},
+"workers-entry":{cat:"security",title:"Cloudflare Workers",what:"The layer that receives every request headed for backend logic, running at Cloudflare's edge close to the user.",why:"Acts as the single door into the backend, checking tokens, applying rate limits, and routing, without a separate paid API gateway product.",info:["Four purpose-built Workers sit behind this door","Jarvis, Guardian, Sentinel, and Pulse"]},
+"jarvis":{cat:"backend",title:"Jarvis",what:"The Worker that receives AI-feature requests from the app and forwards them to Anthropic's API.",why:"Keeps the AI provider's API key on the server, never in the browser, where anyone could extract and misuse it.",info:["Verifies Firebase ID tokens via Google's JWKs","Rate limit: 20 requests per 60 seconds per user, tracked in Cloudflare KV"]},
+"guardian":{cat:"backend",title:"Guardian",what:"A Worker that runs a daily behavioral-monitoring sweep looking for unusual account or usage patterns.",why:"An early-warning system for abuse patterns before they become a bigger problem.",info:["Runs daily at 10:15 UTC","/security-sweep emails an alert; /security-sweep-data returns the same data to the ops console without emailing"]},
+"sentinel":{cat:"backend",title:"Sentinel",what:"A Worker that checks whether Centerpost's services are up and reachable.",why:"Downtime you don't know about is worse than downtime you do; an active check catches an outage before a user has to tell you.",info:["Sends SMS alerts via Twilio when something goes down"]},
+"pulse":{cat:"backend",title:"Pulse",what:"A Worker that sends a daily briefing email each morning.",why:"A regular at-a-glance check-in on the system, without having to open the ops console every day.",info:["Delivered via SendGrid on its own daily schedule"]},
+"firestore":{cat:"data",title:"Firestore",what:"A NoSQL cloud database that stores each user's tasks, projects, journal entries, and settings.",why:"Firestore syncs data across a user's devices automatically and pairs naturally with Firebase Authentication.",info:["Documents cap out at 1MB","Capping unbounded arrays before anyone hits that ceiling is a known follow-up"]},
+"cf-kv":{cat:"data",title:"Cloudflare KV",what:"A fast key-value store living at Cloudflare's edge, right next to the Workers.",why:"Used for anything that needs a millisecond read during a request, like counting how many times a user has called the AI this hour.",info:["Backs Jarvis's per-user rate-limit counter (20 requests / 60 seconds)"]},
+"anthropic":{cat:"external",title:"Anthropic API",what:"The AI model that powers Centerpost's AI-driven features, like task breakdowns and chat-style assistance.",why:"Building and hosting a comparable model in-house isn't realistic for a solo founder; an API lets Centerpost focus on the product experience.",info:["Called only from the Jarvis Worker","The API key never leaves the server"]},
+"sendgrid":{cat:"external",title:"SendGrid",what:"A transactional email service used to send account and alert emails.",why:"Reliable delivery is hard to build from scratch, since it depends on spam filters and sender reputation; SendGrid specializes in exactly this.",info:["Sends from alerts@centerpost.app","Domain authentication (SPF, DKIM, DMARC) is an open item"]},
+"token-verify":{cat:"security",title:"Token verification",what:"Every Worker checks the caller's Firebase ID token before doing anything else.",why:"Without this, anyone could call the backend directly and bypass the app entirely.",info:["The first check on every backend request"]},
+"rate-limit":{cat:"security",title:"Rate limiting",what:"Cloudflare KV counters cap how many requests, especially AI calls, a single user can make in a given window.",why:"Protects both cost, since each AI call has a price, and fair use, so one account can't starve everyone else.",info:["Paired with a planned account-wide AI budget cap as a second layer"]},
+"tier-gate":{cat:"security",title:"Tier gating",what:"Logic that decides which features a free versus a paid account can use.",why:"This is what will separate paying customers from free users once billing goes live.",info:["Recently changed to default to the free tier rather than full access","Real enforcement needs to live on the Worker, not the browser"]},
+"sanitize":{cat:"security",title:"Input sanitization",what:"Anything a user, or the AI, types that later gets displayed back is cleaned before it's inserted into the page.",why:"Prevents a malicious bit of text from running as code in another user's browser, a class of attack called XSS.",info:["Rich-text notes pass through an allow-list sanitizer on save and on display"]},
+"secrets":{cat:"security",title:"Secret management",what:"API keys and credentials are stored as encrypted secrets on Cloudflare, never committed to code.",why:"A past incident with an exposed key shaped this discipline; leaked keys are one of the most common real-world breaches.",info:["Paired with automated secret-scanning in CI on every code change"]},
+"github-repo":{cat:"structural",title:"GitHub",what:"Where all the code lives, and every change is tracked, across two repositories.",why:"Standard practice for tracking history, reviewing changes, and collaborating, even solo, it's a safety net.",info:["Public productivity-dashboard repo holds the front end","Private centerpost-workers repo holds the backend Workers"]},
+"gh-actions":{cat:"structural",title:"GitHub Actions",what:"Automated checks that run on every code push: scanning for secrets, checking dependencies, and verifying the app builds.",why:"Catches mistakes before they reach real users instead of after.",info:["Runs TruffleHog, npm audit, a hardcoded-secret scan, and a production build check"]},
+"deploy":{cat:"structural",title:"Deploy pipeline",what:"A single command that builds the app, stamps the service worker with the current commit, and publishes the result.",why:"Makes deployment a repeatable, one-line action instead of a manual, mistake-prone process.",info:["Runs vite build, then stamp-sw.js, then publishes to GitHub Pages"]}
+};
+var catLabels={structural:"Core / process",frontend:"Front end",hosting:"Hosting & delivery",security:"Security",backend:"Backend worker",data:"Data storage",external:"External service"};
+function showDetail(id){
+var n=nodeData[id];
+if(!n)return;
+var cards=document.querySelectorAll(".node-card");
+for(var i=0;i<cards.length;i++){cards[i].setAttribute("aria-pressed",cards[i].id==="card-"+id?"true":"false");}
+var bg="var(--cp-"+n.cat+"-bg)";
+var tt="var(--cp-"+n.cat+"-title)";
+var infoHtml="";
+for(var j=0;j<n.info.length;j++){infoHtml+="<li>"+n.info[j]+"</li>";}
+document.getElementById("detail-panel").innerHTML=
+'<span class="detail-badge" style="background:'+bg+';color:'+tt+'">'+catLabels[n.cat]+'</span>'+
+'<p class="detail-title">'+n.title+'</p>'+
+'<p class="detail-section-label">What it is</p><p class="detail-text">'+n.what+'</p>'+
+'<p class="detail-section-label">Why it exists</p><p class="detail-text">'+n.why+'</p>'+
+'<p class="detail-section-label">General info</p><ul class="detail-list">'+infoHtml+'</ul>';
+}
+</script>
+</body>
+</html>
