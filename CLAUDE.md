@@ -27,6 +27,14 @@ Two repos:
   - centerpost-sentinel — uptime monitoring, Twilio SMS alerts.
   - centerpost-pulse    — daily briefing emails via SendGrid.
 - Auth + data: Firebase Auth + Firestore.
+- public/architecture.html is a self-contained interactive map of the whole
+  system (front end, hosting, Workers, data, security practices, deploy
+  pipeline) — linked from the ops console header. When a change here adds,
+  removes, or repurposes a structural component (a new Worker, a hosting
+  move, a new external service, a changed data store, a new security
+  control), update the matching card's what/why/info in that file's
+  nodeData object in the same PR. Skip it for routine feature work that
+  doesn't change the shape of the system.
 
 ## Build / test / deploy
 - Dev server (Vite + HMR):  make dev     -> npx vite
