@@ -2464,6 +2464,17 @@ function _mdInline(t){
   return t;
 }
 
+// Guards the notes list against being rebuilt out from under an open editor.
+// The Firestore realtime listener re-renders every panel on each snapshot
+// (including our own saves), so a snapshot landing mid-edit would wipe the
+// contenteditable the user is typing into. renderNotes() defers while a note
+// editor holds focus; toggleNoteEdit() flushes the deferred render on close.
+var _notesRenderPending=false;
+function _noteEditorFocused(){
+  var ae=document.activeElement;
+  return !!(ae&&ae.classList&&ae.classList.contains('note-body-edit'));
+}
+
 // Toggle a single note between rendered view and rich edit mode
 function toggleNoteEdit(id){
   var rendered = document.getElementById('nbr_'+id);
@@ -2480,6 +2491,11 @@ function toggleNoteEdit(id){
     editor.style.display='none';
     if(bar) bar.style.display='none';
     if(toggle) toggle.innerHTML='<i class="ti ti-pencil" aria-hidden="true"></i>Edit';
+    // Editing finished -- release focus (so the deferred-render guard clears),
+    // then run any list rebuild that was deferred while the editor was open so
+    // remote changes that arrived mid-edit now show.
+    editor.blur();
+    if(_notesRenderPending) renderNotes();
   } else {
     if(rendered) rendered.style.display='none';
     editor.style.display='';
@@ -2680,7 +2696,14 @@ function openProjMultiPicker(ev,picker){
   },10);
 }
 
-function renderNotes(){if(_migrateNotesRich())save();
+function renderNotes(){
+  // Defer the rebuild while a note editor has focus -- reassigning the list's
+  // innerHTML below would destroy the open contenteditable and drop the
+  // user's in-progress edit. The edit's own save + snapshot (or the flush in
+  // toggleNoteEdit) re-renders once editing ends.
+  if(_noteEditorFocused()){ _notesRenderPending=true; return; }
+  _notesRenderPending=false;
+  if(_migrateNotesRich())save();
   updateNoteSelectors();
   const el=document.getElementById('notesList');
   const filter=document.getElementById('noteFilterProj').value;
