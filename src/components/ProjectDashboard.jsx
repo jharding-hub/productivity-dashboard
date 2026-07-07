@@ -444,7 +444,6 @@ export default function ProjectDashboard({ open, onClose }) {
   const [newTaskTime, setNewTaskTime] = useState('');
   const [newNoteName, setNewNoteName] = useState('');
   const [scheduleFor, setScheduleFor] = useState(null);
-  const [expandedNotes, setExpandedNotes] = useState(new Set());
   const taskInputRef = useRef(null);
   const noteEditorRef = useRef(null);
   const { clock } = useClock();
@@ -570,6 +569,23 @@ export default function ProjectDashboard({ open, onClose }) {
     setNewNoteName('');
     if (ed) ed.innerHTML = '';
     save(); refresh(); syncLegacy();
+  };
+
+  // Existing notes open in the full Notes editor (the dedicated panel) rather
+  // than an inline read-only preview: close this overlay, open the Notes panel,
+  // and drop straight into that note's rich editor, scrolled into view. Runs on
+  // a macrotask so this overlay unmounts first and the two never overlap.
+  const openNoteInEditor = (noteId) => {
+    onClose();
+    setTimeout(() => {
+      if (typeof window.openPanelOverlay === 'function') window.openPanelOverlay('notes');
+      const editor = document.getElementById('nb_' + noteId);
+      if (editor && editor.style.display === 'none' && typeof window.toggleNoteEdit === 'function') {
+        window.toggleNoteEdit(noteId);
+      }
+      const target = document.getElementById('nb_' + noteId) || document.getElementById('nbr_' + noteId);
+      if (target && target.scrollIntoView) target.scrollIntoView({ block: 'center' });
+    }, 0);
   };
 
   return (
@@ -837,50 +853,30 @@ export default function ProjectDashboard({ open, onClose }) {
                     No notes yet
                   </div>
                 )}
-                {allNotes.map(n => {
-                  const isOpen = expandedNotes.has(n.id);
-                  return (
-                    <div key={n.id} style={{
+                {allNotes.map(n => (
+                  <div key={n.id}
+                    onClick={() => openNoteInEditor(n.id)}
+                    title="Open in the Notes editor"
+                    style={{
                       marginBottom: 6,
                       background: 'var(--surface-raised)', border: '1px solid var(--border)',
                       borderRadius: 'var(--radius-sm)', overflow: 'hidden',
+                      cursor: 'pointer',
                     }}>
-                      <div
-                        onClick={() => setExpandedNotes(prev => {
-                          const next = new Set(prev);
-                          next.has(n.id) ? next.delete(n.id) : next.add(n.id);
-                          return next;
-                        })}
-                        style={{
-                          display: 'flex', alignItems: 'center', gap: 6,
-                          padding: '8px 14px', cursor: 'pointer', userSelect: 'none',
-                        }}
-                      >
-                        <span style={{ fontSize: 11, color: 'var(--text-faint)', width: 12, textAlign: 'center' }}>
-                          {isOpen ? '▾' : '▸'}
-                        </span>
-                        <span style={{ fontSize: 13, fontWeight: 600, flex: 1, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
-                          {n.label || 'Note'}
-                        </span>
-                        <span style={{ fontSize: 10, color: 'var(--text-faint)', flexShrink: 0 }}>
-                          {n.date && fmtDate(n.date)}{n.time ? ` · ${n.time}` : ''}
-                        </span>
-                      </div>
-                      {isOpen && n.body && (
-                        <div className="note-editable" style={{
-                          fontSize: 12, color: 'var(--text-dim)', lineHeight: 1.6,
-                          wordBreak: 'break-word', border: 'none', padding: '0 14px 10px 32px',
-                          minHeight: 'auto', background: 'transparent',
-                        }}
-                        dangerouslySetInnerHTML={
-                          n.body.includes('<') ? { __html: n.body } : undefined
-                        }
-                        children={n.body.includes('<') ? undefined : n.body}
-                        />
-                      )}
+                    <div style={{
+                      display: 'flex', alignItems: 'center', gap: 6,
+                      padding: '8px 14px', userSelect: 'none',
+                    }}>
+                      <span style={{ fontSize: 13, fontWeight: 600, flex: 1, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                        {n.label || 'Note'}
+                      </span>
+                      <span style={{ fontSize: 10, color: 'var(--text-faint)', flexShrink: 0 }}>
+                        {n.date && fmtDate(n.date)}{n.time ? ` · ${n.time}` : ''}
+                      </span>
+                      <i className="ti ti-pencil" aria-hidden="true" style={{ fontSize: 13, color: 'var(--text-faint)', flexShrink: 0 }} />
                     </div>
-                  );
-                })}
+                  </div>
+                ))}
               </div>
             </div>
           </>

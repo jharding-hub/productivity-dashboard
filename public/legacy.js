@@ -4056,8 +4056,12 @@ function openPanelOverlay(panelKey){
   placeholder.style.display='none';
   panel.parentNode.insertBefore(placeholder,panel);
   
-  // Remove tile mode while in overlay (so all content is visible)
+  // Remove tile mode while in overlay (so all content is visible). Also clear
+  // user-hidden: a panel can be opened here even when disabled in Settings
+  // (e.g. jumping to a note from the project view), and the overlay must show
+  // it. closePanelOverlay() re-applies Settings visibility when it moves back.
   panel.classList.remove('panel-tile');
+  panel.classList.remove('user-hidden');
   body.appendChild(panel);
   
   overlay.classList.add('open');
@@ -4084,8 +4088,11 @@ function closePanelOverlay(){
     panel.classList.add('panel-tile');
     placeholder.parentNode.insertBefore(panel,placeholder);
     placeholder.parentNode.removeChild(placeholder);
+    // Re-apply Settings visibility -- the panel may have been force-shown in
+    // the overlay while disabled (see openPanelOverlay).
+    if(typeof applyPanelVisibility==='function')applyPanelVisibility();
   }
-  
+
   if(overlay)overlay.classList.remove('open');
   _panelOverlayCurrent=null;
   
