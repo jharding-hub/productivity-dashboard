@@ -20,7 +20,7 @@
 //   short hash. Never edit it by hand — run `make build` instead.
 // ═══════════════════════════════════════════════════════════════════════
 
-const CACHE_VERSION = 'centerpost-7184a3d';
+const CACHE_VERSION = 'centerpost-af30923';
 
 // Assets to pre-cache on install (offline-ready essentials).
 // Failures are tolerated individually — one missing icon won't break install.
