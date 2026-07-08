@@ -825,10 +825,16 @@ function startRealtimeSync(){
       const localRoutineReset=state.lastRoutineReset;
       const localRoutines=JSON.parse(JSON.stringify(state.routines||{}));
       const localUpdatedAt=state._updatedAt||0;
+      const localPoints=JSON.parse(JSON.stringify(state.points||{}));
       state={...state,...cloud};
       // E-1: keep the newest stamp -- local unsaved edits may be newer than
       // the cloud doc this snapshot delivered.
       state._updatedAt=Math.max(localUpdatedAt,cloud._updatedAt||0);
+      // Points: a snapshot older than our last local edit (e.g. it landed
+      // before the debounced save() from completing a task committed) would
+      // otherwise silently revert state.points to the pre-increment cloud
+      // value -- and the next save() would persist that reverted total.
+      if(localUpdatedAt>(cloud._updatedAt||0))state.points=localPoints;
       state.focusMode=localFocusMode;
       if(localSavedVis)state._savedPanelVis=localSavedVis;else delete state._savedPanelVis;
       state.visiblePanels=Object.assign({},cloud.visiblePanels||{},localVP);
