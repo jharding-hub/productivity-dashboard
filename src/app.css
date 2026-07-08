@@ -742,8 +742,11 @@ body[data-theme="storm-dark"] .day-progress-elapsed{
   .header .day-progress-marker[style*="left:73.33%"] .day-progress-marker-label{
     display:block !important;font-size:9px !important;top:1px !important;font-weight:600 !important;
   }
-  /* Row 2: points badge on left, mobile title + clock on right */
-  .header > .points-wrap{
+  /* Row 2: points badge on left, timer on right. The badge renders inside
+     the #points-focus-music-root React mount, so the order rule must target
+     that header child — .points-wrap is nested one level down and never
+     matched, which left the badge stranded above the banner. */
+  .header > #points-focus-music-root{
     order:2 !important;
     flex:0 0 auto !important;
     padding-left:14px !important;
