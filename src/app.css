@@ -726,9 +726,11 @@ body[data-theme="storm-dark"] .day-progress-elapsed{
     height:48px !important;
     margin:0 !important;
   }
-  /* HIDE the absolute-positioned title/subtitle overlays on mobile entirely.
-     They're built around desktop bar dimensions and overlap badly at <430px. */
-  .header .header-title-on-bar,
+  /* Title lives ON the bar (scaled down from the 41px desktop treatment);
+     the subtitle stays hidden — no room for it at <430px. */
+  .header .header-title-on-bar{
+    font-size:20px !important;
+  }
   .header .header-subtitle{
     display:none !important;
   }
@@ -756,17 +758,9 @@ body[data-theme="storm-dark"] .day-progress-elapsed{
     gap:14px !important;
     padding-right:14px !important;
   }
-  /* Mobile-only inline title shown in row 2 next to the clock */
-  .mobile-only-title{
-    display:flex !important;
-    flex-direction:column;
-    align-items:flex-end;
-    gap:1px;
-    line-height:1;
-    font-family:'Fraunces',serif;
-  }
-  .mobile-only-title .mt-name{font-size:18px;font-weight:700;color:var(--text);letter-spacing:0.3px;}
-  .mobile-only-title .mt-sub{font-size:11px;font-weight:500;color:var(--text-dim);font-style:italic;}
+  /* Row-2 inline title retired — the wordmark now sits on the bar itself,
+     so row 2 is just points (left) and timer (right). */
+  .mobile-only-title{display:none !important;}
   .header-clock-wrap{margin:0 !important;display:none !important;}
   .header-clock{font-size:22px !important;font-weight:700 !important;}
   .task-timer-wrap{display:none !important;}
