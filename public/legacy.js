@@ -2888,13 +2888,9 @@ function showMobileHome(){
 
 function showMobilePanel(panelId){
   if(!_isMobile()){return;}
-  // Hide home, show back bar
+  // Hide home; the banner stays as the top chrome (back bar retired)
   document.getElementById('mobileHome').classList.remove('active');
-  document.getElementById('mobileBackBar').classList.add('active');
   document.querySelector('.app-wrap').classList.add('panel-open');
-  // Hide header on mobile (back bar replaces it)
-  var hdr=document.querySelector('.header');
-  if(hdr)hdr.classList.remove('mobile-visible');
   // Show requested panel
   document.querySelectorAll('.panel').forEach(function(p){p.classList.remove('mobile-visible');});
   var target=document.querySelector('.panel[data-panel="'+panelId+'"]')
@@ -2904,13 +2900,6 @@ function showMobilePanel(panelId){
     // Slide in from the right; class removed after the animation so it can replay
     target.classList.add('mobile-panel-enter');
     setTimeout(function(){target.classList.remove('mobile-panel-enter');},350);
-    // Update back bar label
-    var tile=MOBILE_PANELS.find(function(p){return p.id===panelId;});
-    var backBar=document.getElementById('mobileBackBar');
-    if(backBar&&tile){
-      backBar.querySelector('.mobile-back-btn').textContent='';
-      backBar.querySelector('.mobile-back-btn').innerHTML='&#8249; '+tile.label;
-    }
     // Scroll to top
     window.scrollTo(0,0);
   }

@@ -2126,9 +2126,10 @@ body[data-theme="storm-dark"] .tl-hour-label{
      handler in legacy.js watches horizontal movement. */
   .panel.mobile-visible{touch-action:pan-y;}
   .panel.mobile-visible.mobile-panel-enter{animation:mobilePanelSlideIn 0.28s cubic-bezier(0.32,0.72,0,1) both;}
-  .mobile-back-bar.active{display:flex;align-items:center;}
-  /* Panel content pushed below back bar when shown */
-  .app-wrap.panel-open{padding-top:52px;}
+  /* Back bar retired: the banner is the single top chrome on open panels,
+     exactly like the home screen, so it clears the notch identically instead
+     of a second fixed bar fighting the sticky header. Back = swipe-right. */
+  .mobile-back-bar{display:none !important;}
   .header{display:none;}
   .header.mobile-visible{display:grid;}
 }
@@ -2141,9 +2142,12 @@ body[data-theme="storm-dark"] .tl-hour-label{
 }
 /* ── Mobile: fit panels to screen width (vertical scroll only) + clear camera notch ── */
 @media(max-width:768px){
-  /* Keep everything within the device width; the only scrolling is vertical */
-  html{overflow-x:hidden;}
-  body{max-width:100%;padding-top:0 !important;}
+  /* Lock horizontal scroll from the first paint (pure CSS, no JS gate) so it
+     can't briefly rubber-band sideways before a panel is opened. clip (not
+     hidden) leaves the sticky header working; overscroll-behavior-x kills the
+     elastic side-bounce even if something transiently overflows. */
+  html{overflow-x:clip;overscroll-behavior-x:none;}
+  body{max-width:100%;padding-top:0 !important;overflow-x:clip;overscroll-behavior-x:none;}
   .dashboard{overflow-x:clip;max-width:100%;}
   /* Single-column panels: allow them to shrink to the column instead of
      spilling past the screen edge (grid items default to min-width:auto). */
