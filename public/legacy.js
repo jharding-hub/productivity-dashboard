@@ -2901,6 +2901,9 @@ function showMobilePanel(panelId){
            ||document.querySelector('.panel[data-nav="'+panelId+'"]');
   if(target&&!target.classList.contains('hidden-panel')&&!target.classList.contains('user-hidden')){
     target.classList.add('mobile-visible');
+    // Slide in from the right; class removed after the animation so it can replay
+    target.classList.add('mobile-panel-enter');
+    setTimeout(function(){target.classList.remove('mobile-panel-enter');},350);
     // Update back bar label
     var tile=MOBILE_PANELS.find(function(p){return p.id===panelId;});
     var backBar=document.getElementById('mobileBackBar');
@@ -2912,6 +2915,47 @@ function showMobilePanel(panelId){
     window.scrollTo(0,0);
   }
 }
+
+// Swipe right on an open mobile panel to go back home. Direction-locked so
+// vertical scrolling is untouched; drags starting on horizontally-draggable
+// elements (timeline/banner blocks) or form fields are left alone.
+(function(){
+  if(!('ontouchstart' in window))return;
+  var startX=0,startY=0,dx=0,tracking=false,horizontal=null,panel=null;
+  document.addEventListener('touchstart',function(e){
+    if(!_isMobile())return;
+    var wrap=document.querySelector('.app-wrap');
+    if(!wrap||!wrap.classList.contains('panel-open'))return;
+    if(e.touches.length!==1)return;
+    var t=e.target;
+    if(t.closest&&t.closest('.tl-block,.dpb-block,input,textarea,select'))return;
+    panel=document.querySelector('.panel.mobile-visible');
+    if(!panel)return;
+    startX=e.touches[0].clientX;startY=e.touches[0].clientY;
+    dx=0;horizontal=null;tracking=true;
+  },{passive:true});
+  document.addEventListener('touchmove',function(e){
+    if(!tracking||!panel)return;
+    var cx=e.touches[0].clientX-startX,cy=e.touches[0].clientY-startY;
+    if(horizontal===null){
+      if(Math.abs(cx)<10&&Math.abs(cy)<10)return;
+      horizontal=Math.abs(cx)>Math.abs(cy);
+    }
+    if(!horizontal)return;
+    dx=Math.max(0,cx);
+    panel.style.transition='none';
+    panel.style.transform='translateX('+dx+'px)';
+  },{passive:true});
+  function endSwipe(){
+    if(!tracking||!panel)return;
+    panel.style.transition='';
+    panel.style.transform='';
+    if(horizontal&&dx>70)showMobileHome();
+    tracking=false;horizontal=null;dx=0;panel=null;
+  }
+  document.addEventListener('touchend',endSwipe,{passive:true});
+  document.addEventListener('touchcancel',endSwipe,{passive:true});
+})();
 
 // On resize: if going to desktop, clean up mobile state
 window.addEventListener('resize',function(){
