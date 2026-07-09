@@ -784,9 +784,11 @@ body[data-theme="storm-dark"] .day-progress-elapsed{
 .lock-btn{background:none;border:1px solid var(--border);color:var(--text);padding:6px 10px;border-radius:var(--radius-sm);cursor:pointer;font-size:12px;font-family:inherit;transition:all 0.15s;min-height:40px;}
 .lock-btn:hover{border-color:var(--accent-dim);color:var(--accent);}
 .lock-btn.unlocked{background:var(--accent-glow);color:var(--accent);border-color:var(--accent-dim);}
-/* MOBILE NAV — hidden on desktop, home tile grid on mobile */
+/* MOBILE NAV — hidden on desktop, home nav-row stack on mobile.
+   The home sits in normal flow below the sticky header (banner + points/timer),
+   so the header owns the notch clearance and the page scrolls as one. */
 .nav-tabs{display:none;}
-.mobile-home{display:none;position:fixed;inset:0;top:0;bottom:0;z-index:50;background:var(--bg);overflow-y:auto;padding:max(env(safe-area-inset-top),50px) 14px calc(env(safe-area-inset-bottom)+14px);overscroll-behavior-y:contain;}
+.mobile-home{display:none;background:var(--bg);padding:6px 14px calc(env(safe-area-inset-bottom)+90px);}
 
 /* ═══ PULL-TO-REFRESH ═══ */
 .ptr-indicator{
@@ -819,59 +821,37 @@ body[data-theme="storm-dark"] .day-progress-elapsed{
   to{transform:rotate(360deg);}
 }
 
-/* Mobile home header — banner-style title with gradient bar.
-   max() guarantees a minimum even if iOS reports 0 for safe-area in standalone mode,
-   which is a known iOS PWA bug when status-bar-style is black-translucent. */
-.mobile-home-header{
-  display:flex;flex-direction:column;align-items:center;gap:4px;
-  margin-bottom:18px;
-  padding-top:max(env(safe-area-inset-top),20px);
-  padding-bottom:14px;border-bottom:1px solid var(--border);
-}
+/* Mobile home header — retired; the banner above carries the wordmark now.
+   Markup stays (mobileHomeClock is still updated by updateClock). */
+.mobile-home-header{display:none;}
 
-/* Standalone PWA mode: extra clearance for notched devices that don't report safe-area properly */
-body.standalone-pwa .mobile-home{padding-top:max(env(safe-area-inset-top),60px);}
-body.standalone-pwa .mobile-home-header{padding-top:max(env(safe-area-inset-top),30px);}
-.mobile-home-title{
-  font-family:'Fraunces',serif;font-size:34px;font-weight:700;
-  color:var(--accent);letter-spacing:-0.5px;line-height:1;
+/* Mobile nav rows — full-width rungs hanging off a spine */
+.mobile-panel-grid{position:relative;display:flex;flex-direction:column;gap:9px;padding-left:18px;}
+.mobile-panel-grid::before{
+  content:'';position:absolute;left:3px;top:6px;bottom:6px;width:2px;
+  background:var(--accent);opacity:0.35;border-radius:1px;
 }
-.mobile-home-subtitle{
-  font-family:'Fraunces',serif;font-size:13px;font-weight:400;
-  color:var(--text-dim);letter-spacing:2.5px;text-transform:uppercase;
-  line-height:1;
-}
-.mobile-home-meta{
-  display:flex;align-items:center;justify-content:center;gap:14px;
-  margin-top:8px;font-size:12px;color:var(--text-dim);
-}
-.mobile-home-meta .mhm-time{font-variant-numeric:tabular-nums;font-weight:600;}
-
-/* Mobile panel tiles — uniform sizing */
-.mobile-panel-grid{display:grid;grid-template-columns:1fr 1fr;gap:12px;}
-.mobile-panel-tile{
-  display:flex;flex-direction:column;align-items:center;justify-content:center;
-  gap:8px;padding:18px 12px;
+.mobile-nav-row{
+  position:relative;display:flex;align-items:center;gap:12px;width:100%;
+  padding:13px 14px;
   background:var(--surface);border:1.5px solid var(--border);
-  border-radius:var(--radius);cursor:pointer;text-align:center;
-  transition:all 0.15s;
-  height:108px;min-height:108px;max-height:108px;
-  position:relative;-webkit-tap-highlight-color:transparent;
-  box-sizing:border-box;overflow:hidden;
+  border-radius:0 12px 12px 0;cursor:pointer;text-align:left;
+  font-family:inherit;color:var(--text);
+  -webkit-tap-highlight-color:transparent;
+  transition:transform 0.12s,border-color 0.15s,background 0.15s;
 }
-.mobile-panel-tile:active{transform:scale(0.96);border-color:var(--accent-dim);background:var(--accent-glow);}
-.mobile-panel-tile .mpt-icon{font-size:30px;line-height:1;display:flex;align-items:center;justify-content:center;}
-.mobile-panel-tile .mpt-icon .ti{font-size:30px;font-style:normal;color:var(--text-dim);}
-.mobile-panel-tile .mpt-label{font-size:13px;font-weight:700;color:var(--text);letter-spacing:0.2px;line-height:1.15;}
-.mobile-panel-tile .mpt-badge{position:absolute;top:8px;right:8px;background:var(--accent);color:var(--bg);font-size:10px;font-weight:700;padding:2px 7px;border-radius:4px;min-width:20px;text-align:center;display:none;}
-.mobile-panel-tile .mpt-badge.visible{display:block;}
-/* Toolkit tile — same dimensions as the rest, not a wide exception */
-.mobile-panel-tile.toolkit-tile{
-  grid-column:auto;flex-direction:column;
-  height:108px;min-height:108px;max-height:108px;
-  padding:18px 12px;gap:8px;
+.mobile-nav-row::before{
+  content:'';position:absolute;left:-19px;top:50%;width:8px;height:8px;
+  margin-top:-4px;border-radius:50%;background:var(--accent);
 }
-.mobile-panel-tile.toolkit-tile .mpt-icon{font-size:30px;}
+.mobile-nav-row:active{transform:scale(0.98);border-color:var(--accent-dim);background:var(--accent-glow);}
+.mobile-nav-row .mnr-icon{display:flex;align-items:center;justify-content:center;width:22px;flex-shrink:0;}
+.mobile-nav-row .mnr-icon .ti{font-size:20px;font-style:normal;color:var(--text-dim);}
+.mobile-nav-row .mnr-label{flex:1;font-size:15px;font-weight:600;letter-spacing:0.2px;}
+.mobile-nav-row .mnr-badge{
+  background:var(--accent);color:var(--bg);font-size:11px;font-weight:700;
+  padding:2px 8px;border-radius:5px;min-width:22px;text-align:center;flex-shrink:0;
+}
 .mobile-back-bar{display:none;position:fixed;top:0;left:0;right:0;z-index:60;background:var(--surface);border-bottom:1px solid var(--border);padding:10px 16px calc(10px + env(safe-area-inset-top));padding-top:calc(10px + env(safe-area-inset-top));}
 .mobile-back-btn{display:flex;align-items:center;gap:8px;background:none;border:none;color:var(--accent);font-size:15px;font-weight:600;font-family:inherit;cursor:pointer;padding:0;}
 .mobile-back-btn::before{content:'‹';font-size:22px;line-height:1;}
@@ -2106,7 +2086,10 @@ body[data-theme="storm-dark"] .tl-hour-label{
 @media(max-width:768px){
   .dashboard{grid-template-columns:1fr;padding:12px 14px 16px;gap:12px;}
   /* Header padding/min-height handled by the layout block above; don't re-add here */
-  .panel{display:none;}
+  /* :not(.mobile-visible) keeps specificity at 0-2-0 so this outranks the
+     desktop .panel.panel-tile{display:flex} rule — a plain .panel loses to it
+     and tile-mode panels (projects/tasks/notes) would leak through the hide. */
+  .panel:not(.mobile-visible){display:none;}
   .panel.mobile-visible{display:flex;}
   /* All panels show full content on mobile vertical scroll — override tile-mode hiding */
   /* EXCEPT notes, projects, tasklist — those stay collapsed and open via overlay */
@@ -2135,6 +2118,9 @@ body[data-theme="storm-dark"] .tl-hour-label{
   .dynamic-panels{padding:0 14px 16px;}
   /* Mobile home screen active */
   .mobile-home.active{display:block;}
+  /* On the home screen (no panel open) the dashboard is empty — collapse it
+     so its padding doesn't leave a dead gap between the header and the rows */
+  .app-wrap:not(.panel-open) .dashboard{display:none;}
   .mobile-back-bar.active{display:flex;align-items:center;}
   /* Panel content pushed below back bar when shown */
   .app-wrap.panel-open{padding-top:52px;}

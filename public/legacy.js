@@ -2848,19 +2848,18 @@ function buildMobileHome(){
   MOBILE_PANELS.forEach(function(p){
     if(p.adminOnly&&!isAdmin)return;
     if(state.visiblePanels&&state.visiblePanels[p.id]===false)return;
-    var wideClass=p.wide?' toolkit-tile':'';
     var badgeVal='';
     if(p.badge){
       var el=document.getElementById(p.badge);
       if(el)badgeVal=el.textContent||'';
     }
-    var badgeHtml=badgeVal&&badgeVal!=='0'?'<span class="mpt-badge visible">'+badgeVal+'</span>':'<span class="mpt-badge"></span>';
-    var tileAction=p.route?'window.location.hash=\''+p.route+'\'':"showMobilePanel('"+p.id+"')";
-    html+='<div class="mobile-panel-tile'+wideClass+'" onclick="'+tileAction+'">'
+    var badgeHtml=badgeVal&&badgeVal!=='0'?'<span class="mnr-badge">'+badgeVal+'</span>':'';
+    var rowAction=p.route?'window.location.hash=\''+p.route+'\'':"showMobilePanel('"+p.id+"')";
+    html+='<button class="mobile-nav-row" onclick="'+rowAction+'">'
+      +'<span class="mnr-icon">'+p.icon+'</span>'
+      +'<span class="mnr-label">'+p.label+'</span>'
       +badgeHtml
-      +'<span class="mpt-icon">'+p.icon+'</span>'
-      +'<span class="mpt-label">'+p.label+'</span>'
-      +'</div>';
+      +'</button>';
   });
   grid.innerHTML=html;
   // Update clock on home screen
@@ -2870,24 +2869,21 @@ function buildMobileHome(){
 
 function showMobileHome(){
   if(!_isMobile())return;
-  // Hide the tile-grid home screen
-  document.getElementById('mobileHome').classList.remove('active');
-  // Hide the back bar (not needed when all panels are visible)
+  // Show the row-stack home screen
+  document.getElementById('mobileHome').classList.add('active');
+  // Hide the back bar (home has no back)
   document.getElementById('mobileBackBar').classList.remove('active');
-  // Show header with banner
+  // Show header with banner + points/timer strip
   var hdr=document.querySelector('.header');
   if(hdr)hdr.classList.add('mobile-visible');
   // Remove panel-open padding (not needed with sticky header)
   var appWrap=document.querySelector('.app-wrap');
   if(appWrap)appWrap.classList.remove('panel-open');
-  // Show ALL panels vertically (except hidden/user-hidden ones)
-  document.querySelectorAll('.panel').forEach(function(p){
-    if(p.classList.contains('hidden-panel')||p.classList.contains('user-hidden')){
-      p.classList.remove('mobile-visible');
-    }else{
-      p.classList.add('mobile-visible');
-    }
-  });
+  // Hide all panels — they open one at a time from the nav rows
+  document.querySelectorAll('.panel').forEach(function(p){p.classList.remove('mobile-visible');});
+  // Rebuild rows so badge counts are fresh
+  buildMobileHome();
+  window.scrollTo(0,0);
 }
 
 function showMobilePanel(panelId){
@@ -4256,6 +4252,7 @@ function shareIntoBrainDump(){
   state.thoughts.push({id:'th'+Date.now(),text:text});
   save();renderThoughts();
   // Make sure Brain Dump panel is visible and briefly highlight it
+  if(_isMobile())showMobilePanel('brain');
   const bp=document.querySelector('[data-panel="brain"]');
   if(bp){bp.scrollIntoView({behavior:'smooth',block:'nearest'});bp.style.outline='2px solid var(--accent)';setTimeout(()=>{bp.style.outline='';},1800);}
   d.remove();
@@ -4267,6 +4264,7 @@ function shareIntoNote(){
   const now=new Date();
   state.notes.push({id:'n'+Date.now(),label:d._shareTitle,body:d._shareText,projectId:'',created:now.toISOString(),date:now.toLocaleDateString('en-US',{month:'short',day:'numeric',year:'numeric'}),time:now.toLocaleTimeString('en-US',{hour:'numeric',minute:'2-digit'})});
   save();renderNotes();
+  if(_isMobile())showMobilePanel('notes');
   const np=document.querySelector('[data-panel="notes"]');
   if(np){np.scrollIntoView({behavior:'smooth',block:'nearest'});np.style.outline='2px solid var(--accent)';setTimeout(()=>{np.style.outline='';},1800);}
   d.remove();
@@ -4277,6 +4275,7 @@ function shareIntoReminder(){
   const d=document.getElementById('shareInbox');if(!d)return;
   state.reminders.push({id:'rem'+Date.now(),text:d._shareText,date:'',time:''});
   save();renderReminders();
+  if(_isMobile())showMobilePanel('reminders');
   const rp=document.querySelector('[data-panel="reminders"]');
   if(rp){rp.scrollIntoView({behavior:'smooth',block:'nearest'});rp.style.outline='2px solid var(--accent)';setTimeout(()=>{rp.style.outline='';},1800);}
   d.remove();
