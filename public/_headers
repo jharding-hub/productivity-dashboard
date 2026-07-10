@@ -29,11 +29,12 @@
 # precache of the Firebase SDK, Tabler icons, and fonts fails under
 # enforcement. Confirmed via Report-Only (sw.js:73 violations).
 #
-# HSTS starts intentionally low (max-age=300, no includeSubDomains) to
-# mirror the cautious Report-Only CSP during cutover. Ramp it up
-# (1 day → 30 days → 1 year + includeSubDomains) only after confirming
-# every *.centerpost.app subdomain serves clean HTTPS — includeSubDomains
-# with a long max-age is very sticky and hard to walk back.
+# HSTS is being ramped deliberately, each rung gated on the previous being
+# stable: 300 (cutover) → 86400 = 1 day (CURRENT) → 2592000 = 30 days →
+# 31536000 = 1 year + includeSubDomains. Stays apex-only (no
+# includeSubDomains) until every *.centerpost.app subdomain is confirmed
+# clean HTTPS — includeSubDomains with a long max-age is very sticky and
+# hard to walk back.
 #
 # Cloudflare Pages JOINS duplicate header names with a comma (it does not
 # let the most-specific path win), so Cache-Control is set per-path and
@@ -42,7 +43,7 @@
 # ─────────────────────────────────────────────────────────────────────
 
 /*
-  Strict-Transport-Security: max-age=300
+  Strict-Transport-Security: max-age=86400
   X-Frame-Options: DENY
   X-Content-Type-Options: nosniff
   Referrer-Policy: strict-origin-when-cross-origin
