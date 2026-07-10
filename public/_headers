@@ -74,13 +74,25 @@
   Cache-Control: no-cache, no-store, must-revalidate
 /app.html
   Cache-Control: no-cache, no-store, must-revalidate
+/app
+  Cache-Control: no-cache, no-store, must-revalidate
 /kids.html
+  Cache-Control: no-cache, no-store, must-revalidate
+/kids
   Cache-Control: no-cache, no-store, must-revalidate
 /ops.html
   Cache-Control: no-cache, no-store, must-revalidate
+/ops
+  Cache-Control: no-cache, no-store, must-revalidate
 /howto.html
+  Cache-Control: no-cache, no-store, must-revalidate
+/howto
   Cache-Control: no-cache, no-store, must-revalidate
 /teacher.html
   Cache-Control: no-cache, no-store, must-revalidate
+/teacher
+  Cache-Control: no-cache, no-store, must-revalidate
 /architecture.html
+  Cache-Control: no-cache, no-store, must-revalidate
+/architecture
   Cache-Control: no-cache, no-store, must-revalidate
