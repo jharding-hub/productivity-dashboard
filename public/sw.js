@@ -121,7 +121,15 @@ async function networkFirst(req) {
   // One network request. Whenever it resolves — even AFTER our timeout — a
   // successful response refreshes the cache, so a slow load that fell back to
   // stale cache still self-heals (shows the fresh deploy) on the next load.
-  const netFetch = fetch(req.url).then(resp => {
+  const netFetch = fetch(req).then(resp => {
+    // Cloudflare Pages 308-redirects /page.html → /page. A navigation Request
+    // carries redirect:'manual', so a redirect surfaces here as an
+    // opaqueredirect — hand it straight back so the BROWSER follows it to the
+    // clean URL and loads there. (Following it inside the SW via fetch(req.url)
+    // returns a redirected response, which is illegal to return for a
+    // navigation and fails as ERR_FAILED.) Opaqueredirects have no readable
+    // body, so don't try to cache them.
+    if (resp && resp.type === 'opaqueredirect') return resp;
     if (resp && resp.ok) cache.put(req, resp.clone()).catch(() => {});
     return resp;
   });
@@ -131,7 +139,7 @@ async function networkFirst(req) {
       netFetch,
       new Promise((_, rej) => setTimeout(() => rej(new Error('sw-timeout')), 4000))
     ]);
-    if (fresh && fresh.ok) return fresh;
+    if (fresh && (fresh.ok || fresh.type === 'opaqueredirect')) return fresh;
     throw new Error('sw-bad-response');
   } catch (err) {
     // Network slow/failed — serve cache now; netFetch keeps running and
