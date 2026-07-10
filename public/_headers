@@ -45,25 +45,32 @@
 
 # Non-hashed files the Service Worker relies on for update delivery —
 # must always revalidate so a new deploy is picked up.
+#
+# The no-store is load-bearing, not redundant: this zone's Browser Cache
+# TTL (Caching → Configuration, a separate setting from Cache Rules)
+# rewrites a bare max-age/no-cache down to a fixed 4h (14400s) for
+# browsers, but leaves no-store alone. Without it these files get cached
+# for 4h and stale copies break update delivery. Do NOT simplify back to
+# a bare "no-cache".
 /
-  Cache-Control: no-cache
+  Cache-Control: no-cache, no-store, must-revalidate
 /index.html
-  Cache-Control: no-cache
+  Cache-Control: no-cache, no-store, must-revalidate
 /sw.js
-  Cache-Control: no-cache
+  Cache-Control: no-cache, no-store, must-revalidate
 /legacy.js
-  Cache-Control: no-cache
+  Cache-Control: no-cache, no-store, must-revalidate
 /config.js
-  Cache-Control: no-cache
+  Cache-Control: no-cache, no-store, must-revalidate
 /app.html
-  Cache-Control: no-cache
+  Cache-Control: no-cache, no-store, must-revalidate
 /kids.html
-  Cache-Control: no-cache
+  Cache-Control: no-cache, no-store, must-revalidate
 /ops.html
-  Cache-Control: no-cache
+  Cache-Control: no-cache, no-store, must-revalidate
 /howto.html
-  Cache-Control: no-cache
+  Cache-Control: no-cache, no-store, must-revalidate
 /teacher.html
-  Cache-Control: no-cache
+  Cache-Control: no-cache, no-store, must-revalidate
 /architecture.html
-  Cache-Control: no-cache
+  Cache-Control: no-cache, no-store, must-revalidate
