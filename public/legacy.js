@@ -2829,6 +2829,16 @@ var _isMobile=function(){return window.innerWidth<=768;};
   }
 })();
 
+// Detect the Capacitor native shell (iOS/Android app, not the web build) so CSS
+// can target native-only WKWebView quirks without affecting centerpost.app.
+(function _detectCapacitor(){
+  try{
+    if(window.Capacitor&&typeof window.Capacitor.isNativePlatform==='function'&&window.Capacitor.isNativePlatform()){
+      document.body.classList.add('capacitor-native');
+    }
+  }catch(e){}
+})();
+
 var MOBILE_PANELS=[
   {id:'projects', icon:'<i class="ti ti-folder" aria-hidden="true"></i>',   label:'Projects',   badge:'projCount'},
   {id:'reminders',icon:'<i class="ti ti-bell" aria-hidden="true"></i>',     label:'Reminders',  badge:'remCount'},

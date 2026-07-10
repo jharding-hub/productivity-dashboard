@@ -852,6 +852,14 @@ body[data-theme="storm-dark"] .day-progress-elapsed{
   background:var(--accent);color:var(--bg);font-size:11px;font-weight:700;
   padding:2px 8px;border-radius:5px;min-width:22px;text-align:center;flex-shrink:0;
 }
+/* iOS WKWebView renders a "peek" link preview on long-press, which fetches a
+   preview/favicon image from the link's host. For the restaurant-spinner Google
+   Maps link (an external target=_blank <a>), that surfaced in the native shell
+   as a blocked img-src load from www.google.com. Disabling the callout on
+   external links suppresses the stray fetch. Native app only (see
+   body.capacitor-native in legacy.js) — the web app keeps its normal long-press
+   menu, and this never touches the Cloudflare _headers CSP rollout. */
+body.capacitor-native a[target="_blank"]{-webkit-touch-callout:none;}
 .mobile-back-bar{display:none;position:fixed;top:0;left:0;right:0;z-index:60;background:var(--surface);border-bottom:1px solid var(--border);padding:10px 16px calc(10px + env(safe-area-inset-top));padding-top:calc(10px + env(safe-area-inset-top));}
 .mobile-back-btn{display:flex;align-items:center;gap:8px;background:none;border:none;color:var(--accent);font-size:15px;font-weight:600;font-family:inherit;cursor:pointer;padding:0;}
 .mobile-back-btn::before{content:'‹';font-size:22px;line-height:1;}

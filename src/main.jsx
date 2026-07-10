@@ -17,6 +17,24 @@ if (window.SENTRY_DSN) {
       httpBodies: [],
       genAI: { inputs: false, outputs: false },
     },
+    // Drop a known-benign iOS WKWebView × Firebase noise event: WebKit closes
+    // IndexedDB transactions across awaits / when the app is backgrounded, and
+    // Firebase Auth's IDB session store then throws "Attempt to get records
+    // from database without an in-progress transaction". Non-fatal — Auth
+    // re-reads on resume. Matched narrowly so real errors still report.
+    beforeSend(event, hint) {
+      try {
+        const ex = hint && hint.originalException;
+        let msg = ex && typeof ex === 'object' && ex.message ? String(ex.message)
+                : typeof ex === 'string' ? ex : '';
+        if (!msg && event.exception && event.exception.values) {
+          msg = event.exception.values.map((v) => (v && v.value) || '').join(' ');
+        }
+        if (!msg && event.message) msg = String(event.message);
+        if (msg.indexOf('without an in-progress transaction') !== -1) return null;
+      } catch (_e) { /* never let the filter break reporting */ }
+      return event;
+    },
   });
 }
 
