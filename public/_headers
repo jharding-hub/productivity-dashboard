@@ -20,6 +20,15 @@
 # new Audio(URL.createObjectURL(blob)). ElevenLabs itself is proxied
 # server-side, so it never appears as a browser origin.
 #
+# connect-src also lists the script/style/font CDN hosts (www.gstatic.com,
+# fonts.googleapis.com, fonts.gstatic.com, cdn.jsdelivr.net, www.youtube.com)
+# even though those load via <script>/<link>. The service worker precaches
+# and revalidates them with fetch() (sw.js PRECACHE_ASSETS + the
+# stale-while-revalidate handler), and a fetch() from the SW is governed by
+# connect-src, not script/style/font-src. Without them the SW's offline
+# precache of the Firebase SDK, Tabler icons, and fonts fails under
+# enforcement. Confirmed via Report-Only (sw.js:73 violations).
+#
 # HSTS starts intentionally low (max-age=300, no includeSubDomains) to
 # mirror the cautious Report-Only CSP during cutover. Ramp it up
 # (1 day → 30 days → 1 year + includeSubDomains) only after confirming
@@ -37,7 +46,7 @@
   X-Frame-Options: DENY
   X-Content-Type-Options: nosniff
   Referrer-Policy: strict-origin-when-cross-origin
-  Content-Security-Policy-Report-Only: default-src 'self'; script-src 'self' 'unsafe-inline' https://www.gstatic.com https://accounts.google.com https://www.youtube.com; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com https://cdn.jsdelivr.net; font-src 'self' https://fonts.gstatic.com https://cdn.jsdelivr.net; img-src 'self' data: blob:; media-src 'self' blob:; connect-src 'self' https://centerpost-jarvis.medicjth.workers.dev https://centerpost-guardian.medicjth.workers.dev https://centerpost-sentinel.medicjth.workers.dev https://centerpost-pulse.medicjth.workers.dev https://*.googleapis.com https://accounts.google.com https://api.weather.gov https://overpass-api.de https://o4511667943505920.ingest.us.sentry.io; frame-src https://accounts.google.com https://www.youtube.com; worker-src 'self'; manifest-src 'self'; object-src 'none'; base-uri 'self'; report-uri https://o4511667943505920.ingest.us.sentry.io/api/4511668027129856/security/?sentry_key=fa11403c0d7a9449b1749d199dc90395
+  Content-Security-Policy-Report-Only: default-src 'self'; script-src 'self' 'unsafe-inline' https://www.gstatic.com https://accounts.google.com https://www.youtube.com; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com https://cdn.jsdelivr.net; font-src 'self' https://fonts.gstatic.com https://cdn.jsdelivr.net; img-src 'self' data: blob:; media-src 'self' blob:; connect-src 'self' https://centerpost-jarvis.medicjth.workers.dev https://centerpost-guardian.medicjth.workers.dev https://centerpost-sentinel.medicjth.workers.dev https://centerpost-pulse.medicjth.workers.dev https://*.googleapis.com https://accounts.google.com https://www.gstatic.com https://fonts.googleapis.com https://fonts.gstatic.com https://cdn.jsdelivr.net https://www.youtube.com https://api.weather.gov https://overpass-api.de https://o4511667943505920.ingest.us.sentry.io; frame-src https://accounts.google.com https://www.youtube.com; worker-src 'self'; manifest-src 'self'; object-src 'none'; base-uri 'self'; report-uri https://o4511667943505920.ingest.us.sentry.io/api/4511668027129856/security/?sentry_key=fa11403c0d7a9449b1749d199dc90395
 
 # Hashed, content-addressed build output — safe to cache forever.
 /assets/*
