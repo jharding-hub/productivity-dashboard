@@ -121,7 +121,7 @@ async function networkFirst(req) {
   // One network request. Whenever it resolves — even AFTER our timeout — a
   // successful response refreshes the cache, so a slow load that fell back to
   // stale cache still self-heals (shows the fresh deploy) on the next load.
-  const netFetch = fetch(req).then(resp => {
+  const netFetch = fetch(req.url).then(resp => {
     if (resp && resp.ok) cache.put(req, resp.clone()).catch(() => {});
     return resp;
   });
