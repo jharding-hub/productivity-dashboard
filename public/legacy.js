@@ -2849,46 +2849,58 @@ var _isMobile=function(){return window.innerWidth<=768;};
 // named "watchData" and calls window.__watchApplyAction for actions coming
 // back from the watch. No-ops on the web build (handler absent).
 
-// Push the today-slice of state to the watch. Called from save() and on init.
+// Build the today-slice of state to send to the watch. Pure -- no side effects --
+// so it can be both posted (pushWatchSnapshot) and returned directly as the
+// completion value of an applied action (see __watchApplyAction below).
 function _mapRoutine(r){return {id:r.id,name:r.name||'',done:!!r.done};}
+function _buildWatchSnapshot(){
+  var tasks=(state.tasks||[]).filter(function(t){return !t.done;}).slice(0,25).map(function(t){
+    return {id:t.id,title:t.name||'',done:false};
+  });
+  var reminders=(state.reminders||[]).slice(0,25).map(function(r){
+    var when=((r.date?fmtDate(r.date):'')+(r.time?(r.date?' ':'')+fmtTime(r.time):'')).trim();
+    return {id:r.id,text:r.text||'',time:when,done:false};
+  });
+  var points=(state.points&&state.points.current)||0;
+  var R=state.routines||{};
+  var routines={
+    morning:(R.morning||[]).map(_mapRoutine),
+    evening:(R.evening||[]).map(_mapRoutine),
+    custom:(R.custom||[]).map(_mapRoutine)
+  };
+  var todayK=todayStr();
+  var timeline=(state.tlBlocks||[]).filter(function(b){return (b.date||'')===todayK;})
+    .sort(function(a,b){return (a.time||'').localeCompare(b.time||'');})
+    .map(function(b){return {id:b.id||('tl'+(b.time||'')),name:b.name||'',time:b.time?fmtTime(b.time):''};});
+  var timer={
+    running:!!timerRunning,
+    endAt:(timerEndAt||0),   // ms epoch when running, else 0
+    total:timerTotal||0,     // seconds
+    left:timerLeft||0        // seconds
+  };
+  var presets=(typeof TIMER_PRESETS!=='undefined'?TIMER_PRESETS:[]).map(function(p){return {label:p.label,minutes:p.minutes};});
+  return {points:points,tasks:tasks,reminders:reminders,routines:routines,timeline:timeline,timer:timer,presets:presets,energy:state.energy||'',mood:state.mood||''};
+}
+
+// Push the today-slice of state to the watch. Called from save() and on init.
 function pushWatchSnapshot(){
   try{
     var h=window.webkit&&window.webkit.messageHandlers&&window.webkit.messageHandlers.watchData;
     if(!h)return; // not running inside the iOS shell
-    var tasks=(state.tasks||[]).filter(function(t){return !t.done;}).slice(0,25).map(function(t){
-      return {id:t.id,title:t.name||'',done:false};
-    });
-    var reminders=(state.reminders||[]).slice(0,25).map(function(r){
-      var when=((r.date?fmtDate(r.date):'')+(r.time?(r.date?' ':'')+fmtTime(r.time):'')).trim();
-      return {id:r.id,text:r.text||'',time:when,done:false};
-    });
-    var points=(state.points&&state.points.current)||0;
-    var R=state.routines||{};
-    var routines={
-      morning:(R.morning||[]).map(_mapRoutine),
-      evening:(R.evening||[]).map(_mapRoutine),
-      custom:(R.custom||[]).map(_mapRoutine)
-    };
-    var todayK=todayStr();
-    var timeline=(state.tlBlocks||[]).filter(function(b){return (b.date||'')===todayK;})
-      .sort(function(a,b){return (a.time||'').localeCompare(b.time||'');})
-      .map(function(b){return {id:b.id||('tl'+(b.time||'')),name:b.name||'',time:b.time?fmtTime(b.time):''};});
-    var timer={
-      running:!!timerRunning,
-      endAt:(timerEndAt||0),   // ms epoch when running, else 0
-      total:timerTotal||0,     // seconds
-      left:timerLeft||0        // seconds
-    };
-    var presets=(typeof TIMER_PRESETS!=='undefined'?TIMER_PRESETS:[]).map(function(p){return {label:p.label,minutes:p.minutes};});
-    h.postMessage({points:points,tasks:tasks,reminders:reminders,routines:routines,timeline:timeline,timer:timer,presets:presets,energy:state.energy||'',mood:state.mood||''});
+    h.postMessage(_buildWatchSnapshot());
   }catch(e){console.warn('[watch] pushSnapshot failed',e);}
 }
 
 // Apply an action the watch sent (toggle a task/reminder, quick-add a task),
 // routing through the real state mutators so points + Firestore stay correct.
+// Returns the fresh snapshot -- WKWebView's evaluateJavaScript captures this as
+// its completion value, which the native side uses as the direct reply to the
+// watch. That's load-bearing: replying with a snapshot built BEFORE this action
+// ran (the old behavior) let a second quick tap's "immediate" reply race ahead
+// of the first tap's real update and visually revert it.
 window.__watchApplyAction=function(action){
   try{
-    if(!action||!action.cmd)return;
+    if(!action||!action.cmd)return _buildWatchSnapshot();
     if(action.cmd==='toggle'){
       if(action.kind==='task'){
         if(typeof toggleTaskDone==='function')toggleTaskDone(action.id,'standalone');
@@ -2934,8 +2946,9 @@ window.__watchApplyAction=function(action){
         if(typeof renderTaskList==='function')renderTaskList();
       }
     }
-    pushWatchSnapshot(); // reflect the change straight back to the watch
-  }catch(e){console.warn('[watch] applyAction failed',e);}
+    pushWatchSnapshot(); // also broadcast, in case the watch app is idle in the background
+    return _buildWatchSnapshot(); // the direct reply value -- see comment above
+  }catch(e){console.warn('[watch] applyAction failed',e);return _buildWatchSnapshot();}
 };
 
 var MOBILE_PANELS=[
