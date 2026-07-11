@@ -642,6 +642,7 @@ function save(){
   const blob=JSON.stringify(state);
   try{localStorage.setItem('prodDash_'+uid,blob);}catch(e){}
   _checkStateSize(blob.length);
+  if(typeof pushWatchSnapshot==='function')pushWatchSnapshot(); // mirror to Apple Watch
   if(!firebaseReady||!db||!currentUser)return;
   clearTimeout(saveTimer);
   saveTimer=setTimeout(async()=>{
@@ -1107,6 +1108,7 @@ function updateTimerDisplay(){
     playAlarm();
     toast('⏰ Focus session complete! +3 pts');
     addPoints('timer',document.getElementById('headerTimerBtn'));
+    if(typeof pushWatchSnapshot==='function')pushWatchSnapshot();
     timerAlarmTimeout=setTimeout(function(){
       stopAlarm();
       timerLeft=timerTotal;
@@ -1130,6 +1132,7 @@ function startTimer(){
   timerEndAt=Date.now()+(timerLeft*1000);
   timerInterval=setInterval(_tickTimer,500);
   updateTimerDisplay();
+  if(typeof pushWatchSnapshot==='function')pushWatchSnapshot();
 }
 
 function pauseTimer(){
@@ -1138,12 +1141,14 @@ function pauseTimer(){
   timerRunning=false;timerEndAt=null;
   clearInterval(timerInterval);timerInterval=null;
   updateTimerDisplay();
+  if(typeof pushWatchSnapshot==='function')pushWatchSnapshot();
 }
 
 function resetTimer(){
   pauseTimer();stopAlarm();
   timerLeft=timerTotal;timerEndAt=null;
   updateTimerDisplay();
+  if(typeof pushWatchSnapshot==='function')pushWatchSnapshot();
 }
 
 function headerTimerClick(){
@@ -2838,6 +2843,100 @@ var _isMobile=function(){return window.innerWidth<=768;};
     }
   }catch(e){}
 })();
+
+// ── APPLE WATCH BRIDGE ──────────────────────────────────────────────
+// The iOS shell (MainViewController.swift) exposes a WebKit message handler
+// named "watchData" and calls window.__watchApplyAction for actions coming
+// back from the watch. No-ops on the web build (handler absent).
+
+// Push the today-slice of state to the watch. Called from save() and on init.
+function _mapRoutine(r){return {id:r.id,name:r.name||'',done:!!r.done};}
+function pushWatchSnapshot(){
+  try{
+    var h=window.webkit&&window.webkit.messageHandlers&&window.webkit.messageHandlers.watchData;
+    if(!h)return; // not running inside the iOS shell
+    var tasks=(state.tasks||[]).filter(function(t){return !t.done;}).slice(0,25).map(function(t){
+      return {id:t.id,title:t.name||'',done:false};
+    });
+    var reminders=(state.reminders||[]).slice(0,25).map(function(r){
+      var when=((r.date?fmtDate(r.date):'')+(r.time?(r.date?' ':'')+fmtTime(r.time):'')).trim();
+      return {id:r.id,text:r.text||'',time:when,done:false};
+    });
+    var points=(state.points&&state.points.current)||0;
+    var R=state.routines||{};
+    var routines={
+      morning:(R.morning||[]).map(_mapRoutine),
+      evening:(R.evening||[]).map(_mapRoutine),
+      custom:(R.custom||[]).map(_mapRoutine)
+    };
+    var todayK=todayStr();
+    var timeline=(state.tlBlocks||[]).filter(function(b){return (b.date||'')===todayK;})
+      .sort(function(a,b){return (a.time||'').localeCompare(b.time||'');})
+      .map(function(b){return {id:b.id||('tl'+(b.time||'')),name:b.name||'',time:b.time?fmtTime(b.time):''};});
+    var timer={
+      running:!!timerRunning,
+      endAt:(timerEndAt||0),   // ms epoch when running, else 0
+      total:timerTotal||0,     // seconds
+      left:timerLeft||0        // seconds
+    };
+    var presets=(typeof TIMER_PRESETS!=='undefined'?TIMER_PRESETS:[]).map(function(p){return {label:p.label,minutes:p.minutes};});
+    h.postMessage({points:points,tasks:tasks,reminders:reminders,routines:routines,timeline:timeline,timer:timer,presets:presets,energy:state.energy||'',mood:state.mood||''});
+  }catch(e){console.warn('[watch] pushSnapshot failed',e);}
+}
+
+// Apply an action the watch sent (toggle a task/reminder, quick-add a task),
+// routing through the real state mutators so points + Firestore stay correct.
+window.__watchApplyAction=function(action){
+  try{
+    if(!action||!action.cmd)return;
+    if(action.cmd==='toggle'){
+      if(action.kind==='task'){
+        if(typeof toggleTaskDone==='function')toggleTaskDone(action.id,'standalone');
+      }else if(action.kind==='reminder'){
+        state.reminders=(state.reminders||[]).filter(function(r){return r.id!==action.id;});
+        save();
+        if(typeof renderReminders==='function')renderReminders();
+      }
+    }else if(action.cmd==='routine'){
+      if(typeof toggleRoutine==='function')toggleRoutine(action.tab,action.id);
+    }else if(action.cmd==='timerStart'){
+      if(typeof startTimer==='function')startTimer();
+    }else if(action.cmd==='timerPause'){
+      if(typeof pauseTimer==='function')pauseTimer();
+    }else if(action.cmd==='timerReset'){
+      if(typeof resetTimer==='function')resetTimer();
+    }else if(action.cmd==='timerPreset'){
+      if(typeof headerTimerSelectPreset==='function')headerTimerSelectPreset(action.idx|0);
+    }else if(action.cmd==='energy'){
+      state.energy=action.value;
+      if(typeof logMoodEntry==='function')logMoodEntry();
+      save();
+      if(typeof showStateAdvice==='function')showStateAdvice();
+      if(typeof updateWellnessVisibility==='function')updateWellnessVisibility();
+      var _tdyE=(typeof _dayKey==='function')?_dayKey():'';
+      if(state.points&&state.points.lastEnergyDate!==_tdyE){state.points.lastEnergyDate=_tdyE;save();if(typeof addPoints==='function')addPoints('mood_energy',null);}
+    }else if(action.cmd==='mood'){
+      state.mood=action.value;
+      if(typeof logMoodEntry==='function')logMoodEntry();
+      save();
+      if(typeof showStateAdvice==='function')showStateAdvice();
+      if(typeof updateWellnessVisibility==='function')updateWellnessVisibility();
+      var _tdyM=(typeof _dayKey==='function')?_dayKey():'';
+      if(state.points&&state.points.lastMoodDate!==_tdyM){state.points.lastMoodDate=_tdyM;save();if(typeof addPoints==='function')addPoints('mood_energy',null);}
+    }else if(action.cmd==='breath'){
+      if(typeof addPoints==='function')addPoints('breathwork',null);
+      save();
+    }else if(action.cmd==='add'){
+      var name=(action.text||'').trim();
+      if(name){
+        state.tasks.push({id:'t'+Date.now(),name:name,due:'',priority:'med',timeEst:'',projectId:'',projectIds:[],done:false});
+        save();
+        if(typeof renderTaskList==='function')renderTaskList();
+      }
+    }
+    pushWatchSnapshot(); // reflect the change straight back to the watch
+  }catch(e){console.warn('[watch] applyAction failed',e);}
+};
 
 var MOBILE_PANELS=[
   {id:'projects', icon:'<i class="ti ti-folder" aria-hidden="true"></i>',   label:'Projects',   badge:'projCount'},
@@ -8999,6 +9098,7 @@ if(state.energy){const c=document.querySelectorAll('#energyPills .em-pill');cons
 if(state.mood){const c=document.querySelectorAll('#moodPills .em-pill');const m=['focused','scattered','anxious','calm'];const i=m.indexOf(state.mood);if(i>=0)c[i].classList.add('selected');}
 showStateAdvice();updateWellnessVisibility();
 startRealtimeSync();
+if(typeof pushWatchSnapshot==='function')pushWatchSnapshot(); // seed the watch on load
 if(window.location.hash==='#/admin')showAdminPanel();
 // --- Service Worker registration + update-available toast ---
 // When the SW updates (e.g. you ship a new sw.js or bump CACHE_VERSION),
