@@ -2945,6 +2945,16 @@ window.__watchApplyAction=function(action){
         save();
         if(typeof renderTaskList==='function')renderTaskList();
       }
+    }else if(action.cmd==='braindump'){
+      // Watch voice-capture -- lands in Brain Dump (state.thoughts) to organize later.
+      // Same shape as handleDumpKey / shareIntoBrainDump so it syncs and renders identically.
+      var thought=(action.text||'').trim();
+      if(thought){
+        if(!state.thoughts)state.thoughts=[];
+        state.thoughts.push({id:'th'+Date.now(),text:thought});
+        save();
+        if(typeof renderThoughts==='function')renderThoughts();
+      }
     }
     pushWatchSnapshot(); // also broadcast, in case the watch app is idle in the background
     return _buildWatchSnapshot(); // the direct reply value -- see comment above
