@@ -694,7 +694,7 @@ body[data-theme="storm-dark"] .day-progress-elapsed{
 .status-bar-spacer{flex:1;}
 /* Push content above bottom bar */
 .app-wrap{padding-bottom:60px;}
-@media(max-width:768px){
+@media(max-width:768px),(orientation:landscape) and (max-height:600px){
   /* ── MOBILE HEADER LAYOUT v3 ──
      Approach: hide the desktop title/subtitle overlays entirely (they're
      not designed for narrow screens). Use a compact mobile-only title
@@ -1041,7 +1041,7 @@ body.capacitor-native a[target="_blank"]{-webkit-touch-callout:none;}
 .panel.panel-expanded-elsewhere{opacity:0.3;pointer-events:none;}
 .panel.panel-expanded-elsewhere::after{content:'(open)';display:block;text-align:center;color:var(--text-faint);font-size:11px;font-style:italic;}
 
-@media(max-width:768px){
+@media(max-width:768px),(orientation:landscape) and (max-height:600px){
   .panel-overlay-frame{top:0;left:0;right:0;bottom:0;width:100%;max-height:100vh;border-radius:0;transform:none;}
   /* Drop the header (title + ✕ close) below the camera notch / status bar so the
      close button is reachable without rotating the phone. Uses the real safe-area
@@ -1259,7 +1259,7 @@ body.unlocked .date-editable{border-bottom-color:var(--border);}
   100%{opacity:0;transform:translate(-50%,-50%) scale(1.1);}
 }
 
-@media(max-width:768px){
+@media(max-width:768px),(orientation:landscape) and (max-height:600px){
   .points-badge{padding:4px 8px;font-size:12px;}
   .points-tier-icon{font-size:14px;}
   .points-popup{right:8px;}
@@ -1545,7 +1545,7 @@ body.unlocked .date-editable{border-bottom-color:var(--border);}
 .halt-reset-btn{width:100%;margin-top:10px;padding:9px;background:var(--surface-raised);border:1px solid var(--border);color:var(--text-dim);border-radius:var(--radius-sm);font-family:inherit;font-size:12px;cursor:pointer;transition:all 0.15s;}
 .halt-reset-btn:hover{border-color:var(--red);color:var(--red);}
 
-@media(max-width:768px){.time-left-wrap{display:none;}.task-timer-wrap{display:none;}}
+@media(max-width:768px),(orientation:landscape) and (max-height:600px){.time-left-wrap{display:none;}.task-timer-wrap{display:none;}}
 .time-label{font-size:10px;color:var(--text-dim);text-transform:uppercase;letter-spacing:1px;margin-bottom:4px;}
 .time-block .em-row{margin-bottom:4px;}
 .time-block .em-pill{padding:3px 7px;font-size:10px;}
@@ -2091,7 +2091,7 @@ body[data-theme="storm-dark"] .tl-hour-label{
 @keyframes micPulse{0%,100%{opacity:1;}50%{opacity:0.5;}}
 .section-label{font-size:13px;color:var(--text);text-transform:uppercase;letter-spacing:0.5px;margin:8px 0 4px;font-weight:600;min-height:40px;display:flex;align-items:center;}
 @media(max-width:1100px){.dashboard{grid-template-columns:1fr 1fr;}.panel-narrow{grid-column:span 1;}}
-@media(max-width:768px){
+@media(max-width:768px),(orientation:landscape) and (max-height:600px){
   .dashboard{grid-template-columns:1fr;padding:12px 14px 16px;gap:12px;}
   /* Header padding/min-height handled by the layout block above; don't re-add here */
   /* :not(.mobile-visible) keeps specificity at 0-2-0 so this outranks the
@@ -2149,7 +2149,7 @@ body[data-theme="storm-dark"] .tl-hour-label{
   .panel.mobile-panel-enter{animation:none !important;}
 }
 /* ── Mobile: fit panels to screen width (vertical scroll only) + clear camera notch ── */
-@media(max-width:768px){
+@media(max-width:768px),(orientation:landscape) and (max-height:600px){
   /* Lock horizontal scroll from the first paint (pure CSS, no JS gate) so it
      can't briefly rubber-band sideways before a panel is opened. clip (not
      hidden) leaves the sticky header working; overscroll-behavior-x kills the
@@ -2408,7 +2408,7 @@ body[data-theme="storm-dark"] .tl-hour-label{
    bottom rows — including the newest themes — are always reachable. iOS sizes
    `vh` against the full screen, which can push a centered, vh-capped box's
    bottom (where Storm Light/Dark live) off-screen and out of reach. */
-@media(max-width:768px){
+@media(max-width:768px),(orientation:landscape) and (max-height:600px){
   .customize-overlay{align-items:flex-start;overflow-y:auto;-webkit-overflow-scrolling:touch;padding:16px 14px calc(16px + env(safe-area-inset-bottom));}
   .customize-box{max-height:none;}
 }
@@ -2748,7 +2748,7 @@ body[data-theme="storm-dark"] .tl-hour-label{
 .wo-modal-steps li:last-child{border-bottom:none;}
 .wo-modal-steps li::before{content:attr(data-n);position:absolute;left:0;color:var(--accent);font-weight:700;font-size:12px;}
 .wo-modal-tip{font-size:12px;color:var(--text-faint);background:var(--surface-raised);border-left:3px solid var(--accent);padding:8px 10px;border-radius:0 var(--radius-sm) var(--radius-sm) 0;line-height:1.5;}
-@media(max-width:768px){.wo-log-row{gap:4px;}.wo-log-input{width:56px;}}
+@media(max-width:768px),(orientation:landscape) and (max-height:600px){.wo-log-row{gap:4px;}.wo-log-input{width:56px;}}
 
 /* ── TOOL KIT PANEL BUTTONS ── */
 .toolkit-grid{display:grid;grid-template-columns:1fr 1fr;gap:10px;padding:4px 0;}
@@ -2857,7 +2857,7 @@ body[data-theme="storm-dark"] .tl-hour-label{
 .dev-tier-opt.active{color:var(--text);font-weight:600;background:var(--surface-hover);}
 
 /* ─── PROJECT DASHBOARD MOBILE ─────────────────────────────────────────────── */
-@media(max-width:767px){
+@media(max-width:767px),(orientation:landscape) and (max-height:600px){
   .pd-body{flex-direction:column !important;}
   .pd-col-tasks{flex:1 1 auto !important;border-right:none !important;border-bottom:1px solid var(--border) !important;max-height:45vh;}
   .pd-col-notes{flex:1 1 auto !important;}

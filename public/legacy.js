@@ -2820,7 +2820,11 @@ function newDecisionPrompt(){const el=document.getElementById('decisionPrompt');
 
 // MOBILE
 // --- MOBILE HOME TILE NAVIGATION -----------------------------------------
-var _isMobile=function(){return window.innerWidth<=768;};
+// Phone in landscape (wide but short) still counts as mobile — matches the
+// max-height:600 "phone landscape" threshold already used for the header
+// subtitle rule further down, so JS and CSS never disagree about which
+// layout is active.
+var _isMobile=function(){return window.innerWidth<=768 || (window.innerWidth>window.innerHeight && window.innerHeight<=600);};
 
 // Detect standalone PWA mode (launched from home screen, not Safari)
 // iOS exposes navigator.standalone, modern browsers also support display-mode media query
@@ -3086,6 +3090,10 @@ window.addEventListener('resize',function(){
     document.querySelector('.app-wrap')&&document.querySelector('.app-wrap').classList.remove('panel-open');
     var hdr=document.querySelector('.header');
     if(hdr)hdr.classList.remove('mobile-visible');
+    // Clear any panel left open from mobile mode -- otherwise the next
+    // transition back to mobile sees a stale .mobile-visible panel, thinks
+    // one is still open, skips showMobileHome(), and the screen goes blank.
+    document.querySelectorAll('.panel').forEach(function(p){p.classList.remove('mobile-visible');});
   } else {
     // Going back to mobile -- show home if no panel open
     var anyVisible=document.querySelector('.panel.mobile-visible');
