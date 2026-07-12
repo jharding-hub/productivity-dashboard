@@ -82,5 +82,6 @@ Invite-code signups before commit 22b6ef2 have an Auth account but no
 
 - `https://centerpost.app/health.json` returns 200 with `{"status":"ok"}` —
   static file, served from public/. UptimeRobot monitors it plus the root URL.
-- If monitors alert: check GitHub Pages status, then Cloudflare DNS, then
-  whether the last `make deploy` finished cleanly (gh-pages branch).
+- If monitors alert: check the Cloudflare Pages project (did the latest
+  deployment build succeed?), then Cloudflare DNS, then whether the last
+  `git push origin main` triggered a clean CF Pages build.

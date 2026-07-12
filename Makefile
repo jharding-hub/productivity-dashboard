@@ -6,7 +6,10 @@ dev:
 build:
 	npm run build
 
-# Build and deploy to GitHub Pages (gh-pages branch)
+# RETIRED — production now deploys via `git push origin main` (Cloudflare Pages
+# git integration auto-builds and publishes). This old gh-pages push is kept
+# only until the gh-pages branch is retired (it still serves the www->apex
+# redirect). Do NOT use it to deploy.
 deploy:
 	npm run deploy
 
