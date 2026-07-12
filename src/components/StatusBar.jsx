@@ -26,13 +26,6 @@ export default function StatusBar() {
         title="Open Centerpost Kids (4th tier — kid-friendly arcade mode)"
         style={{ background: 'linear-gradient(135deg,#ffcc00,#ff3399)', border: '1px solid #cc9900', color: '#1a0033', fontWeight: 700, letterSpacing: '0.5px', boxShadow: '0 0 8px rgba(255,204,0,0.3)' }}
       >&#127918; Kids Mode</button>
-      <button
-        className="customize-btn teacher-launcher"
-        id="teacherLauncherBtn"
-        onClick={() => window.open('https://centerpost.app/teacher.html', '_blank')}
-        title="Open Centerpost Teacher Planner (Legacy)"
-        style={{ display: 'none', background: 'linear-gradient(135deg,#2d5240,#1e3a2f)', border: '1px solid #3d6b52', color: '#fff', fontWeight: 700, letterSpacing: '0.3px', boxShadow: '0 0 8px rgba(45,82,64,0.4)' }}
-      >&#128196; Teacher</button>
       <button className="lock-btn" id="lockBtn" onClick={() => window.toggleLock()} title="Lock/unlock layout and editing">&#128274; Locked</button>
       <button className="logout-btn" onClick={() => window.doLogout()} title="Sign out">Sign out</button>
       <div className="status-bar-spacer"></div>

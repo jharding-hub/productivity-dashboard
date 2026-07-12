@@ -36,7 +36,6 @@ const PRECACHE_ASSETS = [
   './kids-icon-512.png',
   './ops',
   './howto',
-  './teacher',
   'https://cdn.jsdelivr.net/npm/@tabler/icons-webfont@3.0.0/dist/tabler-icons.min.css',
   'https://fonts.googleapis.com/css2?family=DM+Sans:ital,wght@0,400;0,500;0,600;0,700&family=Fraunces:ital,opsz,wght@0,9..144,400;0,9..144,600;0,9..144,700;1,9..144,400&display=swap',
   'https://fonts.googleapis.com/css2?family=Press+Start+2P&family=VT323&display=swap',

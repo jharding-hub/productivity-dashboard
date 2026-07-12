@@ -177,13 +177,6 @@ function applyTierGating(){
     el.style.display=cfg.completedHistory?'':'none';
   });
 
-  // -- Teacher Planner button (Legacy + Owner only) -----------------------------
-  var teacherBtn=document.getElementById('teacherLauncherBtn');
-  if(teacherBtn){
-    var t=getActiveTier();
-    teacherBtn.style.display=(t==='legacy'||t==='owner')?'':'none';
-  }
-
   // -- Dev switcher badge -------------------------------------------------------
   _renderDevSwitcher();
 
