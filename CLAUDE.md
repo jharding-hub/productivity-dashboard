@@ -41,15 +41,21 @@ Two repos:
 - Production build:          make build   -> npm run build (vite build, then
   esbuild-minify dist/legacy.js, then scripts/stamp-sw.js stamps the SW
   version from the git short hash; outputs to dist/)
-- Deploy to production:      make deploy  -> npm run deploy (runs the build,
-  then pushes dist/ to the gh-pages branch:
-  gh-pages -d dist -b gh-pages --dotfiles).
-  The npm scripts in package.json are the canonical pipeline; the Makefile
-  targets just delegate to them, so make and npm produce identical output.
-  Production = gh-pages branch, custom domain centerpost.app.
+- Deploy to production:      git push origin main. Cloudflare Pages is
+  git-integrated — every push to main auto-builds (npm run build: vite build,
+  esbuild-minify legacy.js, then scripts/stamp-sw.js stamps the SW version
+  from the git short hash, which resolves in CF's build env) and publishes.
+  There is NO separate deploy command. Production host = Cloudflare Pages (cut
+  over from GitHub Pages 2026-07), custom domain centerpost.app. public/_headers
+  (security + caching headers) is served by CF Pages from the build output
+  root (dist/) — GitHub Pages couldn't send custom headers, which is why the
+  app moved.
+- RETIRED, still present: `npm run deploy` / `make deploy` (the old gh-pages
+  push), the gh-pages branch, and CNAME. Do NOT deploy with them — their
+  "GitHub Pages" wording is stale. They survive only so gh-pages can still
+  serve the www->apex 301 redirect, until a Cloudflare Redirect Rule replaces
+  it (then the branch + CNAME + npm script get deleted).
 - Clean build artifacts:     make clean   -> rm -rf dist node_modules/.cache
-- The --dotfiles flag on deploy is required (keeps .nojekyll / CNAME). Do not
-  remove it.
 - vite.config.js `base` must stay correct or the deployed page renders blank
   (React never mounts). This has bitten me before.
 - No automated test suite — verify changes by running make dev and checking
