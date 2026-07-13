@@ -1033,9 +1033,37 @@ function toggleLock(){state.panelsLocked=!state.panelsLocked;save();updateLockUI
 function updateLockUI(){const btn=document.getElementById('lockBtn');if(state.panelsLocked){btn.innerHTML='\u{1F512} Locked';btn.classList.remove('unlocked');document.body.classList.remove('unlocked');}else{btn.innerHTML='\u{1F513} Unlocked';btn.classList.add('unlocked');document.body.classList.add('unlocked');}document.querySelectorAll('.panel').forEach(p=>{p.draggable=!state.panelsLocked;});refreshEditables();}
 
 // INLINE EDITING - only works when unlocked
+//
+// Guards list-panel re-renders (projects/reminders/tasklist/thoughts) against
+// wiping an open inline edit. The Firestore realtime listener rebuilds every
+// panel's innerHTML on each snapshot (including the echo of our own saves);
+// without this, a snapshot landing mid-edit destroys the focused .editable
+// element and drops whatever the user was mid-typing. Mirrors the dedicated
+// guard already in place for notes (_noteEditorFocused/_notesRenderPending),
+// but centralized here since makeEditable() is the one shared entry point
+// every panel's inline text edits go through.
+var _panelRenderPending={};
+var _PANEL_RENDER_FNS={
+  projectList:function(){renderProjects();},
+  reminderList:function(){renderReminders();},
+  taskListItems:function(){renderTaskList();},
+  thoughtChips:function(){renderThoughts();}
+};
+function _isEditingInPanel(containerId){
+  var ae=document.activeElement;
+  if(!ae||!ae.classList||!ae.classList.contains('editable'))return false;
+  var c=document.getElementById(containerId);
+  return !!(c&&c.contains(ae));
+}
+function _deferPanelRender(containerId){_panelRenderPending[containerId]=true;}
+function _flushPendingPanelRenders(){
+  Object.keys(_PANEL_RENDER_FNS).forEach(function(id){
+    if(_panelRenderPending[id]){_panelRenderPending[id]=false;_PANEL_RENDER_FNS[id]();}
+  });
+}
 function makeEditable(el,onSave){
   el.classList.add('editable');
-  el.addEventListener('blur',function(){onSave(el.textContent.trim());});
+  el.addEventListener('blur',function(){onSave(el.textContent.trim());_flushPendingPanelRenders();});
   el.addEventListener('keydown',function(e){if(e.key==='Enter'){e.preventDefault();el.blur();}if(e.key==='Escape')el.blur();});
 }
 function refreshEditables(){
@@ -1569,7 +1597,9 @@ function _sortedProjects(){
   });
 }
 
-function renderProjects(){const el=document.getElementById('projectList');const today=todayStr();
+function renderProjects(){
+if(_isEditingInPanel('projectList')){_deferPanelRender('projectList');return;}
+const el=document.getElementById('projectList');const today=todayStr();
 
 // Detect if we're rendering inside the overlay (panel-tile removed) vs the dashboard tile
 var projPanel=document.querySelector('.panel[data-panel="projects"]');
@@ -1662,7 +1692,9 @@ function addReminder(){const t=document.getElementById('newRemText').value.trim(
 function deleteReminder(id){_confirm('Delete this reminder?',function(){state.reminders=state.reminders.filter(r=>r.id!==id);save();renderReminders();},{destructive:true,confirmText:'Delete'});}
 function clearPastReminders(){state.reminders=state.reminders.filter(r=>!r.date||r.date>=todayStr());save();renderReminders();toast('Past cleared');}
 function editReminderText(id,v){if(!v)return;const r=state.reminders.find(r=>r.id===id);if(r)r.text=v;save();}
-function renderReminders(){const el=document.getElementById('reminderList');const today=todayStr();const sorted=[...state.reminders].sort((a,b)=>{if(a.date&&b.date){const d=a.date.localeCompare(b.date);if(d!==0)return d;}if(a.date&&!b.date)return -1;if(!a.date&&b.date)return 1;if(a.time&&b.time)return a.time.localeCompare(b.time);return 0;});
+function renderReminders(){
+if(_isEditingInPanel('reminderList')){_deferPanelRender('reminderList');return;}
+const el=document.getElementById('reminderList');const today=todayStr();const sorted=[...state.reminders].sort((a,b)=>{if(a.date&&b.date){const d=a.date.localeCompare(b.date);if(d!==0)return d;}if(a.date&&!b.date)return -1;if(!a.date&&b.date)return 1;if(a.time&&b.time)return a.time.localeCompare(b.time);return 0;});
 if(sorted.length===0){el.innerHTML='<div class="empty-state">No reminders.</div>';document.getElementById('remCount').textContent='0';if(typeof _updateTileSummaryReminders==='function')_updateTileSummaryReminders();return;}
 el.innerHTML=sorted.map(r=>{return '<div class="reminder-item"><span class="rem-icon">\u{1F535}</span><div class="rem-body"><div class="rem-text editable" id="rt_'+r.id+'">'+esc(r.text)+'</div><div class="rem-when">'+'<span class="date-editable" id="rd_'+r.id+'">'+(r.date?fmtDate(r.date):'+ set date')+'</span>'+(r.time?' at <span class="date-editable" id="rt2_'+r.id+'">'+fmtTime(r.time)+'</span>':' <span class="date-editable" id="rt2_'+r.id+'" style="color:var(--text-faint);">+ time</span>')+'</div></div><div style="display:flex;gap:2px;"><span class="st-btn st-cal" onclick="exportReminderICS(\''+r.id+'\')">\u{1F4C5}</span><span class="st-btn st-del" onclick="deleteReminder(\''+r.id+'\')">\u2715</span></div></div>';}).join('');
 document.getElementById('remCount').textContent=sorted.filter(r=>!r.date||r.date>=today).length;
@@ -2240,7 +2272,9 @@ function noteOrganizeClose(){
   _norgPlan = null;
 }
 
-function renderThoughts(){document.getElementById('thoughtChips').innerHTML=state.thoughts.map(t=>'<div class="thought-chip"><span class="editable" id="tt_'+t.id+'">'+esc(t.text)+'</span><span class="chip-promote" onclick="promoteThought(\''+t.id+'\')">\u2197</span><span class="chip-x" onclick="deleteThought(\''+t.id+'\')">\u00D7</span></div>').join('');state.thoughts.forEach(t=>{const e=document.getElementById('tt_'+t.id);if(e)makeEditable(e,v=>editThought(t.id,v));});refreshEditables();}
+function renderThoughts(){
+if(_isEditingInPanel('thoughtChips')){_deferPanelRender('thoughtChips');return;}
+document.getElementById('thoughtChips').innerHTML=state.thoughts.map(t=>'<div class="thought-chip"><span class="editable" id="tt_'+t.id+'">'+esc(t.text)+'</span><span class="chip-promote" onclick="promoteThought(\''+t.id+'\')">\u2197</span><span class="chip-x" onclick="deleteThought(\''+t.id+'\')">\u00D7</span></div>').join('');state.thoughts.forEach(t=>{const e=document.getElementById('tt_'+t.id);if(e)makeEditable(e,v=>editThought(t.id,v));});refreshEditables();}
 
 // ENERGY & MOOD
 function setEnergy(el,v){state.energy=v;document.querySelectorAll('#energyPills .em-pill').forEach(c=>c.classList.remove('selected'));el.classList.add('selected');logMoodEntry();save();showStateAdvice();updateWellnessVisibility();var today=_dayKey();if(state.points&&state.points.lastEnergyDate!==today){state.points.lastEnergyDate=today;save();addPoints('mood_energy',el);}}
@@ -3915,6 +3949,7 @@ function getAllTasks(){
 }
 
 function renderTaskList(){
+  if(_isEditingInPanel('taskListItems')){_deferPanelRender('taskListItems');return;}
   var el=document.getElementById('taskListItems');if(!el)return;
   var all=getAllTasks();
   var sortBy=document.getElementById('tlSortBy');var sort=sortBy?sortBy.value:'due';
