@@ -49,6 +49,9 @@ export default function JournalOverlay() {
           <div className="journal-pin-icon">{'🔑'}</div>
           <div className="journal-pin-title" id="setPinTitle">Create a PIN</div>
           <p className="journal-pin-sub" id="setPinSub">Choose a 4+ digit PIN to protect your journal.</p>
+          <p className="journal-pin-warn" style={{ fontSize: 11, color: 'var(--red, #e53935)', maxWidth: 320, margin: '0 auto 6px', lineHeight: 1.5 }}>
+            {'⚠️'} Your entries are encrypted with this PIN. If you forget it, they can’t be recovered — there’s no reset. Export your journal from the entries view to keep a backup.
+          </p>
           <div className="journal-pin-dots" id="setPinDots">
             <PinDots prefix="spd" />
           </div>
@@ -140,6 +143,7 @@ export default function JournalOverlay() {
               >
                 <option value="all">All projects</option>
               </select>
+              <button className="btn btn-sm" onClick={() => window.exportJournalDecrypted()} style={{ fontSize: 11 }} title="Download a decrypted backup of your entries">{'⬇️'} Export</button>
               <button className="btn btn-sm" onClick={() => window.changeJournalPin()} style={{ fontSize: 11 }} title="Change your journal PIN">{'🔑'} Change PIN</button>
               <button className="btn btn-sm" onClick={() => window.lockJournalEntries()} style={{ fontSize: 11 }}>{'🔒'} Lock</button>
             </div>

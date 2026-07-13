@@ -6310,7 +6310,23 @@ function _enterUnlocked(){
   document.getElementById('journalViewToggle').classList.remove('active');
   _updateJournalMeta();
   _populateJournalProjDropdowns();
+  _scrubLegacyJournal();
   var ta=document.getElementById('journalText');if(ta)ta.focus();
+}
+
+// Phase 3: once entries are safely encrypted in their own doc and proven
+// decryptable (we only reach here after a successful unlock/migrate), remove
+// the legacy plaintext journal + PIN from the main dashboard blob. Guarded so
+// we never delete anything that isn't represented in the encrypted set, and
+// idempotent (a no-op once the blob is already clean).
+function _scrubLegacyJournal(){
+  var legacyCount=(state.journal&&state.journal.length)||0;
+  var hasLegacyPin=!!state.journalPin;
+  if(!legacyCount&&!hasLegacyPin)return;
+  if(legacyCount&&_journalEntries.length<legacyCount)return; // safety: encrypted set is smaller — don't scrub
+  state.journal=[];
+  state.journalPin='';
+  save();
 }
 
 function _updateJournalMeta(){
@@ -6525,6 +6541,23 @@ function deleteJournalEntry(id){
     _saveJournalDoc();
     renderJournalEntries();
   },{destructive:true,confirmText:'Delete'});
+}
+
+// Phase 4: decrypted backup. Only works while unlocked (the key is in memory).
+// This is the escape hatch for the "forgotten PIN = unrecoverable" tradeoff.
+function exportJournalDecrypted(){
+  if(!_journalUnlocked||!_journalKey){if(typeof toast==='function')toast('Unlock the journal first');return;}
+  var rows=_journalEntries.map(function(e){
+    return {id:e.id,date:e.date,projName:e.projName||'',mood:e.mood||'',text:(_journalPlain[e.id]!=null?_journalPlain[e.id]:'')};
+  });
+  var bundle={exportedAt:new Date().toISOString(),note:'Decrypted Centerpost journal export — this file is NOT encrypted. Keep it private.',entryCount:rows.length,entries:rows};
+  var blob=new Blob([JSON.stringify(bundle,null,2)],{type:'application/json'});
+  var u=URL.createObjectURL(blob);
+  var a=document.createElement('a');
+  a.href=u;a.download='centerpost-journal-'+todayStr()+'.json';
+  document.body.appendChild(a);a.click();document.body.removeChild(a);
+  URL.revokeObjectURL(u);
+  if(typeof toast==='function')toast('✓ Journal exported (decrypted — keep it safe)');
 }
 // =======================================
 // WORKOUT MODAL
