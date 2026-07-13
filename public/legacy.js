@@ -636,6 +636,7 @@ function save(){
   try{localStorage.setItem('prodDash_'+uid,blob);}catch(e){}
   _checkStateSize(blob.length);
   if(typeof pushWatchSnapshot==='function')pushWatchSnapshot(); // mirror to Apple Watch
+  if(typeof _notifScheduleNativeSync==='function')_notifScheduleNativeSync(); // reschedule iOS local notifications (debounced)
   if(!firebaseReady||!db||!currentUser)return;
   clearTimeout(saveTimer);
   saveTimer=setTimeout(async()=>{
@@ -1784,6 +1785,7 @@ function _notifShow(title,body,tag){
 // today or overdue. Never sets a badge otherwise (badges read as a shame
 // scorecard -- see the review's ADHD persona).
 function _notifUpdateBadge(){
+  if(_notifNative())return; // native badge is handled through the bridge (see _notifSyncNative)
   var p=state.notifPrefs;
   try{
     if(p&&p.enabled&&p.badges&&navigator.setAppBadge){
@@ -1841,6 +1843,16 @@ function _notifTick(){
 // -- Settings wiring -----------------------------------------------------
 function toggleNotifEnabled(on){
   _ensureNotifPrefs();
+  // Native (iOS shell): permission + delivery go through the notification bridge.
+  if(_notifNative()){
+    if(on){
+      _notifPendingEnable=true;
+      _notifNative().postMessage({action:'requestPermission'});
+    }else{
+      state.notifPrefs.enabled=false;save();_notifSyncNative();_renderNotifSettings();
+    }
+    return;
+  }
   if(on){
     if(!('Notification' in window)){toast('Notifications aren\'t supported in this browser');_renderNotifSettings();return;}
     Notification.requestPermission().then(function(perm){
@@ -1865,10 +1877,17 @@ function _renderNotifSettings(){
   var el=document.getElementById('notifSettings');if(!el)return;
   _ensureNotifPrefs();
   var p=state.notifPrefs;
-  var supported=('Notification' in window);
-  var perm=supported?Notification.permission:'unsupported';
+  var native=!!_notifNative();
+  var supported=native||('Notification' in window);
+  // On native we can't read a synchronous permission state; we track it via the
+  // bridge callback (_notifNativePermGranted, refreshed by checkPermission).
+  var perm=native?(_notifNativePermGranted?'granted':'default'):(supported?Notification.permission:'unsupported');
   var enabled=!!p.enabled&&perm==='granted';
-  var desc=!supported?'Not supported in this browser.':(perm==='denied'?'Blocked in your browser settings — enable Centerpost there first.':'Gentle nudges for due reminders and routines. Only while the app is open (on desktop).');
+  var desc;
+  if(native){desc='Reminders and routine nudges — delivered even when the app is closed. Turn on to allow notifications.';}
+  else if(!supported){desc='Not supported in this browser.';}
+  else if(perm==='denied'){desc='Blocked in your browser settings — enable Centerpost there first.';}
+  else{desc='Gentle nudges for due reminders and routines. Only while the app is open (on desktop).';}
   var html='';
   html+='<div class="panel-toggle"><span class="pt-icon">🔔</span><div class="pt-info"><div class="pt-name">Enable notifications</div><div class="pt-desc">'+desc+'</div></div><label class="toggle-switch"><input type="checkbox" '+(enabled?'checked':'')+' '+((!supported||perm==='denied')?'disabled':'')+' onchange="toggleNotifEnabled(this.checked)"><span class="toggle-slider"></span></label></div>';
   if(enabled){
@@ -1881,6 +1900,91 @@ function _renderNotifSettings(){
   }
   el.innerHTML=html;
 }
+
+// -- Native path (R1 phase 2: iOS shell, schedule-ahead via NotificationBridge) --
+// Mirrors the watch bridge. On iOS the web Notification API is dead, so instead
+// of the poll-and-fire loop we register upcoming reminders (one-shot) and
+// routine nudges (daily-repeating) with UNUserNotificationCenter, which fires
+// them even when the app is closed. No-ops on the web build (handler absent).
+var _notifNativePermGranted=false;
+var _notifPendingEnable=false;
+var _notifNativeSyncTimer=null;
+function _notifNative(){
+  try{return (window.webkit&&window.webkit.messageHandlers&&window.webkit.messageHandlers.notify)||null;}catch(e){return null;}
+}
+function _notifTimeInQuiet(time){
+  var p=state.notifPrefs;if(!p)return false;
+  var cur=_hmToMin(time),s=_hmToMin(p.quietStart||'21:00'),e=_hmToMin(p.quietEnd||'08:00');
+  if(s===e)return false;
+  if(s<e)return cur>=s&&cur<e;
+  return cur>=s||cur<e;
+}
+function _notifDateTimeToEpoch(date,time){
+  try{
+    var d=(date||'').split('-'),t=(time||'00:00').split(':');
+    return new Date(parseInt(d[0],10),parseInt(d[1],10)-1,parseInt(d[2],10),parseInt(t[0],10),parseInt(t[1],10),0,0).getTime();
+  }catch(e){return null;}
+}
+function _notifTodayTimeEpoch(time){
+  var t=(time||'08:00').split(':');
+  var d=new Date();d.setHours(parseInt(t[0],10),parseInt(t[1],10),0,0);
+  return d.getTime();
+}
+// Build the full desired notification set (native replaces everything each sync).
+function _notifBuildNativeItems(){
+  var p=state.notifPrefs;if(!p||!p.enabled)return [];
+  var items=[];
+  var nowMs=Date.now();
+  (state.reminders||[]).forEach(function(r){
+    if(!r.date||!r.time)return;
+    var at=_notifDateTimeToEpoch(r.date,r.time);
+    if(at===null||at<=nowMs)return;          // past or invalid
+    if(_notifTimeInQuiet(r.time))return;     // falls inside quiet hours
+    var when=(typeof fmtTime==='function')?fmtTime(r.time):r.time;
+    items.push({id:'rem_'+r.id,title:'⏰ '+(r.text||'Reminder'),body:'Reminder for '+when,at:at,repeatsDaily:false});
+  });
+  if(p.routineMorning&&p.routineMorning.on&&!_notifTimeInQuiet(p.routineMorning.time)){
+    items.push({id:'routine_morning',title:'☀ Morning routine',body:'A gentle nudge for your morning routine — no pressure.',at:_notifTodayTimeEpoch(p.routineMorning.time),repeatsDaily:true});
+  }
+  if(p.routineEvening&&p.routineEvening.on&&!_notifTimeInQuiet(p.routineEvening.time)){
+    items.push({id:'routine_evening',title:'🌙 Evening routine',body:'A gentle nudge for your evening routine — no pressure.',at:_notifTodayTimeEpoch(p.routineEvening.time),repeatsDaily:true});
+  }
+  return items.slice(0,60); // iOS caps pending notifications at 64
+}
+function _notifSyncNative(){
+  var h=_notifNative();if(!h)return;
+  var p=state.notifPrefs;
+  if(!p||!p.enabled){
+    h.postMessage({action:'cancelAll'});
+    h.postMessage({action:'setBadge',count:0});
+    return;
+  }
+  h.postMessage({action:'schedule',items:_notifBuildNativeItems()}); // native schedule() clears the old set first
+  var badge=0;
+  if(p.badges){var today=todayStr();badge=(state.reminders||[]).filter(function(r){return r.date&&r.date<=today;}).length;}
+  h.postMessage({action:'setBadge',count:badge});
+}
+// Debounced -- called from save() so edits coalesce into one reschedule.
+function _notifScheduleNativeSync(){
+  if(!_notifNative())return;
+  clearTimeout(_notifNativeSyncTimer);
+  _notifNativeSyncTimer=setTimeout(_notifSyncNative,1500);
+}
+// Native -> JS permission callback (evaluateJavaScript from NotificationBridge).
+window.__notifPermissionResult=function(granted){
+  _notifNativePermGranted=!!granted;
+  _ensureNotifPrefs();
+  if(_notifPendingEnable){
+    _notifPendingEnable=false;
+    state.notifPrefs.enabled=!!granted;save();
+    if(granted){toast('✓ Notifications on');_notifSyncNative();}
+    else{toast('Enable notifications in iOS Settings › Centerpost');}
+  }else if(!granted&&state.notifPrefs.enabled){
+    // permission was revoked in iOS Settings since last run
+    state.notifPrefs.enabled=false;save();
+  }
+  if(typeof _renderNotifSettings==='function')_renderNotifSettings();
+};
 
 // BRAIN DUMP
 function handleDumpKey(e){if(e.key==='Enter'&&!e.shiftKey){e.preventDefault();const t=document.getElementById('brainDump').value.trim();if(!t)return;state.thoughts.push({id:'th'+Date.now(),text:t});document.getElementById('brainDump').value='';save();renderThoughts();_trackEvent('tool_use','brain_dump','Brain Dump');}}
@@ -8823,7 +8927,15 @@ _bindPanelUsageTracking();
 try { checkDailyRoutineReset(); } catch(e){}
 setInterval(checkDailyRoutineReset,60000);
 // Notifications (R1 phase 1): dedupe store + periodic scan while the app is open.
-if(typeof _notifLoadFired==='function'){_notifLoadFired();_ensureNotifPrefs();setInterval(_notifTick,45000);setTimeout(_notifTick,4000);}
+if(typeof _notifLoadFired==='function'){
+  _notifLoadFired();_ensureNotifPrefs();
+  if(_notifNative()){
+    // iOS shell: no poll loop -- sync scheduled notifications + refresh permission state.
+    setTimeout(function(){_notifNative().postMessage({action:'checkPermission'});_notifSyncNative();},2500);
+  }else{
+    setInterval(_notifTick,45000);setTimeout(_notifTick,4000);
+  }
+}
 document.addEventListener('visibilitychange',function(){
   if(!document.hidden){
     try { checkDailyRoutineReset(); } catch(e){}
