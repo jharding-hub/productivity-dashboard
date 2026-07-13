@@ -32,28 +32,32 @@ export default function JournalOverlay() {
         <div className="journal-pin-gate" id="journalPinGate" style={{ display: 'none' }}>
           <div className="journal-pin-icon">{'🔒'}</div>
           <div className="journal-pin-title">Journal is locked</div>
-          <p className="journal-pin-sub">Enter your PIN to view entries</p>
+          <p className="journal-pin-sub">Enter your PIN to open your journal</p>
           <div className="journal-pin-dots" id="journalPinDots">
             <PinDots prefix="pd" />
           </div>
           <div className="journal-pin-error" id="journalPinError"></div>
           <NumpadGrid handler="journalPinKey" />
-          <div style={{ display: 'flex', gap: 8, justifyContent: 'center', marginTop: 4 }}>
+          <div style={{ display: 'flex', gap: 8, justifyContent: 'center', marginTop: 8 }}>
             <button className="btn" onClick={() => window.closeJournal()} style={{ fontSize: 12, padding: '6px 14px' }}>Cancel</button>
+            <button className="btn btn-accent" onClick={() => window.journalPinSubmit()} style={{ fontSize: 12, padding: '6px 18px' }}>Unlock</button>
           </div>
         </div>
 
         {/* Set PIN form (first time or change) */}
         <div className="journal-set-pin" id="journalSetPin" style={{ display: 'none' }}>
           <div className="journal-pin-icon">{'🔑'}</div>
-          <div className="journal-pin-title" id="setPinTitle">Create a 4-digit PIN</div>
-          <p className="journal-pin-sub" id="setPinSub">Your PIN protects entry viewing. You can always write without it.</p>
+          <div className="journal-pin-title" id="setPinTitle">Create a PIN</div>
+          <p className="journal-pin-sub" id="setPinSub">Choose a 4+ digit PIN to protect your journal.</p>
           <div className="journal-pin-dots" id="setPinDots">
             <PinDots prefix="spd" />
           </div>
           <div className="journal-pin-error" id="setPinError"></div>
           <NumpadGrid handler="setPinKey" />
-          <button className="btn" onClick={() => window.closeJournal()} style={{ fontSize: 12, padding: '6px 14px', marginTop: 4 }}>Cancel</button>
+          <div style={{ display: 'flex', gap: 8, justifyContent: 'center', marginTop: 8 }}>
+            <button className="btn" onClick={() => window.closeJournal()} style={{ fontSize: 12, padding: '6px 14px' }}>Cancel</button>
+            <button className="btn btn-accent" onClick={() => window.setPinSubmit()} style={{ fontSize: 12, padding: '6px 18px' }}>Continue</button>
+          </div>
         </div>
 
         {/* Main journal UI */}
@@ -65,7 +69,7 @@ export default function JournalOverlay() {
               <span className="journal-entry-count" id="journalEntryCount">0 entries</span>
             </div>
             <div className="journal-header-right">
-              <button className="journal-view-btn" id="journalViewToggle" onClick={() => window.toggleJournalView()} title="View entries (requires PIN)">{'📄'} Entries</button>
+              <button className="journal-view-btn" id="journalViewToggle" onClick={() => window.toggleJournalView()} title="View past entries">{'📄'} Entries</button>
               <button className="journal-close-btn" onClick={() => window.closeJournal()} title="Close">&#10005;</button>
             </div>
           </div>

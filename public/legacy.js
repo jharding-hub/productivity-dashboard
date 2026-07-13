@@ -6168,32 +6168,140 @@ function _syncTimerPresetBtns(){
 // JOURNAL
 // =======================================
 var _journalUnlocked=false;
+var _journalMode='unlock';   // 'unlock' | 'migrate' | 'create'
+var _journalKey=null;        // AES-GCM CryptoKey while unlocked (memory only)
+var _journalMeta=null;       // {salt,iterations,verifier} from the journal doc
+var _journalEntries=[];      // [{id,date,projId,projName,mood,enc}] at rest
+var _journalPlain={};        // id -> decrypted text (memory only, while unlocked)
 var _pinBuffer='';
 var _setPinBuffer='';
 var _setPinStage=0; // 0=first entry, 1=confirm
 var _setPinFirst='';
-var _changingPin=false; // true while verifying old PIN before a change
+var _changingPin=false; // true while setting a replacement PIN (re-encrypt)
 
-function openJournal(){
-  _journalUnlocked=false;
+// ── Journal document I/O (own doc: users/{uid}/data/journal, mirrored to localStorage) ──
+function _journalStorageKey(){return 'cpJournal_'+(currentUser?currentUser.uid:'local');}
+
+async function _loadJournalDoc(){
+  _journalMeta=null;_journalEntries=[];
+  var loaded=null;
+  if(firebaseReady&&db&&currentUser){
+    try{
+      var snap=await db.collection('users').doc(currentUser.uid).collection('data').doc('journal').get();
+      if(snap.exists)loaded=snap.data();
+    }catch(e){console.log('journal load (cloud) error:',e);}
+  }
+  if(!loaded){
+    try{var s=localStorage.getItem(_journalStorageKey());if(s)loaded=JSON.parse(s);}catch(e){}
+  }
+  if(loaded){
+    if(Array.isArray(loaded.entries))_journalEntries=loaded.entries;
+    if(loaded.salt&&loaded.verifier)_journalMeta={salt:loaded.salt,iterations:loaded.iterations||JournalCrypto.PBKDF2_ITERATIONS,verifier:loaded.verifier};
+    try{localStorage.setItem(_journalStorageKey(),JSON.stringify({v:1,salt:loaded.salt||'',iterations:loaded.iterations||JournalCrypto.PBKDF2_ITERATIONS,verifier:loaded.verifier||'',entries:_journalEntries}));}catch(e){}
+  }
+}
+
+async function _saveJournalDoc(){
+  var doc={v:1,salt:_journalMeta?_journalMeta.salt:'',iterations:_journalMeta?_journalMeta.iterations:JournalCrypto.PBKDF2_ITERATIONS,verifier:_journalMeta?_journalMeta.verifier:'',entries:_journalEntries};
+  try{localStorage.setItem(_journalStorageKey(),JSON.stringify(doc));}catch(e){}
+  if(firebaseReady&&db&&currentUser){
+    try{
+      var cloud={};for(var k in doc)cloud[k]=doc[k];
+      cloud.updated=firebase.firestore.FieldValue.serverTimestamp();
+      await db.collection('users').doc(currentUser.uid).collection('data').doc('journal').set(cloud);
+    }catch(e){console.log('journal save (cloud) error:',e);if(typeof toast==='function')toast('Journal saved locally (cloud sync failed)');}
+  }
+}
+
+async function _decryptAllEntries(){
+  _journalPlain={};
+  for(var i=0;i<_journalEntries.length;i++){
+    var e=_journalEntries[i];
+    try{_journalPlain[e.id]=await JournalCrypto.decryptText(_journalKey,e.enc);}
+    catch(_){_journalPlain[e.id]='[unable to decrypt]';}
+  }
+}
+
+// First-time / legacy setup: derive a key, and NON-DESTRUCTIVELY copy any
+// existing plaintext entries into the encrypted doc. The old state.journal /
+// state.journalPin are left intact as a safety net (scrubbed in Phase 3).
+async function _journalSetupAndMigrate(pin){
+  var salt=JournalCrypto.randomSaltB64();
+  var iterations=JournalCrypto.PBKDF2_ITERATIONS;
+  var key=await JournalCrypto.deriveKey(pin,salt,iterations);
+  var verifier=await JournalCrypto.makeVerifier(key);
+  _journalMeta={salt:salt,iterations:iterations,verifier:verifier};
+  _journalKey=key;
+  var legacy=(state.journal||[]);
+  var migrated=[];
+  _journalPlain={};
+  for(var i=0;i<legacy.length;i++){
+    var e=legacy[i];
+    var enc=await JournalCrypto.encryptText(key,e.text||'');
+    var id=e.id||('j'+Date.now()+'_'+i);
+    migrated.push({id:id,date:e.date||new Date().toISOString(),projId:e.projId||'',projName:e.projName||'',mood:e.mood||'',enc:enc});
+    _journalPlain[id]=e.text||'';
+  }
+  _journalEntries=migrated.concat(_journalEntries||[]);
+  await _saveJournalDoc();
+}
+
+// Change PIN: re-encrypt every entry from the in-memory plaintext under a new key.
+async function _journalRekey(newPin){
+  var salt=JournalCrypto.randomSaltB64();
+  var iterations=JournalCrypto.PBKDF2_ITERATIONS;
+  var key=await JournalCrypto.deriveKey(newPin,salt,iterations);
+  var verifier=await JournalCrypto.makeVerifier(key);
+  var re=[];
+  for(var i=0;i<_journalEntries.length;i++){
+    var e=_journalEntries[i];
+    var txt=_journalPlain[e.id]!=null?_journalPlain[e.id]:'';
+    re.push({id:e.id,date:e.date,projId:e.projId||'',projName:e.projName||'',mood:e.mood||'',enc:await JournalCrypto.encryptText(key,txt)});
+  }
+  _journalMeta={salt:salt,iterations:iterations,verifier:verifier};
+  _journalKey=key;_journalEntries=re;
+  await _saveJournalDoc();
+}
+
+// ── Open / close ──────────────────────────────────────────────────────
+async function openJournal(){
+  _journalUnlocked=false;_journalKey=null;_journalPlain={};
+  _pinBuffer='';_setPinBuffer='';_setPinStage=0;_setPinFirst='';_changingPin=false;
   document.getElementById('journalOverlay').classList.add('open');
   _blurDashboard();
-  _journalShowMain();
+  document.getElementById('journalMain').style.display='none';
+  document.getElementById('journalPinGate').style.display='none';
+  document.getElementById('journalSetPin').style.display='none';
+  if(!(window.JournalCrypto&&JournalCrypto.isSupported())){
+    if(typeof toast==='function')toast('Secure journal unavailable in this browser');
+    return;
+  }
+  await _loadJournalDoc();
+  if(_journalMeta){
+    _journalMode='unlock';
+    _showPinGate('Journal is locked','Enter your PIN to open your journal');
+  }else if(state.journalPin){
+    _journalMode='migrate';
+    _showPinGate('Journal is locked','Enter your PIN to open your journal');
+  }else if((state.journal||[]).length){
+    _journalMode='create';
+    _showSetPin('Create a PIN','Encrypt your '+state.journal.length+' existing '+(state.journal.length===1?'entry':'entries')+'. Choose a 4+ digit PIN.');
+  }else{
+    _journalMode='create';
+    _showSetPin('Create a PIN','Protect your journal with a 4+ digit PIN.');
+  }
 }
 
 function closeJournal(){
   document.getElementById('journalOverlay').classList.remove('open');
   _unblurDashboard();
-  _journalUnlocked=false;
+  _journalUnlocked=false;_journalKey=null;_journalPlain={};
   _pinBuffer='';_setPinBuffer='';_setPinStage=0;_setPinFirst='';_changingPin=false;
-  // Restore lock-gate labels in case a change was mid-flight
-  var t=document.querySelector('#journalPinGate .journal-pin-title');
-  var s=document.querySelector('#journalPinGate .journal-pin-sub');
-  if(t)t.textContent='Journal is locked';
-  if(s)s.textContent='Enter your PIN to view entries';
 }
 
-function _journalShowMain(){
+// ── View switching (only reachable once unlocked) ─────────────────────
+function _enterUnlocked(){
+  _journalUnlocked=true;
   document.getElementById('journalPinGate').style.display='none';
   document.getElementById('journalSetPin').style.display='none';
   document.getElementById('journalMain').style.display='flex';
@@ -6202,15 +6310,17 @@ function _journalShowMain(){
   document.getElementById('journalViewToggle').classList.remove('active');
   _updateJournalMeta();
   _populateJournalProjDropdowns();
-  document.getElementById('journalText').focus();
+  var ta=document.getElementById('journalText');if(ta)ta.focus();
 }
 
 function _updateJournalMeta(){
   const now=new Date();
-  document.getElementById('journalDateStamp').textContent=now.toLocaleDateString('en-US',{weekday:'long',year:'numeric',month:'long',day:'numeric'})+' \u2014 '+now.toLocaleTimeString('en-US',{hour:'numeric',minute:'2-digit'});
-  document.getElementById('journalEntryCount').textContent=(state.journal||[]).length+' '+(state.journal.length===1?'entry':'entries');
+  var ds=document.getElementById('journalDateStamp');
+  if(ds)ds.textContent=now.toLocaleDateString('en-US',{weekday:'long',year:'numeric',month:'long',day:'numeric'})+' — '+now.toLocaleTimeString('en-US',{hour:'numeric',minute:'2-digit'});
+  var ec=document.getElementById('journalEntryCount');
+  if(ec)ec.textContent=_journalEntries.length+' '+(_journalEntries.length===1?'entry':'entries');
   const ta=document.getElementById('journalText');
-  if(ta)ta.addEventListener('input',function(){document.getElementById('journalCharCount').textContent=ta.value.length+' characters';});
+  if(ta&&!ta._cpBound){ta._cpBound=true;ta.addEventListener('input',function(){document.getElementById('journalCharCount').textContent=ta.value.length+' characters';});}
 }
 
 function _populateJournalProjDropdowns(){
@@ -6220,201 +6330,167 @@ function _populateJournalProjDropdowns(){
   document.getElementById('journalFilterProj').innerHTML=fopts;
 }
 
-function saveJournalEntry(){
+async function saveJournalEntry(){
+  if(!_journalKey){if(typeof toast==='function')toast('Unlock the journal first');return;}
   const text=document.getElementById('journalText').value.trim();
   if(!text){toast('Write something first');return;}
   const projId=document.getElementById('journalProjTag').value;
   const mood=document.getElementById('journalMoodTag').value;
   const proj=projId?state.projects.find(p=>p.id===projId):null;
-  state.journal.unshift({
-    id:'j'+Date.now(),
-    text:text,
-    date:new Date().toISOString(),
-    projId:projId||'',
-    projName:proj?proj.name:'',
-    mood:mood||''
-  });
+  const id='j'+Date.now();
+  var enc;
+  try{enc=await JournalCrypto.encryptText(_journalKey,text);}
+  catch(e){toast('Could not encrypt entry');return;}
+  _journalEntries.unshift({id:id,date:new Date().toISOString(),projId:projId||'',projName:proj?proj.name:'',mood:mood||'',enc:enc});
+  _journalPlain[id]=text;
   document.getElementById('journalText').value='';
   document.getElementById('journalCharCount').textContent='0 characters';
   document.getElementById('journalProjTag').value='';
   document.getElementById('journalMoodTag').value='';
-  document.getElementById('journalEntryCount').textContent=state.journal.length+' '+(state.journal.length===1?'entry':'entries');
-  save();
+  _updateJournalMeta();
+  await _saveJournalDoc();
   addPoints('journal');
-  
 }
 
-// -- View entries (PIN gate) --
 function toggleJournalView(){
   const ev=document.getElementById('journalEntriesView');
   const compose=document.getElementById('journalCompose');
   const btn=document.getElementById('journalViewToggle');
   if(ev.style.display==='none'||!ev.style.display){
-    // Try to open entries
-    if(_journalUnlocked){
-      compose.style.display='none';
-      ev.style.display='flex';
-      btn.classList.add('active');
-      renderJournalEntries();
-    } else if(!state.journalPin){
-      // No PIN set yet -- prompt to create one
-      _showSetPin();
-    } else {
-      // Show PIN gate
-      document.getElementById('journalMain').style.display='none';
-      document.getElementById('journalPinGate').style.display='flex';
-      _pinBuffer='';_renderPinDots('journalPinDots',0);
-      document.getElementById('journalPinError').textContent='';
-    }
+    compose.style.display='none';
+    ev.style.display='flex';
+    btn.classList.add('active');
+    renderJournalEntries();
   } else {
     lockJournalEntries();
   }
 }
 
 function lockJournalEntries(){
-  _journalUnlocked=false;
   document.getElementById('journalEntriesView').style.display='none';
   document.getElementById('journalCompose').style.display='flex';
   document.getElementById('journalViewToggle').classList.remove('active');
 }
 
-// -- PIN entry (verify) --
-function journalPinKey(k){
-  const err=document.getElementById('journalPinError');
-  if(k==='C'){_pinBuffer='';_renderPinDots('journalPinDots',0);err.textContent='';return;}
-  if(k==='DEL'){_pinBuffer=_pinBuffer.slice(0,-1);_renderPinDots('journalPinDots',_pinBuffer.length);return;}
-  if(_pinBuffer.length>=4)return;
-  _pinBuffer+=k;
-  _renderPinDots('journalPinDots',_pinBuffer.length);
-  if(_pinBuffer.length===4){
-    setTimeout(function(){
-      if(_pinBuffer===state.journalPin){
-        _pinBuffer='';
-        if(_changingPin){
-          // Old PIN confirmed -- now let them set a new one
-          _changingPin=false;
-          // Restore the lock-gate labels for next time
-          document.querySelector('#journalPinGate .journal-pin-title').textContent='Journal is locked';
-          document.querySelector('#journalPinGate .journal-pin-sub').textContent='Enter your PIN to view entries';
-          document.getElementById('journalPinGate').style.display='none';
-          _setPinBuffer='';_setPinStage=0;_setPinFirst='';
-          document.getElementById('journalSetPin').style.display='flex';
-          document.getElementById('setPinTitle').textContent='Set a new 4-digit PIN';
-          document.getElementById('setPinSub').textContent='Enter a new PIN to replace your current one.';
-          document.getElementById('setPinError').textContent='';
-          _renderPinDots('setPinDots',0);
-          return;
-        }
-        _journalUnlocked=true;
-        document.getElementById('journalPinGate').style.display='none';
-        document.getElementById('journalMain').style.display='flex';
-        document.getElementById('journalCompose').style.display='none';
-        document.getElementById('journalEntriesView').style.display='flex';
-        document.getElementById('journalViewToggle').classList.add('active');
-        _populateJournalProjDropdowns();
-        renderJournalEntries();
-      } else {
-        err.textContent='Incorrect PIN. Try again.';
-        document.querySelectorAll('#journalPinDots .pin-dot').forEach(d=>d.classList.add('shake'));
-        setTimeout(function(){document.querySelectorAll('#journalPinDots .pin-dot').forEach(d=>d.classList.remove('shake'));},500);
-        _pinBuffer='';_renderPinDots('journalPinDots',0);
-      }
-    },120);
-  }
-}
-
-// -- Change PIN (requires re-entering the current PIN) --
-function changeJournalPin(){
-  // SECURITY: require the user to re-enter their CURRENT PIN before they can
-  // set a new one -- even though they're already in the unlocked view.
-  if(!_journalUnlocked){
-    toast('Unlock the journal first');
-    return;
-  }
-  if(!state.journalPin){
-    // No PIN yet -- go straight to creating one
-    _showSetPin();
-    return;
-  }
-  // Send them to the PIN gate in "change" mode to confirm the old PIN.
-  _changingPin=true;
+// ── PIN gate (verify / migrate) ──────────────────────────────────────
+function _showPinGate(title,sub){
   _pinBuffer='';
-  document.getElementById('journalEntriesView').style.display='none';
+  document.getElementById('journalSetPin').style.display='none';
   document.getElementById('journalMain').style.display='none';
   document.getElementById('journalPinGate').style.display='flex';
-  document.querySelector('#journalPinGate .journal-pin-title').textContent='Confirm current PIN';
-  document.querySelector('#journalPinGate .journal-pin-sub').textContent='Enter your current PIN to change it';
+  var t=document.querySelector('#journalPinGate .journal-pin-title');
+  var s=document.querySelector('#journalPinGate .journal-pin-sub');
+  if(t)t.textContent=title||'Journal is locked';
+  if(s)s.textContent=sub||'Enter your PIN to open your journal';
   document.getElementById('journalPinError').textContent='';
   _renderPinDots('journalPinDots',0);
 }
 
-// -- Set / change PIN --
-function showSetPinForm(){
-  // Only allowed when there is NO existing PIN (first-time setup) or the
-  // journal is already unlocked. Prevents bypassing an existing PIN.
-  if(state.journalPin && !_journalUnlocked){
-    toast('Unlock the journal first');
+function journalPinKey(k){
+  const err=document.getElementById('journalPinError');
+  if(k==='C'){_pinBuffer='';_renderPinDots('journalPinDots',0);err.textContent='';return;}
+  if(k==='DEL'){_pinBuffer=_pinBuffer.slice(0,-1);_renderPinDots('journalPinDots',_pinBuffer.length);return;}
+  if(_pinBuffer.length>=12)return;
+  _pinBuffer+=k;
+  _renderPinDots('journalPinDots',_pinBuffer.length);
+}
+
+function _journalPinFail(err){
+  err.textContent='Incorrect PIN. Try again.';
+  document.querySelectorAll('#journalPinDots .pin-dot').forEach(d=>d.classList.add('shake'));
+  setTimeout(function(){document.querySelectorAll('#journalPinDots .pin-dot').forEach(d=>d.classList.remove('shake'));},500);
+  _pinBuffer='';_renderPinDots('journalPinDots',0);
+}
+
+async function journalPinSubmit(){
+  const err=document.getElementById('journalPinError');
+  const pin=_pinBuffer;
+  if(pin.length<4){err.textContent='PIN must be at least 4 digits';return;}
+  if(_journalMode==='migrate'){
+    if(pin!==(state.journalPin||'')){_journalPinFail(err);return;}
+    err.textContent='Encrypting your journal…';
+    try{await _journalSetupAndMigrate(pin);}
+    catch(e){console.log('journal migrate error:',e);err.textContent='Something went wrong. Try again.';return;}
+    _pinBuffer='';
+    _enterUnlocked();
     return;
   }
-  document.getElementById('journalPinGate').style.display='none';
-  _showSetPin();
+  var key;
+  try{
+    key=await JournalCrypto.deriveKey(pin,_journalMeta.salt,_journalMeta.iterations);
+    var ok=await JournalCrypto.checkVerifier(key,_journalMeta.verifier);
+    if(!ok){_journalPinFail(err);return;}
+  }catch(e){console.log('journal unlock error:',e);_journalPinFail(err);return;}
+  _journalKey=key;
+  await _decryptAllEntries();
+  _pinBuffer='';
+  _enterUnlocked();
 }
-function _showSetPin(){
+
+// ── Set / change PIN ─────────────────────────────────────────────────
+function _showSetPin(title,sub){
   _setPinBuffer='';_setPinStage=0;_setPinFirst='';
+  document.getElementById('journalPinGate').style.display='none';
   document.getElementById('journalMain').style.display='none';
+  document.getElementById('journalEntriesView').style.display='none';
   document.getElementById('journalSetPin').style.display='flex';
-  document.getElementById('setPinTitle').textContent='Create a 4-digit PIN';
-  document.getElementById('setPinSub').textContent='Your PIN protects entry viewing.';
+  document.getElementById('setPinTitle').textContent=title||'Create a PIN';
+  document.getElementById('setPinSub').textContent=sub||'Choose a 4+ digit PIN.';
   document.getElementById('setPinError').textContent='';
   _renderPinDots('setPinDots',0);
 }
+
 function setPinKey(k){
   const err=document.getElementById('setPinError');
   if(k==='C'){_setPinBuffer='';_renderPinDots('setPinDots',0);err.textContent='';return;}
   if(k==='DEL'){_setPinBuffer=_setPinBuffer.slice(0,-1);_renderPinDots('setPinDots',_setPinBuffer.length);return;}
-  if(_setPinBuffer.length>=4)return;
+  if(_setPinBuffer.length>=12)return;
   _setPinBuffer+=k;
   _renderPinDots('setPinDots',_setPinBuffer.length);
-  if(_setPinBuffer.length===4){
-    setTimeout(function(){
-      if(_setPinStage===0){
-        _setPinFirst=_setPinBuffer;
-        _setPinBuffer='';_setPinStage=1;
-        document.getElementById('setPinTitle').textContent='Confirm your PIN';
-        document.getElementById('setPinSub').textContent='Enter the same PIN again to confirm.';
-        err.textContent='';
-        _renderPinDots('setPinDots',0);
-      } else {
-        if(_setPinBuffer===_setPinFirst){
-          state.journalPin=_setPinBuffer;
-          save();
-          
-          _journalUnlocked=true;
-          _setPinBuffer='';_setPinStage=0;_setPinFirst='';
-          document.getElementById('journalSetPin').style.display='none';
-          document.getElementById('journalMain').style.display='flex';
-          document.getElementById('journalCompose').style.display='none';
-          document.getElementById('journalEntriesView').style.display='flex';
-          document.getElementById('journalViewToggle').classList.add('active');
-          _populateJournalProjDropdowns();
-          renderJournalEntries();
-        } else {
-          err.textContent='PINs did not match. Start over.';
-          document.querySelectorAll('#setPinDots .pin-dot').forEach(d=>d.classList.add('shake'));
-          setTimeout(function(){document.querySelectorAll('#setPinDots .pin-dot').forEach(d=>d.classList.remove('shake'));},500);
-          _setPinBuffer='';_setPinStage=0;_setPinFirst='';
-          document.getElementById('setPinTitle').textContent='Create a 4-digit PIN';
-          document.getElementById('setPinSub').textContent='Your PIN protects entry viewing.';
-          _renderPinDots('setPinDots',0);
-        }
-      }
-    },120);
-  }
 }
 
-function _renderPinDots(containerId,filled){
-  const dots=document.querySelectorAll('#'+containerId+' .pin-dot');
-  dots.forEach(function(d,i){d.classList.toggle('filled',i<filled);});
+async function setPinSubmit(){
+  const err=document.getElementById('setPinError');
+  if(_setPinStage===0){
+    if(_setPinBuffer.length<4){err.textContent='Choose at least 4 digits';return;}
+    _setPinFirst=_setPinBuffer;_setPinBuffer='';_setPinStage=1;
+    document.getElementById('setPinTitle').textContent='Confirm your PIN';
+    document.getElementById('setPinSub').textContent='Enter the same PIN again to confirm.';
+    err.textContent='';_renderPinDots('setPinDots',0);
+    return;
+  }
+  if(_setPinBuffer!==_setPinFirst){
+    err.textContent='PINs did not match. Start over.';
+    document.querySelectorAll('#setPinDots .pin-dot').forEach(d=>d.classList.add('shake'));
+    setTimeout(function(){document.querySelectorAll('#setPinDots .pin-dot').forEach(d=>d.classList.remove('shake'));},500);
+    _setPinBuffer='';_setPinStage=0;_setPinFirst='';
+    document.getElementById('setPinTitle').textContent=_changingPin?'Set a new PIN':'Create a PIN';
+    document.getElementById('setPinSub').textContent='Choose a 4+ digit PIN.';
+    _renderPinDots('setPinDots',0);
+    return;
+  }
+  const pin=_setPinFirst;
+  _setPinBuffer='';_setPinStage=0;_setPinFirst='';
+  try{
+    if(_changingPin){_changingPin=false;err.textContent='Re-encrypting…';await _journalRekey(pin);}
+    else{err.textContent='Encrypting…';await _journalSetupAndMigrate(pin);}
+  }catch(e){console.log('journal set-pin error:',e);err.textContent='Something went wrong. Try again.';return;}
+  _enterUnlocked();
+}
+
+function changeJournalPin(){
+  if(!_journalUnlocked){toast('Unlock the journal first');return;}
+  _changingPin=true;
+  _showSetPin('Set a new PIN','Choose a new 4+ digit PIN. Your entries will be re-encrypted.');
+}
+
+function _renderPinDots(containerId,count){
+  var c=document.getElementById(containerId);
+  if(!c)return;
+  var slots=Math.max(4,count);
+  var html='';
+  for(var i=0;i<slots;i++){html+='<span class="pin-dot'+(i<count?' filled':'')+'"></span>';}
+  c.innerHTML=html;
 }
 
 function renderJournalEntries(){
@@ -6422,9 +6498,10 @@ function renderJournalEntries(){
   if(!list)return;
   const q=(document.getElementById('journalSearch').value||'').toLowerCase();
   const fp=document.getElementById('journalFilterProj').value;
-  let entries=(state.journal||[]).filter(function(e){
+  let entries=_journalEntries.filter(function(e){
     if(fp!=='all'&&e.projId!==fp)return false;
-    if(q&&!e.text.toLowerCase().includes(q))return false;
+    var txt=_journalPlain[e.id]||'';
+    if(q&&!txt.toLowerCase().includes(q))return false;
     return true;
   });
   if(!entries.length){
@@ -6434,21 +6511,21 @@ function renderJournalEntries(){
   const MOOD_LABELS={reflective:'&#129300; Reflective',grateful:'&#128149; Grateful',anxious:'&#128560; Anxious',motivated:'&#128293; Motivated',frustrated:'&#128548; Frustrated',content:'&#127774; Content',uncertain:'&#129300; Uncertain'};
   list.innerHTML=entries.map(function(e){
     const d=new Date(e.date);
-    const dStr=d.toLocaleDateString('en-US',{weekday:'short',month:'short',day:'numeric',year:'numeric'})+' \u2014 '+d.toLocaleTimeString('en-US',{hour:'numeric',minute:'2-digit'});
-    const tags=(e.projName?'<span class="jec-tag">&#128194; '+esc(e.projName)+'</span>':'')+(e.mood?'<span class="jec-tag mood-tag">'+MOOD_LABELS[e.mood]+'</span>':'');
-    return '<div class="journal-entry-card"><div class="jec-header"><div class="jec-meta"><div class="jec-date">'+dStr+'</div>'+(tags?'<div class="jec-tags">'+tags+'</div>':'')+'</div><div class="jec-actions"><button class="jec-del" onclick="deleteJournalEntry(\''+e.id+'\')" title="Delete entry">&#128465;</button></div></div><div class="jec-body">'+esc(e.text)+'</div></div>';
+    const dStr=d.toLocaleDateString('en-US',{weekday:'short',month:'short',day:'numeric',year:'numeric'})+' — '+d.toLocaleTimeString('en-US',{hour:'numeric',minute:'2-digit'});
+    const tags=(e.projName?'<span class="jec-tag">&#128194; '+esc(e.projName)+'</span>':'')+(e.mood?'<span class="jec-tag mood-tag">'+(MOOD_LABELS[e.mood]||esc(e.mood))+'</span>':'');
+    return '<div class="journal-entry-card"><div class="jec-header"><div class="jec-meta"><div class="jec-date">'+dStr+'</div>'+(tags?'<div class="jec-tags">'+tags+'</div>':'')+'</div><div class="jec-actions"><button class="jec-del" onclick="deleteJournalEntry(\''+e.id+'\')" title="Delete entry">&#128465;</button></div></div><div class="jec-body">'+esc(_journalPlain[e.id]||'')+'</div></div>';
   }).join('');
 }
 
 function deleteJournalEntry(id){
   _confirm('Delete this journal entry? This cannot be undone.',function(){
-    state.journal=state.journal.filter(function(e){return e.id!==id;});
-    save();
-    document.getElementById('journalEntryCount').textContent=state.journal.length+' '+(state.journal.length===1?'entry':'entries');
+    _journalEntries=_journalEntries.filter(function(e){return e.id!==id;});
+    delete _journalPlain[id];
+    _updateJournalMeta();
+    _saveJournalDoc();
     renderJournalEntries();
   },{destructive:true,confirmText:'Delete'});
 }
-
 // =======================================
 // WORKOUT MODAL
 // =======================================
