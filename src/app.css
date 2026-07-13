@@ -2797,6 +2797,13 @@ body[data-theme="storm-dark"] .tl-hour-label{
 .music-dropdown-item .music-dropdown-name{flex:1;}
 .music-dropdown-item .music-dropdown-check{font-size:12px;color:#c77dba;}
 
+/* ── NOTIFICATION SETTINGS ── */
+.notif-row{display:flex;align-items:center;justify-content:space-between;gap:10px;padding:8px 0;font-size:13px;color:var(--text-dim);flex-wrap:wrap;}
+.notif-row label{color:var(--text);}
+.notif-row .notif-check{display:flex;align-items:center;gap:6px;cursor:pointer;}
+.notif-row input[type="time"]{font-size:12px;padding:4px 8px;background:var(--surface-raised);border:1px solid var(--border);border-radius:var(--radius-sm);color:var(--text);font-family:inherit;}
+.notif-time-pair{display:flex;align-items:center;gap:6px;font-size:12px;color:var(--text-faint);}
+
 /* ─── TIER GATING ──────────────────────────────────────────────────────────── */
 .tier-locked-panel{position:relative;pointer-events:none;opacity:0.45;filter:blur(1.5px);}
 .tier-locked-panel .tier-lock-badge{position:absolute;inset:0;display:flex;flex-direction:column;align-items:center;justify-content:center;background:rgba(26,25,23,0.82);border-radius:var(--radius);pointer-events:all;opacity:1;filter:none;font-size:13px;color:var(--text-dim);text-align:center;gap:10px;padding:20px;}

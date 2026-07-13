@@ -757,6 +757,7 @@ async function load(){
   // Backfill any note missing a created timestamp (older notes) so sorts can't crash
   state.notes.forEach(function(n){if(n&&!n.created)n.created=n.updated||n.date||new Date(0).toISOString();});
   if(!state.journal)state.journal=[];if(!state.journalPin)state.journalPin='';
+  if(typeof _ensureNotifPrefs==='function')_ensureNotifPrefs();
   if(!state.workoutLog)state.workoutLog={};
   if(!state.completedTasks)state.completedTasks=[];
   if(!state.completedWorkouts)state.completedWorkouts=[];
@@ -941,6 +942,7 @@ function openCustomize(){
   if(_cb)_cb.textContent='Build '+APP_BUILD;
   _renderDevSwitcherInSettings();
   _renderAxisProfileForm();
+  if(typeof _renderNotifSettings==='function')_renderNotifSettings();
 }
 
 function closeCustomize(){
@@ -1712,6 +1714,173 @@ function exportSubtaskICS(pid,sid){const p=state.projects.find(p=>p.id===pid);co
 function exportProjectICS(pid){const p=state.projects.find(pr=>pr.id===pid);if(!p)return;const ev=p.subtasks.filter(s=>s.due&&!s.done).map(s=>({title:s.name+' ['+p.name+']',date:s.due,description:'Project: '+p.name}));if(ev.length===0){toast('No undone subtasks with dates.');return;}downloadICS(slugify(p.name)+'.ics',generateICS(ev));}
 function exportAllToICS(){const ev=[];state.projects.forEach(p=>{p.subtasks.filter(s=>s.due&&!s.done).forEach(s=>{ev.push({title:s.name+' ['+p.name+']',date:s.due,description:'Project: '+p.name});});});state.reminders.filter(r=>r.date).forEach(r=>{ev.push({title:r.text,date:r.date,time:r.time});});if(ev.length===0){toast('Nothing to export.');return;}downloadICS('productivity-dashboard-all.ics',generateICS(ev));}
 function exportReminderICS(id){const r=state.reminders.find(r=>r.id===id);if(!r)return;showOutlookModal(r.text,r.date,r.time,'Reminder');}
+
+// =======================================
+// NOTIFICATIONS (R1 phase 1 -- web, while-open delivery)
+// =======================================
+// Gentle, quiet-by-default nudges for due reminders and routine check-ins.
+//
+// SCOPE / HONESTY: web Notifications only fire while a Centerpost tab (or its
+// service worker) is alive, and NOT at all inside the iOS WKWebView. True
+// "notify me when the app is closed" on phone is phase 2 (the Capacitor
+// @capacitor/local-notifications plugin), which reuses this same engine's
+// scan/dedup/quiet-hours logic. Nothing here sets an app badge unless the
+// user explicitly opts in.
+function _defaultNotifPrefs(){
+  return {enabled:false,quietStart:'21:00',quietEnd:'08:00',badges:false,
+    routineMorning:{on:false,time:'08:00'},routineEvening:{on:false,time:'20:00'}};
+}
+function _ensureNotifPrefs(){
+  if(!state.notifPrefs)state.notifPrefs=_defaultNotifPrefs();
+  var d=_defaultNotifPrefs();
+  for(var k in d){if(state.notifPrefs[k]===undefined)state.notifPrefs[k]=d[k];}
+  if(!state.notifPrefs.routineMorning)state.notifPrefs.routineMorning={on:false,time:'08:00'};
+  if(!state.notifPrefs.routineEvening)state.notifPrefs.routineEvening={on:false,time:'20:00'};
+  return state.notifPrefs;
+}
+
+function _hmToMin(hm){var a=(hm||'').split(':');return (parseInt(a[0],10)||0)*60+(parseInt(a[1],10)||0);}
+
+// -- Fired-today tracking (device-local, so each device dedupes its own
+//    while-open notifications; not synced). Resets on a new day.
+var _notifFired={};
+var _notifFiredDate='';
+function _notifLoadFired(){
+  try{
+    var raw=localStorage.getItem('cpNotifFired');
+    if(raw){var o=JSON.parse(raw);if(o&&o.date===todayStr()){_notifFired=o.keys||{};_notifFiredDate=o.date;return;}}
+  }catch(e){}
+  _notifFired={};_notifFiredDate=todayStr();
+}
+function _notifResetIfNewDay(){if(_notifFiredDate!==todayStr()){_notifFired={};_notifFiredDate=todayStr();}}
+function _notifAlreadyFired(key){_notifResetIfNewDay();return !!_notifFired[key];}
+function _notifMarkFired(key){_notifResetIfNewDay();_notifFired[key]=true;try{localStorage.setItem('cpNotifFired',JSON.stringify({date:_notifFiredDate,keys:_notifFired}));}catch(e){}}
+
+function _notifInQuietHours(){
+  var p=state.notifPrefs;if(!p)return false;
+  var now=new Date();var cur=now.getHours()*60+now.getMinutes();
+  var s=_hmToMin(p.quietStart||'21:00'),e=_hmToMin(p.quietEnd||'08:00');
+  if(s===e)return false;
+  if(s<e)return cur>=s&&cur<e;      // same-day window
+  return cur>=s||cur<e;             // overnight window (e.g. 21:00 -> 08:00)
+}
+
+// Single place that touches the OS. Checks permission here (not in the tick)
+// so the scan/dedup logic stays testable regardless of permission state.
+function _notifShow(title,body,tag){
+  if(!('Notification' in window)||Notification.permission!=='granted')return;
+  var opts={body:body||'',tag:tag||undefined,renotify:false,silent:false};
+  try{
+    if(navigator.serviceWorker&&navigator.serviceWorker.ready){
+      navigator.serviceWorker.ready.then(function(reg){reg.showNotification(title,opts);})
+        .catch(function(){try{new Notification(title,opts);}catch(e){}});
+    }else{
+      new Notification(title,opts);
+    }
+  }catch(e){}
+}
+
+// App-icon badge: OFF unless the user opts in. When on, count reminders due
+// today or overdue. Never sets a badge otherwise (badges read as a shame
+// scorecard -- see the review's ADHD persona).
+function _notifUpdateBadge(){
+  var p=state.notifPrefs;
+  try{
+    if(p&&p.enabled&&p.badges&&navigator.setAppBadge){
+      var today=todayStr();
+      var count=(state.reminders||[]).filter(function(r){return r.date&&r.date<=today;}).length;
+      if(count>0)navigator.setAppBadge(count);
+      else if(navigator.clearAppBadge)navigator.clearAppBadge();
+    }else if(navigator.clearAppBadge){
+      navigator.clearAppBadge();
+    }
+  }catch(e){}
+}
+
+function _notifMaybeRoutine(which,time,curMin,today){
+  var t=_hmToMin(time||(which==='morning'?'08:00':'20:00'));
+  if(t>curMin)return;                 // not time yet
+  if(curMin-t>60)return;              // missed the 60-min nudge window
+  var key='routine-'+which+':'+today;
+  if(_notifAlreadyFired(key))return;
+  var items=(state.routines&&state.routines[which])||[];
+  var undone=items.filter(function(i){return !i.done;}).length;
+  if(undone===0)return;               // nothing left -> no nudge, no guilt
+  _notifMarkFired(key);
+  var label=which==='morning'?'☀ Morning routine':'🌙 Evening routine';
+  _notifShow(label,undone+' item'+(undone!==1?'s':'')+' left — a gentle nudge, no pressure.','routine-'+which);
+}
+
+// The scan. Runs on an interval while the app is open (and shortly after load).
+function _notifTick(){
+  var p=state.notifPrefs;
+  if(!p||!p.enabled){_notifUpdateBadge();return;}
+  if(_notifInQuietHours()){_notifUpdateBadge();return;}
+  var now=new Date();
+  var today=todayStr();
+  var curMin=now.getHours()*60+now.getMinutes();
+
+  (state.reminders||[]).forEach(function(r){
+    if(!r.time||!r.date||r.date!==today)return;
+    var t=_hmToMin(r.time);
+    if(t>curMin)return;               // not due yet
+    if(curMin-t>30)return;            // too old -> don't fire a stale reminder on first open
+    var key='rem:'+r.id+':'+today;
+    if(_notifAlreadyFired(key))return;
+    _notifMarkFired(key);
+    var when=(typeof fmtTime==='function')?fmtTime(r.time):r.time;
+    _notifShow('⏰ '+r.text,'Reminder for '+when,'rem-'+r.id);
+  });
+
+  if(p.routineMorning&&p.routineMorning.on)_notifMaybeRoutine('morning',p.routineMorning.time,curMin,today);
+  if(p.routineEvening&&p.routineEvening.on)_notifMaybeRoutine('evening',p.routineEvening.time,curMin,today);
+
+  _notifUpdateBadge();
+}
+
+// -- Settings wiring -----------------------------------------------------
+function toggleNotifEnabled(on){
+  _ensureNotifPrefs();
+  if(on){
+    if(!('Notification' in window)){toast('Notifications aren\'t supported in this browser');_renderNotifSettings();return;}
+    Notification.requestPermission().then(function(perm){
+      if(perm==='granted'){
+        state.notifPrefs.enabled=true;save();
+        toast('✓ Notifications on');
+        _notifShow('Centerpost notifications on','You\'ll get gentle nudges for due reminders and routines.','notif-welcome');
+      }else{
+        state.notifPrefs.enabled=false;save();
+        toast(perm==='denied'?'Notifications are blocked in your browser settings':'Notifications not enabled');
+      }
+      _renderNotifSettings();
+    });
+  }else{
+    state.notifPrefs.enabled=false;save();_notifUpdateBadge();_renderNotifSettings();
+  }
+}
+function setNotifPref(k,v){_ensureNotifPrefs();state.notifPrefs[k]=v;save();if(k==='badges')_notifUpdateBadge();}
+function setNotifRoutine(group,k,v){_ensureNotifPrefs();if(!state.notifPrefs[group])state.notifPrefs[group]={};state.notifPrefs[group][k]=v;save();}
+
+function _renderNotifSettings(){
+  var el=document.getElementById('notifSettings');if(!el)return;
+  _ensureNotifPrefs();
+  var p=state.notifPrefs;
+  var supported=('Notification' in window);
+  var perm=supported?Notification.permission:'unsupported';
+  var enabled=!!p.enabled&&perm==='granted';
+  var desc=!supported?'Not supported in this browser.':(perm==='denied'?'Blocked in your browser settings — enable Centerpost there first.':'Gentle nudges for due reminders and routines. Only while the app is open (on desktop).');
+  var html='';
+  html+='<div class="panel-toggle"><span class="pt-icon">🔔</span><div class="pt-info"><div class="pt-name">Enable notifications</div><div class="pt-desc">'+desc+'</div></div><label class="toggle-switch"><input type="checkbox" '+(enabled?'checked':'')+' '+((!supported||perm==='denied')?'disabled':'')+' onchange="toggleNotifEnabled(this.checked)"><span class="toggle-slider"></span></label></div>';
+  if(enabled){
+    html+='<div class="notif-row"><label>Quiet hours</label><span class="notif-time-pair"><input type="time" value="'+(p.quietStart||'21:00')+'" onchange="setNotifPref(\'quietStart\',this.value)"> to <input type="time" value="'+(p.quietEnd||'08:00')+'" onchange="setNotifPref(\'quietEnd\',this.value)"></span></div>';
+    html+='<div class="panel-toggle"><span class="pt-icon">🔴</span><div class="pt-info"><div class="pt-name">App badge count</div><div class="pt-desc">Show a number on the app icon. Off by default.</div></div><label class="toggle-switch"><input type="checkbox" '+(p.badges?'checked':'')+' onchange="setNotifPref(\'badges\',this.checked)"><span class="toggle-slider"></span></label></div>';
+    var rm=p.routineMorning||{on:false,time:'08:00'};
+    var re=p.routineEvening||{on:false,time:'20:00'};
+    html+='<div class="notif-row"><label class="notif-check"><input type="checkbox" '+(rm.on?'checked':'')+' onchange="setNotifRoutine(\'routineMorning\',\'on\',this.checked)"> Morning routine nudge</label><input type="time" value="'+(rm.time||'08:00')+'" onchange="setNotifRoutine(\'routineMorning\',\'time\',this.value)"></div>';
+    html+='<div class="notif-row"><label class="notif-check"><input type="checkbox" '+(re.on?'checked':'')+' onchange="setNotifRoutine(\'routineEvening\',\'on\',this.checked)"> Evening routine nudge</label><input type="time" value="'+(re.time||'20:00')+'" onchange="setNotifRoutine(\'routineEvening\',\'time\',this.value)"></div>';
+  }
+  el.innerHTML=html;
+}
 
 // BRAIN DUMP
 function handleDumpKey(e){if(e.key==='Enter'&&!e.shiftKey){e.preventDefault();const t=document.getElementById('brainDump').value.trim();if(!t)return;state.thoughts.push({id:'th'+Date.now(),text:t});document.getElementById('brainDump').value='';save();renderThoughts();_trackEvent('tool_use','brain_dump','Brain Dump');}}
@@ -8653,6 +8822,8 @@ _bindPanelUsageTracking();
 //    a backgrounded app may not fire intervals for hours but will fire visibilitychange).
 try { checkDailyRoutineReset(); } catch(e){}
 setInterval(checkDailyRoutineReset,60000);
+// Notifications (R1 phase 1): dedupe store + periodic scan while the app is open.
+if(typeof _notifLoadFired==='function'){_notifLoadFired();_ensureNotifPrefs();setInterval(_notifTick,45000);setTimeout(_notifTick,4000);}
 document.addEventListener('visibilitychange',function(){
   if(!document.hidden){
     try { checkDailyRoutineReset(); } catch(e){}
