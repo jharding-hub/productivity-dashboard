@@ -292,73 +292,33 @@
 <button class="btn" onclick="exportMyData()">&#11015; Export my data</button>
 <button class="btn btn-danger" onclick="deleteMyAccount()">Delete my account</button>
 </div>
+<div style="border-bottom:1px solid var(--border);margin:16px 0;"></div>
+<div class="section-label" style="margin-bottom:8px;">About You (for Axis)</div>
+<p class="cust-sub">Optional. Anything you share here helps Axis understand how you think and work. Leave it blank and Axis uses a generic assistant persona instead.</p>
+<div style="display:flex;flex-direction:column;gap:8px;margin-bottom:10px;">
+  <input type="text" id="axisProfile_name" placeholder="Name" style="font-size:13px;padding:8px 10px;background:var(--surface-raised);border:1px solid var(--border);border-radius:var(--radius-sm);color:var(--text);font-family:inherit;">
+  <textarea id="axisProfile_roleContext" placeholder="Role / background (e.g. occupation, experience, what you do day to day)" rows="2" style="font-size:13px;padding:8px 10px;background:var(--surface-raised);border:1px solid var(--border);border-radius:var(--radius-sm);color:var(--text);font-family:inherit;resize:vertical;"></textarea>
+  <div style="display:flex;gap:8px;">
+    <input type="text" id="axisProfile_personalityType" placeholder="Personality type (e.g. ENFP)" style="flex:1;font-size:13px;padding:8px 10px;background:var(--surface-raised);border:1px solid var(--border);border-radius:var(--radius-sm);color:var(--text);font-family:inherit;">
+    <input type="text" id="axisProfile_neurotype" placeholder="Neurotype (e.g. ADHD)" style="flex:1;font-size:13px;padding:8px 10px;background:var(--surface-raised);border:1px solid var(--border);border-radius:var(--radius-sm);color:var(--text);font-family:inherit;">
+  </div>
+  <textarea id="axisProfile_learningStyle" placeholder="Learning style (how you best absorb new information)" rows="2" style="font-size:13px;padding:8px 10px;background:var(--surface-raised);border:1px solid var(--border);border-radius:var(--radius-sm);color:var(--text);font-family:inherit;resize:vertical;"></textarea>
+  <textarea id="axisProfile_leadershipStyle" placeholder="Leadership style (if relevant)" rows="2" style="font-size:13px;padding:8px 10px;background:var(--surface-raised);border:1px solid var(--border);border-radius:var(--radius-sm);color:var(--text);font-family:inherit;resize:vertical;"></textarea>
+  <textarea id="axisProfile_otherContext" placeholder="Anything else Axis should know about you" rows="2" style="font-size:13px;padding:8px 10px;background:var(--surface-raised);border:1px solid var(--border);border-radius:var(--radius-sm);color:var(--text);font-family:inherit;resize:vertical;"></textarea>
+</div>
+<div class="customize-actions">
+<button class="btn btn-accent" onclick="saveAxisProfileFromForm()">Save</button>
+<button class="btn" onclick="resetAxisProfile()">Reset to blank</button>
+</div>
 <div id="devTierSettingsWrap" style="display:none;"></div>
 <div class="cust-build" id="custBuild"></div>
 </div>
 </div>
 <!-- Breathwork overlay + modal (rendered by BreathworkOverlay component) -->
 <div id="breathwork-overlay-root"></div>
-<!-- RADAR MODAL -->
-<!-- WEATHER MODAL -->
-<div class="modal-blur-overlay" id="weatherModal">
-<div class="modal-blur-backdrop" onclick="closeWeatherModal()"></div>
-<div class="modal-blur-panel" style="width:min(620px,95vw);max-height:92vh;">
-  <div class="modal-blur-header">
-    <div class="modal-blur-title">&#127780; Weather</div>
-    <div style="display:flex;gap:8px;align-items:center;">
-      <span id="weatherLocation" style="font-size:11px;color:var(--text-faint);"></span>
-      <button class="modal-blur-close" onclick="closeWeatherModal()">&#10005;</button>
-    </div>
-  </div>
-  <div class="modal-blur-body" id="weatherBody" style="padding:16px 20px;min-height:200px;"></div>
-</div>
-</div>
 
 <!-- WORKOUT MODAL -->
 <div id="workout-modal-root"></div>
-
-<!-- RESTAURANT SPINNER MODAL -->
-<div class="modal-blur-overlay" id="spinnerModal">
-<div class="modal-blur-backdrop" onclick="closeSpinnerModal()"></div>
-<div class="modal-blur-panel" style="width:min(780px,96vw);">
-  <div class="modal-blur-header">
-    <div class="modal-blur-title">&#127869; Dinner Wheel</div>
-    <button class="modal-blur-close" onclick="closeSpinnerModal()">&#10005;</button>
-  </div>
-  <div class="modal-blur-body" id="spinnerBody" style="padding:18px 20px;">
-    <div class="spin-filters">
-      <div class="spin-filter-group">
-        <div class="spin-filter-label">Type</div>
-        <div class="spin-filter-btns">
-          <button class="spin-filter-btn active" data-group="type" data-val="sitdown" onclick="spinToggle(this)">&#127860; Sit Down</button>
-          <button class="spin-filter-btn" data-group="type" data-val="fastfood" onclick="spinToggle(this)">&#127828; Fast Food</button>
-          <button class="spin-filter-btn" data-group="type" data-val="coffee" onclick="spinToggle(this)">&#9749; Coffee</button>
-        </div>
-      </div>
-      <div class="spin-filter-group">
-        <div class="spin-filter-label">Meal</div>
-        <div class="spin-filter-btns">
-          <button class="spin-filter-btn" data-group="meal" data-val="breakfast" onclick="spinToggle(this)">&#9728;&#65039; Breakfast</button>
-          <button class="spin-filter-btn active" data-group="meal" data-val="lunch" onclick="spinToggle(this)">&#9749; Lunch</button>
-          <button class="spin-filter-btn" data-group="meal" data-val="dinner" onclick="spinToggle(this)">&#127769; Dinner</button>
-        </div>
-      </div>
-    </div>
-    <button class="spin-go-btn" id="spinGoBtn" onclick="spinFetchAndBuild()">&#127759; Find Restaurants Near Me</button>
-    <div class="spin-status" id="spinStatus"></div>
-    <div id="spinWheelArea" style="display:none;">
-      <div class="spin-wheel-wrap">
-        <div class="spin-canvas-container">
-          <div class="spin-pointer">&#128971;</div>
-          <canvas id="spinCanvas" width="300" height="300"></canvas>
-        </div>
-        <button class="btn btn-accent" onclick="spinWheel()" id="spinBtn" style="font-size:15px;padding:10px 32px;font-weight:700;">&#9654; Spin!</button>
-      </div>
-      <div id="spinResultArea"></div>
-    </div>
-  </div>
-</div>
-</div>
 
 <!-- PROJECT DETAIL MODAL -->
 <div class="proj-modal-overlay" id="projDetailModal">

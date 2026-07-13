@@ -687,6 +687,7 @@ function save(){
 // LOAD -- tries Firestore first, then localStorage (per-user)
 async function load(){
   const uid=currentUser?currentUser.uid:'local';
+  _loadAxisProfile(); // independent of dashboard state; fire-and-forget, ready well before chat is opened
   // Always load localStorage as baseline
   try{const s=localStorage.getItem('prodDash_'+uid);if(s){const p=JSON.parse(s);state={...state,...p};}}catch(e){}
   // Also try old key for migration
@@ -939,6 +940,7 @@ function openCustomize(){
   var _cb=document.getElementById('custBuild');
   if(_cb)_cb.textContent='Build '+APP_BUILD;
   _renderDevSwitcherInSettings();
+  _renderAxisProfileForm();
 }
 
 function closeCustomize(){
@@ -4548,458 +4550,6 @@ function removeCompleted(id){
 }
 
 // =======================================
-// WEATHER MODAL -- NWS API (free, no key, CORS-open)
-// =======================================
-var _wxCache=null,_wxCacheTime=0;
-var WX_CACHE_MS=10*60*1000; // 10-minute cache
-
-function openWeatherModal(){
-  document.getElementById('weatherModal').classList.add('open');
-  _blurDashboard();
-  _loadWeather();
-}
-function closeWeatherModal(){
-  document.getElementById('weatherModal').classList.remove('open');
-  _unblurDashboard();
-}
-
-function _wxIcon(shortForecast){
-  var f=(shortForecast||'').toLowerCase();
-  if(f.includes('tornado')||f.includes('funnel'))return'\uD83C\uDF00';
-  if(f.includes('thunder')||f.includes('storm'))return'\u26C8\uFE0F';
-  if(f.includes('snow')||f.includes('blizzard'))return'\u2744\uFE0F';
-  if(f.includes('sleet')||f.includes('wintry')||f.includes('ice'))return'\uD83C\uDF28';
-  if(f.includes('rain')||f.includes('shower')||f.includes('drizzle'))return'\uD83C\uDF27\uFE0F';
-  if(f.includes('fog')||f.includes('haze'))return'\uD83C\uDF2B\uFE0F';
-  if(f.includes('wind'))return'\uD83C\uDF2C\uFE0F';
-  if(f.includes('cloud')&&f.includes('part'))return'\u26C5';
-  if(f.includes('overcast')||f.includes('mostly cloudy'))return'\u2601\uFE0F';
-  if(f.includes('cloud'))return'\uD83C\uDF24\uFE0F';
-  if(f.includes('sunny')||f.includes('clear'))return'\u2600\uFE0F';
-  return'\uD83C\uDF24\uFE0F';
-}
-
-function _loadWeather(){
-  var body=document.getElementById('weatherBody');
-  var locEl=document.getElementById('weatherLocation');
-  body.innerHTML='<div class="wx-loading">&#127780; Getting your location\u2026</div>';
-
-  // Use cache if fresh
-  if(_wxCache&&(Date.now()-_wxCacheTime)<WX_CACHE_MS){
-    _renderWeather(_wxCache);return;
-  }
-
-  function fetchWeather(lat,lon){
-    locEl.textContent='';
-    body.innerHTML='<div class="wx-loading">&#127780; Loading weather\u2026</div>';
-    // Step 1: NWS points API resolves lat/lon to forecast office + grid
-    fetch('https://api.weather.gov/points/'+lat.toFixed(4)+','+lon.toFixed(4),{
-      headers:{'User-Agent':'ProductivityDashboard (personal-app)','Accept':'application/geo+json'}
-    })
-    .then(function(r){if(!r.ok)throw new Error('Points '+r.status);return r.json();})
-    .then(function(pts){
-      var props=pts.properties;
-      var city=props.relativeLocation&&props.relativeLocation.properties;
-      if(city)locEl.textContent=(city.city||'')+', '+(city.state||'');
-      // Step 2: fetch current conditions from nearest observation station
-      var stationsUrl=props.observationStations;
-      var forecastUrl=props.forecast;
-      var hourlyUrl=props.forecastHourly;
-      return Promise.all([
-        fetch(stationsUrl,{headers:{'User-Agent':'ProductivityDashboard'}}).then(function(r){return r.json();}),
-        fetch(forecastUrl,{headers:{'User-Agent':'ProductivityDashboard','Accept':'application/geo+json'}}).then(function(r){return r.json();})
-      ]);
-    })
-    .then(function(results){
-      var stations=results[0];var forecast=results[1];
-      var stationId=stations.features&&stations.features[0]&&stations.features[0].properties.stationIdentifier;
-      if(!stationId)throw new Error('No station');
-      return Promise.all([
-        fetch('https://api.weather.gov/stations/'+stationId+'/observations/latest',{
-          headers:{'User-Agent':'ProductivityDashboard','Accept':'application/geo+json'}
-        }).then(function(r){return r.json();}),
-        Promise.resolve(forecast)
-      ]);
-    })
-    .then(function(results){
-      var obs=results[0].properties;var forecast=results[1];
-      var periods=forecast.properties&&forecast.properties.periods||[];
-      var data={
-        temp:obs.temperature&&obs.temperature.value!==null
-          ?Math.round(obs.temperature.value*9/5+32):null,
-        feelsLike:obs.heatIndex&&obs.heatIndex.value!==null
-          ?Math.round(obs.heatIndex.value*9/5+32)
-          :obs.windChill&&obs.windChill.value!==null
-            ?Math.round(obs.windChill.value*9/5+32):null,
-        humidity:obs.relativeHumidity&&obs.relativeHumidity.value!==null
-          ?Math.round(obs.relativeHumidity.value):null,
-        wind:obs.windSpeed&&obs.windSpeed.value!==null
-          ?Math.round(obs.windSpeed.value*0.621371)+' mph':null,
-        windDir:obs.windDirection&&obs.windDirection.value!==null
-          ?_wxDegToDir(obs.windDirection.value):null,
-        description:obs.textDescription||'',
-        periods:periods.slice(0,14)
-      };
-      _wxCache=data;_wxCacheTime=Date.now();
-      _renderWeather(data);
-    })
-    .catch(function(e){
-      console.warn('NWS error:',e);
-      body.innerHTML='<div class="wx-loading" style="color:var(--red);">&#10060; Weather unavailable.<br><span style="font-size:12px;color:var(--text-faint);">'+esc(e.message)+'</span></div>';
-    });
-  }
-
-  if(!navigator.geolocation){fetchWeather(39.6139,-86.1069);return;}
-  navigator.geolocation.getCurrentPosition(
-    function(p){fetchWeather(p.coords.latitude,p.coords.longitude);},
-    function(){fetchWeather(39.6139,-86.1069);locEl.textContent='Greenwood, IN (default)';},
-    {timeout:6000,maximumAge:60000}
-  );
-}
-
-function _wxDegToDir(deg){
-  var dirs=['N','NNE','NE','ENE','E','ESE','SE','SSE','S','SSW','SW','WSW','W','WNW','NW','NNW'];
-  return dirs[Math.round(deg/22.5)%16];
-}
-
-function _renderWeather(data){
-  var body=document.getElementById('weatherBody');
-  if(!data){body.innerHTML='<div class="wx-loading">No data</div>';return;}
-
-  var tempStr=data.temp!==null?data.temp+'\u00B0F':'--';
-  var feelsStr=data.feelsLike!==null&&data.feelsLike!==data.temp?' / feels '+data.feelsLike+'\u00B0F':'';
-  var icon=_wxIcon(data.description);
-  var details=[];
-  if(data.humidity!==null)details.push('Humidity: '+data.humidity+'%');
-  if(data.wind)details.push('Wind: '+(data.windDir||'')+' '+esc(data.wind));
-
-  var html='<div class="wx-current">'
-    +'<div class="wx-icon">'+icon+'</div>'
-    +'<div class="wx-main">'
-    +'<div class="wx-temp">'+tempStr+feelsStr+'</div>'
-    +'<div class="wx-desc">'+esc(data.description||'Current Conditions')+'</div>'
-    +(details.length?'<div class="wx-detail">'+details.join(' &bull; ')+'</div>':'')
-    +'</div></div>';
-
-  if(data.periods&&data.periods.length>0){
-    html+='<div class="wx-section-title">7-Day Forecast</div>';
-    html+='<div class="wx-forecast">';
-    // Pair day/night periods, show one tile per day
-    var shown={};
-    data.periods.forEach(function(p){
-      var dayKey=p.name.replace('This ','').replace(' Night','').replace(' Afternoon','').replace(' Evening','').replace(' Morning','');
-      if(shown[dayKey])return;
-      if(!p.isDaytime)return; // prefer daytime temps
-      shown[dayKey]=true;
-      // Find matching night for low
-      var low=null;
-      var ni=data.periods.indexOf(p)+1;
-      if(ni<data.periods.length&&!data.periods[ni].isDaytime)low=data.periods[ni].temperature;
-      html+='<div class="wx-day">'
-        +'<div class="wx-day-name">'+esc(p.name.substring(0,3))+'</div>'
-        +'<div class="wx-day-icon">'+_wxIcon(p.shortForecast)+'</div>'
-        +'<div class="wx-day-temp">'+p.temperature+'\u00B0</div>'
-        +(low!==null?'<div class="wx-day-low">'+low+'\u00B0</div>':'')
-        +'<div class="wx-day-desc">'+esc(p.shortForecast)+'</div>'
-        +'</div>';
-    });
-    html+='</div>';
-  }
-
-  body.innerHTML=html;
-}
-
-
-
-
-
-// =======================================
-// RESTAURANT SPINNER
-// =======================================
-var _spinRestaurants=[];
-var _spinAngle=0;
-var _spinAnimId=null;
-var _spinFilters={type:'sitdown',meal:'lunch'};
-var _spinColors=['#d4a853','#5fafb0','#9b7ec7','#6bab73','#c75f5f','#5f8fc7','#c79b3a','#7ec75f','#af5f9b','#3ac7c0'];
-
-function openSpinnerModal(){
-  document.getElementById('spinnerModal').classList.add('open');
-  _blurDashboard();
-  // Reset to filter screen each open
-  document.getElementById('spinWheelArea').style.display='none';
-  document.getElementById('spinResultArea').innerHTML='';
-  document.getElementById('spinStatus').textContent='';
-  document.getElementById('spinGoBtn').disabled=false;
-  document.getElementById('spinGoBtn').textContent='\uD83C\uDF0F Find Restaurants Near Me';
-  _spinRestaurants=[];
-}
-function closeSpinnerModal(){
-  document.getElementById('spinnerModal').classList.remove('open');
-  _unblurDashboard();
-  if(_spinAnimId){cancelAnimationFrame(_spinAnimId);_spinAnimId=null;}
-}
-
-function spinToggle(btn){
-  var group=btn.dataset.group;
-  document.querySelectorAll('.spin-filter-btn[data-group="'+group+'"]').forEach(function(b){b.classList.remove('active');});
-  btn.classList.add('active');
-  _spinFilters[group]=btn.dataset.val;
-  // Dim meal selector when coffee chosen
-  if(group==='type'){
-    var mealGroup=document.querySelector('.spin-filter-btn[data-val="breakfast"]');
-    if(mealGroup){mealGroup=mealGroup.closest('.spin-filter-group');mealGroup.style.opacity=btn.dataset.val==='coffee'?'0.35':'1';}
-  }
-}
-
-function spinFetchAndBuild(){
-  var goBtn=document.getElementById('spinGoBtn');
-  var status=document.getElementById('spinStatus');
-  // Dim meal selector when coffee is selected
-  var mealBtn=document.querySelector('.spin-filter-btn[data-val="breakfast"]');
-  var mealGroup=mealBtn&&mealBtn.closest('.spin-filter-group');
-  if(mealGroup)mealGroup.style.opacity=_spinFilters.type==='coffee'?'0.35':'1';
-
-  goBtn.disabled=true;
-  status.textContent='Getting your location\u2026';
-
-  if(!navigator.geolocation){
-    status.textContent='Location unavailable \u2014 using Greenwood, IN area.';
-    _spinOverpassQuery(39.6139,-86.1069);
-    return;
-  }
-  navigator.geolocation.getCurrentPosition(
-    function(pos){
-      status.textContent='Finding places on OpenStreetMap\u2026';
-      _spinOverpassQuery(pos.coords.latitude,pos.coords.longitude);
-    },
-    function(){
-      status.textContent='Location denied \u2014 using Greenwood, IN area.';
-      _spinOverpassQuery(39.6139,-86.1069);
-    },
-    {timeout:8000,enableHighAccuracy:true}
-  );
-}
-
-// -- Step 1: OpenStreetMap Overpass -- precise location, finds local/independent places --
-function _spinOverpassQuery(lat,lon){
-  var amenityTag={sitdown:'restaurant',fastfood:'fast_food',coffee:'cafe'}[_spinFilters.type]||'restaurant';
-  // Search 3km radius, return up to 30 nodes/ways, ask for center coords on ways
-  var query='[out:json][timeout:12];('
-    +'node["amenity"="'+amenityTag+'"](around:3000,'+lat+','+lon+');'
-    +'way["amenity"="'+amenityTag+'"](around:3000,'+lat+','+lon+');'
-    +');out center 30;';
-
-  var url='https://overpass-api.de/api/interpreter?data='+encodeURIComponent(query);
-
-  document.getElementById('spinStatus').textContent='Scanning local area\u2026';
-
-  fetch(url)
-    .then(function(r){if(!r.ok)throw new Error('Overpass HTTP '+r.status);return r.json();})
-    .then(function(data){
-      var elements=data.elements||[];
-      if(elements.length<3){
-        // Too sparse -- fall back directly
-        document.getElementById('spinStatus').textContent='OSM sparse here \u2014 using local data.';
-        _spinRestaurants=_spinFallback();
-        _spinBuildWheel();
-        return;
-      }
-
-      // Parse OSM elements into restaurant stubs
-      var seen=new Set();
-      var places=[];
-      elements.forEach(function(el){
-        var name=(el.tags&&el.tags.name)||'';
-        if(!name||seen.has(name.toLowerCase()))return;
-        seen.add(name.toLowerCase());
-        var cuisine=(el.tags&&(el.tags.cuisine||el.tags.amenity))||'';
-        // Build address from OSM addr tags
-        var addr='';
-        if(el.tags){
-          var n=el.tags['addr:housenumber']||'';
-          var s=el.tags['addr:street']||'';
-          var c=el.tags['addr:city']||'';
-          if(n&&s)addr=(n+' '+s+(c?', '+c:'')).trim();
-        }
-        places.push({name:name,cuisine:cuisine.replace(/_/g,' '),address:addr,rating:null,yelpUrl:''});
-      });
-
-      if(places.length===0){
-        _spinRestaurants=_spinFallback();
-        _spinBuildWheel();
-        return;
-      }
-
-      // Shuffle to give different results each search, then take up to 12 for Claude to rate
-      places.sort(function(){return Math.random()-0.5;});
-      var pool=places.slice(0,12);
-
-      document.getElementById('spinStatus').textContent='Found '+places.length+' places.';
-      // Use OSM places directly without AI rating enrichment
-      pool.forEach(function(p){if(!p.rating)p.rating=null;});
-      _spinRestaurants=pool.slice(0,8);
-      _spinBuildWheel();
-    })
-    .catch(function(e){
-      console.warn('Overpass error:',e);
-      document.getElementById('spinStatus').textContent='OSM unavailable \u2014 using rated local data.';
-      _spinRestaurants=_spinFallback();
-      _spinBuildWheel();
-    });
-}
-
-
-function _spinFallback(){
-  var sitdown=[
-    {name:'Hickory Pit',rating:4.3,cuisine:'BBQ',address:'611 S Emerson Ave, Greenwood IN',yelpUrl:''},
-    {name:'Stacked Pickle',rating:4.1,cuisine:'American Bar',address:'851 S Emerson Ave, Greenwood IN',yelpUrl:''},
-    {name:'Buca di Beppo',rating:4.2,cuisine:'Italian',address:'1481 US-31 S, Greenwood IN',yelpUrl:''},
-    {name:'Texas Roadhouse',rating:4.0,cuisine:'Steakhouse',address:'980 N SR-135, Greenwood IN',yelpUrl:''},
-    {name:'Olive Garden',rating:4.0,cuisine:'Italian',address:'1451 N SR-135, Greenwood IN',yelpUrl:''},
-    {name:'Bob Evans',rating:3.9,cuisine:'American Diner',address:'1399 US-31 S, Greenwood IN',yelpUrl:''},
-    {name:'Red Robin',rating:3.9,cuisine:'Burgers',address:'900 N SR-135, Greenwood IN',yelpUrl:''},
-    {name:"Chili's Grill",rating:3.8,cuisine:'American',address:'300 N SR-135, Greenwood IN',yelpUrl:''}
-  ];
-  var fastfood=[
-    {name:"Chick-fil-A",rating:4.5,cuisine:'Chicken',address:'1060 N SR-135, Greenwood IN',yelpUrl:''},
-    {name:"Raising Cane's",rating:4.4,cuisine:'Chicken',address:'1315 N SR-135, Greenwood IN',yelpUrl:''},
-    {name:"Culver's",rating:4.3,cuisine:'Burgers',address:'880 N SR-135, Greenwood IN',yelpUrl:''},
-    {name:"Portillo's",rating:4.2,cuisine:'Chicago Style',address:'200 County Line Rd, Greenwood IN',yelpUrl:''},
-    {name:"Freddy's",rating:4.2,cuisine:'Burgers',address:'1398 US-31 S, Greenwood IN',yelpUrl:''},
-    {name:'Five Guys',rating:4.1,cuisine:'Burgers',address:'501 N SR-135, Greenwood IN',yelpUrl:''},
-    {name:'Panera Bread',rating:3.9,cuisine:'Bakery-Cafe',address:'955 N SR-135, Greenwood IN',yelpUrl:''},
-    {name:"Arby's",rating:3.7,cuisine:'Sandwiches',address:'700 N SR-135, Greenwood IN',yelpUrl:''}
-  ];
-  var coffee=[
-    {name:"Perk'd Up Coffee",rating:4.7,cuisine:'Local Coffee',address:'300 S Emerson Ave, Greenwood IN',yelpUrl:''},
-    {name:'Dutch Bros Coffee',rating:4.5,cuisine:'Coffee',address:'700 N SR-135, Greenwood IN',yelpUrl:''},
-    {name:'Hubbard & Cravens',rating:4.6,cuisine:'Coffee & Cafe',address:'840 N SR-135, Greenwood IN',yelpUrl:''},
-    {name:'Biggby Coffee',rating:4.3,cuisine:'Coffee',address:'1001 N SR-135, Greenwood IN',yelpUrl:''},
-    {name:'Starbucks',rating:4.2,cuisine:'Coffee',address:'1310 N SR-135, Greenwood IN',yelpUrl:''},
-    {name:'Panera Bread',rating:3.9,cuisine:'Bakery-Cafe',address:'955 N SR-135, Greenwood IN',yelpUrl:''},
-    {name:"Dunkin'",rating:3.8,cuisine:'Coffee & Donuts',address:'455 N SR-135, Greenwood IN',yelpUrl:''},
-    {name:'Tim Hortons',rating:3.7,cuisine:'Coffee',address:'1200 N SR-135, Greenwood IN',yelpUrl:''}
-  ];
-  return _spinFilters.type==='coffee'?coffee:_spinFilters.type==='fastfood'?fastfood:sitdown;
-}
-
-function _spinBuildWheel(){
-  document.getElementById('spinStatus').textContent='';
-  document.getElementById('spinGoBtn').textContent='\uD83D\uDD04 Refresh';
-  document.getElementById('spinGoBtn').disabled=false;
-  document.getElementById('spinWheelArea').style.display='block';
-  document.getElementById('spinResultArea').innerHTML='';
-  _spinAngle=0;
-  _drawWheel(0);
-}
-
-
-function _drawWheel(rotation){
-  var canvas=document.getElementById('spinCanvas');
-  if(!canvas)return;
-  var ctx=canvas.getContext('2d');
-  var n=_spinRestaurants.length;
-  if(!n)return;
-  var R=148,cx=150,cy=150;
-  var slice=(Math.PI*2)/n;
-  ctx.clearRect(0,0,300,300);
-
-  _spinRestaurants.forEach(function(r,i){
-    var start=rotation+i*slice;
-    var end=start+slice;
-    // Slice
-    ctx.beginPath();ctx.moveTo(cx,cy);ctx.arc(cx,cy,R,start,end);ctx.closePath();
-    ctx.fillStyle=_spinColors[i%_spinColors.length];
-    ctx.fill();
-    ctx.strokeStyle='rgba(0,0,0,0.15)';ctx.lineWidth=1.5;ctx.stroke();
-
-    // Label
-    ctx.save();ctx.translate(cx,cy);ctx.rotate(start+slice/2);
-    ctx.textAlign='right';ctx.fillStyle='#fff';
-    ctx.font='bold 11px DM Sans,sans-serif';
-    ctx.shadowColor='rgba(0,0,0,0.4)';ctx.shadowBlur=3;
-    // Truncate name
-    var name=r.name.length>16?r.name.substring(0,15)+'\u2026':r.name;
-    ctx.fillText(name,R-8,4);
-    // Rating stars
-    ctx.font='9px DM Sans,sans-serif';ctx.shadowBlur=0;
-    ctx.fillStyle='rgba(255,255,255,0.85)';
-    ctx.fillText('\u2605'+r.rating.toFixed(1),R-8,15);
-    ctx.restore();
-  });
-
-  // Center cap
-  ctx.beginPath();ctx.arc(cx,cy,22,0,Math.PI*2);
-  ctx.fillStyle=getComputedStyle(document.documentElement).getPropertyValue('--surface').trim()||'#1a1510';
-  ctx.fill();
-  ctx.strokeStyle=getComputedStyle(document.documentElement).getPropertyValue('--accent').trim()||'#d4a853';
-  ctx.lineWidth=2.5;ctx.stroke();
-  ctx.fillStyle='#d4a853';ctx.font='bold 11px DM Sans,sans-serif';ctx.textAlign='center';ctx.fillText('SPIN',cx,cy+4);
-}
-
-function spinWheel(){
-  if(_spinAnimId){return;}
-  document.getElementById('spinResultArea').innerHTML='';
-  document.getElementById('spinBtn').disabled=true;
-
-  var totalRot=(Math.PI*2)*6 + Math.random()*(Math.PI*2); // 6+ full rotations + random
-  var duration=4500;
-  var start=null;
-  var startAngle=_spinAngle;
-
-  function easeOut(t){return 1-Math.pow(1-t,4);}
-
-  function frame(ts){
-    if(!start)start=ts;
-    var elapsed=ts-start;
-    var progress=Math.min(elapsed/duration,1);
-    var eased=easeOut(progress);
-    var current=startAngle+totalRot*eased;
-    _spinAngle=current;
-    _drawWheel(current);
-    if(progress<1){
-      _spinAnimId=requestAnimationFrame(frame);
-    }else{
-      _spinAnimId=null;
-      document.getElementById('spinBtn').disabled=false;
-      _spinShowResult(current);
-    }
-  }
-  _spinAnimId=requestAnimationFrame(frame);
-}
-
-function _spinShowResult(finalAngle){
-  var n=_spinRestaurants.length;
-  var slice=(Math.PI*2)/n;
-  // Pointer is at the top (12 o'clock = -π/2).
-  // Normalize angle so we know which slice the pointer falls on.
-  var normalized=((-finalAngle%(Math.PI*2))+(Math.PI*2))%(Math.PI*2);
-  // Which slice index is at the top?
-  var idx=Math.floor(normalized/slice)%n;
-  var restaurant=_spinRestaurants[idx];
-  if(!restaurant)return;
-
-  var stars='';
-  for(var i=0;i<5;i++){stars+=i<Math.floor(restaurant.rating)?'\u2605':i<restaurant.rating?'\u00BD':'\u2606';}
-  var mapsUrl='https://www.google.com/maps/search/'+encodeURIComponent(restaurant.name+' '+restaurant.address);
-  var yelpBtn=restaurant.yelpUrl?'<a href="'+restaurant.yelpUrl+'" target="_blank" rel="noopener">&#127381; View on Yelp</a>':'';
-  var html='<div class="spin-result">'
-    +'<div class="spin-result-name">'+esc(restaurant.name)+'</div>'
-    +'<div class="spin-result-meta">'
-    +'<strong>'+stars+'</strong> '+(restaurant.rating?restaurant.rating.toFixed(1):'')+' &bull; '+esc(restaurant.cuisine)+'<br>'
-    +esc(restaurant.address)
-    +'</div>'
-    +'<div class="spin-result-actions">'
-    +'<a href="'+mapsUrl+'" target="_blank" rel="noopener">&#128205; Maps</a>'
-    +(yelpBtn||'')
-    +'<button class="spin-again-btn" onclick="spinWheel()">&#127869; Spin Again</button>'
-    +'</div>'
-    +'</div>';
-  document.getElementById('spinResultArea').innerHTML=html;
-}
-
-
-// =======================================
 // PROJECT DETAIL MODAL
 // =======================================
 function openProjectModal(pid){
@@ -6708,7 +6258,7 @@ var WO_EXERCISES={
   // VERTICAL PULL / BACK
   pullups:{name:'Pull-Ups',muscles:'Lats · Biceps · Rear Deltoid · Core',
     steps:['Overhand grip, hands just outside shoulders.','Depress shoulder blades first.','Drive elbows toward hips.','Lower slowly 2–3 s.'],
-    tip:'Joe\'s favorite. Band or negatives if needed. Earn the reps.',
+    tip:'A great compound move. Band or negatives if needed. Earn the reps.',
     alts:['lat_pulldown','assisted_pullup','db_row','cable_row','t_bar_row','chest_supported_row','straight_arm_pulldown','ring_row','close_grip_pulldown']},
   lat_pulldown:{name:'Lat Pulldown',muscles:'Lats · Biceps · Rear Deltoid',
     steps:['Overhand, just outside shoulder width. Lean back 10–15°.','Drive elbows down to hips.','Pull to upper chest. Control return.'],
@@ -6792,7 +6342,7 @@ var WO_EXERCISES={
   // UNILATERAL LOWER
   step_ups:{name:'Weighted Step-Ups',muscles:'Glutes · Quads · Hamstrings · Core',
     steps:['DBs at sides. Box at knee height.','Entire foot on box -- don\'t use trailing leg to push.','Drive through heel to step up, knee lifts opposite leg.','Step back down controlled. All reps one leg, then switch.'],
-    tip:'Joe\'s favorite. Heel drive is everything.',
+    tip:'A strong unilateral builder. Heel drive is everything.',
     alts:['reverse_lunge','split_squat','bulgarian_split','db_lateral_lunge','hip_thrust','curtsy_lunge','single_leg_rdl','walking_lunge','step_mill']},
   reverse_lunge:{name:'Reverse Lunge (DB)',muscles:'Glutes · Quads · Hamstrings · Balance',
     steps:['DBs at sides, feet hip-width.','Step one foot back and lower back knee near floor.','Front knee stays over ankle.','Push through front heel to return. Alternate.'],
@@ -9373,6 +8923,80 @@ var _jarvisSpeech=null;
 var _jarvisListening=false;
 var _jarvisMode='chat'; // 'chat' | 'breakdown:projects' | 'breakdown:tasks'
 
+// -- AXIS PROFILE ("About You") --------------------------------------
+// Optional per-user context that personalizes Axis's system prompt. Lives in
+// its own small doc (users/{uid}/data/profile) rather than the giant
+// dashboard blob -- it's independent, low-frequency-write data, same
+// rationale as the journal split. Nothing here is required: an empty profile
+// falls back to a neutral persona (see _axisPersonaLine below), so a fresh
+// beta user never gets told they're "Joe" or anyone else.
+var _axisProfile={name:'',roleContext:'',personalityType:'',neurotype:'',learningStyle:'',leadershipStyle:'',otherContext:''};
+function _axisProfileStorageKey(){return 'cpAxisProfile_'+(currentUser?currentUser.uid:'local');}
+function _axisProfileHasContent(p){
+  return !!(p.name||p.roleContext||p.personalityType||p.neurotype||p.learningStyle||p.leadershipStyle||p.otherContext);
+}
+async function _loadAxisProfile(){
+  var loaded=null;
+  try{var s=localStorage.getItem(_axisProfileStorageKey());if(s)loaded=JSON.parse(s);}catch(e){}
+  if(firebaseReady&&db&&currentUser){
+    try{
+      var snap=await db.collection('users').doc(currentUser.uid).collection('data').doc('profile').get();
+      if(snap.exists)loaded=snap.data();
+    }catch(e){console.log('axis profile load error:',e);}
+  }
+  if(loaded){_axisProfile=Object.assign({},_axisProfile,loaded);delete _axisProfile.updated;}
+}
+async function _saveAxisProfile(){
+  try{localStorage.setItem(_axisProfileStorageKey(),JSON.stringify(_axisProfile));}catch(e){}
+  if(firebaseReady&&db&&currentUser){
+    try{
+      var doc=Object.assign({},_axisProfile,{updated:firebase.firestore.FieldValue.serverTimestamp()});
+      await db.collection('users').doc(currentUser.uid).collection('data').doc('profile').set(doc);
+    }catch(e){console.log('axis profile save error:',e);if(typeof toast==='function')toast('Profile saved locally (cloud sync failed)');}
+  }
+}
+function saveAxisProfileFromForm(){
+  ['name','roleContext','personalityType','neurotype','learningStyle','leadershipStyle','otherContext'].forEach(function(k){
+    var el=document.getElementById('axisProfile_'+k);
+    if(el)_axisProfile[k]=el.value.trim();
+  });
+  _saveAxisProfile();
+  toast('✓ About You saved');
+}
+function resetAxisProfile(){
+  _confirm('Clear your About You profile? Axis will go back to a generic persona until you fill it in again.',function(){
+    _axisProfile={name:'',roleContext:'',personalityType:'',neurotype:'',learningStyle:'',leadershipStyle:'',otherContext:''};
+    _saveAxisProfile();
+    _renderAxisProfileForm();
+    toast('About You cleared');
+  },{destructive:true,confirmText:'Clear'});
+}
+function _renderAxisProfileForm(){
+  ['name','roleContext','personalityType','neurotype','learningStyle','leadershipStyle','otherContext'].forEach(function(k){
+    var el=document.getElementById('axisProfile_'+k);
+    if(el)el.value=_axisProfile[k]||'';
+  });
+}
+// Builds the persona description Axis's system prompt is built around.
+// Empty profile -> neutral, correct-for-anyone default. Filled profile ->
+// the specific context the user chose to share, nothing assumed.
+function _axisPersonaLine(){
+  var p=_axisProfile||{};
+  if(!_axisProfileHasContent(p)){
+    return 'a personal ADHD-aware productivity dashboard.';
+  }
+  function clean(s){return (s||'').trim().replace(/\.+$/,'');}
+  var parts=[];
+  if(p.roleContext)parts.push(clean(p.roleContext)+'.');
+  if(p.personalityType)parts.push('Personality type: '+clean(p.personalityType)+'.');
+  if(p.neurotype)parts.push('Neurotype: '+clean(p.neurotype)+'.');
+  if(p.learningStyle)parts.push('Learning style: '+clean(p.learningStyle)+'.');
+  if(p.leadershipStyle)parts.push('Leadership style: '+clean(p.leadershipStyle)+'.');
+  if(p.otherContext)parts.push(clean(p.otherContext)+'.');
+  var namePart=p.name?' built and used by '+clean(p.name)+'.':'.';
+  return 'a personal ADHD-aware productivity dashboard'+namePart+(parts.length?' '+parts.join(' '):'');
+}
+
 var JARVIS_SYSTEM=function(){
   var today=new Date();
   var dateStr=today.toLocaleDateString('en-US',{weekday:'long',month:'long',day:'numeric',year:'numeric'});
@@ -9540,7 +9164,7 @@ var JARVIS_SYSTEM=function(){
   if(_jarvisMode==='breakdown:projects'||_jarvisMode==='breakdown:tasks'){
     var ordered=_jarvisBuildBreakdownContext(_jarvisMode==='breakdown:projects'?'projects':'tasks');
     var scopeLabel=_jarvisMode==='breakdown:projects'?'project':'task';
-    return 'You are Axis in BREAKDOWN MODE inside Centerpost -- a productivity dashboard built and used by Joe, a firefighter/paramedic with 30+ years experience and ADHD. It is now '+dateStr+', '+timeStr+'.\n\n'
+    return 'You are Axis in BREAKDOWN MODE inside Centerpost -- '+_axisPersonaLine()+' It is now '+dateStr+', '+timeStr+'.\n\n'
       +'Your single job: break a chosen '+scopeLabel+' into actionable micro-steps for an ADHD brain.\n\n'
       +'The user\'s items are listed below in suggested completion order: not-done before done; within not-done: overdue → today → tomorrow → later → undated; tiebreak by priority (high → med → low), then shorter time-estimate first to reduce initiation friction.\n\n'
       +'=== ITEMS IN COMPLETION ORDER ===\n'+ordered+'\n=== END ITEMS ===\n\n'
@@ -9551,11 +9175,11 @@ var JARVIS_SYSTEM=function(){
       +'3. Mark the very first step with "🚀 START HERE".\n'
       +'4. If any step would take more than 30 minutes, split it further.\n'
       +'5. End with one line beginning "First physical action:" -- what the user\'s hands should literally do right now (open a tab, pick up a phone, walk to a room, etc.).\n\n'
-      +'Style: no preambles, no "great choice," no over-explaining. Joe dislikes filler. Use \\n inside the reply string for line breaks. Number the steps 1. 2. 3. For subtasks of a step, indent with two spaces.\n\n'
+      +'Style: no preambles, no "great choice," no over-explaining. The user dislikes filler. Use \\n inside the reply string for line breaks. Number the steps 1. 2. 3. For subtasks of a step, indent with two spaces.\n\n'
       +'If the user types something that does not match any listed item, ask once for clarification and re-show the top 5 items by completion order.';
   }
 
-  return 'You are Axis, an AI assistant embedded in Centerpost -- a personal ADHD-aware productivity dashboard built and used by Joe, a firefighter/paramedic with 30+ years experience, EMS leadership role at Fishers Public Safety, and college instructor in cognitive psychology / sensation & perception. He is ADHD with an ENFP profile.\n\nIt is now '+dateStr+', '+timeStr+'.\n\nYou have FULL access to the dashboard state below. Reference it precisely to answer questions about due dates, subtasks, projects, completed work, wellness reflections, routines, energy/mood, or anything else.\n\n=== DATA FIELD GUIDE ===\n- timelineBlocks = items manually scheduled on the TIMELINE PANEL (name, date, time, duration). Use THIS field for any question about the timeline, schedule, or blocked time. Do NOT substitute task due dates for timeline questions.\n- standaloneTasks / projects = task list and project subtasks. Use for task management questions.\n- upcomingReminders = reminders panel items.\n\n=== DASHBOARD STATE ===\n'+JSON.stringify(context,null,2)+'\n=== END STATE ===\n\nCRITICAL OUTPUT FORMAT: Respond with ONLY a raw JSON object. No markdown, no code fences, no explanation before or after. Format: {"reply":"...","actions":[]}\n\n=== RESPONSE STYLE RULES (STRICT -- ADHD-OPTIMIZED) ===\n\n1. **Count questions get count-first replies.** When asked "how many" or for any count: give the NUMBER first, then a single short urgency flag if applicable, then offer to expand. Maximum 2 short sentences.\n   - Example query: "How many tasks do I have?"\n   - GOOD reply: "You have 14 open tasks. 3 are high priority and 2 are overdue. Want me to list them?"\n   - GOOD reply: "8 active projects. All on track. Want me to list them by due date?"\n   - BAD reply: "You currently have 14 open tasks across 5 projects. The high priority ones are [lists everything]..." -- TOO MUCH UPFRONT.\n\n2. **List questions still default to a summary.** Even for "show me" or "what are", lead with a count + urgency summary, then offer to expand UNLESS the user explicitly said "list them all" or "show me each."\n   - "What\\\'s due this week?" → "6 items due this week, 2 today. Want the full list or just today\\\'s?"\n\n3. **Always end open-ended summary replies with an expansion offer** ("Want me to list them?", "Want details?", "Want today\\\'s breakdown?"). Phrase it naturally, not robotically.\n\n4. **If urgency flagging would clutter the reply, omit it.** No flag needed when nothing is high-priority and nothing is overdue.\n\n5. **Definitions of urgency flags:**\n   - "Overdue" = due date is BEFORE today\\\'s date '+todayKey+'.\n   - "High priority" = priority field === "high".\n   - "Due today" = due date === '+todayKey+'.\n\n6. **For action confirmations after add/complete/etc**: One short sentence. "Added \\\'Call dispatch\\\' as high priority, due tomorrow." No follow-up question needed.\n\n7. **For specific data lookups** (e.g. "when is X due", "what\\\'s the priority of Y"): Direct answer, no expansion offer.\n\n8. **Once the user confirms they want details**, THEN provide the full list -- but still use compact formatting: each item on one line with priority/due in parentheses. Group by project or urgency if list >8 items.\n\n=== ACTION TYPES ===\n{"type":"add_task","name":"string","priority":"low|med|high","due":"YYYY-MM-DD or null"}\n{"type":"add_project","name":"string","due":"YYYY-MM-DD or null"}\n{"type":"add_subtask","projectName":"string","name":"string","priority":"low|med|high","due":"YYYY-MM-DD or null"}\n{"type":"add_note","label":"string","body":"string"}\n{"type":"add_reminder","text":"string","date":"YYYY-MM-DD or null","time":"HH:MM or null"}\n{"type":"complete_task","name":"string"}\n\nFor pure questions with no state changes, use actions:[]. Parse relative dates using today\\\'s date.\n\n=== TIMELINE READOUT FORMAT ===\nWhen the user asks what is on their timeline (any phrasing: \"what\\\'s on my timeline\", \"what do I have scheduled\", \"read my timeline\", \"what\\\'s tomorrow\", etc.) ALWAYS read out the full list of blocks directly. Do NOT use the count-first-then-offer pattern for timeline questions -- just give the items. Format each entry as \"{time} -- {name}\" only. Do NOT include duration, project, or priority unless the user explicitly asks. If there are no blocks, say so directly. Example reply: \"3 blocks tomorrow: 9:00 AM -- Station meeting, 1:30 PM -- Report writing, 3:00 PM -- Training review.\"';
+  return 'You are Axis, an AI assistant embedded in Centerpost -- '+_axisPersonaLine()+'\n\nIt is now '+dateStr+', '+timeStr+'.\n\nYou have FULL access to the dashboard state below. Reference it precisely to answer questions about due dates, subtasks, projects, completed work, wellness reflections, routines, energy/mood, or anything else.\n\n=== DATA FIELD GUIDE ===\n- timelineBlocks = items manually scheduled on the TIMELINE PANEL (name, date, time, duration). Use THIS field for any question about the timeline, schedule, or blocked time. Do NOT substitute task due dates for timeline questions.\n- standaloneTasks / projects = task list and project subtasks. Use for task management questions.\n- upcomingReminders = reminders panel items.\n\n=== DASHBOARD STATE ===\n'+JSON.stringify(context,null,2)+'\n=== END STATE ===\n\nCRITICAL OUTPUT FORMAT: Respond with ONLY a raw JSON object. No markdown, no code fences, no explanation before or after. Format: {"reply":"...","actions":[]}\n\n=== RESPONSE STYLE RULES (STRICT -- ADHD-OPTIMIZED) ===\n\n1. **Count questions get count-first replies.** When asked "how many" or for any count: give the NUMBER first, then a single short urgency flag if applicable, then offer to expand. Maximum 2 short sentences.\n   - Example query: "How many tasks do I have?"\n   - GOOD reply: "You have 14 open tasks. 3 are high priority and 2 are overdue. Want me to list them?"\n   - GOOD reply: "8 active projects. All on track. Want me to list them by due date?"\n   - BAD reply: "You currently have 14 open tasks across 5 projects. The high priority ones are [lists everything]..." -- TOO MUCH UPFRONT.\n\n2. **List questions still default to a summary.** Even for "show me" or "what are", lead with a count + urgency summary, then offer to expand UNLESS the user explicitly said "list them all" or "show me each."\n   - "What\\\'s due this week?" → "6 items due this week, 2 today. Want the full list or just today\\\'s?"\n\n3. **Always end open-ended summary replies with an expansion offer** ("Want me to list them?", "Want details?", "Want today\\\'s breakdown?"). Phrase it naturally, not robotically.\n\n4. **If urgency flagging would clutter the reply, omit it.** No flag needed when nothing is high-priority and nothing is overdue.\n\n5. **Definitions of urgency flags:**\n   - "Overdue" = due date is BEFORE today\\\'s date '+todayKey+'.\n   - "High priority" = priority field === "high".\n   - "Due today" = due date === '+todayKey+'.\n\n6. **For action confirmations after add/complete/etc**: One short sentence. "Added \\\'Call dispatch\\\' as high priority, due tomorrow." No follow-up question needed.\n\n7. **For specific data lookups** (e.g. "when is X due", "what\\\'s the priority of Y"): Direct answer, no expansion offer.\n\n8. **Once the user confirms they want details**, THEN provide the full list -- but still use compact formatting: each item on one line with priority/due in parentheses. Group by project or urgency if list >8 items.\n\n=== ACTION TYPES ===\n{"type":"add_task","name":"string","priority":"low|med|high","due":"YYYY-MM-DD or null"}\n{"type":"add_project","name":"string","due":"YYYY-MM-DD or null"}\n{"type":"add_subtask","projectName":"string","name":"string","priority":"low|med|high","due":"YYYY-MM-DD or null"}\n{"type":"add_note","label":"string","body":"string"}\n{"type":"add_reminder","text":"string","date":"YYYY-MM-DD or null","time":"HH:MM or null"}\n{"type":"complete_task","name":"string"}\n\nFor pure questions with no state changes, use actions:[]. Parse relative dates using today\\\'s date.\n\n=== TIMELINE READOUT FORMAT ===\nWhen the user asks what is on their timeline (any phrasing: \"what\\\'s on my timeline\", \"what do I have scheduled\", \"read my timeline\", \"what\\\'s tomorrow\", etc.) ALWAYS read out the full list of blocks directly. Do NOT use the count-first-then-offer pattern for timeline questions -- just give the items. Format each entry as \"{time} -- {name}\" only. Do NOT include duration, project, or priority unless the user explicitly asks. If there are no blocks, say so directly. Example reply: \"3 blocks tomorrow: 9:00 AM -- Station meeting, 1:30 PM -- Report writing, 3:00 PM -- Training review.\"';
 };
 
 function _jarvisCurrentTier(){
