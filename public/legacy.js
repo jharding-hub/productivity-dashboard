@@ -1104,6 +1104,26 @@ var alarmOscillators=[],alarmGain=null,alarmPlaying=false;
 var timerEndAt=null;
 var timerCurrentPresetIdx=0; // default 25 min
 
+// R7: focus-timer background completion alert. On native (iOS) we schedule a
+// one-shot local notification for timerEndAt through the bridge, so it fires
+// even when the app is backgrounded/locked -- and iOS forwards it to the watch.
+// On web there's no reliable ahead-of-time scheduling without push infra, so
+// the completion notification is fired at completion time (updateTimerDisplay)
+// while the tab/SW is alive. Deliberately IGNORES quiet hours: a timer the user
+// started and is actively waiting on should always alert (unlike routine nudges).
+var TIMER_NOTIF_TITLE='⏱ Focus session complete';
+var TIMER_NOTIF_BODY='Nice work — take a break or start the next block.';
+function _timerNotifStart(){
+  var h=(typeof _notifNative==='function')?_notifNative():null;
+  if(h&&timerEndAt){
+    try{h.postMessage({action:'scheduleTimer',at:timerEndAt,title:TIMER_NOTIF_TITLE,body:TIMER_NOTIF_BODY});}catch(e){}
+  }
+}
+function _timerNotifCancel(){
+  var h=(typeof _notifNative==='function')?_notifNative():null;
+  if(h){try{h.postMessage({action:'cancelTimer'});}catch(e){}}
+}
+
 function _timerFmtLabel(){
   if(!timerRunning&&timerLeft===timerTotal){
     // Idle -- just show preset name
@@ -1135,6 +1155,12 @@ function updateTimerDisplay(){
     playAlarm();
     toast('⏰ Focus session complete! +3 pts');
     addPoints('timer',document.getElementById('headerTimerBtn'));
+    // Web (non-native): fire the completion notification now so a backgrounded
+    // desktop tab still alerts. Native already scheduled one via the bridge and
+    // its JS is suspended in the background, so we skip the web path there.
+    if((typeof _notifNative!=='function'||!_notifNative())&&typeof _notifShow==='function'){
+      _notifShow(TIMER_NOTIF_TITLE,TIMER_NOTIF_BODY,'focus-timer');
+    }
     if(typeof pushWatchSnapshot==='function')pushWatchSnapshot();
     timerAlarmTimeout=setTimeout(function(){
       stopAlarm();
@@ -1158,6 +1184,7 @@ function startTimer(){
   timerRunning=true;
   timerEndAt=Date.now()+(timerLeft*1000);
   timerInterval=setInterval(_tickTimer,500);
+  _timerNotifStart();
   updateTimerDisplay();
   if(typeof pushWatchSnapshot==='function')pushWatchSnapshot();
 }
@@ -1167,6 +1194,7 @@ function pauseTimer(){
   if(timerEndAt!==null)timerLeft=Math.max(0,Math.round((timerEndAt-Date.now())/1000));
   timerRunning=false;timerEndAt=null;
   clearInterval(timerInterval);timerInterval=null;
+  _timerNotifCancel();
   updateTimerDisplay();
   if(typeof pushWatchSnapshot==='function')pushWatchSnapshot();
 }
@@ -1174,6 +1202,7 @@ function pauseTimer(){
 function resetTimer(){
   pauseTimer();stopAlarm();
   timerLeft=timerTotal;timerEndAt=null;
+  _timerNotifCancel();
   updateTimerDisplay();
   if(typeof pushWatchSnapshot==='function')pushWatchSnapshot();
 }
