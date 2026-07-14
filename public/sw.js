@@ -62,6 +62,13 @@ const PASS_THROUGH_HOSTS = [
 // Regex matching HTML/navigation request URLs
 const HTML_PATH = /\.html?$|\/$/;
 
+// First-party app-logic scripts are NOT content-hashed (unlike the Vite
+// assets/index-<hash>.js bundle), so stale-while-revalidate can serve an old
+// cached copy instantly after a deploy that changed one -- the fresh copy
+// only lands in cache for the NEXT load. Route these network-first instead,
+// same as HTML, so a deploy takes effect on the very next page load.
+const APP_SCRIPT_PATH = /\/(legacy|config|journal-crypto|quick-add-parser)\.js$/;
+
 // ─── Install ────────────────────────────────────────────────────────────
 self.addEventListener('install', e => {
   e.waitUntil(
@@ -101,10 +108,11 @@ self.addEventListener('fetch', e => {
   // Pass-through hosts: don't intercept at all
   if (PASS_THROUGH_HOSTS.some(h => url.hostname.includes(h))) return;
 
-  // HTML / navigation requests → network-first
+  // HTML / navigation requests, and first-party app-logic scripts → network-first
   if (req.mode === 'navigate' ||
       req.destination === 'document' ||
-      HTML_PATH.test(url.pathname)) {
+      HTML_PATH.test(url.pathname) ||
+      (url.origin === self.location.origin && APP_SCRIPT_PATH.test(url.pathname))) {
     e.respondWith(networkFirst(req));
     return;
   }
