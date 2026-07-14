@@ -1442,7 +1442,7 @@ function _toggleProjCompleted(pid){
   _projCompletedOpen[pid]=!_projCompletedOpen[pid];
   renderProjects();
 }
-function addSubtask(pid){const ne=document.getElementById('stN_'+pid),de=document.getElementById('stD_'+pid),pe=document.getElementById('stP_'+pid),te=document.getElementById('stT_'+pid);const nm=ne.value.trim();if(!nm)return;const pr=state.projects.find(p=>p.id===pid);if(!pr)return;pr.subtasks.push({id:'st'+Date.now(),name:nm,due:de.value,priority:pe.value,timeEst:te?te.value:'',done:false});ne.value='';de.value='';save();renderProjects();renderTaskList();}
+function addSubtask(pid){const ne=document.getElementById('stN_'+pid),de=document.getElementById('stD_'+pid),pe=document.getElementById('stP_'+pid),te=document.getElementById('stT_'+pid);const nm=ne.value.trim();if(!nm)return;const pr=state.projects.find(p=>p.id===pid);if(!pr)return;const q=_applyQuickAdd(nm,{due:de.value,priority:pe.value},{date:true,priority:true,recurrence:true});pr.subtasks.push({id:'st'+Date.now(),name:q.name,due:q.due,priority:q.priority,timeEst:te?te.value:'',done:false,recurrence:q.recurrence});ne.value='';de.value='';save();renderProjects();renderTaskList();}
 function toggleSubtask(pid,sid){
   const p=state.projects.find(p=>p.id===pid);
   if(!p)return;
@@ -1465,6 +1465,9 @@ function toggleSubtask(pid,sid){
   }else{
     p.subtasks=p.subtasks.filter(x=>x.id!==sid);
   }
+  if(typeof _materializeRecurrence==='function')_materializeRecurrence(s,function(nextDue){
+    p.subtasks.push({id:'st'+Date.now()+Math.random().toString(36).slice(2,5),name:s.name,due:nextDue,priority:s.priority,timeEst:s.timeEst||'',done:false,recurrence:s.recurrence});
+  });
   addPoints('subtask',srcEl);
   save();renderProjects();renderTaskList();
 }
@@ -1694,7 +1697,7 @@ function promptEditProject(pid){
 }
 
 // REMINDERS
-function addReminder(){const t=document.getElementById('newRemText').value.trim();if(!t)return;const projVal=document.getElementById('newRemProject').value;const projIds=projVal?projVal.split(',').filter(Boolean):[];state.reminders.push({id:'rem'+Date.now(),text:t,date:document.getElementById('newRemDate').value,time:document.getElementById('newRemTime').value,projectId:projIds[0]||'',projectIds:projIds});document.getElementById('newRemText').value='';document.getElementById('newRemDate').value='';document.getElementById('newRemTime').value='';document.getElementById('newRemProject').value='';renderProjMultiPickerChips(document.getElementById('newRemProjectPicker'));save();renderReminders();renderProjects();if(projIds.length>1)toast('Reminder added to '+projIds.length+' projects');}
+function addReminder(){const t=document.getElementById('newRemText').value.trim();if(!t)return;const projVal=document.getElementById('newRemProject').value;const projIds=projVal?projVal.split(',').filter(Boolean):[];const q=_applyQuickAdd(t,{due:document.getElementById('newRemDate').value,time:document.getElementById('newRemTime').value},{date:true,time:true});state.reminders.push({id:'rem'+Date.now(),text:q.name,date:q.due,time:q.time,projectId:projIds[0]||'',projectIds:projIds});document.getElementById('newRemText').value='';document.getElementById('newRemDate').value='';document.getElementById('newRemTime').value='';document.getElementById('newRemProject').value='';renderProjMultiPickerChips(document.getElementById('newRemProjectPicker'));save();renderReminders();renderProjects();if(projIds.length>1)toast('Reminder added to '+projIds.length+' projects');}
 function deleteReminder(id){_confirm('Delete this reminder?',function(){state.reminders=state.reminders.filter(r=>r.id!==id);save();renderReminders();},{destructive:true,confirmText:'Delete'});}
 function clearPastReminders(){state.reminders=state.reminders.filter(r=>!r.date||r.date>=todayStr());save();renderReminders();toast('Past cleared');}
 function editReminderText(id,v){if(!v)return;const r=state.reminders.find(r=>r.id===id);if(r)r.text=v;save();}
@@ -4379,6 +4382,9 @@ function toggleTaskDone(id,source,projId){
         }else{
           p.subtasks=p.subtasks.filter(function(x){return x.id!==id;});
         }
+        if(typeof _materializeRecurrence==='function')_materializeRecurrence(s,function(nextDue){
+          p.subtasks.push({id:'st'+Date.now()+Math.random().toString(36).slice(2,5),name:s.name,due:nextDue,priority:s.priority,timeEst:s.timeEst||'',done:false,recurrence:s.recurrence});
+        });
         addPoints('subtask',srcEl);
       }
     }
@@ -4392,6 +4398,9 @@ function toggleTaskDone(id,source,projId){
         archivedAt:new Date().toISOString(),source:'standalone'
       });
       state.tasks=state.tasks.filter(function(x){return x.id!==id;});
+      if(typeof _materializeRecurrence==='function')_materializeRecurrence(t,function(nextDue){
+        state.tasks.push({id:'tk'+Date.now()+Math.random().toString(36).slice(2,5),name:t.name,due:nextDue,priority:t.priority,timeEst:t.timeEst||'',projectId:'',projectIds:[],done:false,recurrence:t.recurrence});
+      });
       addPoints('task',srcEl);
     }
   }
@@ -4408,6 +4417,8 @@ function addStandaloneTask(){
   var priority=document.getElementById('tlNewPriority').value;
   var timeEst=document.getElementById('tlNewTime').value;
   var due=document.getElementById('tlNewDue').value;
+  var q=_applyQuickAdd(name,{due:due,priority:priority},{date:true,priority:true,recurrence:true});
+  name=q.name;due=q.due;priority=q.priority;
 
   if(projIds.length>=1){
     // Add as subtask to EACH selected project, sharing a linkGroupId
@@ -4419,7 +4430,7 @@ function addStandaloneTask(){
         pr.subtasks.push({
           id:'st'+Date.now()+'_'+Math.random().toString(36).slice(2,7),
           name:name,due:due,priority:priority,timeEst:timeEst,done:false,
-          linkGroupId:groupId
+          linkGroupId:groupId,recurrence:q.recurrence
         });
         addedCount++;
       }
@@ -4429,7 +4440,7 @@ function addStandaloneTask(){
     else ;
   }else{
     // Add as standalone task
-    state.tasks.push({id:'tk'+Date.now(),name:name,due:due,priority:priority,timeEst:timeEst,projectId:'',projectIds:[],done:false});
+    state.tasks.push({id:'tk'+Date.now(),name:name,due:due,priority:priority,timeEst:timeEst,projectId:'',projectIds:[],done:false,recurrence:q.recurrence});
     ;
   }
   nameEl.value='';document.getElementById('tlNewDue').value='';
@@ -5511,6 +5522,67 @@ var POINT_VALUES={
 
 function _monthKey(d){d=d||new Date();return d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0');}
 function _dayKey(d){d=d||new Date();return d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')+'-'+String(d.getDate()).padStart(2,'0');}
+
+// R8: runs the quick-add text through parseQuickAdd and decides what to
+// apply. Asymmetric on purpose -- date/time only fill in when the field is
+// genuinely EMPTY (a picker the user already set is visibly non-empty, so
+// silently overriding it would be surprising); priority always applies when
+// an explicit "!token" is present, since a priority <select> always shows
+// SOME value (usually "med") whether the user touched it or not, so there's
+// no visible "untouched" state to protect. opts picks which fields this
+// particular form actually has a home for (see call sites).
+function _applyQuickAdd(nameValue,current,opts){
+  var out={name:nameValue,due:current.due||'',time:current.time||'',priority:current.priority,recurrence:null};
+  if(typeof window.parseQuickAdd!=='function')return out;
+  var parsed=window.parseQuickAdd(nameValue);
+  out.name=parsed.name||nameValue;
+  if(opts.date&&parsed.due&&!current.due)out.due=parsed.due;
+  if(opts.time&&parsed.time&&!current.time)out.time=parsed.time;
+  if(opts.priority&&parsed.priority)out.priority=parsed.priority;
+  if(opts.recurrence&&parsed.recurrence)out.recurrence=parsed.recurrence;
+  return out;
+}
+var RECUR_LABEL={daily:'daily',weekly:'weekly',monthly:'monthly'};
+// Live "→ Jul 16, 3:00 PM, High priority, repeats monthly" chip under a
+// quick-add text input -- informational only, teaches the syntax as you
+// type. Shows only badges the target form actually supports (see opts).
+function _renderQuickAddPreview(inputId,previewId,opts){
+  var inp=document.getElementById(inputId),el=document.getElementById(previewId);
+  if(!inp||!el)return;
+  if(typeof window.parseQuickAdd!=='function'){el.style.display='none';return;}
+  var p=window.parseQuickAdd(inp.value);
+  var bits=[];
+  if(opts.date&&p.due)bits.push(fmtDate(p.due));
+  if(opts.time&&p.time)bits.push(fmtTime(p.time));
+  if(opts.priority&&p.priority)bits.push(p.priority.charAt(0).toUpperCase()+p.priority.slice(1)+' priority');
+  if(opts.recurrence&&p.recurrence)bits.push('repeats '+(RECUR_LABEL[p.recurrence.freq]||p.recurrence.freq));
+  if(bits.length===0){el.style.display='none';el.textContent='';return;}
+  el.style.display='block';
+  el.textContent='→ '+bits.join(', ');
+}
+
+// R8: RRULE-lite recurrence -- daily/weekly/monthly, interval N. Returns the
+// next due date (YYYY-MM-DD) or null if recurrence/due is missing/malformed.
+function _nextRecurrenceDate(dueStr,recurrence){
+  if(!dueStr||!recurrence||!recurrence.freq)return null;
+  var d=new Date(dueStr+'T00:00:00');
+  if(isNaN(d.getTime()))return null;
+  var n=recurrence.interval||1;
+  if(recurrence.freq==='daily')d.setDate(d.getDate()+n);
+  else if(recurrence.freq==='weekly')d.setDate(d.getDate()+7*n);
+  else if(recurrence.freq==='monthly')d.setMonth(d.getMonth()+n);
+  else return null;
+  return _dayKey(d);
+}
+// Push the next occurrence of a completed recurring task/subtask. Called from
+// the completion path (never on delete) -- completing IS the "done, schedule
+// the next one" signal; deleting a recurring item just deletes it, no re-spawn.
+function _materializeRecurrence(item,pushFn){
+  if(!item||!item.recurrence||!item.due)return;
+  var nextDue=_nextRecurrenceDate(item.due,item.recurrence);
+  if(!nextDue)return;
+  pushFn(nextDue);
+}
 
 function getCurrentTier(pts){
   pts=pts||0;

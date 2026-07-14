@@ -77,7 +77,8 @@
 </div>
 <div class="tile-add-region">
 <div class="section-label" style="margin-top:10px;">Add Reminder</div>
-<div style="display:flex;gap:6px;margin-bottom:6px;"><input type="text" id="newRemText" placeholder="What do you need to remember?" style="flex:1;"><button class="mic-btn" id="remMicBtn" onclick="toggleMic('newRemText','remMicBtn')" title="Voice input">&#127908;</button></div>
+<div style="display:flex;gap:6px;margin-bottom:6px;"><input type="text" id="newRemText" placeholder="What do you need to remember? Try &quot;dentist tomorrow 3pm&quot;" style="flex:1;" oninput="_renderQuickAddPreview('newRemText','newRemPreview',{date:true,time:true})"><button class="mic-btn" id="remMicBtn" onclick="toggleMic('newRemText','remMicBtn')" title="Voice input">&#127908;</button></div>
+<div class="quick-add-preview" id="newRemPreview" style="display:none;"></div>
 <div class="add-row" style="margin-top:0;flex-wrap:wrap;gap:6px;"><input type="date" id="newRemDate"><input type="time" id="newRemTime"><div class="proj-multi-picker" id="newRemProjectPicker" data-target="newRemProject" onclick="openProjMultiPicker(event,this)" style="font-size:11px;padding:3px 6px;min-height:26px;flex:1;"><span class="proj-multi-placeholder">+ Projects</span></div><input type="hidden" id="newRemProject" value=""><button class="btn btn-accent" onclick="addReminder()">+</button></div>
 </div>
 </div>
@@ -145,7 +146,8 @@
 </div>
 <div class="tl-add-form tile-add-region">
 <div class="section-label">Add Task</div>
-<div style="display:flex;gap:6px;"><input type="text" id="tlNewName" placeholder="What needs doing?" onkeydown="if(event.key==='Enter')addStandaloneTask()" style="flex:1;"><button class="mic-btn" id="taskMicBtn" onclick="toggleMic('tlNewName','taskMicBtn')" title="Voice input">&#127908;</button></div>
+<div style="display:flex;gap:6px;"><input type="text" id="tlNewName" placeholder="What needs doing? Try &quot;pay rent every month !high&quot;" onkeydown="if(event.key==='Enter')addStandaloneTask()" oninput="_renderQuickAddPreview('tlNewName','tlNewPreview',{date:true,priority:true,recurrence:true})" style="flex:1;"><button class="mic-btn" id="taskMicBtn" onclick="toggleMic('tlNewName','taskMicBtn')" title="Voice input">&#127908;</button></div>
+<div class="quick-add-preview" id="tlNewPreview" style="display:none;"></div>
 <div class="tl-add-row">
 <div class="proj-multi-picker" id="tlNewProjectPicker" data-target="tlNewProject" data-allow-new="1" onclick="openProjMultiPicker(event,this)"><span class="proj-multi-placeholder">+ Projects</span></div>
 <input type="hidden" id="tlNewProject" value="">
