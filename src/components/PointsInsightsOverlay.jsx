@@ -29,6 +29,8 @@ export default function PointsInsightsOverlay() {
           </div>
 
           <div className="pi-tips" id="piTips"></div>
+
+          <div className="pi-state-card" id="piStateCard"></div>
         </div>
       </div>
     </div>

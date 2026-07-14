@@ -760,6 +760,7 @@ async function load(){
   if(!state.journal)state.journal=[];if(!state.journalPin)state.journalPin='';
   if(typeof _ensureNotifPrefs==='function')_ensureNotifPrefs();
   if(!state.workoutLog)state.workoutLog={};
+  if(!state.checkins)state.checkins=[];
   if(!state.completedTasks)state.completedTasks=[];
   if(!state.completedWorkouts)state.completedWorkouts=[];
   // E-2: one-time migrate -- lifetime count seeded from the uncapped array
@@ -2604,7 +2605,7 @@ function showSelectedTechnique(){
 }
 
 var guidedInterval=null;
-function startGuided(id){const t=wellnessTechniques.find(t=>t.id===id);if(!t||!t.guided)return;const disp=document.getElementById('guidedDisplay');disp.classList.add('active');disp.scrollIntoView({behavior:'smooth',block:'nearest'});const{phases,dur,cycles}=t.gd;let cycle=0,pi=0,count=dur[0];function tick(){document.getElementById('guidedPhase').textContent=phases[pi];document.getElementById('guidedCount').textContent=count;document.getElementById('guidedInstruction').textContent='Cycle '+(cycle+1)+' of '+cycles;count--;if(count<0){pi++;if(pi>=phases.length){pi=0;cycle++;if(cycle>=cycles){stopGuided();document.getElementById('guidedPhase').textContent='\u2713 Complete';document.getElementById('guidedCount').textContent='';document.getElementById('guidedInstruction').textContent='Well done. Take a moment.';return;}}count=dur[pi];}}tick();guidedInterval=setInterval(tick,1000);}
+function startGuided(id){const t=wellnessTechniques.find(t=>t.id===id);if(!t||!t.guided)return;const disp=document.getElementById('guidedDisplay');disp.classList.add('active');disp.scrollIntoView({behavior:'smooth',block:'nearest'});const{phases,dur,cycles}=t.gd;let cycle=0,pi=0,count=dur[0];function tick(){document.getElementById('guidedPhase').textContent=phases[pi];document.getElementById('guidedCount').textContent=count;document.getElementById('guidedInstruction').textContent='Cycle '+(cycle+1)+' of '+cycles;count--;if(count<0){pi++;if(pi>=phases.length){pi=0;cycle++;if(cycle>=cycles){stopGuided();document.getElementById('guidedPhase').textContent='\u2713 Complete';document.getElementById('guidedCount').textContent='';document.getElementById('guidedInstruction').textContent='Well done. Take a moment.';if(typeof _logCheckIn==='function')_logCheckIn('grounding',{techniqueId:id,techniqueName:t.name});return;}}count=dur[pi];}}tick();guidedInterval=setInterval(tick,1000);}
 function stopGuided(){clearInterval(guidedInterval);guidedInterval=null;document.getElementById('guidedDisplay').classList.remove('active');}
 
 // NOTES
@@ -4140,6 +4141,7 @@ function startBreathwork(){
     setTimeout(()=>{document.querySelector('.breath-content').classList.remove('breath-complete');},600);
     speak('Well done. Take a moment.');
     addPoints('breathwork');
+    if(typeof _logCheckIn==='function')_logCheckIn('breath',{techniqueId:id,techniqueName:t.name,cycles:t.cycles});
     setTimeout(()=>{if(breathActive)stopBreathwork();},6000);
   }
 
@@ -5006,6 +5008,26 @@ function pmdAddSubtask(pid){
 }
 
 // =======================================
+// CHECK-IN LOG (R6): persists HALT+/breathwork/grounding completions so the
+// regulation toolkit has memory instead of resetting every time it's opened.
+// Deliberately descriptive, not diagnostic -- see _haltTrendLine/getStateInsights
+// below for the only two places this data surfaces, both plain counts, no advice.
+// =======================================
+var CHECKIN_LOG_MAX=500; // cap pre-emptively; matches the journal-split precedent (R3/R5)
+function _logCheckIn(type,payload){
+  if(!state.checkins)state.checkins=[];
+  var entry=Object.assign({id:'ci'+Date.now()+Math.random().toString(36).slice(2,6),ts:new Date().toISOString(),type:type},payload||{});
+  state.checkins.push(entry);
+  if(state.checkins.length>CHECKIN_LOG_MAX)state.checkins=state.checkins.slice(state.checkins.length-CHECKIN_LOG_MAX);
+  save();
+  return entry;
+}
+function _checkinsSince(days){
+  var cutoff=Date.now()-days*86400000;
+  return (state.checkins||[]).filter(function(c){return new Date(c.ts).getTime()>=cutoff;});
+}
+
+// =======================================
 // HALT+ SENSORY CHECK
 // =======================================
 var _haltChecked={};
@@ -5044,12 +5066,34 @@ function openHaltModal(){
   _renderHalt();
 }
 function closeHaltModal(){
+  var addressed=HALT_ITEMS.filter(function(item){return !!_haltChecked[item.key];}).map(function(item){return item.key;});
+  if(addressed.length>0){
+    _logCheckIn('halt',{items:addressed,count:addressed.length});
+  }
+  _haltChecked={};
   document.getElementById('haltModal').classList.remove('open');
   _unblurDashboard();
+}
+// Quiet, descriptive line under the HALT+ header -- e.g. "'Tired' has come up
+// in 4 of your last 5 check-ins." Never appears until there's real signal
+// (>=3 sessions in the last 14 days), and never moralizes or nags.
+function _haltTrendLine(){
+  var recent=_checkinsSince(14).filter(function(c){return c.type==='halt';});
+  if(recent.length<3)return '';
+  var freq={};
+  recent.forEach(function(c){(c.items||[]).forEach(function(k){freq[k]=(freq[k]||0)+1;});});
+  var topKey=null,topCount=0;
+  Object.keys(freq).forEach(function(k){if(freq[k]>topCount){topCount=freq[k];topKey=k;}});
+  if(!topKey||topCount<2)return '';
+  var item=HALT_ITEMS.find(function(i){return i.key===topKey;});
+  if(!item)return '';
+  return '"'+item.label+'" has come up in '+topCount+' of your last '+recent.length+' check-ins.';
 }
 function _renderHalt(){
   var body=document.getElementById('haltBody');
   var html='<div class="halt-intro">A one-tap diagnostic for <strong>physical and environmental inputs</strong> that tank executive function before you know why. Tap each to expand, address it, and check it off.</div>';
+  var trend=_haltTrendLine();
+  if(trend)html+='<div class="halt-trend">'+esc(trend)+'</div>';
   HALT_ITEMS.forEach(function(item){
     var isChecked=!!_haltChecked[item.key];
     html+='<div class="halt-item"><div class="halt-item-header" onclick="haltToggle(\''+item.key+'\')">'
@@ -5867,6 +5911,36 @@ function renderPointsInsights(period){
     var tips=getProductivityTips(rows);
     tipsEl.innerHTML=tips.map(function(t){return '<div class="pi-tip">'+'💡 '+t+'</div>';}).join('');
   }
+
+  var stateEl=document.getElementById('piStateCard');
+  if(stateEl)stateEl.innerHTML=_renderStateCard(period);
+}
+
+// R6: descriptive counts only -- breathwork/grounding/HALT+ usage for the
+// selected period. No inference, no "you should," no comparisons. Small-n
+// guarded (nothing renders until there's at least one entry of a kind).
+function _renderStateCard(period){
+  var days=period==='week'?7:period==='month'?30:36500; // lifetime = effectively unbounded
+  var entries=_checkinsSince(days);
+  if(entries.length===0)return '';
+  var breath=entries.filter(function(c){return c.type==='breath';});
+  var grounding=entries.filter(function(c){return c.type==='grounding';});
+  var halt=entries.filter(function(c){return c.type==='halt';});
+
+  var rows=[];
+  if(breath.length)rows.push('<div class="pi-state-row"><span class="pi-state-icon">🟧</span>Breathwork: <strong>'+breath.length+'</strong> session'+(breath.length!==1?'s':'')+'</div>');
+  if(grounding.length)rows.push('<div class="pi-state-row"><span class="pi-state-icon">🧘</span>Grounding techniques: <strong>'+grounding.length+'</strong> completed</div>');
+  if(halt.length){
+    var freq={};
+    halt.forEach(function(c){(c.items||[]).forEach(function(k){freq[k]=(freq[k]||0)+1;});});
+    var topKey=null,topCount=0;
+    Object.keys(freq).forEach(function(k){if(freq[k]>topCount){topCount=freq[k];topKey=k;}});
+    var topItem=topKey?HALT_ITEMS.find(function(i){return i.key===topKey;}):null;
+    var suffix=(topItem&&topCount>=2)?' — most often "'+topItem.label+'" ('+topCount+'x)':'';
+    rows.push('<div class="pi-state-row"><span class="pi-state-icon">🛑</span>HALT+ check-ins: <strong>'+halt.length+'</strong>'+suffix+'</div>');
+  }
+  if(rows.length===0)return '';
+  return '<div class="pi-state-title">State &amp; Regulation</div>'+rows.join('');
 }
 
 function triggerTierUp(tier){
