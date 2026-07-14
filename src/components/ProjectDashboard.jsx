@@ -410,7 +410,6 @@ function ProjectBanner({ tick }) {
       <div className="header-title-on-bar">Centerpost</div>
       <div className="header-subtitle">
         <span className="hs-prod">Productivity</span>
-        <span className="hs-dash">&nbsp;Dashboard</span>
       </div>
       {blocks.length > 0 && (
         <div className="day-progress-bar-blocks">

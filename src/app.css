@@ -658,10 +658,8 @@ body[data-theme="storm-dark"] .day-progress-elapsed{
 /* Time-left text overlay sits inside the bar */
 /* (time-left overlay removed) */
 
-/* Wrapper for left-side points badge */
-.points-wrap{position:relative;z-index:2;display:flex;align-items:center;}
-
-.points-wrap{position:relative;z-index:2;display:flex;align-items:center;}
+/* Presence badge wrapper -- lives in the Tool Kit panel (see ToolKitPanel.jsx) */
+.points-wrap{position:relative;z-index:2;display:flex;align-items:center;justify-content:center;margin:2px 0 14px;}
 .header-right{display:flex;flex-direction:column;align-items:flex-end;justify-content:center;gap:4px;position:relative;z-index:2;}
 .header-clock-wrap{display:flex;flex-direction:column;align-items:flex-end;gap:2px;}
 .header-clock{font-variant-numeric:tabular-nums;font-size:20px;font-weight:600;color:var(--text);letter-spacing:1px;line-height:1;}
@@ -742,17 +740,10 @@ body[data-theme="storm-dark"] .day-progress-elapsed{
   .header .day-progress-marker[style*="left:73.33%"] .day-progress-marker-label{
     display:block !important;font-size:9px !important;top:1px !important;font-weight:600 !important;
   }
-  /* Row 2: points badge on left, timer on right. The badge renders inside
-     the #points-focus-music-root React mount, so the order rule must target
-     that header child — .points-wrap is nested one level down and never
-     matched, which left the badge stranded above the banner. */
-  .header > #points-focus-music-root{
-    order:2 !important;
-    flex:0 0 auto !important;
-    padding-left:14px !important;
-  }
+  /* Row 2: timer on the right. The Presence badge no longer lives in the
+     header (moved into the Tool Kit panel), so this row is just the timer. */
   .header > .header-right{
-    order:3 !important;
+    order:2 !important;
     flex:1 1 auto !important;
     display:flex !important;
     flex-direction:row !important;
@@ -761,15 +752,14 @@ body[data-theme="storm-dark"] .day-progress-elapsed{
     gap:14px !important;
     padding-right:14px !important;
   }
-  /* Row-2 inline title retired — the wordmark now sits on the bar itself,
-     so row 2 is just points (left) and timer (right). */
+  /* Row-2 inline title retired — the wordmark now sits on the bar itself. */
   .mobile-only-title{display:none !important;}
   .header-clock-wrap{margin:0 !important;display:none !important;}
   .header-clock{font-size:22px !important;font-weight:700 !important;}
   .task-timer-wrap{display:none !important;}
   .header-timer-btn{font-size:16px !important;padding:5px 10px !important;}
   .header-timer-arrow{padding:5px 6px !important;}
-  /* Points badge sizing on mobile */
+  /* Presence badge sizing on mobile (now inside the Tool Kit panel) */
   .points-badge-lg{padding:6px 12px !important;gap:8px !important;}
   .points-badge-lg .points-tier-icon{font-size:22px !important;}
   .points-badge-lg .points-value{font-size:18px !important;}
@@ -1212,7 +1202,7 @@ body.unlocked .date-editable{border-bottom-color:var(--border);}
 .points-badge.tier-mythic{border-color:#c41a5d;color:#1a0008;background:linear-gradient(135deg,#ff9ec0,#ff6b9d);box-shadow:0 0 16px rgba(255,107,157,0.4);animation:mythic-pulse 2.5s ease-in-out infinite;}
 @keyframes mythic-pulse{0%,100%{box-shadow:0 0 16px rgba(255,107,157,0.3);}50%{box-shadow:0 0 24px rgba(255,107,157,0.5);}}
 
-.points-popup{position:absolute;top:calc(100% + 8px);left:0;background:var(--surface);border:1px solid var(--border);border-radius:var(--radius);padding:14px 16px;min-width:240px;box-shadow:0 8px 24px rgba(0,0,0,0.4);z-index:100;font-size:13px;}
+.points-popup{position:absolute;top:calc(100% + 8px);left:50%;transform:translateX(-50%);background:var(--surface);border:1px solid var(--border);border-radius:var(--radius);padding:14px 16px;min-width:240px;box-shadow:0 8px 24px rgba(0,0,0,0.4);z-index:100;font-size:13px;}
 .points-popup-section{padding:6px 0;border-bottom:1px solid var(--border);}
 .points-popup-section:last-child{border-bottom:none;}
 .points-popup-row{display:flex;justify-content:space-between;align-items:center;margin:3px 0;}
@@ -2278,7 +2268,6 @@ body[data-theme="storm-dark"] .tl-hour-label{
 .login-gate.landing-mode .mockup-content{background:linear-gradient(180deg,#ffffff 0%,#f8fafc 100%);}
 .login-gate.landing-mode .mockup-header{background:rgba(37,99,235,0.05);border-color:rgba(37,99,235,0.15);}
 .login-gate.landing-mode .mockup-points{color:#2563eb;}
-.login-gate.landing-mode .mockup-streak{color:#64748b;}
 .login-gate.landing-mode .mockup-panel{background:#ffffff;border-color:#e2e8f0;}
 .login-gate.landing-mode .mockup-panel-title{color:#2563eb;}
 .login-gate.landing-mode .mockup-item{background:#f8fafc;color:#1a2332;border-color:transparent;}
@@ -2356,7 +2345,6 @@ body[data-theme="storm-dark"] .tl-hour-label{
 .mockup-header{display:flex;align-items:center;justify-content:space-between;padding:8px 12px;background:rgba(91,232,255,0.04);border:1px solid rgba(91,232,255,0.15);border-radius:8px;}
 .mockup-header-left{display:flex;align-items:center;gap:8px;}
 .mockup-points{font-family:'Fraunces',serif;font-size:14px;color:#5be8ff;font-weight:600;}
-.mockup-streak{font-size:10px;color:var(--text-dim);}
 .mockup-grid{display:grid;grid-template-columns:1.4fr 1fr 0.7fr;gap:10px;}
 .mockup-panel{background:var(--surface);border:1px solid var(--border);border-radius:8px;padding:10px;display:flex;flex-direction:column;gap:6px;min-height:120px;}
 .mockup-panel-title{font-size:9px;font-weight:700;color:#5be8ff;letter-spacing:0.8px;text-transform:uppercase;display:flex;align-items:center;gap:5px;margin-bottom:2px;}

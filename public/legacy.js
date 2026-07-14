@@ -1153,7 +1153,7 @@ function updateTimerDisplay(){
       var el=document.getElementById(id);if(el){el.textContent='Done!';el.classList.remove('ht-running');}
     });
     playAlarm();
-    toast('⏰ Focus session complete! +3 pts');
+    toast('⏰ Focus session complete! +3 Presence');
     addPoints('timer',document.getElementById('headerTimerBtn'));
     // Web (non-native): fire the completion notification now so a backgrounded
     // desktop tab still alerts. Native already scheduled one via the bridge and
@@ -5326,7 +5326,7 @@ function _renderWellness(){
   var body=document.getElementById('wellnessBody');
   var html='<div class="well-intro">'
     +'The <strong>SAMHSA Wellness Wheel</strong> recognizes 8 dimensions of well-being. Click any dimension to expand it, read the definition, and add a personal note about how you can grow in that area.'
-    +' <span style="color:#7fb3a0;">+4 pts</span> for each note saved.'
+    +' <span style="color:#7fb3a0;">+4 Presence</span> for each note saved.'
     +'</div>';
   html+='<div class="well-list">';
   WELLNESS_DIMENSIONS.forEach(function(d){
@@ -5914,12 +5914,12 @@ function renderPointsPopup(){
     +'<div class="points-popup-next">'+progressLabel+'</div>'
     +'</div>'
     +'<div class="points-popup-section">'
-    +'<div class="points-popup-row"><span class="points-popup-label">Today</span><span class="points-popup-value">'+todayPts+' pts</span></div>'
-    +'<div class="points-popup-row"><span class="points-popup-label">Last 7 days</span><span class="points-popup-value">'+weekPts+' pts</span></div>'
-    +'<div class="points-popup-row"><span class="points-popup-label">This month</span><span class="points-popup-value">'+pts+' pts</span></div>'
+    +'<div class="points-popup-row"><span class="points-popup-label">Today</span><span class="points-popup-value">'+todayPts+' Presence</span></div>'
+    +'<div class="points-popup-row"><span class="points-popup-label">Last 7 days</span><span class="points-popup-value">'+weekPts+' Presence</span></div>'
+    +'<div class="points-popup-row"><span class="points-popup-label">This month</span><span class="points-popup-value">'+pts+' Presence</span></div>'
     +'</div>'
     +'<div class="points-popup-section">'
-    +'<div class="points-popup-row"><span class="points-popup-label">Lifetime</span><span class="points-popup-value">'+(state.points.lifetimeTotal+pts)+' pts</span></div>'
+    +'<div class="points-popup-row"><span class="points-popup-label">Lifetime</span><span class="points-popup-value">'+(state.points.lifetimeTotal+pts)+' Presence</span></div>'
     +'</div>'
     +'<div class="points-popup-actions">'
     +'<button class="btn btn-sm" onclick="togglePointsPopup();openPointsInsights();">📈 View Insights</button>'
@@ -6025,13 +6025,13 @@ function getProductivityTips(rows){
     tips.push('You are only logging mood/energy on about '+Math.round(loggedDays/rows.length*100)+'% of days shown -- logging daily (even a quick tap) makes these patterns much clearer.');
   }
   if(avgUsage>0&&avgUsage<2){
-    tips.push('Usage is light in this window. Try a single 25-minute focus-timer session on your next task -- it is a quick, low-friction way to re-engage and earn points.');
+    tips.push('Usage is light in this window. Try a single 25-minute focus-timer session on your next task -- it is a quick, low-friction way to re-engage and earn Presence.');
   }
   var lowUsageLowMood=rows.filter(function(r){return r.usage<=1&&r.mood!==null&&r.mood<=2;});
   if(lowUsageLowMood.length>=2){
     tips.push('Low-usage days tend to coincide with lower mood -- on tough days, body-doubling (working alongside the app open, even without finishing tasks) can help more than pushing through alone.');
   }
-  if(tips.length<2)tips.push('Breaking work into subtasks earns points more often than waiting for one big task to finish -- frequent small wins are proven to help sustain ADHD motivation better than large infrequent ones.');
+  if(tips.length<2)tips.push('Breaking work into subtasks earns Presence more often than waiting for one big task to finish -- frequent small wins are proven to help sustain ADHD motivation better than large infrequent ones.');
   return tips.slice(0,2);
 }
 
@@ -6067,7 +6067,7 @@ function renderInsightsChart(rows){
     if(r.points<=0)return;
     var h=(r.points/maxPoints)*cH;
     var x=xp(i)-barW/2,y=padT+cH-h;
-    svg+='<rect x="'+x+'" y="'+y+'" width="'+barW+'" height="'+h+'" rx="2" fill="#c77dba" opacity="0.55"><title>'+r.label+': '+r.points+' pts</title></rect>';
+    svg+='<rect x="'+x+'" y="'+y+'" width="'+barW+'" height="'+h+'" rx="2" fill="#c77dba" opacity="0.55"><title>'+r.label+': '+r.points+' Presence</title></rect>';
   });
 
   // Panel/tool usage line (own scale)
@@ -11357,7 +11357,7 @@ function _gcalRenderModal(){
     html += '<button class="gcal-btn danger" onclick="_confirmGcalDisconnect()">Disconnect</button>';
     html += '</div>';
 
-    html += '<div class="gcal-help">&#9881; <strong>What syncs:</strong> tasks, project subtasks, reminders, and timeline blocks with a date. Items without a date stay local. <br><br>&#128274; <strong>What doesn\'t sync:</strong> Brain Dump thoughts, notes, journal entries, mood/energy logs, wellness reflections, points/streaks.</div>';
+    html += '<div class="gcal-help">&#9881; <strong>What syncs:</strong> tasks, project subtasks, reminders, and timeline blocks with a date. Items without a date stay local. <br><br>&#128274; <strong>What doesn\'t sync:</strong> Brain Dump thoughts, notes, journal entries, mood/energy logs, wellness reflections, Presence.</div>';
   } else {
     html += '<div class="gcal-status-row"><span class="gcal-dot"></span><div><strong>Not connected.</strong><br><span style="font-size:12px;color:var(--text-dim);">Connect to push tasks, subtasks, and reminders to a "'+GCAL_CALENDAR_NAME+'" calendar in your Google account, and pull events back into the Timeline panel.</span></div></div>';
     html += '<div class="gcal-actions">';

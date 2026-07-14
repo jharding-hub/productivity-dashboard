@@ -30,7 +30,6 @@ export default function DayTimelineBanner() {
       <div className="header-title-on-bar">Centerpost</div>
       <div className="header-subtitle">
         <span className="hs-prod">Productivity</span>
-        <span className="hs-dash"> Dashboard</span>
       </div>
     </div>
   );

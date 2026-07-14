@@ -8,6 +8,23 @@ export default function ToolKitPanel() {
         </div>
         <div className="panel-badge">Quick Launch</div>
       </div>
+      <div className="points-wrap" id="pointsWrap">
+        <div
+          className="points-badge points-badge-lg"
+          id="pointsBadge"
+          onClick={() => window.togglePointsPopup()}
+          title="Presence points are awarded for showing up. Making an effort, staying focused and completing tasks improve productivity."
+          style={{ cursor: 'pointer' }}
+        >
+          <span className="points-tier-icon" id="ptTierIcon">{'🥉'}</span>
+          <span className="points-value" id="ptValue">0</span>
+          <span className="points-label" style={{ display: 'flex', flexDirection: 'column', lineHeight: 1.25, fontSize: 9, opacity: 0.7, letterSpacing: '0.5px', textTransform: 'uppercase', fontWeight: 600 }}>
+            <span>Presence</span>
+            <span>points</span>
+          </span>
+        </div>
+        <div className="points-popup" id="pointsPopup" style={{ display: 'none' }}></div>
+      </div>
       <div className="toolkit-grid">
         <div className="toolkit-music-wrap">
           <button

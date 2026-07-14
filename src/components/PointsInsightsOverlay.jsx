@@ -4,7 +4,7 @@ export default function PointsInsightsOverlay() {
       <div className="modal-blur-backdrop" onClick={() => window.closePointsInsights()}></div>
       <div className="modal-blur-panel" style={{ width: 'min(720px,96vw)' }}>
         <div className="modal-blur-header">
-          <div className="modal-blur-title">{'📈'} Focus &amp; Points Insights</div>
+          <div className="modal-blur-title">{'📈'} Focus &amp; Presence Insights</div>
           <button className="modal-blur-close" onClick={() => window.closePointsInsights()}>&#10005;</button>
         </div>
         <div className="modal-blur-body">
@@ -22,7 +22,7 @@ export default function PointsInsightsOverlay() {
           </div>
 
           <div className="pi-legend">
-            <span className="pi-leg-dot" style={{ background: '#c77dba' }}></span><span>Points</span>
+            <span className="pi-leg-dot" style={{ background: '#c77dba' }}></span><span>Presence</span>
             <span className="pi-leg-dot" style={{ background: '#d4a853', marginLeft: 16 }}></span><span>Energy</span>
             <span className="pi-leg-dot" style={{ background: '#5f8fc7', marginLeft: 16 }}></span><span>Mood</span>
             <span className="pi-leg-dot" style={{ background: '#5fbf80', marginLeft: 16 }}></span><span>Panel/Tool Uses</span>

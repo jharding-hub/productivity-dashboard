@@ -55,8 +55,7 @@ export default function LandingLogin() {
                   <div className="mockup-header">
                     <div className="mockup-header-left">
                       <span style={{ color: '#5be8ff' }}>&#9826;</span>
-                      <span className="mockup-points">1,247 pts</span>
-                      <span className="mockup-streak">&#128293; 14-day streak</span>
+                      <span className="mockup-points">1,247 Presence</span>
                     </div>
                     <span style={{ fontSize: 10, color: 'var(--text-faint)' }}>Tue, May 26</span>
                   </div>
