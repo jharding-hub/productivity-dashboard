@@ -5174,6 +5174,121 @@ function _updateHaltSummary(){
 function haltReset(){_haltChecked={};_renderHalt();}
 
 // =======================================
+// URGE LOG (R13): log an impulse and put a deliberate, wall-clock-timed pause
+// between noticing it and acting on it ("urge surfing"). Independent of the
+// focus timer (own globals) so both can run at once. Only logs a check-in
+// once an outcome is known -- matches _logCheckIn's existing convention of
+// recording completed signal, not every modal open.
+// =======================================
+var URGE_TYPES=[
+  {key:'buy',icon:'&#128717;',label:'Impulse buy'},
+  {key:'phone',icon:'&#128241;',label:'Phone / social media'},
+  {key:'snack',icon:'&#127850;',label:'Snack / food'},
+  {key:'skip',icon:'&#9193;',label:'Skip a task'},
+  {key:'other',icon:'&#8230;',label:'Other'}
+];
+var URGE_DELAYS=[5,10,20];
+var _urgeStep='idle'; // idle -> running -> outcome
+var _urgeType=null,_urgeNote='';
+var urgeTimerLeft=0,urgeTimerEndAt=null,urgeTimerRunning=false,urgeTimerInterval=null,urgeDelayMinutes=0;
+
+function openUrgeModal(){
+  document.getElementById('urgeModal').classList.add('open');
+  _blurDashboard();
+  _renderUrge();
+}
+function closeUrgeModal(){
+  // Deliberately does NOT stop a running delay -- closing the modal shouldn't
+  // break the pause the user started; reopening the toolkit button resumes
+  // showing the live countdown (see openUrgeModal -> _renderUrge).
+  document.getElementById('urgeModal').classList.remove('open');
+  _unblurDashboard();
+}
+function urgeSelectType(key){_urgeType=key;_renderUrge();}
+function urgeStartDelay(minutes){
+  if(!_urgeType)return;
+  var noteEl=document.getElementById('urgeNoteInput');
+  if(noteEl)_urgeNote=noteEl.value.trim();
+  _trackEvent('tool_use','urge_log','Urge Log');
+  urgeDelayMinutes=minutes;
+  urgeTimerLeft=minutes*60;
+  urgeTimerEndAt=Date.now()+(urgeTimerLeft*1000);
+  urgeTimerRunning=true;
+  _urgeStep='running';
+  clearInterval(urgeTimerInterval);
+  urgeTimerInterval=setInterval(_urgeTick,500);
+  _renderUrge();
+}
+function _urgeTick(){
+  if(urgeTimerEndAt!==null)urgeTimerLeft=Math.max(0,Math.round((urgeTimerEndAt-Date.now())/1000));
+  var el=document.getElementById('urgeCountdown');
+  if(el){var m=Math.floor(urgeTimerLeft/60),s=urgeTimerLeft%60;el.textContent=String(m).padStart(2,'0')+':'+String(s).padStart(2,'0');}
+  if(urgeTimerLeft<=0&&urgeTimerRunning)_urgeComplete();
+}
+function _urgeComplete(){
+  urgeTimerRunning=false;clearInterval(urgeTimerInterval);urgeTimerInterval=null;urgeTimerEndAt=null;
+  toast('⏳ Delay complete — how do you feel now?');
+  if((typeof _notifNative!=='function'||!_notifNative())&&typeof _notifShow==='function'&&document.visibilityState!=='visible'){
+    _notifShow('✋ Delay complete','How do you feel about the urge now?','urge-log');
+  }
+  _urgeStep='outcome';
+  _renderUrge();
+}
+function urgeDecideNow(){
+  if(!urgeTimerRunning)return;
+  urgeTimerRunning=false;clearInterval(urgeTimerInterval);urgeTimerInterval=null;urgeTimerEndAt=null;
+  _urgeStep='outcome';
+  _renderUrge();
+}
+function urgeOutcome(result){
+  var item=URGE_TYPES.find(function(t){return t.key===_urgeType;});
+  _logCheckIn('urge',{urgeType:_urgeType,urgeLabel:item?item.label:_urgeType,note:_urgeNote||undefined,delayMinutes:urgeDelayMinutes,outcome:result});
+  addPoints('urge',document.getElementById('urgeOutcomeBtn-'+result));
+  toast(result==='passed'?'✓ Logged — nice work riding it out.':'✓ Logged — no judgment, the pause still counted.');
+  _urgeStep='idle';_urgeType=null;_urgeNote='';urgeDelayMinutes=0;urgeTimerLeft=0;
+  _renderUrge();
+}
+function _renderUrge(){
+  var body=document.getElementById('urgeBody');
+  if(!body)return;
+  var html='';
+  if(_urgeStep==='running'){
+    var t=URGE_TYPES.find(function(x){return x.key===_urgeType;});
+    var m=Math.floor(urgeTimerLeft/60),s=urgeTimerLeft%60;
+    html+='<div class="urge-running">'
+      +'<div class="urge-running-type">'+(t?t.icon+' '+t.label:'')+'</div>'
+      +'<div class="urge-countdown" id="urgeCountdown">'+String(m).padStart(2,'0')+':'+String(s).padStart(2,'0')+'</div>'
+      +'<div class="urge-running-sub">Sit with it. It’s OK if it doesn’t fully pass — the pause is the point.</div>'
+      +'<button class="btn btn-sm" onclick="urgeDecideNow()">I’ve decided</button>'
+      +'</div>';
+  }else if(_urgeStep==='outcome'){
+    html+='<div class="urge-outcome">'
+      +'<div class="urge-outcome-prompt">What happened?</div>'
+      +'<button class="btn btn-accent" id="urgeOutcomeBtn-passed" onclick="urgeOutcome(\'passed\')">Urge passed</button>'
+      +'<button class="btn" id="urgeOutcomeBtn-acted" onclick="urgeOutcome(\'acted\')">Did it anyway</button>'
+      +'</div>';
+  }else{
+    html+='<div class="urge-intro">Notice an urge to act on impulse? Log it, then put a deliberate pause between the urge and the action. Most urges fade within minutes.</div>';
+    html+='<div class="urge-type-grid">';
+    URGE_TYPES.forEach(function(t){
+      html+='<button class="urge-type-btn'+(_urgeType===t.key?' selected':'')+'" onclick="urgeSelectType(\''+t.key+'\')">'
+        +'<span class="urge-type-icon">'+t.icon+'</span><span>'+t.label+'</span></button>';
+    });
+    html+='</div>';
+    if(_urgeType==='other'){
+      html+='<input type="text" id="urgeNoteInput" class="urge-note-input" placeholder="What’s the urge? (optional)" value="'+esc(_urgeNote)+'">';
+    }
+    html+='<div class="urge-delay-label">Choose a delay:</div>';
+    html+='<div class="urge-delay-grid">';
+    URGE_DELAYS.forEach(function(mins){
+      html+='<button class="urge-delay-btn"'+(_urgeType?'':' disabled')+' onclick="urgeStartDelay('+mins+')">'+mins+' min</button>';
+    });
+    html+='</div>';
+  }
+  body.innerHTML=html;
+}
+
+// =======================================
 // WELLNESS WHEEL (SAMHSA 8 Dimensions)
 // =======================================
 var WELLNESS_DIMENSIONS=[
@@ -5543,6 +5658,7 @@ var POINT_VALUES={
   routine:1,
   breathwork:2,
   timer:3,
+  urge:4,
   subtask:3,
   mood_energy:3,
   wellness_note:4,
@@ -6031,10 +6147,15 @@ function _renderStateCard(period){
   var breath=entries.filter(function(c){return c.type==='breath';});
   var grounding=entries.filter(function(c){return c.type==='grounding';});
   var halt=entries.filter(function(c){return c.type==='halt';});
+  var urge=entries.filter(function(c){return c.type==='urge';});
 
   var rows=[];
   if(breath.length)rows.push('<div class="pi-state-row"><span class="pi-state-icon">🟧</span>Breathwork: <strong>'+breath.length+'</strong> session'+(breath.length!==1?'s':'')+'</div>');
   if(grounding.length)rows.push('<div class="pi-state-row"><span class="pi-state-icon">🧘</span>Grounding techniques: <strong>'+grounding.length+'</strong> completed</div>');
+  if(urge.length){
+    var passed=urge.filter(function(c){return c.outcome==='passed';}).length;
+    rows.push('<div class="pi-state-row"><span class="pi-state-icon">✋</span>Urges logged: <strong>'+urge.length+'</strong> — passed <strong>'+passed+'</strong> of '+urge.length+'</div>');
+  }
   if(halt.length){
     var freq={};
     halt.forEach(function(c){(c.items||[]).forEach(function(k){freq[k]=(freq[k]||0)+1;});});

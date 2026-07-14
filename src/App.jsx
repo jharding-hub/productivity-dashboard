@@ -12,6 +12,7 @@ import PointsInsightsOverlay from './components/PointsInsightsOverlay';
 import JournalOverlay from './components/JournalOverlay';
 import AxisAssistant from './components/AxisAssistant';
 import HaltModal from './components/HaltModal';
+import UrgeLogModal from './components/UrgeLogModal';
 import BreathworkOverlay from './components/BreathworkOverlay';
 import CalendarSyncModal from './components/CalendarSyncModal';
 import ToolKitPanel from './components/ToolKitPanel';
@@ -42,6 +43,7 @@ export default function App() {
       journal: document.getElementById('journal-overlay-root'),
       axis: document.getElementById('axis-assistant-root'),
       halt: document.getElementById('halt-modal-root'),
+      urge: document.getElementById('urge-modal-root'),
       breathwork: document.getElementById('breathwork-overlay-root'),
       calendarSync: document.getElementById('calendar-sync-modal-root'),
       toolkit: document.getElementById('toolkit-panel-root'),
@@ -77,6 +79,7 @@ export default function App() {
       {mounts.journal && createPortal(<JournalOverlay />, mounts.journal)}
       {mounts.axis && createPortal(<AxisAssistant />, mounts.axis)}
       {mounts.halt && createPortal(<HaltModal />, mounts.halt)}
+      {mounts.urge && createPortal(<UrgeLogModal />, mounts.urge)}
       {mounts.breathwork && createPortal(<BreathworkOverlay />, mounts.breathwork)}
       {mounts.calendarSync && createPortal(<CalendarSyncModal />, mounts.calendarSync)}
       {mounts.toolkit && createPortal(<ToolKitPanel />, mounts.toolkit)}

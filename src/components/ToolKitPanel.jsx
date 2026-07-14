@@ -68,6 +68,10 @@ export default function ToolKitPanel() {
           <i className="ti ti-alert-triangle" aria-hidden="true"></i>
           <span>HALT+</span>
         </button>
+        <button className="toolkit-btn toolkit-urge" onClick={() => window.openUrgeModal()}>
+          <i className="ti ti-hand-stop" aria-hidden="true"></i>
+          <span>Urge Log</span>
+        </button>
         <button className="toolkit-btn toolkit-wellness" onClick={() => window.openWellnessModal()}>
           <i className="ti ti-heart" aria-hidden="true"></i>
           <span>Wellness</span>
