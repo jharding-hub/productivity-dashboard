@@ -3,6 +3,11 @@ import ReactDOM from 'react-dom/client';
 import * as Sentry from '@sentry/react';
 import App from './App';
 
+// Build stamp — survives minification (real assignment, not a comment) so
+// changing it forces Vite to emit a new /assets/index-<hash>.js. Bump it to
+// break a stuck Cloudflare Pages deploy that's serving a missing asset.
+window.__CP_BUILD = '2026-07-14a';
+
 // DSN comes from config.js (public identifier, not a secret). Init before
 // render so the global error handlers cover everything on the page,
 // including legacy.js.
