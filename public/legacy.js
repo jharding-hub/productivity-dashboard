@@ -1179,6 +1179,10 @@ function _tickTimer(){
 
 function startTimer(){
   if(timerRunning)return;
+  // Guard: never start an already-expired timer -- endAt would be in the past,
+  // instantly tripping the completion branch (looks like "starts then resets").
+  // Reachable when the watch triggers a start while the phone timer sits at 0.
+  if(timerLeft<=0)timerLeft=timerTotal;
   _trackEvent('tool_use','focus_timer','Focus Timer');
   stopAlarm();
   timerRunning=true;
