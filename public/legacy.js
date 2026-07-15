@@ -3478,7 +3478,7 @@ function fmtDate(d){return new Date(d+'T00:00:00').toLocaleDateString('en-US',{m
 function fmtTime(t){const[h,m]=t.split(':');const hr=parseInt(h);return(hr>12?hr-12:hr||12)+':'+m+(hr>=12?' PM':' AM');}
 function slugify(s){return s.toLowerCase().replace(/[^a-z0-9]+/g,'-').replace(/(^-|-$)/g,'');}
 function toast(msg){const el=document.getElementById('toast');el.textContent=msg;el.classList.add('show');setTimeout(()=>el.classList.remove('show'),2500);}
-document.addEventListener('keydown',e=>{if(e.target.tagName==='INPUT'||e.target.tagName==='TEXTAREA'||e.target.tagName==='SELECT'||e.target.isContentEditable)return;if(e.key==='b'||e.key==='B'){document.getElementById('brainDump').focus();e.preventDefault();}if(e.key==='s'||e.key==='S'){startTimer();e.preventDefault();}if(e.key==='p'||e.key==='P'){pauseTimer();e.preventDefault();}});
+document.addEventListener('keydown',e=>{if(e.target.tagName==='INPUT'||e.target.tagName==='TEXTAREA'||e.target.tagName==='SELECT'||e.target.isContentEditable)return;if(e.key==='b'||e.key==='B'){openQuickCapture();e.preventDefault();}if(e.key==='s'||e.key==='S'){startTimer();e.preventDefault();}if(e.key==='p'||e.key==='P'){pauseTimer();e.preventDefault();}});
 
 // =======================================
 // MOOD/ENERGY LOGGING & TRENDS
@@ -5878,6 +5878,57 @@ function _renderQuickAddPreview(inputId,previewId,opts){
   if(bits.length===0){el.style.display='none';el.textContent='';return;}
   el.style.display='block';
   el.textContent='→ '+bits.join(', ');
+}
+
+// =======================================
+// R9: QUICK CAPTURE -- one global entry point (the "B" key, and a floating
+// button) to jot something down from anywhere without deciding up front
+// where it belongs. Reuses R8's parser: if the text carries a date/time/
+// priority/recurrence signal, it becomes a real Task; otherwise it's a plain
+// Brain Dump thought, matching the app's existing "capture now, triage
+// later" default (same field shapes as addStandaloneTask/handleDumpKey).
+// =======================================
+function openQuickCapture(){
+  var modal=document.getElementById('quickCaptureModal');
+  if(!modal)return;
+  modal.classList.add('open');
+  _blurDashboard();
+  var input=document.getElementById('quickCaptureInput');
+  var preview=document.getElementById('quickCapturePreview');
+  if(input)input.value='';
+  if(preview){preview.style.display='none';preview.textContent='';}
+  if(input)setTimeout(function(){input.focus();},10);
+}
+function closeQuickCapture(){
+  var modal=document.getElementById('quickCaptureModal');
+  if(!modal)return;
+  modal.classList.remove('open');
+  _unblurDashboard();
+}
+function quickCaptureKeydown(e){
+  if(e.key==='Escape'){closeQuickCapture();return;}
+  if(e.key==='Enter'){e.preventDefault();submitQuickCapture();}
+}
+function submitQuickCapture(){
+  var input=document.getElementById('quickCaptureInput');
+  if(!input)return;
+  var text=input.value.trim();
+  if(!text)return;
+  var p=(typeof window.parseQuickAdd==='function')?window.parseQuickAdd(text):{name:text,due:null,time:null,priority:null,recurrence:null};
+  var hasSignal=!!(p.due||p.time||p.priority||p.recurrence);
+  if(hasSignal){
+    state.tasks.push({id:'tk'+Date.now(),name:p.name,due:p.due||'',priority:p.priority||'med',timeEst:'',projectId:'',projectIds:[],done:false,recurrence:p.recurrence});
+    save();renderTaskList();
+    toast('✓ Task added: '+p.name);
+    _trackEvent('tool_use','quick_capture_task','Quick Capture');
+  }else{
+    if(!state.thoughts)state.thoughts=[];
+    state.thoughts.push({id:'th'+Date.now(),text:text});
+    save();renderThoughts();
+    toast('✓ Captured to Brain Dump');
+    _trackEvent('tool_use','quick_capture_thought','Quick Capture');
+  }
+  closeQuickCapture();
 }
 
 // R8: RRULE-lite recurrence -- daily/weekly/monthly, interval N. Returns the

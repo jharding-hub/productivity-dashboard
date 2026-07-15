@@ -1187,6 +1187,30 @@ body.unlocked .date-editable{border-bottom-color:var(--border);}
 /* TASK TIMER IN HEADER (replaced by header-timer) */
 .task-timer-wrap{display:none;}
 
+/* ═══ QUICK CAPTURE (R9) ═══ -- mirrors .jarvis-fab's positioning/sizing
+   convention but on the opposite corner, plain (no rotating-ring treatment)
+   so it doesn't compete visually with the Axis assistant launcher. */
+.qc-fab{
+  position:fixed;bottom:24px;left:24px;width:58px;height:58px;border-radius:50%;
+  background:var(--surface-raised);border:1.5px solid var(--border);
+  color:var(--text-dim);font-size:22px;cursor:pointer;z-index:900;
+  display:flex;align-items:center;justify-content:center;line-height:1;
+  box-shadow:0 4px 16px rgba(0,0,0,0.35);
+  transition:all 0.18s;
+}
+.qc-fab:hover{border-color:var(--accent-dim);color:var(--accent);background:var(--surface-hover);}
+.qc-panel{
+  background:var(--surface);border:1.5px solid var(--border);border-radius:var(--radius);
+  padding:18px;width:min(480px,92vw);box-shadow:0 12px 40px rgba(0,0,0,0.5);
+}
+.qc-input{
+  width:100%;box-sizing:border-box;padding:12px 14px;font-size:16px;
+  border:1.5px solid var(--border-focus);border-radius:var(--radius-sm);
+  background:var(--surface-raised);color:var(--text);font-family:inherit;
+}
+.qc-input:focus{outline:none;border-color:var(--accent);}
+.qc-hint{font-size:11.5px;color:var(--text-faint);margin-top:10px;line-height:1.5;}
+
 /* ═══ POINTS / REWARDS SYSTEM ═══
    Same flat surface/color treatment as .toolkit-btn -- the only thing that
    marks tier is a thick, tier-colored outline (this month's level), same
