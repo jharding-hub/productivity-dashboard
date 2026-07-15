@@ -9,9 +9,14 @@ export default function PointsInsightsOverlay() {
         </div>
         <div className="modal-blur-body">
           <div className="pi-period-row">
-            <button className="pi-period-btn active" id="piBtnWeek" onClick={() => window.renderPointsInsights('week')}>Week</button>
-            <button className="pi-period-btn" id="piBtnMonth" onClick={() => window.renderPointsInsights('month')}>Month</button>
-            <button className="pi-period-btn" id="piBtnLifetime" onClick={() => window.renderPointsInsights('lifetime')}>Lifetime</button>
+            <div className="pi-period-group">
+              <button className="pi-period-btn active" id="piBtnWeek" onClick={() => window.renderPointsInsights('week')}>Week</button>
+              <button className="pi-period-btn" id="piBtnMonth" onClick={() => window.renderPointsInsights('month')}>Month</button>
+              <button className="pi-period-btn" id="piBtnLifetime" onClick={() => window.renderPointsInsights('lifetime')}>Lifetime</button>
+            </div>
+            <button className="pi-export-btn" onClick={() => window.exportInsightsData()} title="Download check-ins, mood/energy, and daily Presence as CSV files">
+              &#8595; Export CSV
+            </button>
           </div>
 
           <div className="pi-insight-text" id="piInsightText"></div>

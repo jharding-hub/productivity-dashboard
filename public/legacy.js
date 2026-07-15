@@ -5174,6 +5174,74 @@ async function _saveMoodLogDoc(){
 }
 
 // =======================================
+// R14: INSIGHTS DATA EXPORT -- downloads check-ins, mood/energy, and daily
+// Presence totals as separate CSVs. Exports FULL history (not just the
+// currently selected week/month/lifetime tab), matching exportAllToICS's
+// precedent of "give me everything, I'll filter it myself." Reuses
+// downloadICS's blob-download pattern under a generic name.
+// =======================================
+function _csvEsc(v){
+  v=(v===null||v===undefined)?'':String(v);
+  if(/[",\n]/.test(v))return '"'+v.replace(/"/g,'""')+'"';
+  return v;
+}
+function _csvRows(rows){return rows.map(function(r){return r.map(_csvEsc).join(',');}).join('\r\n');}
+function downloadCSV(fn,csv){
+  var b=new Blob([csv],{type:'text/csv;charset=utf-8'});
+  var u=URL.createObjectURL(b);
+  var a=document.createElement('a');
+  a.href=u;a.download=fn;document.body.appendChild(a);a.click();document.body.removeChild(a);
+  URL.revokeObjectURL(u);
+}
+function _checkinDetail(c){
+  if(c.type==='halt'){
+    var labels=(c.items||[]).map(function(k){var it=HALT_ITEMS.find(function(i){return i.key===k;});return it?it.label:k;});
+    return labels.join('; ');
+  }
+  if(c.type==='breath')return (c.techniqueName||'')+(c.cycles?' ('+c.cycles+' cycles)':'');
+  if(c.type==='grounding')return c.techniqueName||'';
+  if(c.type==='urge'){
+    var parts=[c.urgeLabel||c.urgeType||''];
+    if(c.note)parts.push('note: '+c.note);
+    parts.push(c.delayMinutes+' min delay');
+    parts.push(c.outcome==='passed'?'urge passed':'did it anyway');
+    return parts.join('; ');
+  }
+  return '';
+}
+function _exportCheckinsCSV(){
+  var rows=[['Date','Time','Type','Detail']];
+  (state.checkins||[]).slice().sort(function(a,b){return new Date(a.ts)-new Date(b.ts);}).forEach(function(c){
+    var d=new Date(c.ts);
+    rows.push([d.toLocaleDateString('en-US'),d.toLocaleTimeString('en-US'),c.type,_checkinDetail(c)]);
+  });
+  downloadCSV('centerpost-checkins.csv',_csvRows(rows));
+}
+function _exportMoodLogCSV(){
+  var rows=[['Date','Mood (1-4)','Energy (1-4)']];
+  (state.moodLog||[]).slice().sort(function(a,b){return (a.date||'').localeCompare(b.date||'');}).forEach(function(m){
+    rows.push([m.date||'',m.mood!=null?m.mood:'',m.energy!=null?m.energy:'']);
+  });
+  downloadCSV('centerpost-mood-energy.csv',_csvRows(rows));
+}
+function _exportPointsCSV(){
+  var rows=[['Date','Presence Earned']];
+  var totals=(state.points&&state.points.totalsByDay)||{};
+  Object.keys(totals).sort().forEach(function(d){
+    rows.push([d,totals[d]]);
+  });
+  downloadCSV('centerpost-presence-daily.csv',_csvRows(rows));
+}
+function exportInsightsData(){
+  var hasData=(state.checkins||[]).length||(state.moodLog||[]).length||Object.keys((state.points&&state.points.totalsByDay)||{}).length;
+  if(!hasData){toast('Nothing to export yet.');return;}
+  _exportCheckinsCSV();
+  setTimeout(_exportMoodLogCSV,300);
+  setTimeout(_exportPointsCSV,600);
+  toast('⬇ Exporting 3 CSV files...');
+}
+
+// =======================================
 // HALT+ SENSORY CHECK
 // =======================================
 var _haltChecked={};
