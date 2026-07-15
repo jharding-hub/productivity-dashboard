@@ -1200,6 +1200,7 @@ body.unlocked .date-editable{border-bottom-color:var(--border);}
 }
 .qc-fab:hover{border-color:var(--accent-dim);color:var(--accent);background:var(--surface-hover);}
 .qc-panel{
+  position:relative;z-index:1;
   background:var(--surface);border:1.5px solid var(--border);border-radius:var(--radius);
   padding:18px;width:min(480px,92vw);box-shadow:0 12px 40px rgba(0,0,0,0.5);
 }
