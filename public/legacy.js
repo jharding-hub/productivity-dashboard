@@ -641,6 +641,7 @@ function save(){
   _checkStateSize(blob.length);
   if(typeof pushWatchSnapshot==='function')pushWatchSnapshot(); // mirror to Apple Watch
   if(typeof _notifScheduleNativeSync==='function')_notifScheduleNativeSync(); // reschedule iOS local notifications (debounced)
+  if(typeof _updateWidgetSnapshot==='function')_updateWidgetSnapshot(); // R10: refresh the home-screen widget's data
   if(!firebaseReady||!db||!currentUser)return;
   clearTimeout(saveTimer);
   saveTimer=setTimeout(async()=>{
@@ -3292,6 +3293,43 @@ function pushWatchSnapshot(){
     if(!h)return; // not running inside the iOS shell
     h.postMessage(_buildWatchSnapshot());
   }catch(e){console.warn('[watch] pushSnapshot failed',e);}
+}
+
+// =======================================
+// R10: HOME-SCREEN WIDGET SNAPSHOT -- static display only (Joe's call: no
+// interactive App Intents in v1, tapping the widget's "+" deep-links into
+// Quick Capture instead of writing data from the extension). The widget
+// process runs independently of the app (even fully closed), so it can't
+// read live JS state -- this pushes a small JSON snapshot through the native
+// bridge into the shared App Group container whenever it actually changes;
+// native writes it to UserDefaults(suiteName:) and asks WidgetKit to reload.
+// =======================================
+function _computeWidgetSnapshot(){
+  var today=todayStr();
+  var pr={high:0,med:1,low:2};
+  // NOTE: pr[x]||1 would be wrong here -- high's rank is 0, which is falsy,
+  // so || would silently coerce it to 1 (med) and scramble the sort. Use an
+  // explicit undefined check instead.
+  var prRank=function(p){var r=pr[p];return r===undefined?1:r;};
+  var tasks=(state.tasks||[]).filter(function(t){return !t.done&&t.due===today;})
+    .sort(function(a,b){return prRank(a.priority)-prRank(b.priority);});
+  var reminders=(state.reminders||[]).filter(function(r){return r.date===today;});
+  return {
+    date:today,
+    taskCount:tasks.length,
+    reminderCount:reminders.length,
+    items:tasks.slice(0,4).map(function(t){return {title:t.name,priority:t.priority||'med'};}),
+    presence:(state.points&&state.points.current)||0
+  };
+}
+var _lastWidgetSnapshot=null;
+function _updateWidgetSnapshot(){
+  var h=(typeof _notifNative==='function')?_notifNative():null;
+  if(!h)return;
+  var json=JSON.stringify(_computeWidgetSnapshot());
+  if(json===_lastWidgetSnapshot)return; // avoid a redundant native round-trip on unrelated saves
+  _lastWidgetSnapshot=json;
+  try{h.postMessage({action:'updateWidgetSnapshot',snapshot:json});}catch(e){}
 }
 
 // Apply an action the watch sent (toggle a task/reminder, quick-add a task),
