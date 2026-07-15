@@ -632,7 +632,11 @@ function save(){
   // E-1: stamp the state itself so every copy carries the time of the last
   // edit it reflects -- this is what the write guard below compares.
   state._updatedAt=Date.now();
-  const blob=JSON.stringify(state);
+  // R5: checkins/moodLog persist through their own doc + save functions now
+  // (_saveCheckinsDoc/_saveMoodLogDoc) -- excluded here so they stop riding
+  // along in every dashboard-doc write. JSON.stringify drops keys whose
+  // value is undefined, so this omits them without deep-cloning the rest.
+  const blob=JSON.stringify(Object.assign({},state,{checkins:undefined,moodLog:undefined}));
   try{localStorage.setItem('prodDash_'+uid,blob);}catch(e){}
   _checkStateSize(blob.length);
   if(typeof pushWatchSnapshot==='function')pushWatchSnapshot(); // mirror to Apple Watch
@@ -656,7 +660,7 @@ function save(){
             if(cloudTs>state._updatedAt)return false;
           }catch(e){}
         }
-        tx.set(ref,{state:JSON.stringify(state),updated:firebase.firestore.FieldValue.serverTimestamp()});
+        tx.set(ref,{state:blob,updated:firebase.firestore.FieldValue.serverTimestamp()});
         return true;
       });
       if(wrote){
@@ -733,8 +737,10 @@ async function load(){
             if(oldData.projects||oldData.reminders){state={...state,...oldData};console.log('Migrated from old shared Firestore');}
           }
         }catch(me){console.log('Migration check:',me);}
-        // Push to new location
-        await db.collection('users').doc(currentUser.uid).collection('data').doc('dashboard').set({state:JSON.stringify(state),updated:firebase.firestore.FieldValue.serverTimestamp()});
+        // Push to new location. R5: exclude checkins/moodLog, same as save() --
+        // they're adopted into their own docs by _loadCheckinsDoc/_loadMoodLogDoc
+        // right after load() returns.
+        await db.collection('users').doc(currentUser.uid).collection('data').doc('dashboard').set({state:JSON.stringify(Object.assign({},state,{checkins:undefined,moodLog:undefined})),updated:firebase.firestore.FieldValue.serverTimestamp()});
         setSyncStatus('synced','Synced');
       }
     }catch(e){console.log('Firestore load error:',e);setSyncStatus('error','Offline');}
@@ -3559,6 +3565,7 @@ function logMoodEntry(){
   if(state.mood)entry.mood=state.mood;
   entry.ts=new Date().toISOString();
   _trackEvent('tool_use','log_mood','Log Mood');
+  _saveMoodLogDoc();
 }
 
 
@@ -5063,12 +5070,87 @@ function _logCheckIn(type,payload){
   var entry=Object.assign({id:'ci'+Date.now()+Math.random().toString(36).slice(2,6),ts:new Date().toISOString(),type:type},payload||{});
   state.checkins.push(entry);
   if(state.checkins.length>CHECKIN_LOG_MAX)state.checkins=state.checkins.slice(state.checkins.length-CHECKIN_LOG_MAX);
-  save();
+  _saveCheckinsDoc();
   return entry;
 }
 function _checkinsSince(days){
   var cutoff=Date.now()-days*86400000;
   return (state.checkins||[]).filter(function(c){return new Date(c.ts).getTime()>=cutoff;});
+}
+
+// =======================================
+// R5: CHECKINS + MOODLOG DOCUMENT I/O -- generalizes the R3 journal pattern
+// (own doc under users/{uid}/data/, own localStorage mirror, own save --
+// no E-1 optimistic-concurrency transaction, matching journal's precedent
+// since both are append-mostly/edit-rarely with low collision risk) so these
+// two growing collections stop riding along in every single dashboard-doc
+// write. Unlike journal (lazy-loaded only when opened), these load EAGERLY
+// during init since HALT+/State-&-Regulation/mood chart can render at any
+// time. state.checkins/state.moodLog stay the canonical in-memory arrays --
+// every existing read call site (_checkinsSince, _renderStateCard, mood
+// chart, insights) is untouched; only persistence moves.
+// =======================================
+function _checkinsStorageKey(){return 'cpCheckins_'+(currentUser?currentUser.uid:'local');}
+async function _loadCheckinsDoc(){
+  var loaded=null;
+  if(firebaseReady&&db&&currentUser){
+    try{
+      var snap=await db.collection('users').doc(currentUser.uid).collection('data').doc('checkins').get();
+      if(snap.exists)loaded=snap.data();
+    }catch(e){console.log('checkins load (cloud) error:',e);}
+  }
+  if(!loaded){
+    try{var s=localStorage.getItem(_checkinsStorageKey());if(s)loaded=JSON.parse(s);}catch(e){}
+  }
+  if(loaded&&Array.isArray(loaded.items)){
+    state.checkins=loaded.items;
+  }else if((state.checkins||[]).length){
+    // ONE-TIME MIGRATION: pre-R5 data lives in state.checkins, merged in by
+    // load() from the old dashboard blob. Adopt it as the new doc's seed.
+    await _saveCheckinsDoc();
+  }
+  try{localStorage.setItem(_checkinsStorageKey(),JSON.stringify({v:1,items:state.checkins||[]}));}catch(e){}
+}
+async function _saveCheckinsDoc(){
+  var doc={v:1,items:state.checkins||[]};
+  try{localStorage.setItem(_checkinsStorageKey(),JSON.stringify(doc));}catch(e){}
+  if(firebaseReady&&db&&currentUser){
+    try{
+      await db.collection('users').doc(currentUser.uid).collection('data').doc('checkins')
+        .set({v:1,items:doc.items,updated:firebase.firestore.FieldValue.serverTimestamp()});
+    }catch(e){console.log('checkins save (cloud) error:',e);}
+  }
+}
+
+function _moodLogStorageKey(){return 'cpMoodLog_'+(currentUser?currentUser.uid:'local');}
+async function _loadMoodLogDoc(){
+  var loaded=null;
+  if(firebaseReady&&db&&currentUser){
+    try{
+      var snap=await db.collection('users').doc(currentUser.uid).collection('data').doc('moodLog').get();
+      if(snap.exists)loaded=snap.data();
+    }catch(e){console.log('moodLog load (cloud) error:',e);}
+  }
+  if(!loaded){
+    try{var s=localStorage.getItem(_moodLogStorageKey());if(s)loaded=JSON.parse(s);}catch(e){}
+  }
+  if(loaded&&Array.isArray(loaded.entries)){
+    state.moodLog=loaded.entries;
+  }else if((state.moodLog||[]).length){
+    // ONE-TIME MIGRATION, same shape as checkins above.
+    await _saveMoodLogDoc();
+  }
+  try{localStorage.setItem(_moodLogStorageKey(),JSON.stringify({v:1,entries:state.moodLog||[]}));}catch(e){}
+}
+async function _saveMoodLogDoc(){
+  var doc={v:1,entries:state.moodLog||[]};
+  try{localStorage.setItem(_moodLogStorageKey(),JSON.stringify(doc));}catch(e){}
+  if(firebaseReady&&db&&currentUser){
+    try{
+      await db.collection('users').doc(currentUser.uid).collection('data').doc('moodLog')
+        .set({v:1,entries:doc.entries,updated:firebase.firestore.FieldValue.serverTimestamp()});
+    }catch(e){console.log('moodLog save (cloud) error:',e);}
+  }
 }
 
 // =======================================
@@ -9217,6 +9299,11 @@ function _applySavedTheme(){
 
 async function initApp(){
 await load();
+// R5: checkins/moodLog load from their own docs (eagerly -- unlike journal,
+// which is lazy-loaded on open -- since HALT+/State-&-Regulation/mood chart
+// can render at any time). Must run after load() so pre-migration data
+// already merged into state.checkins/state.moodLog is available to adopt.
+await Promise.all([_loadCheckinsDoc(),_loadMoodLogDoc()]);
 initPanelVisibility();applyPanelOrder();applyPanelVisibility();updateLockUI();updateClock();updateTimeLeft();setInterval(updateClock,1000);setInterval(updateTimeLeft,30000);updateTimerDisplay();renderPointsBadge();awardDailyLogin();
 _bindPanelUsageTracking();
 // -- DAILY ROUTINE RESET -- robust against tabs left open overnight --
@@ -9307,6 +9394,8 @@ setTimeout(function(){
     }
     try{
       if(typeof load==='function')await load();
+      if(typeof _loadCheckinsDoc==='function')await _loadCheckinsDoc();
+      if(typeof _loadMoodLogDoc==='function')await _loadMoodLogDoc();
       if(typeof renderProjects==='function')renderProjects();
       if(typeof renderReminders==='function')renderReminders();
       if(typeof renderNotes==='function')renderNotes();
