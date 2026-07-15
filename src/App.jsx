@@ -12,6 +12,7 @@ import PointsInsightsOverlay from './components/PointsInsightsOverlay';
 import JournalOverlay from './components/JournalOverlay';
 import AxisAssistant from './components/AxisAssistant';
 import QuickCaptureModal from './components/QuickCaptureModal';
+import OnboardingTour from './components/OnboardingTour';
 import HaltModal from './components/HaltModal';
 import UrgeLogModal from './components/UrgeLogModal';
 import BreathworkOverlay from './components/BreathworkOverlay';
@@ -44,6 +45,7 @@ export default function App() {
       journal: document.getElementById('journal-overlay-root'),
       axis: document.getElementById('axis-assistant-root'),
       quickCapture: document.getElementById('quick-capture-modal-root'),
+      onboardingTour: document.getElementById('onboarding-tour-root'),
       halt: document.getElementById('halt-modal-root'),
       urge: document.getElementById('urge-modal-root'),
       breathwork: document.getElementById('breathwork-overlay-root'),
@@ -81,6 +83,7 @@ export default function App() {
       {mounts.journal && createPortal(<JournalOverlay />, mounts.journal)}
       {mounts.axis && createPortal(<AxisAssistant />, mounts.axis)}
       {mounts.quickCapture && createPortal(<QuickCaptureModal />, mounts.quickCapture)}
+      {mounts.onboardingTour && createPortal(<OnboardingTour />, mounts.onboardingTour)}
       {mounts.halt && createPortal(<HaltModal />, mounts.halt)}
       {mounts.urge && createPortal(<UrgeLogModal />, mounts.urge)}
       {mounts.breathwork && createPortal(<BreathworkOverlay />, mounts.breathwork)}

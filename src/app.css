@@ -2463,7 +2463,6 @@ body[data-theme="storm-dark"] .tl-hour-label{
 }
 .customize-btn{background:none;border:1px solid var(--border);color:var(--text-dim);padding:6px 10px;border-radius:var(--radius-sm);cursor:pointer;font-size:12px;font-family:inherit;transition:all 0.15s;min-height:40px;}
 .kids-launcher:hover{background:linear-gradient(135deg,#ffe060,#ff66bb) !important;border-color:#ffcc00 !important;color:#1a0033 !important;}
-.howto-launcher:hover{background:linear-gradient(135deg,#7df0ff,#3ab8e0) !important;border-color:#5be8ff !important;color:#0a1218 !important;box-shadow:0 2px 12px rgba(91,232,255,0.5) !important;transform:translateY(-1px);}
 .customize-btn:hover{border-color:var(--accent-dim);color:var(--accent);}
 .customize-overlay{position:fixed;inset:0;background:rgba(0,0,0,0.6);z-index:300;display:none;align-items:center;justify-content:center;padding:20px;}
 .customize-overlay.show{display:flex;}

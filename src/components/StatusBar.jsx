@@ -7,11 +7,10 @@ export default function StatusBar() {
       <button className="customize-btn focus-mode-btn" id="focusModeBtn" onClick={() => window.toggleFocusMode()} title="Toggle between Focus view (today's essentials) and full dashboard">&#8862; All Panels</button>
       <button className="customize-btn" onClick={() => window.openCustomize()} title="Show/hide panels and theme settings">&#9881; Settings</button>
       <button
-        className="customize-btn howto-launcher"
-        onClick={() => window.open('https://centerpost.app/howto.html', '_blank')}
-        title="Open the Centerpost How-To guide"
-        style={{ background: 'linear-gradient(135deg,#5be8ff,#0ea5e9)', border: '1px solid #0ea5e9', color: '#0a1218', fontWeight: 700, letterSpacing: '0.3px', boxShadow: '0 0 8px rgba(91,232,255,0.35)' }}
-      >&#128218; How To</button>
+        className="customize-btn"
+        onClick={() => window.openOnboardingTour()}
+        title="Replay the getting-started tour"
+      >&#10024; Tour</button>
       <button
         className="customize-btn kids-launcher"
         onClick={() => {

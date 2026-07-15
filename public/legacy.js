@@ -534,6 +534,9 @@ document.addEventListener('keydown',function(e){
     if(ov && ov.classList.contains('open'))hideSigninPanel();
     var ov2=document.getElementById('signupOverlay');
     if(ov2 && ov2.classList.contains('open'))hideSignupPanel();
+    // R11: Escape skips the onboarding tour, same as its Skip button.
+    var ov3=document.getElementById('onboardingTourModal');
+    if(ov3 && ov3.classList.contains('open'))onboardingSkip();
   }
 });
 
@@ -731,13 +734,18 @@ async function load(){
         setSyncStatus('synced','Synced');
       }else{
         // First time or migration -- also check old shared location
+        var _migratedFromShared=false;
         try{
           const oldDoc=await db.collection('dashboards').doc('957d52c2f223567f9e37f9121bb24f81ba916e3d1549fdfbc18c08cf7fe43c9f').get();
           if(oldDoc.exists&&oldDoc.data().state){
             const oldData=JSON.parse(oldDoc.data().state);
-            if(oldData.projects||oldData.reminders){state={...state,...oldData};console.log('Migrated from old shared Firestore');}
+            if(oldData.projects||oldData.reminders){state={...state,...oldData};console.log('Migrated from old shared Firestore');_migratedFromShared=true;}
           }
         }catch(me){console.log('Migration check:',me);}
+        // R11: only a genuinely first-ever account (nothing adopted from the
+        // old shared doc either) gets the onboarding tour -- a legacy account
+        // migrating formats is not a new user.
+        if(!_migratedFromShared)state.onboardingSeen=false;
         // Push to new location. R5: exclude checkins/moodLog, same as save() --
         // they're adopted into their own docs by _loadCheckinsDoc/_loadMoodLogDoc
         // right after load() returns.
@@ -772,6 +780,10 @@ async function load(){
   // the Grounding Toolkit keeps auto-showing on low mood/energy unless they
   // opt into 'lean'.
   if(state.supportLevel!=='full'&&state.supportLevel!=='lean')state.supportLevel='full';
+  // R11: undefined means an existing/pre-onboarding-feature account -- treat
+  // as already onboarded. Only the first-time branch above ever sets this to
+  // false explicitly.
+  if(state.onboardingSeen===undefined)state.onboardingSeen=true;
   if(!state.completedTasks)state.completedTasks=[];
   if(!state.completedWorkouts)state.completedWorkouts=[];
   // E-2: one-time migrate -- lifetime count seeded from the uncapped array
@@ -6025,6 +6037,61 @@ function submitQuickCapture(){
   closeQuickCapture();
 }
 
+// R11: first-run guided tour. Nine short steps, skippable at every point;
+// mirrors QuickCapture's open/close conventions (_blurDashboard/.open class).
+var ONBOARDING_STEPS=[
+  {title:'Welcome to Centerpost',body:"A quick tour of the essentials — nine short steps, then you're on your own. Skip any time."},
+  {title:'Quick Capture',body:"Tap the pencil (or press B) from anywhere and type — it figures out if it's a task or a thought."},
+  {title:'Brain Dump',body:'A place for anything unsorted. Type it and let it sit there — nothing here needs a plan yet.'},
+  {title:'Notes',body:'Give it a title, write in the body — bold, headers, links, and lists all work — then Add Note.'},
+  {title:'Projects',body:'Name it, optionally set a due date, and hit + Add.'},
+  {title:'Tag projects',body:"On a note, task, or reminder, use + Tag projects to link it to one you've made — it'll show up there too."},
+  {title:'Axis',body:'Your AI assistant. Ask it to plan your day, break down a task, or just talk something through.'},
+  {title:'Grounding Toolkit',body:'HALT+ check-ins and breathing/grounding exercises, always one tap away.'},
+  {title:"That's the essentials",body:"You're all set — jump in whenever you're ready."}
+];
+var _onboardingStep=0;
+function openOnboardingTour(){
+  var modal=document.getElementById('onboardingTourModal');
+  if(!modal)return;
+  _onboardingStep=0;
+  renderOnboardingStep();
+  modal.classList.add('open');
+  _blurDashboard();
+}
+function closeOnboardingTour(){
+  var modal=document.getElementById('onboardingTourModal');
+  if(!modal)return;
+  modal.classList.remove('open');
+  _unblurDashboard();
+}
+function _onboardingFinish(){
+  state.onboardingSeen=true;save();
+  closeOnboardingTour();
+}
+function onboardingSkip(){_onboardingFinish();}
+function onboardingNext(){
+  if(_onboardingStep>=ONBOARDING_STEPS.length-1){_onboardingFinish();return;}
+  _onboardingStep++;renderOnboardingStep();
+}
+function onboardingBack(){
+  if(_onboardingStep<=0)return;
+  _onboardingStep--;renderOnboardingStep();
+}
+function renderOnboardingStep(){
+  var step=ONBOARDING_STEPS[_onboardingStep];
+  var titleEl=document.getElementById('onboardingTitle');
+  var bodyEl=document.getElementById('onboardingBody');
+  var progEl=document.getElementById('onboardingProgress');
+  var backBtn=document.getElementById('onboardingBackBtn');
+  var nextBtn=document.getElementById('onboardingNextBtn');
+  if(titleEl)titleEl.textContent=step.title;
+  if(bodyEl)bodyEl.textContent=step.body;
+  if(progEl)progEl.textContent=(_onboardingStep+1)+' of '+ONBOARDING_STEPS.length;
+  if(backBtn)backBtn.style.visibility=_onboardingStep===0?'hidden':'visible';
+  if(nextBtn)nextBtn.textContent=_onboardingStep===ONBOARDING_STEPS.length-1?'Get Started':'Next';
+}
+
 // R8: RRULE-lite recurrence -- daily/weekly/monthly, interval N. Returns the
 // next due date (YYYY-MM-DD) or null if recurrence/due is missing/malformed.
 function _nextRecurrenceDate(dueStr,recurrence){
@@ -9803,6 +9870,11 @@ if('serviceWorker' in navigator){
 })();
 // Handle Web Share Target inbound data
 setTimeout(checkShareTarget, 400); // slight delay so panels render first
+// R11: brand-new accounts only (see load()'s first-time branch). Small delay
+// lets the dashboard's initial paint settle before the full-screen blur hits.
+if(state.onboardingSeen===false && typeof openOnboardingTour==='function'){
+  setTimeout(openOnboardingTour,600);
+}
 }
 // Auth is handled by Firebase onAuthStateChanged listener in Script 1
 
