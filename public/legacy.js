@@ -1130,6 +1130,22 @@ function _timerNotifCancel(){
   if(h){try{h.postMessage({action:'cancelTimer'});}catch(e){}}
 }
 
+// R7 tier 2: Lock Screen / Dynamic Island live countdown (native only, no-op
+// on web). Read-only -- ends on pause/reset/complete rather than showing a
+// "paused" state, since the Live Activity can't drive the in-app JS timer
+// while backgrounded anyway (see LiveActivityManager.swift). A fresh start
+// after pause just begins a new Activity.
+function _liveActivityStart(){
+  var h=(typeof _notifNative==='function')?_notifNative():null;
+  if(h&&timerEndAt){
+    try{h.postMessage({action:'startLiveActivity',at:timerEndAt,label:TIMER_PRESETS[timerCurrentPresetIdx].label});}catch(e){}
+  }
+}
+function _liveActivityEnd(){
+  var h=(typeof _notifNative==='function')?_notifNative():null;
+  if(h){try{h.postMessage({action:'endLiveActivity'});}catch(e){}}
+}
+
 function _timerFmtLabel(){
   if(!timerRunning&&timerLeft===timerTotal){
     // Idle -- just show preset name
@@ -1158,6 +1174,7 @@ function updateTimerDisplay(){
     ['headerTimerLabel','pdHeaderTimerLabel'].forEach(function(id){
       var el=document.getElementById(id);if(el){el.textContent='Done!';el.classList.remove('ht-running');}
     });
+    _liveActivityEnd();
     playAlarm();
     toast('⏰ Focus session complete! +3 Presence');
     addPoints('timer',document.getElementById('headerTimerBtn'));
@@ -1195,6 +1212,7 @@ function startTimer(){
   timerEndAt=Date.now()+(timerLeft*1000);
   timerInterval=setInterval(_tickTimer,500);
   _timerNotifStart();
+  _liveActivityStart();
   updateTimerDisplay();
   if(typeof pushWatchSnapshot==='function')pushWatchSnapshot();
 }
@@ -1205,6 +1223,7 @@ function pauseTimer(){
   timerRunning=false;timerEndAt=null;
   clearInterval(timerInterval);timerInterval=null;
   _timerNotifCancel();
+  _liveActivityEnd();
   updateTimerDisplay();
   if(typeof pushWatchSnapshot==='function')pushWatchSnapshot();
 }
@@ -1213,6 +1232,7 @@ function resetTimer(){
   pauseTimer();stopAlarm();
   timerLeft=timerTotal;timerEndAt=null;
   _timerNotifCancel();
+  _liveActivityEnd();
   updateTimerDisplay();
   if(typeof pushWatchSnapshot==='function')pushWatchSnapshot();
 }
