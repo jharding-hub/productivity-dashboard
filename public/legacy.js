@@ -5971,25 +5971,32 @@ function openQuickCapture(){
   if(preview){preview.style.display='none';preview.textContent='';}
   if(input)setTimeout(function(){input.focus();},10);
 }
+// Clears + blurs the input BEFORE hiding the modal, so a discard is always
+// unambiguous: Escape calls this directly (never wants a save), and if the
+// blur that follows fires the onBlur-save handler below, it finds nothing
+// there and no-ops. Also called at the end of a successful submit, where
+// clearing is a harmless no-op (text is already saved) and blurring ensures
+// the keyboard actually dismisses even though the modal is just hidden via
+// CSS, not removed from focus.
 function closeQuickCapture(){
+  var input=document.getElementById('quickCaptureInput');
+  if(input){input.value='';input.blur();}
   var modal=document.getElementById('quickCaptureModal');
   if(!modal)return;
   modal.classList.remove('open');
   _unblurDashboard();
 }
-// Tapping the backdrop (or anywhere outside the input) must never silently
-// discard a typed-but-unsaved capture -- that's exactly the kind of lost
-// work an ADHD-focused capture tool can't afford. Save if there's text,
-// otherwise just close (nothing to lose).
-function closeOrSaveQuickCapture(){
-  var input=document.getElementById('quickCaptureInput');
-  if(input&&input.value.trim()){submitQuickCapture();}
-  else{closeQuickCapture();}
-}
 function quickCaptureKeydown(e){
   if(e.key==='Escape'){closeQuickCapture();return;}
   if(e.key==='Enter'){e.preventDefault();submitQuickCapture();}
 }
+// R9 fix: the input saves on BLUR (any loss of focus -- Enter, the Save
+// button, tapping outside, or iOS's own keyboard-dismiss "done"/checkmark
+// control, which never fires a click or keydown event Claude can hook into
+// directly). One mechanism instead of enumerating every way focus can leave
+// an input. Safe to call more than once for the same edit -- it clears the
+// input on success, so a second call (e.g. Enter followed by the blur that
+// naturally follows) just finds empty text and no-ops.
 function submitQuickCapture(){
   var input=document.getElementById('quickCaptureInput');
   if(!input)return;
