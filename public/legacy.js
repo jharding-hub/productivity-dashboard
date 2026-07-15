@@ -3314,11 +3314,17 @@ function _computeWidgetSnapshot(){
   var tasks=(state.tasks||[]).filter(function(t){return !t.done&&t.due===today;})
     .sort(function(a,b){return prRank(a.priority)-prRank(b.priority);});
   var reminders=(state.reminders||[]).filter(function(r){return r.date===today;});
+  // Same source + shape as the watch app's "Today" view (_buildWatchSnapshot
+  // above) -- Joe's ask: show today's actual schedule, not a task-due count.
+  var timeline=(state.tlBlocks||[]).filter(function(b){return (b.date||'')===today;})
+    .sort(function(a,b){return (a.time||'').localeCompare(b.time||'');})
+    .map(function(b){return {name:b.name||'',time:b.time?fmtTime(b.time):''};});
   return {
     date:today,
     taskCount:tasks.length,
     reminderCount:reminders.length,
     items:tasks.slice(0,4).map(function(t){return {title:t.name,priority:t.priority||'med'};}),
+    timeline:timeline.slice(0,6),
     presence:(state.points&&state.points.current)||0
   };
 }
