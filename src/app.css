@@ -1201,15 +1201,24 @@ body.unlocked .date-editable{border-bottom-color:var(--border);}
 .qc-fab:hover{border-color:var(--accent-dim);color:var(--accent);background:var(--surface-hover);}
 .qc-panel{
   position:relative;z-index:1;
-  background:var(--surface);border:1.5px solid var(--border);border-radius:var(--radius);
-  padding:18px;width:min(480px,92vw);box-shadow:0 12px 40px rgba(0,0,0,0.5);
+  /* Darker custom themes (e.g. "starry") pack --surface/--surface-raised/
+     --border into near-identical near-black tones, and this panel is sparse
+     enough (one input, one hint line) that it needs its own contrast rather
+     than leaning on those alone -- a visible border-focus ring + inset glow
+     keep it reading as a distinct card against the blurred backdrop. */
+  background:var(--surface-raised);border:2px solid var(--border-focus);border-radius:var(--radius);
+  padding:18px;width:min(480px,92vw);
+  box-shadow:0 12px 40px rgba(0,0,0,0.6),0 0 0 1px rgba(255,255,255,0.05) inset;
 }
 .qc-input{
   width:100%;box-sizing:border-box;padding:12px 14px;font-size:16px;
   border:1.5px solid var(--border-focus);border-radius:var(--radius-sm);
-  background:var(--surface-raised);color:var(--text);font-family:inherit;
+  background:var(--surface-hover);color:var(--text);font-family:inherit;
 }
 .qc-input:focus{outline:none;border-color:var(--accent);}
+.qc-actions{display:flex;justify-content:flex-end;margin-top:10px;}
+.qc-save-btn{padding:8px 20px;font-size:13px;font-weight:600;border:1.5px solid var(--accent-dim);border-radius:var(--radius-sm);background:var(--accent-glow);color:var(--accent);cursor:pointer;font-family:inherit;transition:all 0.15s;}
+.qc-save-btn:hover{background:var(--accent);color:var(--bg);}
 .qc-hint{font-size:11.5px;color:var(--text-faint);margin-top:10px;line-height:1.5;}
 
 /* ═══ POINTS / REWARDS SYSTEM ═══

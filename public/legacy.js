@@ -5977,6 +5977,15 @@ function closeQuickCapture(){
   modal.classList.remove('open');
   _unblurDashboard();
 }
+// Tapping the backdrop (or anywhere outside the input) must never silently
+// discard a typed-but-unsaved capture -- that's exactly the kind of lost
+// work an ADHD-focused capture tool can't afford. Save if there's text,
+// otherwise just close (nothing to lose).
+function closeOrSaveQuickCapture(){
+  var input=document.getElementById('quickCaptureInput');
+  if(input&&input.value.trim()){submitQuickCapture();}
+  else{closeQuickCapture();}
+}
 function quickCaptureKeydown(e){
   if(e.key==='Escape'){closeQuickCapture();return;}
   if(e.key==='Enter'){e.preventDefault();submitQuickCapture();}

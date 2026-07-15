@@ -5,7 +5,7 @@ export default function QuickCaptureModal() {
         &#9998;
       </button>
       <div className="modal-blur-overlay" id="quickCaptureModal">
-        <div className="modal-blur-backdrop" onClick={() => window.closeQuickCapture()}></div>
+        <div className="modal-blur-backdrop" onClick={() => window.closeOrSaveQuickCapture()}></div>
         <div className="qc-panel">
           <input
             type="text"
@@ -17,7 +17,10 @@ export default function QuickCaptureModal() {
             onInput={() => window._renderQuickAddPreview('quickCaptureInput', 'quickCapturePreview', { date: true, time: true, priority: true, recurrence: true })}
           />
           <div className="quick-add-preview" id="quickCapturePreview" style={{ display: 'none' }}></div>
-          <div className="qc-hint">Enter to save &middot; Esc to close &middot; try &quot;!high&quot; or &quot;tomorrow&quot; &mdash; task-like text becomes a Task, otherwise it's a Brain Dump thought</div>
+          <div className="qc-actions">
+            <button className="qc-save-btn" onClick={() => window.submitQuickCapture()}>Save</button>
+          </div>
+          <div className="qc-hint">Enter or Save to capture &middot; Esc to close &middot; try &quot;!high&quot; or &quot;tomorrow&quot; &mdash; task-like text becomes a Task, otherwise it's a Brain Dump thought</div>
         </div>
       </div>
     </>
