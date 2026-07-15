@@ -1187,20 +1187,29 @@ body.unlocked .date-editable{border-bottom-color:var(--border);}
 /* TASK TIMER IN HEADER (replaced by header-timer) */
 .task-timer-wrap{display:none;}
 
-/* ═══ POINTS / REWARDS SYSTEM ═══ */
-.points-badge{display:inline-flex;align-items:center;gap:6px;padding:5px 12px;background:var(--surface-raised);border:1.5px solid var(--border);border-radius:var(--radius-sm);cursor:pointer;transition:all 0.2s;font-weight:600;user-select:none;}
-.points-badge:hover{border-color:var(--border-focus);}
-.points-badge-lg{padding:7px 15px;gap:8px;border-width:2px;border-radius:var(--radius);}
+/* ═══ POINTS / REWARDS SYSTEM ═══
+   Same flat surface/color treatment as .toolkit-btn -- the only thing that
+   marks tier is a thick, tier-colored outline (this month's level), same
+   hex values as TIER_THRESHOLDS in legacy.js. No gradients/glow, matching
+   the "credit for showing up, not a flashy reward" framing behind the
+   Presence rename. */
+.points-badge{display:inline-flex;align-items:center;gap:6px;padding:5px 12px;background:var(--surface-raised);border:1.5px solid var(--border);border-radius:var(--radius-sm);cursor:pointer;transition:all 0.18s;font-weight:600;user-select:none;color:var(--text-dim);}
+.points-badge:hover{background:var(--surface-hover);}
+.points-badge-lg{padding:7px 15px;gap:8px;border-width:3px;border-radius:var(--radius);}
 .points-badge-lg .points-tier-icon{font-size:25px;}
 .points-badge-lg .points-value{font-size:20px;font-weight:700;}
-.points-tier-icon{font-size:18px;line-height:1;filter:drop-shadow(0 0 4px currentColor);}
+.points-tier-icon{font-size:18px;line-height:1;}
 .points-value{font-size:14px;font-variant-numeric:tabular-nums;}
-.points-badge.tier-bronze{border-color:#8b5a2b;color:#1a0e00;background:linear-gradient(135deg,#e09a5f,#cd7f32);}
-.points-badge.tier-silver{border-color:#888;color:#1a1a1a;background:linear-gradient(135deg,#dadada,#b8b8b8);}
-.points-badge.tier-gold{border-color:#b8860b;color:#1a0e00;background:linear-gradient(135deg,#ffec80,#ffd700);box-shadow:0 0 10px rgba(255,215,0,0.3);}
-.points-badge.tier-diamond{border-color:#0ea5e9;color:#0a1218;background:linear-gradient(135deg,#7fdfff,#0ea5e9);box-shadow:0 0 14px rgba(127,223,255,0.4);}
-.points-badge.tier-mythic{border-color:#c41a5d;color:#1a0008;background:linear-gradient(135deg,#ff9ec0,#ff6b9d);box-shadow:0 0 16px rgba(255,107,157,0.4);animation:mythic-pulse 2.5s ease-in-out infinite;}
-@keyframes mythic-pulse{0%,100%{box-shadow:0 0 16px rgba(255,107,157,0.3);}50%{box-shadow:0 0 24px rgba(255,107,157,0.5);}}
+.points-badge.tier-bronze{border-color:#cd7f32;}
+.points-badge.tier-silver{border-color:#dadada;}
+.points-badge.tier-gold{border-color:#ffd700;}
+.points-badge.tier-diamond{border-color:#b9f2ff;}
+.points-badge.tier-mythic{border-color:#ff9ec0;}
+.points-badge.tier-bronze:hover{color:#cd7f32;}
+.points-badge.tier-silver:hover{color:#dadada;}
+.points-badge.tier-gold:hover{color:#ffd700;}
+.points-badge.tier-diamond:hover{color:#b9f2ff;}
+.points-badge.tier-mythic:hover{color:#ff9ec0;}
 
 .points-popup{position:absolute;top:calc(100% + 8px);left:50%;transform:translateX(-50%);background:var(--surface);border:1px solid var(--border);border-radius:var(--radius);padding:14px 16px;min-width:240px;box-shadow:0 8px 24px rgba(0,0,0,0.4);z-index:100;font-size:13px;}
 .points-popup-section{padding:6px 0;border-bottom:1px solid var(--border);}
