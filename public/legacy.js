@@ -767,6 +767,10 @@ async function load(){
   if(typeof _ensureNotifPrefs==='function')_ensureNotifPrefs();
   if(!state.workoutLog)state.workoutLog={};
   if(!state.checkins)state.checkins=[];
+  // R12: default 'full' preserves today's behavior for existing users --
+  // the Grounding Toolkit keeps auto-showing on low mood/energy unless they
+  // opt into 'lean'.
+  if(state.supportLevel!=='full'&&state.supportLevel!=='lean')state.supportLevel='full';
   if(!state.completedTasks)state.completedTasks=[];
   if(!state.completedWorkouts)state.completedWorkouts=[];
   // E-2: one-time migrate -- lifetime count seeded from the uncapped array
@@ -950,6 +954,7 @@ function openCustomize(){
   if(_cb)_cb.textContent='Build '+APP_BUILD;
   _renderDevSwitcherInSettings();
   _renderAxisProfileForm();
+  _renderSupportLevelSettings();
   if(typeof _renderNotifSettings==='function')_renderNotifSettings();
 }
 
@@ -961,6 +966,32 @@ function togglePanelVisibility(id,visible){
   state.visiblePanels[id]=visible;
   save();
   applyPanelVisibility();
+}
+
+// R12: Support Level -- 'full' (default) keeps the Grounding Toolkit
+// auto-showing on low mood/energy as it always has; 'lean' suppresses that
+// auto-popup. Nothing else changes -- HALT+/Breathwork/Wellness stay exactly
+// as reachable in the Tool Kit either way. Separate from the older, unrelated
+// state.focusMode session toggle (the "☀ Focus" button), which just narrows
+// which panels are visible and is deliberately never cross-device synced.
+function setSupportLevel(v){
+  if(v!=='full'&&v!=='lean')return;
+  state.supportLevel=v;
+  save();
+  updateWellnessVisibility();
+  _renderSupportLevelSettings();
+}
+function _renderSupportLevelSettings(){
+  var el=document.getElementById('supportLevelSettings');
+  if(!el)return;
+  var cur=state.supportLevel||'full';
+  el.innerHTML=
+    '<div class="support-level-row">'
+    +'<button class="support-level-btn'+(cur==='full'?' active':'')+'" onclick="setSupportLevel(\'full\')">'
+    +'<strong>Full</strong><span>Grounding Toolkit surfaces on its own when mood or energy is low</span></button>'
+    +'<button class="support-level-btn'+(cur==='lean'?' active':'')+'" onclick="setSupportLevel(\'lean\')">'
+    +'<strong>Lean</strong><span>Nothing pops up uninvited &mdash; open it yourself when you want it</span></button>'
+    +'</div>';
 }
 
 function updateFocusBanner(){
@@ -2622,7 +2653,10 @@ function showStateAdvice(){const el=document.getElementById('stateAdvice');if(!s
 
 // WELLNESS TOOLKIT - conditional visibility
 var triggerStates=['low','crashed','anxious','scattered'];
-function shouldShowWellness(){return triggerStates.includes(state.energy)||triggerStates.includes(state.mood);}
+// R12: 'lean' support level suppresses the auto-popup entirely -- the panel
+// itself, HALT+, and Breathwork stay reachable via the Tool Kit regardless,
+// this only controls whether low mood/energy interrupts with it uninvited.
+function shouldShowWellness(){if(state.supportLevel==='lean')return false;return triggerStates.includes(state.energy)||triggerStates.includes(state.mood);}
 
 function updateWellnessVisibility(){
   const wp=document.querySelector('[data-panel="wellness"]');
