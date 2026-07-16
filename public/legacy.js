@@ -9477,6 +9477,11 @@ var THEMES=[
   {key:'storm-dark',name:'Storm Dark',tier:'premium',bg:'#0c0f14',surface:'#111520',accent:'#7ab8e8'},
   {key:'galaxy',name:'Galaxy',tier:'premium',bg:'#050a18',surface:'#0a1124',accent:'#4a90e8'}
 ];
+// Retired from the picker (Joe's call) but deliberately left in THEMES itself --
+// applyTheme()/_applySavedTheme() still resolve these by key, so anyone already
+// on one of these keeps working correctly; only renderThemeSelector() excludes
+// them from the selectable grid. Bring one back by removing its key here.
+var RETIRED_THEME_KEYS=['ocean','sunset','police','fire','autumn'];
 // Build stamp -- bump this on each deploy. Shown at the bottom of Settings so
 // you can confirm on any device exactly which build it's running.
 var APP_BUILD='2026.06.06b-beta';
@@ -9838,7 +9843,7 @@ function renderThemeSelector(){
   if(!el)return;
   var currentTheme=(state.settings&&state.settings.theme)||'dark';
   var cfg=getTierConfig();
-  el.innerHTML=THEMES.map(function(t){
+  el.innerHTML=THEMES.filter(function(t){return RETIRED_THEME_KEYS.indexOf(t.key)<0;}).map(function(t){
     var allowed=BETA_ALL_THEMES||cfg.allowedThemeTiers.indexOf(t.tier)>=0;
     var active=t.key===currentTheme?' active':'';
     var tierLabel=t.tier.charAt(0).toUpperCase()+t.tier.slice(1);
