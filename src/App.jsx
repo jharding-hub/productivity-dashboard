@@ -9,6 +9,7 @@ import EnergyMoodModal from './components/EnergyMoodModal';
 import GroundingToolkit from './components/GroundingToolkit';
 import PointsFocusMusic from './components/PointsFocusMusic';
 import PointsInsightsOverlay from './components/PointsInsightsOverlay';
+import WeeklyReviewModal from './components/WeeklyReviewModal';
 import JournalOverlay from './components/JournalOverlay';
 import AxisAssistant from './components/AxisAssistant';
 import QuickCaptureModal from './components/QuickCaptureModal';
@@ -42,6 +43,7 @@ export default function App() {
       grounding: document.getElementById('grounding-toolkit-root'),
       pointsMusic: document.getElementById('points-focus-music-root'),
       pointsInsights: document.getElementById('points-insights-overlay-root'),
+      weeklyReview: document.getElementById('weekly-review-modal-root'),
       journal: document.getElementById('journal-overlay-root'),
       axis: document.getElementById('axis-assistant-root'),
       quickCapture: document.getElementById('quick-capture-modal-root'),
@@ -80,6 +82,7 @@ export default function App() {
       {mounts.grounding && createPortal(<GroundingToolkit />, mounts.grounding)}
       {mounts.pointsMusic && createPortal(<PointsFocusMusic />, mounts.pointsMusic)}
       {mounts.pointsInsights && createPortal(<PointsInsightsOverlay />, mounts.pointsInsights)}
+      {mounts.weeklyReview && createPortal(<WeeklyReviewModal />, mounts.weeklyReview)}
       {mounts.journal && createPortal(<JournalOverlay />, mounts.journal)}
       {mounts.axis && createPortal(<AxisAssistant />, mounts.axis)}
       {mounts.quickCapture && createPortal(<QuickCaptureModal />, mounts.quickCapture)}

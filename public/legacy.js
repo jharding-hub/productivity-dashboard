@@ -789,6 +789,10 @@ async function load(){
   // explicit permission prompt, so it's strictly opt-in).
   if(state.breathHaptics===undefined)state.breathHaptics=true;
   if(state.healthKitMindful===undefined)state.healthKitMindful=false;
+  // R16 Phase A: daily routine-completion snapshots (captured in
+  // checkDailyRoutineReset, right before each day's checkmarks are wiped) so a
+  // week of consistency can be shown in the Weekly Review.
+  if(!state.routineHistory)state.routineHistory=[];
   if(!state.completedTasks)state.completedTasks=[];
   if(!state.completedWorkouts)state.completedWorkouts=[];
   // E-2: one-time migrate -- lifetime count seeded from the uncapped array
@@ -3251,6 +3255,22 @@ function checkDailyRoutineReset(){
     save();
     return;
   }
+  // R16 Phase A: snapshot the ENDING day's completion (state.lastRoutineReset,
+  // NOT `today` which is the new day starting) before its checkmarks are wiped
+  // below. Guarded on lastRoutineReset being set so a brand-new account's very
+  // first day (nothing to snapshot yet) doesn't push a bogus empty entry.
+  if(state.lastRoutineReset){
+    var _rhSnap=function(tab){
+      var list=state.routines[tab]||[];
+      return {done:list.filter(function(r){return r.done;}).length,total:list.length};
+    };
+    if(!state.routineHistory)state.routineHistory=[];
+    state.routineHistory.unshift({
+      date:state.lastRoutineReset,
+      morning:_rhSnap('morning'),evening:_rhSnap('evening'),custom:_rhSnap('custom')
+    });
+    if(state.routineHistory.length>60)state.routineHistory.length=60;
+  }
   // New calendar day -- do the reset
   ['morning','evening','custom'].forEach(tab=>{
     if(state.routines[tab])state.routines[tab].forEach(r=>r.done=false);
@@ -5308,6 +5328,45 @@ function _checkinsSince(days){
   return (state.checkins||[]).filter(function(c){return new Date(c.ts).getTime()>=cutoff;});
 }
 
+// R16 Phase A: mirrors _checkinsSince's window filter, but completedTasks
+// entries carry an ISO archivedAt (not a bare .ts field).
+function _tasksCompletedSince(days){
+  var cutoff=Date.now()-days*86400000;
+  return (state.completedTasks||[]).filter(function(t){return t.archivedAt&&new Date(t.archivedAt).getTime()>=cutoff;});
+}
+
+// R16 Phase A: "X of N days" fully-completed-day counts, matching the framing
+// Joe described ("morning routine done 5/7 days") -- a per-day complete/not
+// flag, not an aggregate item tally. Walks the exact last `days` CALENDAR days
+// starting from YESTERDAY (today's routine is still in progress and hasn't
+// been snapshotted into history yet, so it can't count either way). A day with
+// total===0 (every item deleted that day) is deliberately NOT counted as
+// complete -- guards the vacuous-truth case of an empty list satisfying
+// done===total. Custom routines aren't summarized here -- see routineHistory's
+// comment for why.
+function _routineConsistencySince(days){
+  var byDate={};
+  (state.routineHistory||[]).forEach(function(e){byDate[e.date]=e;});
+  // trackedDays: how many of the window's days actually had this routine in
+  // use (total>0), regardless of completion -- lets a caller distinguish
+  // "never set this routine up" (trackedDays===0, nothing to show) from
+  // "set it up but didn't finish it" (trackedDays>0, completeDays low but
+  // real -- show it plainly, no judgment, same as every other state-card row).
+  var out={morning:{completeDays:0,trackedDays:0,total:days},evening:{completeDays:0,trackedDays:0,total:days}};
+  var d=new Date();d.setDate(d.getDate()-1);
+  for(var i=0;i<days;i++){
+    var e=byDate[_dayKey(d)];
+    ['morning','evening'].forEach(function(tab){
+      if(e&&e[tab]&&e[tab].total>0){
+        out[tab].trackedDays++;
+        if(e[tab].done===e[tab].total)out[tab].completeDays++;
+      }
+    });
+    d.setDate(d.getDate()-1);
+  }
+  return out;
+}
+
 // =======================================
 // R5: CHECKINS + MOODLOG DOCUMENT I/O -- generalizes the R3 journal pattern
 // (own doc under users/{uid}/data/, own localStorage mirror, own save --
@@ -6669,6 +6728,72 @@ function _renderStateCard(period){
   }
   if(rows.length===0)return '';
   return '<div class="pi-state-title">State &amp; Regulation</div>'+rows.join('');
+}
+
+// R16 Phase A: Weekly Review. A purpose-built, on-demand summary -- deliberately
+// reuses existing Insights data functions (getInsightsSeries/getUsageMoodInsight/
+// _renderStateCard) rather than recomputing anything, plus the two genuinely new
+// pieces (tasks completed, routine consistency). Same "descriptive counts only,
+// small-n guarded" convention as _renderStateCard: an empty-state message when
+// there's nothing to show yet, rather than a mostly-blank modal.
+function openWeeklyReview(){
+  var modal=document.getElementById('weeklyReviewModal');
+  if(!modal)return;
+  var body=document.getElementById('weeklyReviewBody');
+  if(body)body.innerHTML=_renderWeeklyReview();
+  modal.classList.add('open');
+  _blurDashboard();
+  _trackEvent('tool_use','weekly_review','Weekly Review');
+}
+function closeWeeklyReview(){
+  var modal=document.getElementById('weeklyReviewModal');
+  if(!modal)return;
+  modal.classList.remove('open');
+  _unblurDashboard();
+}
+function _renderWeeklyReview(){
+  var days=7;
+  var rows=getInsightsSeries('week');
+  var totalPoints=rows.reduce(function(sum,r){return sum+(r.points||0);},0);
+  var tasks=_tasksCompletedSince(days);
+  var projectNames={};
+  tasks.forEach(function(t){if(t.projectName)projectNames[t.projectName]=true;});
+  var projectCount=Object.keys(projectNames).length;
+  var rc=_routineConsistencySince(days);
+  var stateCard=_renderStateCard('week');
+
+  // NOTE: getUsageMoodInsight() always returns a non-empty string (even its
+  // own "not enough data yet" filler text) -- unlike _renderStateCard, it has
+  // no "return '' when empty" convention, so it's deliberately EXCLUDED from
+  // this check. Using it here would make hasAnything always true and the
+  // empty-state below would never fire.
+  var hasAnything=totalPoints>0||tasks.length>0||!!stateCard
+    ||rc.morning.trackedDays>0||rc.evening.trackedDays>0;
+  if(!hasAnything){
+    return '<div class="wr-empty">Not enough activity yet this week. Check back after using Centerpost a few more days.</div>';
+  }
+  var moodLine=getUsageMoodInsight(rows);
+
+  var rangeLabel=(rows.length?rows[0].label:'')+' – '+(rows.length?rows[rows.length-1].label:'');
+  var html='<div class="wr-range">'+rangeLabel+'</div>';
+
+  if(totalPoints>0)html+='<div class="wr-row"><span class="wr-icon">🏅</span><strong>'+totalPoints+'</strong> Presence points this week</div>';
+
+  if(tasks.length>0){
+    html+='<div class="wr-row"><span class="wr-icon">✅</span><strong>'+tasks.length+'</strong> task'+(tasks.length!==1?'s':'')+' completed'
+        +(projectCount?' across <strong>'+projectCount+'</strong> project'+(projectCount!==1?'s':''):'')
+        +'</div>';
+  }
+
+  if(moodLine)html+='<div class="wr-row wr-mood">'+esc(moodLine)+'</div>';
+
+  if(rc.morning.trackedDays>0)html+='<div class="wr-row"><span class="wr-icon">☀</span>Morning routine: <strong>'+rc.morning.completeDays+'</strong> of '+rc.morning.total+' days</div>';
+  if(rc.evening.trackedDays>0)html+='<div class="wr-row"><span class="wr-icon">🌙</span>Evening routine: <strong>'+rc.evening.completeDays+'</strong> of '+rc.evening.total+' days</div>';
+
+  if(stateCard)html+='<div class="wr-state-wrap">'+stateCard+'</div>';
+
+  html+='<div class="wr-journal-cta"><button class="btn" onclick="closeWeeklyReview();openJournal();">📖 Open Journal to reflect</button></div>';
+  return html;
 }
 
 function triggerTierUp(tier){

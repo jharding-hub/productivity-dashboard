@@ -14,6 +14,9 @@ export default function PointsInsightsOverlay() {
               <button className="pi-period-btn" id="piBtnMonth" onClick={() => window.renderPointsInsights('month')}>Month</button>
               <button className="pi-period-btn" id="piBtnLifetime" onClick={() => window.renderPointsInsights('lifetime')}>Lifetime</button>
             </div>
+            <button className="pi-export-btn" onClick={() => { window.closePointsInsights(); window.openWeeklyReview(); }} title="A pulled-together summary of your week">
+              &#128197; Weekly Review
+            </button>
             <button className="pi-export-btn" onClick={() => window.exportInsightsData()} title="Download check-ins, mood/energy, and daily Presence as CSV files">
               &#8595; Export CSV
             </button>
