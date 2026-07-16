@@ -784,6 +784,11 @@ async function load(){
   // as already onboarded. Only the first-time branch above ever sets this to
   // false explicitly.
   if(state.onboardingSeen===undefined)state.onboardingSeen=true;
+  // R15: haptic breathing defaults ON (a gentle enhancement, no permission
+  // needed); Apple Health logging defaults OFF (writing health data requires an
+  // explicit permission prompt, so it's strictly opt-in).
+  if(state.breathHaptics===undefined)state.breathHaptics=true;
+  if(state.healthKitMindful===undefined)state.healthKitMindful=false;
   if(!state.completedTasks)state.completedTasks=[];
   if(!state.completedWorkouts)state.completedWorkouts=[];
   // E-2: one-time migrate -- lifetime count seeded from the uncapped array
@@ -969,6 +974,7 @@ function openCustomize(){
   _renderAxisProfileForm();
   _renderSupportLevelSettings();
   if(typeof _renderNotifSettings==='function')_renderNotifSettings();
+  if(typeof _renderBreathHealthSettings==='function')_renderBreathHealthSettings();
 }
 
 function closeCustomize(){
@@ -1005,6 +1011,42 @@ function _renderSupportLevelSettings(){
     +'<button class="support-level-btn'+(cur==='lean'?' active':'')+'" onclick="setSupportLevel(\'lean\')">'
     +'<strong>Lean</strong><span>Nothing pops up uninvited &mdash; open it yourself when you want it</span></button>'
     +'</div>';
+}
+
+// R15: Breathwork & Health settings. Haptics default on (no permission needed);
+// Apple Health is native-only and strictly opt-in (flipping it on prompts iOS
+// for write permission via _healthRequestAuth).
+function setBreathHaptics(on){
+  state.breathHaptics=!!on;
+  save();
+  _renderBreathHealthSettings();
+}
+function setHealthKitMindful(on){
+  on=!!on;
+  state.healthKitMindful=on;
+  save();
+  // Turning ON asks the OS for permission now, tied to this explicit user action.
+  // The toggle reflects intent immediately; if the user denies at the OS sheet,
+  // the completion write simply no-ops natively -- no error surfaced here.
+  if(on&&typeof _healthRequestAuth==='function')_healthRequestAuth();
+  _renderBreathHealthSettings();
+}
+function _renderBreathHealthSettings(){
+  var el=document.getElementById('breathHealthSettings');
+  if(!el)return;
+  var native=(typeof _notifNative==='function')&&!!_notifNative();
+  var html='';
+  var hOn=state.breathHaptics!==false;
+  var hDesc=native
+    ? 'Feel each inhale and exhale as a gentle haptic swell during breathwork.'
+    : 'Gentle haptics during breathwork &mdash; on the iPhone app (and Android with vibration).';
+  html+='<div class="panel-toggle"><span class="pt-icon">🫧</span><div class="pt-info"><div class="pt-name">Haptic breathing</div><div class="pt-desc">'+hDesc+'</div></div><label class="toggle-switch"><input type="checkbox" '+(hOn?'checked':'')+' onchange="setBreathHaptics(this.checked)"><span class="toggle-slider"></span></label></div>';
+  var mOn=!!state.healthKitMindful;
+  var mDesc=native
+    ? 'Save completed breathwork sessions to Apple Health as Mindful Minutes.'
+    : 'Log breathwork to Apple Health &mdash; available in the iPhone app.';
+  html+='<div class="panel-toggle"><span class="pt-icon">❤️</span><div class="pt-info"><div class="pt-name">Log to Apple Health</div><div class="pt-desc">'+mDesc+'</div></div><label class="toggle-switch"><input type="checkbox" '+(mOn?'checked':'')+' '+(native?'':'disabled')+' onchange="setHealthKitMindful(this.checked)"><span class="toggle-slider"></span></label></div>';
+  el.innerHTML=html;
 }
 
 function updateFocusBanner(){
@@ -4123,6 +4165,7 @@ function showBreathDesc(){
 
 var breathInterval=null;
 var breathActive=false;
+var _breathSessionStartMs=0; // R15: wall-clock session start for Apple Health logging
 var CIRC=628.3; // 2 * PI * 100
 var breathVoice=null;
 var breathVoiceReady=false;
@@ -4232,6 +4275,72 @@ function buildBreathKeyframes(t){
   el.textContent=kfOrb+'\n'+kfGlow;
 }
 
+// R15 tier 1: haptic breathing. The web engine stays the single source of truth
+// for timing (same as the orb animation + voice cues) -- native is a dumb
+// effector that plays one duration-parameterized pattern per phase. On the
+// iPhone (WKWebView) haptics MUST go native (iOS has no navigator.vibrate); the
+// vibrate fallback below only does anything on Android web and is a harmless
+// no-op on desktop.
+//
+// kind: 'in'|'out'  -> a CoreHaptics swell ramping over `seconds`
+//       'hold'      -> silence (stillness is the point) -- sent for completeness
+//       'tick'      -> one soft tap (non-breath transitions, e.g. body-scan regions)
+//       'complete'  -> distinct success pattern
+//       'prepare'/'release' -> start/stop the native engine around a session
+function _breathClassifyPhase(techId,label){
+  // Body scan isn't breath-paced; every region is a plain attention cue. Guard
+  // by id FIRST so its "Settle In" phase can't be misread as an inhale.
+  if(techId==='scan')return 'tick';
+  var s=String(label||'');
+  if(/exhale|\bout\b/i.test(s))return 'out';
+  if(/inhale|sniff|\bin\b/i.test(s))return 'in';
+  if(/hold/i.test(s))return 'hold';
+  return 'tick';
+}
+function _breathHaptic(kind,seconds){
+  if(!state.breathHaptics)return;
+  var h=(typeof _notifNative==='function')?_notifNative():null;
+  if(h){
+    try{h.postMessage({action:'haptic',kind:kind,seconds:(typeof seconds==='number'?seconds:0)});}catch(e){}
+    return;
+  }
+  // Web fallback (Android only; desktop has no vibration hardware -> no-op).
+  if(typeof navigator!=='undefined'&&typeof navigator.vibrate==='function'){
+    try{
+      if(kind==='complete')navigator.vibrate([40,60,40]);
+      else if(kind==='in'||kind==='out'||kind==='tick')navigator.vibrate(30);
+    }catch(e){}
+  }
+}
+
+// R15 tier 2: Apple Health (Mindful Minutes). Native-only -- HealthKit is iOS,
+// reached through the same `notify` channel as haptics/notifications.
+function _healthRequestAuth(){
+  var h=(typeof _notifNative==='function')?_notifNative():null;
+  if(!h)return;
+  try{h.postMessage({action:'requestHealthAuth'});}catch(e){}
+}
+// native -> JS after the OS authorization flow resolves. NOTE: for a WRITE type,
+// HealthKit deliberately does NOT reveal whether the user allowed or denied
+// (privacy), so `granted` here means "HealthKit is available and the sheet
+// completed", NOT "the user said yes". We only flip the toggle back off when
+// HealthKit is genuinely unavailable (e.g. iPad) -- if a user denied write at
+// the sheet, the toggle stays on and completion writes just no-op silently
+// (they can re-grant in Apple Health > Sources). Mirrors __notifPermissionResult.
+window.__healthAuthResult=function(granted){
+  if(granted)return;
+  state.healthKitMindful=false;
+  if(typeof save==='function')save();
+  if(typeof _renderBreathHealthSettings==='function')_renderBreathHealthSettings();
+};
+function _healthLogMindful(startMs,endMs){
+  if(!state.healthKitMindful)return;
+  if(!(endMs>startMs))return;
+  var h=(typeof _notifNative==='function')?_notifNative():null;
+  if(!h)return;
+  try{h.postMessage({action:'logMindful',start:startMs,end:endMs});}catch(e){}
+}
+
 function startBreathwork(){
   const id=document.getElementById('breathSelect').value;
   if(!id)return;
@@ -4239,6 +4348,10 @@ function startBreathwork(){
   breathActive=true;
   _trackEvent('tool_use','breathwork','Breathwork');
   initBreathVoice();
+  // R15: wall-clock start (Date, not performance.now) so a completed session can
+  // be logged to Apple Health with real sample dates; also warms the haptic engine.
+  _breathSessionStartMs=Date.now();
+  _breathHaptic('prepare');
 
   const isScan=(id==='scan');
   const totalCycleSec=t.durations.reduce((a,b)=>a+b,0);
@@ -4293,8 +4406,12 @@ function startBreathwork(){
     document.querySelector('.breath-content').classList.add('breath-complete');
     setTimeout(()=>{document.querySelector('.breath-content').classList.remove('breath-complete');},600);
     speak('Well done. Take a moment.');
+    _breathHaptic('complete');
     addPoints('breathwork');
     if(typeof _logCheckIn==='function')_logCheckIn('breath',{techniqueId:id,techniqueName:t.name,cycles:t.cycles});
+    // R15 tier 2: log the finished session to Apple Health (Mindful Minutes),
+    // only if the user opted in. Full-session span from the wall-clock start.
+    if(typeof _healthLogMindful==='function'&&_breathSessionStartMs)_healthLogMindful(_breathSessionStartMs,Date.now());
     setTimeout(()=>{if(breathActive)stopBreathwork();},6000);
   }
 
@@ -4329,6 +4446,8 @@ function startBreathwork(){
       lastPhaseKey=phaseKey;
       if(isScan)updateBodyScan(t.phases[pi]);
       speak(t.cues[pi]);
+      // R15: haptic swell synced to the phase the user is entering.
+      _breathHaptic(_breathClassifyPhase(id,t.phases[pi]),t.durations[pi]);
     }
   }
 
@@ -4339,6 +4458,7 @@ function startBreathwork(){
 function stopBreathwork(){
   breathActive=false;
   clearInterval(breathInterval);breathInterval=null;
+  _breathHaptic('release'); // R15: tear down the native haptic engine
   if(_breathCurrentAudio){_breathCurrentAudio.pause();_breathCurrentAudio=null;}
   try{speechSynthesis.cancel();}catch(e){}
   const orb=document.getElementById('breathOrb');
