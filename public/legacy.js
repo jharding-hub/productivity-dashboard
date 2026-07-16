@@ -1897,8 +1897,6 @@ function _ensureNotifPrefs(){
   return state.notifPrefs;
 }
 
-function _hmToMin(hm){var a=(hm||'').split(':');return (parseInt(a[0],10)||0)*60+(parseInt(a[1],10)||0);}
-
 // -- Fired-today tracking (device-local, so each device dedupes its own
 //    while-open notifications; not synced). Resets on a new day.
 var _notifFired={};
@@ -3662,9 +3660,6 @@ function esc(s){const d=document.createElement('div');d.textContent=s;return d.i
 function _safePriority(p){return p==='low'||p==='high'?p:'med';}
 function _safeDateStr(d){return /^\d{4}-\d{2}-\d{2}$/.test(d||'')?d:'';}
 function _safeTimeStr(t){return /^\d{1,2}:\d{2}$/.test(t||'')?t:'';}
-function todayStr(){var d=new Date();var pad=function(n){return n<10?'0'+n:''+n;};return d.getFullYear()+'-'+pad(d.getMonth()+1)+'-'+pad(d.getDate());}
-function fmtDate(d){return new Date(d+'T00:00:00').toLocaleDateString('en-US',{month:'short',day:'numeric',year:'numeric'});}
-function fmtTime(t){const[h,m]=t.split(':');const hr=parseInt(h);return(hr>12?hr-12:hr||12)+':'+m+(hr>=12?' PM':' AM');}
 function slugify(s){return s.toLowerCase().replace(/[^a-z0-9]+/g,'-').replace(/(^-|-$)/g,'');}
 function toast(msg){const el=document.getElementById('toast');el.textContent=msg;el.classList.add('show');setTimeout(()=>el.classList.remove('show'),2500);}
 document.addEventListener('keydown',e=>{if(e.target.tagName==='INPUT'||e.target.tagName==='TEXTAREA'||e.target.tagName==='SELECT'||e.target.isContentEditable)return;if(e.key==='b'||e.key==='B'){openQuickCapture();e.preventDefault();}if(e.key==='s'||e.key==='S'){startTimer();e.preventDefault();}if(e.key==='p'||e.key==='P'){pauseTimer();e.preventDefault();}});
@@ -5484,37 +5479,10 @@ async function _saveMoodLogDoc(){
 // Presence totals as separate CSVs. Exports FULL history (not just the
 // currently selected week/month/lifetime tab), matching exportAllToICS's
 // precedent of "give me everything, I'll filter it myself." Reuses
-// downloadICS's blob-download pattern under a generic name.
+// downloadICS's blob-download pattern under a generic name. Formatting
+// helpers (_csvEsc/_csvRows/downloadCSV/_checkinDetail) live in
+// csv-export.js; these orchestrators stay here since they read state directly.
 // =======================================
-function _csvEsc(v){
-  v=(v===null||v===undefined)?'':String(v);
-  if(/[",\n]/.test(v))return '"'+v.replace(/"/g,'""')+'"';
-  return v;
-}
-function _csvRows(rows){return rows.map(function(r){return r.map(_csvEsc).join(',');}).join('\r\n');}
-function downloadCSV(fn,csv){
-  var b=new Blob([csv],{type:'text/csv;charset=utf-8'});
-  var u=URL.createObjectURL(b);
-  var a=document.createElement('a');
-  a.href=u;a.download=fn;document.body.appendChild(a);a.click();document.body.removeChild(a);
-  URL.revokeObjectURL(u);
-}
-function _checkinDetail(c){
-  if(c.type==='halt'){
-    var labels=(c.items||[]).map(function(k){var it=HALT_ITEMS.find(function(i){return i.key===k;});return it?it.label:k;});
-    return labels.join('; ');
-  }
-  if(c.type==='breath')return (c.techniqueName||'')+(c.cycles?' ('+c.cycles+' cycles)':'');
-  if(c.type==='grounding')return c.techniqueName||'';
-  if(c.type==='urge'){
-    var parts=[c.urgeLabel||c.urgeType||''];
-    if(c.note)parts.push('note: '+c.note);
-    parts.push(c.delayMinutes+' min delay');
-    parts.push(c.outcome==='passed'?'urge passed':'did it anyway');
-    return parts.join('; ');
-  }
-  return '';
-}
 function _exportCheckinsCSV(){
   var rows=[['Date','Time','Type','Detail']];
   (state.checkins||[]).slice().sort(function(a,b){return new Date(a.ts)-new Date(b.ts);}).forEach(function(c){
@@ -5899,49 +5867,6 @@ function _wellFormatDate(iso){
   return d.toLocaleDateString('en-US',{month:'short',day:'numeric'});
 }
 
-// =======================================
-// TIME LEFT PRODUCTIVE WINDOW (5am–10pm)
-// =======================================
-var TL_START_H=5,TL_END_H=20;
-function updateTimeLeft(){
-  // Text overlay removed -- just update the day progress position
-  updateDayProgress();
-}
-
-function updateDayProgress(){
-  var now=new Date();
-  var nowMin=now.getHours()*60+now.getMinutes()+now.getSeconds()/60;
-  var startMin=TL_START_H*60,endMin=TL_END_H*60,totalMin=endMin-startMin;
-  var elapsedEl=document.getElementById('dayProgressElapsed');
-  var nowEl=document.getElementById('dayProgressNow');
-  if(!elapsedEl||!nowEl)return;
-  
-  var elapsed=0;
-  if(nowMin<startMin){
-    // Before 5am -- show at start, no indicator
-    elapsed=0;
-    nowEl.style.left='0%';
-    nowEl.style.display='none';
-    nowEl.classList.remove('resting');
-  }else if(nowMin>=endMin){
-    // After 8pm -- full bar, moon at right edge (via CSS)
-    elapsed=100;
-    nowEl.style.left='';   // CSS handles position via .resting rule
-    nowEl.style.display='flex';
-    nowEl.classList.add('resting');
-  }else{
-    // During productive day -- sun follows progress
-    var elapsedMin=nowMin-startMin;
-    elapsed=(elapsedMin/totalMin)*100;
-    nowEl.style.left=elapsed+'%';
-    nowEl.style.display='block';
-    nowEl.classList.remove('resting');
-  }
-  
-  elapsedEl.style.width=elapsed+'%';
-  // Render scheduled block overlays on the bar
-  if(typeof renderBannerBlocks==='function')renderBannerBlocks();
-}
 
 // =======================================
 // FOCUS MUSIC (YouTube IFrame API)
@@ -6144,9 +6069,6 @@ var POINT_VALUES={
   workout:15,
   project:25
 };
-
-function _monthKey(d){d=d||new Date();return d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0');}
-function _dayKey(d){d=d||new Date();return d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')+'-'+String(d.getDate()).padStart(2,'0');}
 
 // R8: runs the quick-add text through parseQuickAdd and decides what to
 // apply. Asymmetric on purpose -- date/time only fill in when the field is
