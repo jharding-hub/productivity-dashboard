@@ -1882,7 +1882,10 @@ function exportReminderICS(id){const r=state.reminders.find(r=>r.id===id);if(!r)
 // user explicitly opts in.
 function _defaultNotifPrefs(){
   return {enabled:false,quietStart:'21:00',quietEnd:'08:00',badges:false,
-    routineMorning:{on:false,time:'08:00'},routineEvening:{on:false,time:'20:00'}};
+    routineMorning:{on:false,time:'08:00'},routineEvening:{on:false,time:'20:00'},
+    // R16 Phase B: fixed to Sunday for v1 (no day picker) -- off by default,
+    // same as every other individual nudge type here.
+    weeklyReview:{on:false,time:'18:00'}};
 }
 function _ensureNotifPrefs(){
   if(!state.notifPrefs)state.notifPrefs=_defaultNotifPrefs();
@@ -1890,6 +1893,7 @@ function _ensureNotifPrefs(){
   for(var k in d){if(state.notifPrefs[k]===undefined)state.notifPrefs[k]=d[k];}
   if(!state.notifPrefs.routineMorning)state.notifPrefs.routineMorning={on:false,time:'08:00'};
   if(!state.notifPrefs.routineEvening)state.notifPrefs.routineEvening={on:false,time:'20:00'};
+  if(!state.notifPrefs.weeklyReview)state.notifPrefs.weeklyReview={on:false,time:'18:00'};
   return state.notifPrefs;
 }
 
@@ -1966,6 +1970,22 @@ function _notifMaybeRoutine(which,time,curMin,today){
   _notifShow(label,undone+' item'+(undone!==1?'s':'')+' left — a gentle nudge, no pressure.','routine-'+which);
 }
 
+// R16 Phase B: fixed to Sunday for v1. Gated on now.getDay()===0 (JS's 0-indexed
+// Date.getDay(); Sunday=0) BEFORE the time check, so this only ever reaches the
+// per-day dedupe on the one day it can fire -- no separate per-week dedupe
+// scheme needed, the existing per-day _notifFired reset already gives weekly
+// semantics once combined with the day-of-week gate.
+function _notifMaybeWeeklyReview(time,curMin,today,now){
+  if(now.getDay()!==0)return;
+  var t=_hmToMin(time||'18:00');
+  if(t>curMin)return;                 // not time yet
+  if(curMin-t>60)return;              // missed the 60-min nudge window
+  var key='weekly-review:'+today;
+  if(_notifAlreadyFired(key))return;
+  _notifMarkFired(key);
+  _notifShow('📆 Your Weekly Review','Take a moment to look back at your week.','weekly-review');
+}
+
 // The scan. Runs on an interval while the app is open (and shortly after load).
 function _notifTick(){
   var p=state.notifPrefs;
@@ -1989,6 +2009,7 @@ function _notifTick(){
 
   if(p.routineMorning&&p.routineMorning.on)_notifMaybeRoutine('morning',p.routineMorning.time,curMin,today);
   if(p.routineEvening&&p.routineEvening.on)_notifMaybeRoutine('evening',p.routineEvening.time,curMin,today);
+  if(p.weeklyReview&&p.weeklyReview.on)_notifMaybeWeeklyReview(p.weeklyReview.time,curMin,today,now);
 
   _notifUpdateBadge();
 }
@@ -2050,6 +2071,8 @@ function _renderNotifSettings(){
     var re=p.routineEvening||{on:false,time:'20:00'};
     html+='<div class="notif-row"><label class="notif-check"><input type="checkbox" '+(rm.on?'checked':'')+' onchange="setNotifRoutine(\'routineMorning\',\'on\',this.checked)"> Morning routine nudge</label><input type="time" value="'+(rm.time||'08:00')+'" onchange="setNotifRoutine(\'routineMorning\',\'time\',this.value)"></div>';
     html+='<div class="notif-row"><label class="notif-check"><input type="checkbox" '+(re.on?'checked':'')+' onchange="setNotifRoutine(\'routineEvening\',\'on\',this.checked)"> Evening routine nudge</label><input type="time" value="'+(re.time||'20:00')+'" onchange="setNotifRoutine(\'routineEvening\',\'time\',this.value)"></div>';
+    var wr=p.weeklyReview||{on:false,time:'18:00'};
+    html+='<div class="notif-row"><label class="notif-check"><input type="checkbox" '+(wr.on?'checked':'')+' onchange="setNotifRoutine(\'weeklyReview\',\'on\',this.checked)"> Weekly Review, Sundays</label><input type="time" value="'+(wr.time||'18:00')+'" onchange="setNotifRoutine(\'weeklyReview\',\'time\',this.value)"></div>';
   }
   el.innerHTML=html;
 }
@@ -2102,6 +2125,12 @@ function _notifBuildNativeItems(){
   if(p.routineEvening&&p.routineEvening.on&&!_notifTimeInQuiet(p.routineEvening.time)){
     items.push({id:'routine_evening',title:'🌙 Evening routine',body:'A gentle nudge for your evening routine — no pressure.',at:_notifTodayTimeEpoch(p.routineEvening.time),repeatsDaily:true});
   }
+  // R16 Phase B: fixed to Sunday for v1 -- native derives the weekday from
+  // repeatWeekly alone (hardcoded Sunday on that side too), so no day-of-week
+  // value needs to cross the bridge at all.
+  if(p.weeklyReview&&p.weeklyReview.on&&!_notifTimeInQuiet(p.weeklyReview.time)){
+    items.push({id:'weekly_review',title:'📆 Your Weekly Review',body:'Take a moment to look back at your week.',at:_notifTodayTimeEpoch(p.weeklyReview.time),repeatWeekly:true});
+  }
   return items.slice(0,60); // iOS caps pending notifications at 64
 }
 function _notifSyncNative(){
@@ -2116,6 +2145,14 @@ function _notifSyncNative(){
   var badge=0;
   if(p.badges){var today=todayStr();badge=(state.reminders||[]).filter(function(r){return r.date&&r.date<=today;}).length;}
   h.postMessage({action:'setBadge',count:badge});
+}
+// R16 Phase B: sw.js's notificationclick posts this when the weekly-review
+// notification is tapped (while-open engine only, native goes through the
+// evalJS bridge directly -- see NotificationBridge's response delegate).
+if(typeof navigator!=='undefined'&&navigator.serviceWorker){
+  navigator.serviceWorker.addEventListener('message',function(e){
+    if(e.data&&e.data.type==='openWeeklyReview'&&typeof openWeeklyReview==='function')openWeeklyReview();
+  });
 }
 // Debounced -- called from save() so edits coalesce into one reschedule.
 function _notifScheduleNativeSync(){

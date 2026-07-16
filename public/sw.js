@@ -190,12 +190,22 @@ self.addEventListener('message', e => {
 });
 
 // ─── Notifications (R1): focus/open the app when a nudge is tapped ───────
+// R16 Phase B: the weekly-review tag also deep-links into the app's own
+// Weekly Review modal, not just a generic focus. This can only reach an
+// EXISTING client on non-native (the while-open engine can only have shown
+// the notification if a tab was already running _notifTick), so the rare
+// tab-closed-in-between case just falls back to a plain focus/open -- not
+// worth a cold-launch pending-flag scheme for that edge case.
 self.addEventListener('notificationclick', e => {
+  const tag = e.notification.tag;
   e.notification.close();
   e.waitUntil(
     clients.matchAll({ type: 'window', includeUncontrolled: true }).then(list => {
       for (const c of list) {
-        if ('focus' in c) return c.focus();
+        if ('focus' in c) {
+          if (tag === 'weekly-review') c.postMessage({ type: 'openWeeklyReview' });
+          return c.focus();
+        }
       }
       if (clients.openWindow) return clients.openWindow('/');
     })
