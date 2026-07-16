@@ -1187,18 +1187,26 @@ body.unlocked .date-editable{border-bottom-color:var(--border);}
 /* TASK TIMER IN HEADER (replaced by header-timer) */
 .task-timer-wrap{display:none;}
 
-/* ═══ QUICK CAPTURE (R9) ═══ -- mirrors .jarvis-fab's positioning/sizing
-   convention but on the opposite corner, plain (no rotating-ring treatment)
-   so it doesn't compete visually with the Axis assistant launcher. */
+/* ═══ QUICK CAPTURE (R9) ═══ -- mirrors .jarvis-fab's positioning/sizing AND
+   color treatment on the opposite corner, for visual consistency between the
+   two launchers (Joe's call, superseding R9's original "plain so it doesn't
+   compete" reasoning). Static -- no rotating rings or pulse animation, just
+   the same dark gradient/blue glow at rest. bottom:64px clears the 52px
+   status bar (.status-bar, height same on web and mobile) plus a gap. */
 .qc-fab{
-  position:fixed;bottom:24px;left:24px;width:58px;height:58px;border-radius:50%;
-  background:var(--surface-raised);border:1.5px solid var(--border);
-  color:var(--text-dim);font-size:22px;cursor:pointer;z-index:900;
+  position:fixed;bottom:64px;left:24px;width:58px;height:58px;border-radius:50%;
+  background:radial-gradient(circle at center,#0a2530 0%,#06131a 70%,#020a10 100%);
+  border:none;color:#5be8ff;font-size:22px;cursor:pointer;z-index:900;
   display:flex;align-items:center;justify-content:center;line-height:1;
-  box-shadow:0 4px 16px rgba(0,0,0,0.35);
-  transition:all 0.18s;
+  box-shadow:
+    0 0 0 1px rgba(91,232,255,0.4) inset,
+    0 0 0 4px rgba(91,232,255,0.08) inset,
+    0 0 16px rgba(91,232,255,0.4),
+    0 4px 24px rgba(0,0,0,0.6);
+  text-shadow:0 0 8px #5be8ff,0 0 16px rgba(91,232,255,0.6);
+  transition:transform 0.2s ease,box-shadow 0.3s ease;
 }
-.qc-fab:hover{border-color:var(--accent-dim);color:var(--accent);background:var(--surface-hover);}
+.qc-fab:hover{transform:scale(1.06);box-shadow:0 0 0 2px rgba(91,232,255,0.45) inset,0 4px 20px rgba(0,0,0,0.5);}
 .qc-panel{
   position:relative;z-index:1;
   /* Darker custom themes (e.g. "starry") pack --surface/--surface-raised/
@@ -1319,7 +1327,7 @@ body.unlocked .date-editable{border-bottom-color:var(--border);}
 
 /* ═══ JARVIS FLOATING BUTTON — Arc Reactor style ═══ */
 .jarvis-fab{
-  position:fixed;bottom:24px;right:24px;width:58px;height:58px;border-radius:50%;
+  position:fixed;bottom:64px;right:24px;width:58px;height:58px;border-radius:50%;
   background:radial-gradient(circle at center,#0a2530 0%,#06131a 70%,#020a10 100%);
   border:none;color:#5be8ff;font-size:22px;cursor:pointer;z-index:900;
   display:flex;align-items:center;justify-content:center;line-height:1;
@@ -1367,7 +1375,7 @@ body.unlocked .date-editable{border-bottom-color:var(--border);}
 .jarvis-fab{animation:jarvis-arc-pulse 3.5s ease-in-out infinite;}
 
 /* ═══ JARVIS CHAT PANEL ═══ */
-.jarvis-panel{position:fixed;bottom:88px;right:24px;width:min(400px,calc(100vw - 32px));height:min(540px,calc(100vh - 120px));background:var(--surface);border:1.5px solid #5be8ff;border-radius:16px;box-shadow:0 12px 40px rgba(0,0,0,0.5),0 0 0 1px rgba(91,232,255,0.15),0 0 28px rgba(91,232,255,0.15);z-index:901;display:flex;flex-direction:column;overflow:hidden;transform:translateY(20px) scale(0.96);opacity:0;pointer-events:none;transition:transform 0.25s ease,opacity 0.25s ease;}
+.jarvis-panel{position:fixed;bottom:128px;right:24px;width:min(400px,calc(100vw - 32px));height:min(540px,calc(100vh - 120px));background:var(--surface);border:1.5px solid #5be8ff;border-radius:16px;box-shadow:0 12px 40px rgba(0,0,0,0.5),0 0 0 1px rgba(91,232,255,0.15),0 0 28px rgba(91,232,255,0.15);z-index:901;display:flex;flex-direction:column;overflow:hidden;transform:translateY(20px) scale(0.96);opacity:0;pointer-events:none;transition:transform 0.25s ease,opacity 0.25s ease;}
 .jarvis-panel.open{transform:translateY(0) scale(1);opacity:1;pointer-events:all;}
 
 .jarvis-panel-header{display:flex;align-items:center;gap:10px;padding:12px 16px;background:linear-gradient(135deg,rgba(91,232,255,0.1),rgba(91,232,255,0.04));border-bottom:1px solid rgba(91,232,255,0.25);flex-shrink:0;}
