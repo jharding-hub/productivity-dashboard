@@ -4,7 +4,10 @@ export default function StatusBar() {
       <span className="user-email-display" id="userEmail"></span>
       <span className="sync-status offline" id="syncStatus"><span className="sync-dot"></span> Local</span>
       <div className="status-bar-spacer"></div>
-      <button className="customize-btn focus-mode-btn" id="focusModeBtn" onClick={() => window.toggleFocusMode()} title="Toggle between Focus view (today's essentials) and full dashboard">&#8862; All Panels</button>
+      {/* R2b: the ☀ Focus / ⊞ All Panels button was retired -- the Today/
+          Everything switch in the header now serves the "give me less" need
+          it approximated. toggleFocusMode()/state.focusMode remain in
+          legacy.js, dead but harmless. */}
       <button className="customize-btn" onClick={() => window.openCustomize()} title="Show/hide panels and theme settings">&#9881; Settings</button>
       <button
         className="customize-btn"

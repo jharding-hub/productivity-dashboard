@@ -2943,3 +2943,11 @@ body.admin-overlay-open #starryLayer,body.admin-overlay-open #galaxyLayer,body.a
 .today-date{font-size:14px;color:var(--text-dim);margin-top:2px;}
 .today-section{margin-bottom:28px;}
 .today-section-title{font-size:12px;font-weight:600;letter-spacing:0.5px;text-transform:uppercase;color:var(--text-faint);margin-bottom:10px;}
+
+/* R2b: Today/Everything segmented switch. Container only -- the two buttons
+   reuse .tab-btn / .tab-btn.active verbatim, just sized down for the header. */
+.view-mode-switch{display:inline-flex;gap:2px;background:var(--surface);border:1px solid var(--border);border-radius:var(--radius-sm);padding:2px;}
+.view-mode-switch .tab-btn{min-height:32px;padding:5px 12px;font-size:12px;}
+@media(max-width:768px),(orientation:landscape) and (max-height:600px){
+  .view-mode-switch .tab-btn{padding:5px 10px;font-size:11px;}
+}

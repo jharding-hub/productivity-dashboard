@@ -12,6 +12,14 @@
   <div class="time-left-bar" style="display:none;"><div class="time-left-bar-fill" id="timeLeftBar" style="width:100%"></div></div>
   <!-- Right: Mobile-only inline title + Clock + Task Timer -->
   <div class="header-right">
+    <!-- R2b: Today/Everything switch. Lives in the header, which is the shared
+         top chrome visible in BOTH mobile modes (Today view + tile launcher
+         both add .header.mobile-visible), so a single control serves desktop
+         and mobile -- no second, mode-hidden copy needed. -->
+    <div class="view-mode-switch">
+      <button class="tab-btn vms-btn" data-mode="today" onclick="setViewMode('today')">Today</button>
+      <button class="tab-btn vms-btn" data-mode="everything" onclick="setViewMode('everything')">Everything</button>
+    </div>
     <div class="mobile-only-title"><span class="mt-name">Centerpost</span><span class="mt-sub">Productivity</span></div>
     <div class="header-timer-outer">
       <span class="header-timer-label-tag">Focus</span>
@@ -261,7 +269,7 @@
 <!-- MOBILE NAV -->
 <!-- MOBILE BACK BAR -->
 <div class="mobile-back-bar" id="mobileBackBar">
-  <button class="mobile-back-btn" onclick="showMobileHome()">Panels</button>
+  <button class="mobile-back-btn" onclick="_goMobileHome()">Panels</button>
 </div>
 
 <!-- MOBILE HOME SCREEN (tile grid) -->

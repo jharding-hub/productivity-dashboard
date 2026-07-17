@@ -775,6 +775,10 @@ async function load(){
         // old shared doc either) gets the onboarding tour -- a legacy account
         // migrating formats is not a new user.
         if(!_migratedFromShared)state.onboardingSeen=false;
+        // R2b: a genuinely new account lands on the Today view. A migrated
+        // (existing) account is left undefined here and defaults to
+        // 'everything' below, so nothing changes for it.
+        if(!_migratedFromShared)state.viewMode='today';
         // Push to new location. R5: exclude checkins/moodLog, same as save() --
         // they're adopted into their own docs by _loadCheckinsDoc/_loadMoodLogDoc
         // right after load() returns.
@@ -815,6 +819,16 @@ async function load(){
   // as already onboarded. Only the first-time branch above ever sets this to
   // false explicitly.
   if(state.onboardingSeen===undefined)state.onboardingSeen=true;
+  // R2b: existing accounts (viewMode undefined) default to 'everything' so the
+  // dashboard they know is unchanged; new accounts were set to 'today' above.
+  if(state.viewMode!=='today'&&state.viewMode!=='everything')state.viewMode='everything';
+  // One-time nudge toward Today for existing accounts only (new accounts land
+  // there directly and never see this). Mirrors initPanelVisibility's one-time
+  // "New panels available!" toast; deferred so it fires after the app paints.
+  if(!state.viewModeIntroShown&&state.viewMode==='everything'){
+    state.viewModeIntroShown=true;
+    setTimeout(function(){if(typeof toast==='function')toast('New: try the Today view →');},1800);
+  }
   // R15: haptic breathing defaults ON (a gentle enhancement, no permission
   // needed); Apple Health logging defaults OFF (writing health data requires an
   // explicit permission prompt, so it's strictly opt-in).
@@ -3676,7 +3690,7 @@ function showMobilePanel(panelId){
     if(!tracking||!panel)return;
     panel.style.transition='';
     panel.style.transform='';
-    if(horizontal&&dx>70)showMobileHome();
+    if(horizontal&&dx>70)_goMobileHome();
     tracking=false;horizontal=null;dx=0;panel=null;
   }
   document.addEventListener('touchend',endSwipe,{passive:true});
@@ -3696,9 +3710,10 @@ window.addEventListener('resize',function(){
     // one is still open, skips showMobileHome(), and the screen goes blank.
     document.querySelectorAll('.panel').forEach(function(p){p.classList.remove('mobile-visible');});
   } else {
-    // Going back to mobile -- show home if no panel open
+    // Going back to mobile -- restore the current mode's home surface
+    // (Today view or the tile launcher) if no panel is open.
     var anyVisible=document.querySelector('.panel.mobile-visible');
-    if(!anyVisible){showMobileHome();}
+    if(!anyVisible){_goMobileHome();}
   }
 });
 
@@ -4668,25 +4683,45 @@ function renderTodayView(){
   refreshEditables();
 }
 
-// Temporary verification entry point for R2a -- NOT a persisted mode yet and
-// NOT wired to any visible UI. R2b replaces this with a real, persisted,
-// segmented Today/Everything control on both platforms. Console-only for now:
-// window.setViewMode('today') / window.setViewMode('everything').
+// R2b: the persistent Today/Everything switch, driving both platforms. Persists
+// state.viewMode, syncs every .vms-btn (there are two -- desktop header + mobile
+// home header -- both keyed by class, not id, so this one call updates both),
+// and swaps #todayView vs #dashboard. On mobile the Today branch also clears any
+// open-panel state (Today is a home-like surface: header visible, no back-bar,
+// nothing left mobile-visible, scrolled to top), while Everything hands off to
+// showMobileHome() exactly as before.
 function setViewMode(mode){
   var todayEl=document.getElementById('todayView');
   var dashEl=document.getElementById('dashboard');
   if(!todayEl||!dashEl)return;
+  if(mode!=='today')mode='everything';
+  state.viewMode=mode;
+  save();
+  document.querySelectorAll('.vms-btn').forEach(function(b){b.classList.toggle('active',b.dataset.mode===mode);});
   if(mode==='today'){
     renderTodayView();
     todayEl.style.display='';
     dashEl.style.display='none';
-    if(_isMobile())document.getElementById('mobileHome').classList.remove('active');
+    if(_isMobile()){
+      document.getElementById('mobileHome').classList.remove('active');
+      var mbb=document.getElementById('mobileBackBar');if(mbb)mbb.classList.remove('active');
+      var aw=document.querySelector('.app-wrap');if(aw)aw.classList.remove('panel-open');
+      document.querySelectorAll('.panel').forEach(function(p){p.classList.remove('mobile-visible');});
+      var hdr=document.querySelector('.header');if(hdr)hdr.classList.add('mobile-visible');
+      window.scrollTo(0,0);
+    }
   }else{
     todayEl.style.display='none';
     dashEl.style.display='';
     if(_isMobile())showMobileHome();
   }
 }
+// One entry point for "go to the mobile home surface" that honors the current
+// mode -- Today lands on the Today view, Everything on the tile launcher.
+// Replaces the three bare showMobileHome() calls that hardcoded Everything
+// (back-bar tap, swipe-back, resize-into-mobile). Safe on desktop: setViewMode
+// no-ops its mobile-only side effects there.
+function _goMobileHome(){setViewMode(state.viewMode);}
 
 // Task-row markup, factored out of renderTaskList so the Today view (R2)
 // renders the identical row -- same ids, same editable wiring, same actions.
@@ -10150,7 +10185,11 @@ setTimeout(function(){
 document.addEventListener('visibilitychange',function(){if(!document.hidden){awardDailyLogin();renderTimeline();}});
 
 renderProjects();renderReminders();renderThoughts();renderNotes();renderRoutines();renderTaskList();renderTimeline();checkDailyRoutineReset();newDecisionPrompt();initDragDrop();updateAllTileSummaries();_applySavedTheme();renderThemeSelector();applyTierGating();updateFocusBanner();updateFocusModeUI();
-if(_isMobile()){showMobileHome();}else{document.querySelector('.header')&&document.querySelector('.header').classList.add('mobile-visible');}
+// R2b: desktop keeps its header-visibility line; setViewMode owns the initial
+// paint of Today-vs-Everything (and, on mobile, home-vs-launcher) from the
+// persisted state.viewMode -- replacing the old unconditional showMobileHome().
+if(!_isMobile()){document.querySelector('.header')&&document.querySelector('.header').classList.add('mobile-visible');}
+setViewMode(state.viewMode);
 if(state.energy){const c=document.querySelectorAll('#energyPills .em-pill');const m=['high','good','low','crashed'];const i=m.indexOf(state.energy);if(i>=0)c[i].classList.add('selected');}
 if(state.mood){const c=document.querySelectorAll('#moodPills .em-pill');const m=['focused','scattered','anxious','calm'];const i=m.indexOf(state.mood);if(i>=0)c[i].classList.add('selected');}
 showStateAdvice();updateWellnessVisibility();
