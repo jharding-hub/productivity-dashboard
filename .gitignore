@@ -2,6 +2,11 @@ node_modules/
 dist/
 .DS_Store
 
+# Firebase emulator debug logs (regenerated on every test:rules / test:sync-e2e run)
+firestore-debug.log
+firebase-debug.log
+ui-debug.log
+
 # Service-account keys and secrets — NEVER commit
 *serviceAccount*.json
 *service-account*.json
