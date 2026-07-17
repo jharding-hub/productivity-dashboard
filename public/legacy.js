@@ -609,6 +609,17 @@ var state={projects:[],reminders:[],thoughts:[],notes:[],moodLog:[],tasks:[],com
 // SYNC STATUS
 function setSyncStatus(status,label){const el=document.getElementById('syncStatus');if(!el)return;el.className='sync-status '+status;var icon={synced:'✓',syncing:'↻',error:'⚠',offline:'•'}[status]||'•';el.innerHTML='<span class="sync-icon">'+icon+'</span> '+label;}
 
+// TOMBSTONES -- deletion and completion are durable, synced FACTS, never the
+// mere absence of an item from an array (absence can't survive a merge). Every
+// genuine delete/complete records the id here; reconcileSync (public/sync-merge.js)
+// unions these across devices and drops any resurrected id. Do NOT call this for
+// a MOVE that reuses an id (e.g. task -> subtask) -- that id is still live.
+function _tombstone(id){
+  if(id==null)return;
+  if(!state._tombstones)state._tombstones={};
+  if(!state._tombstones[id])state._tombstones[id]=new Date().toISOString();
+}
+
 // SAVE -- writes to localStorage + Firestore (per-user)
 var saveTimer=null;
 var _saveSkipCount=0; // consecutive writes skipped because cloud was newer (E-1)
@@ -767,6 +778,7 @@ async function load(){
     state.tlBlocks=state.tlBlocks.filter(function(b){return b&&(!b.date||b.date>=_tlCutKey);});
   }
   if(!state.routines)state.routines={morning:[],evening:[],custom:[]};
+  if(!state._tombstones)state._tombstones={};
   if(!state.reminders)state.reminders=[];
   if(!state.notes)state.notes=[];if(!state.moodLog)state.moodLog=[];if(!state.tasks)state.tasks=[];if(!state.visiblePanels)state.visiblePanels={};if(!state.knownPanels)state.knownPanels=[];
   if(!state.panelUseLog)state.panelUseLog={};if(!state.usageMonthlyTotals)state.usageMonthlyTotals={};if(!state.points.monthlyTotals)state.points.monthlyTotals={};
@@ -1606,12 +1618,15 @@ function toggleSubtask(pid,sid){
     archivedAt:new Date().toISOString(),source:'project'
   });
   if(state.completedTasks.length>100)state.completedTasks=state.completedTasks.slice(0,100);
-  // Remove from this project AND any other project containing a linked sibling
+  // Remove from this project AND any other project containing a linked sibling.
+  // Completion is a durable fact -- tombstone every removed id so a stale device
+  // can't re-add the checked item.
   if(s.linkGroupId){
     state.projects.forEach(function(pr){
-      pr.subtasks=pr.subtasks.filter(function(x){return x.linkGroupId!==s.linkGroupId;});
+      pr.subtasks=pr.subtasks.filter(function(x){if(x.linkGroupId===s.linkGroupId){_tombstone(x.id);return false;}return true;});
     });
   }else{
+    _tombstone(sid);
     p.subtasks=p.subtasks.filter(x=>x.id!==sid);
   }
   if(typeof _materializeRecurrence==='function')_materializeRecurrence(s,function(nextDue){
@@ -1620,7 +1635,7 @@ function toggleSubtask(pid,sid){
   addPoints('subtask',srcEl);
   save();renderProjects();renderTaskList();
 }
-function deleteSubtask(pid,sid){_confirm('Delete this subtask?',function(){const p=state.projects.find(p=>p.id===pid);if(p)p.subtasks=p.subtasks.filter(s=>s.id!==sid);save();renderProjects();renderTaskList();},{destructive:true,confirmText:'Delete'});}
+function deleteSubtask(pid,sid){_confirm('Delete this subtask?',function(){_tombstone(sid);const p=state.projects.find(p=>p.id===pid);if(p)p.subtasks=p.subtasks.filter(s=>s.id!==sid);save();renderProjects();renderTaskList();},{destructive:true,confirmText:'Delete'});}
 
 // Cycle priority low → med → high → low on click. Works for subtasks.
 function cycleSubtaskPriority(pid,sid,ev){
@@ -1847,8 +1862,8 @@ function promptEditProject(pid){
 
 // REMINDERS
 function addReminder(){const t=document.getElementById('newRemText').value.trim();if(!t)return;const projVal=document.getElementById('newRemProject').value;const projIds=projVal?projVal.split(',').filter(Boolean):[];const q=_applyQuickAdd(t,{due:document.getElementById('newRemDate').value,time:document.getElementById('newRemTime').value},{date:true,time:true});state.reminders.push({id:'rem'+Date.now(),text:q.name,date:q.due,time:q.time,projectId:projIds[0]||'',projectIds:projIds});document.getElementById('newRemText').value='';document.getElementById('newRemDate').value='';document.getElementById('newRemTime').value='';document.getElementById('newRemProject').value='';renderProjMultiPickerChips(document.getElementById('newRemProjectPicker'));save();renderReminders();renderProjects();if(projIds.length>1)toast('Reminder added to '+projIds.length+' projects');}
-function deleteReminder(id){_confirm('Delete this reminder?',function(){state.reminders=state.reminders.filter(r=>r.id!==id);save();renderReminders();},{destructive:true,confirmText:'Delete'});}
-function clearPastReminders(){state.reminders=state.reminders.filter(r=>!r.date||r.date>=todayStr());save();renderReminders();toast('Past cleared');}
+function deleteReminder(id){_confirm('Delete this reminder?',function(){_tombstone(id);state.reminders=state.reminders.filter(r=>r.id!==id);save();renderReminders();},{destructive:true,confirmText:'Delete'});}
+function clearPastReminders(){var _t=todayStr();(state.reminders||[]).forEach(function(r){if(r.date&&r.date<_t)_tombstone(r.id);});state.reminders=state.reminders.filter(r=>!r.date||r.date>=todayStr());save();renderReminders();toast('Past cleared');}
 function editReminderText(id,v){if(!v)return;const r=state.reminders.find(r=>r.id===id);if(r)r.text=v;save();}
 function renderReminders(){
 if(_isEditingInPanel('reminderList')){_deferPanelRender('reminderList');return;}
@@ -2176,7 +2191,7 @@ window.__notifPermissionResult=function(granted){
 
 // BRAIN DUMP
 function handleDumpKey(e){if(e.key==='Enter'&&!e.shiftKey){e.preventDefault();const t=document.getElementById('brainDump').value.trim();if(!t)return;state.thoughts.push({id:'th'+Date.now(),text:t});document.getElementById('brainDump').value='';save();renderThoughts();_trackEvent('tool_use','brain_dump','Brain Dump');}}
-function deleteThought(id){_confirm('Delete this thought?',function(){state.thoughts=state.thoughts.filter(t=>t.id!==id);save();renderThoughts();},{destructive:true,confirmText:'Delete'});}
+function deleteThought(id){_confirm('Delete this thought?',function(){_tombstone(id);state.thoughts=state.thoughts.filter(t=>t.id!==id);save();renderThoughts();},{destructive:true,confirmText:'Delete'});}
 function promoteThought(id){const th=state.thoughts.find(t=>t.id===id);if(!th)return;if(state.projects.length>0){const sp=_sortedProjects();const c=prompt('Promote to which project?\n\n'+sp.map((p,i)=>(i+1)+'. '+p.name).join('\n')+'\n\n(0 = reminders)','1');if(c===null)return;const idx=parseInt(c)-1;if(idx>=0&&idx<sp.length){sp[idx].subtasks.push({id:'st'+Date.now(),name:th.text,due:'',priority:'med',timeEst:'',done:false});deleteThought(id);renderProjects();renderTaskList();toast('Added to '+sp[idx].name);return;}}state.reminders.push({id:'rem'+Date.now(),text:th.text,date:'',time:''});deleteThought(id);renderReminders();toast('Moved to reminders');}
 function editThought(id,v){if(!v)return;const t=state.thoughts.find(t=>t.id===id);if(t)t.text=v;save();}
 
@@ -2491,7 +2506,7 @@ function bdOrganizeApply(){
     parentIdsToRemove[parentId] = true;
     parentIdsToRemove[id] = true; // also handle non-split ids directly
   });
-  state.thoughts = state.thoughts.filter(function(t){ return !parentIdsToRemove[t.id]; });
+  state.thoughts = state.thoughts.filter(function(t){ if(parentIdsToRemove[t.id]){_tombstone(t.id);return false;} return true; });
 
   save();
   renderThoughts(); renderProjects(); renderTaskList(); renderNotes(); renderReminders();
@@ -2910,7 +2925,7 @@ function _noteToolbarHtml(targetId,extraId){
 }
 
 function addNote(){const label=document.getElementById('newNoteLabel').value.trim();const bodyEl=document.getElementById('newNoteBody');const body=_sanitizeNoteHtml(bodyEl?bodyEl.innerHTML:'');const bodyText=_stripHtml(body);if(!label&&!bodyText)return;const projVal=document.getElementById('newNoteProject').value;const projIds=projVal?projVal.split(',').filter(Boolean):[];const now=new Date();state.notes.push({id:'n'+Date.now(),label:label||'Untitled',body:body,rich:true,projectId:projIds[0]||'',projectIds:projIds,created:now.toISOString(),date:now.toLocaleDateString('en-US',{month:'short',day:'numeric',year:'numeric'}),time:now.toLocaleTimeString('en-US',{hour:'numeric',minute:'2-digit'})});document.getElementById('newNoteLabel').value='';if(bodyEl)bodyEl.innerHTML='';document.getElementById('newNoteProject').value='';renderProjMultiPickerChips(document.getElementById('newNoteProjectPicker'));save();renderNotes();renderProjects();if(projIds.length>1)toast('Note added to '+projIds.length+' projects');_trackEvent('tool_use','add_note','Add Note');}
-function deleteNote(id){_confirm('Delete this note?',function(){state.notes=state.notes.filter(n=>n.id!==id);save();renderNotes();},{destructive:true,confirmText:'Delete'});}
+function deleteNote(id){_confirm('Delete this note?',function(){_tombstone(id);state.notes=state.notes.filter(n=>n.id!==id);save();renderNotes();},{destructive:true,confirmText:'Delete'});}
 function editNoteLabel(id,v){if(!v)return;const n=state.notes.find(n=>n.id===id);if(n){n.label=v;save();}}
 function editNoteBody(id,v){const n=state.notes.find(n=>n.id===id);if(n){n.body=v;save();}}
 
@@ -3461,6 +3476,7 @@ window.__watchApplyAction=function(action){
       if(action.kind==='task'){
         if(typeof toggleTaskDone==='function')toggleTaskDone(action.id,'standalone');
       }else if(action.kind==='reminder'){
+        _tombstone(action.id);
         state.reminders=(state.reminders||[]).filter(function(r){return r.id!==action.id;});
         save();
         if(typeof renderReminders==='function')renderReminders();
@@ -4699,9 +4715,10 @@ function toggleTaskDone(id,source,projId){
         });
         if(s.linkGroupId){
           state.projects.forEach(function(pr){
-            pr.subtasks=pr.subtasks.filter(function(x){return x.linkGroupId!==s.linkGroupId;});
+            pr.subtasks=pr.subtasks.filter(function(x){if(x.linkGroupId===s.linkGroupId){_tombstone(x.id);return false;}return true;});
           });
         }else{
+          _tombstone(id);
           p.subtasks=p.subtasks.filter(function(x){return x.id!==id;});
         }
         if(typeof _materializeRecurrence==='function')_materializeRecurrence(s,function(nextDue){
@@ -4719,6 +4736,7 @@ function toggleTaskDone(id,source,projId){
         id:t.id,name:t.name,projectName:pName,projectId:t.projectId||'',projectIds:t.projectIds||[],
         archivedAt:new Date().toISOString(),source:'standalone'
       });
+      _tombstone(id);
       state.tasks=state.tasks.filter(function(x){return x.id!==id;});
       if(typeof _materializeRecurrence==='function')_materializeRecurrence(t,function(nextDue){
         state.tasks.push({id:'tk'+Date.now()+Math.random().toString(36).slice(2,5),name:t.name,due:nextDue,priority:t.priority,timeEst:t.timeEst||'',projectId:'',projectIds:[],done:false,recurrence:t.recurrence});
@@ -4773,6 +4791,7 @@ function addStandaloneTask(){
 
 function deleteStandaloneTask(id){
   _confirm('Delete this task?',function(){
+    _tombstone(id);
     state.tasks=state.tasks.filter(function(t){return t.id!==id;});
     save();renderTaskList();
   },{destructive:true,confirmText:'Delete'});
