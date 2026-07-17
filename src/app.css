@@ -2933,3 +2933,13 @@ body.admin-overlay-open #starryLayer,body.admin-overlay-open #galaxyLayer,body.a
 .tl-empty-state{position:absolute;top:50%;left:50%;transform:translate(-50%,-50%);text-align:center;color:var(--text-dim);font-size:13px;padding:20px;}
 .tl-empty-state p{margin:0 0 12px;}
 .empty-state p{line-height:1.5;}
+
+/* ═══ TODAY VIEW (R2a) ═══ container-level layout only -- rows reuse the
+   existing .tl-item / .routine-item / .reminder-item / .empty-state / .btn
+   styles verbatim, so nothing about their look needed to be redefined. */
+.today-view{max-width:640px;margin:0 auto;padding:20px 16px 140px;}
+.today-header{margin-bottom:24px;}
+.today-greeting{font-size:22px;font-weight:600;color:var(--text);}
+.today-date{font-size:14px;color:var(--text-dim);margin-top:2px;}
+.today-section{margin-bottom:28px;}
+.today-section-title{font-size:12px;font-weight:600;letter-spacing:0.5px;text-transform:uppercase;color:var(--text-faint);margin-bottom:10px;}

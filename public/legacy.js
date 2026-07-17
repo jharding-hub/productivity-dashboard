@@ -3357,7 +3357,14 @@ function checkDailyRoutineReset(){
   renderRoutines();
 }
 function switchRoutineTab(tab,btn){state.currentRoutineTab=tab;document.querySelectorAll('.tab-btn').forEach(b=>b.classList.remove('active'));btn.classList.add('active');renderRoutines();}
-function toggleRoutine(tab,id,e){if(e){var t=e.target;if(t.classList.contains('r-delete')||t.classList.contains('r-name')||t.closest('.r-delete')||t.closest('.r-name'))return;}const r=state.routines[tab].find(r=>r.id===id);if(r){var wasUndone=!r.done;r.done=!r.done;if(wasUndone&&r.done){var srcEl=document.querySelector('[data-rid="'+id+'"] .r-check');addPoints('routine',srcEl);_trackEvent('tool_use','routine_check','Routine Check');}}save();renderRoutines();}
+function toggleRoutine(tab,id,e){if(e){var t=e.target;if(t.classList.contains('r-delete')||t.classList.contains('r-name')||t.closest('.r-delete')||t.closest('.r-name'))return;}const r=state.routines[tab].find(r=>r.id===id);if(r){var wasUndone=!r.done;r.done=!r.done;if(wasUndone&&r.done){var srcEl=document.querySelector('[data-rid="'+id+'"] .r-check');addPoints('routine',srcEl);_trackEvent('tool_use','routine_check','Routine Check');}}save();renderRoutines();_refreshTodayViewIfVisible();}
+// Guarded cross-refresh so Today (R2) and Everything stay in sync regardless
+// of which one the action originated from. No-ops entirely when Today is
+// absent/hidden -- true for every account until R2b makes it a real mode.
+function _refreshTodayViewIfVisible(){
+  var el=document.getElementById('todayView');
+  if(el&&el.style.display!=='none')renderTodayView();
+}
 function addRoutine(){const n=document.getElementById('newRoutineName').value.trim();if(!n)return;state.routines[state.currentRoutineTab].push({id:'r'+Date.now(),name:n,done:false});document.getElementById('newRoutineName').value='';save();renderRoutines();}
 function deleteRoutine(tab,id){state.routines[tab]=state.routines[tab].filter(r=>r.id!==id);save();renderRoutines();}
 function resetRoutines(){if(!confirm('Reset all routine checkmarks?'))return;state.routines[state.currentRoutineTab].forEach(r=>r.done=false);save();renderRoutines();toast('Routines reset');}
@@ -4592,6 +4599,142 @@ function getAllTasks(){
   return tasks;
 }
 
+// =======================================
+// TODAY VIEW (R2a) -- an opinionated "just today" composition, reachable via
+// setViewMode('today') for verification. NOT yet the default (R2b wires the
+// persistent toggle + persisted state.viewMode); nothing changes for an
+// existing user until then.
+//
+// NOTE ON REUSE: this is intentionally its OWN filter, not factored out of
+// _buildWatchSnapshot as the original staging note assumed. The watch
+// snapshot's "tasks" is standalone-only, "not done", capped at 25 -- a
+// different definition of "today" than this view needs (today/overdue,
+// standalone + project subtasks, via getAllTasks()). Unifying them would
+// silently change what ships to Joe's watch face; not this stage's job.
+// =======================================
+function _todaySlice(){
+  var today=todayStr();
+  var tasks=getAllTasks().filter(function(t){return !t.done&&t.due&&t.due<=today;})
+    .sort(function(a,b){return (a.due||'').localeCompare(b.due||'');});
+  var reminders=(state.reminders||[]).filter(function(r){return r.date&&r.date<=today;})
+    .sort(function(a,b){return (a.date||'').localeCompare(b.date||'')||(a.time||'').localeCompare(b.time||'');});
+  var routineTab=new Date().getHours()<12?'morning':'evening';
+  var routines=(state.routines&&state.routines[routineTab])||[];
+  return {today:today,tasks:tasks,reminders:reminders,routineTab:routineTab,routines:routines};
+}
+
+function renderTodayView(){
+  var el=document.getElementById('todayView');
+  if(!el)return;
+  var slice=_todaySlice();
+  var hour=new Date().getHours();
+  var greeting=hour<12?'Good morning':hour<17?'Good afternoon':'Good evening';
+  var dateLine=new Date().toLocaleDateString('en-US',{weekday:'long',month:'long',day:'numeric'});
+
+  var html='<div class="today-header"><div class="today-greeting">'+greeting+'</div><div class="today-date">'+dateLine+'</div></div>';
+
+  html+='<div class="today-section"><div class="today-section-title">Today &amp; overdue</div>';
+  html+=slice.tasks.length===0
+    ?'<div class="empty-state">Nothing due today.</div>'
+    :'<div id="todayTaskList">'+slice.tasks.map(_taskRowHTML).join('')+'</div>';
+  html+='</div>';
+
+  html+='<div class="today-section"><div class="today-section-title">'+(slice.routineTab==='morning'?'Morning routine':'Evening routine')+'</div>';
+  html+=slice.routines.length===0
+    ?'<div class="empty-state">No '+slice.routineTab+' routine set up.</div>'
+    :'<div id="todayRoutineList">'+slice.routines.map(function(r){
+        return '<div class="routine-item '+(r.done?'r-done':'')+'" onclick="toggleRoutine(\''+slice.routineTab+"','"+r.id+'\',event)">'
+          +'<div class="r-check '+(r.done?'r-checked':'')+'">'+(r.done?'✓':'')+'</div>'
+          +'<span class="r-name">'+esc(r.name)+'</span>'
+          +'</div>';
+      }).join('')+'</div>';
+  html+='</div>';
+
+  html+='<div class="today-section"><div class="today-section-title">Reminders</div>';
+  html+=slice.reminders.length===0
+    ?'<div class="empty-state">No reminders due.</div>'
+    :'<div id="todayReminderList">'+slice.reminders.map(function(r){
+        return '<div class="reminder-item"><span class="rem-icon">🔵</span><div class="rem-body">'
+          +'<div class="rem-text">'+esc(r.text)+'</div>'
+          +'<div class="rem-when">'+(r.date?fmtDate(r.date):'')+(r.time?' at '+fmtTime(r.time):'')+'</div>'
+          +'</div></div>';
+      }).join('')+'</div>';
+  html+='</div>';
+
+  html+='<div class="today-section"><button class="btn btn-accent" onclick="if(_isMobile()){showMobilePanel(\'time\');}else{openPanelOverlay(\'time\');}">Open Tool Kit</button></div>';
+
+  el.innerHTML=html;
+  slice.tasks.forEach(_wireTaskRowEditable);
+  refreshEditables();
+}
+
+// Temporary verification entry point for R2a -- NOT a persisted mode yet and
+// NOT wired to any visible UI. R2b replaces this with a real, persisted,
+// segmented Today/Everything control on both platforms. Console-only for now:
+// window.setViewMode('today') / window.setViewMode('everything').
+function setViewMode(mode){
+  var todayEl=document.getElementById('todayView');
+  var dashEl=document.getElementById('dashboard');
+  if(!todayEl||!dashEl)return;
+  if(mode==='today'){
+    renderTodayView();
+    todayEl.style.display='';
+    dashEl.style.display='none';
+    if(_isMobile())document.getElementById('mobileHome').classList.remove('active');
+  }else{
+    todayEl.style.display='none';
+    dashEl.style.display='';
+    if(_isMobile())showMobileHome();
+  }
+}
+
+// Task-row markup, factored out of renderTaskList so the Today view (R2)
+// renders the identical row -- same ids, same editable wiring, same actions.
+// Pure string builder; ids are per-task, so it's safe to mount in any container.
+function _taskRowHTML(t){
+  var nameId='tlname_'+t.id;
+  var dueId='tldue_'+t.id;
+  var dueHTML;
+  if(t.due){
+    dueHTML='<span class="date-editable tl-due-edit" id="'+dueId+'">'+fmtDate(t.due)+'</span>';
+  }else{
+    dueHTML='<span class="date-editable tl-due-edit" id="'+dueId+'" style="color:var(--text-faint);">+ date</span>';
+  }
+  return '<div class="tl-item">'+
+    '<div class="tl-check" onclick="toggleTaskDone(\''+t.id+'\',\''+t.source+'\',\''+t.projectId+'\')"></div>'+
+    '<div class="tl-body"><div class="tl-name"><span class="priority-dot clickable priority-'+t.priority+'" onclick="event.stopPropagation();'+(t.source==='standalone'?'cycleTaskPriority(\''+t.id+'\',event)':'cycleSubtaskPriority(\''+t.projectId+'\',\''+t.id+'\',event)')+'" title="Click to change priority"></span><span class="editable" id="'+nameId+'">'+esc(t.name)+'</span></div>'+
+    '<div class="tl-meta">'+
+    '<span class="tl-proj-badge tl-editable-badge" id="tlproj_'+t.id+'" onclick="event.stopPropagation();showTaskProjectPicker(\''+t.id+'\',\''+t.source+'\',\''+(t.projectId||'')+'\',this)">'+(t.projectName?esc(t.projectName):'+ project')+'</span>'+
+    '<span class="tl-time-badge tl-editable-badge" id="tltime_'+t.id+'" onclick="event.stopPropagation();showTaskTimePicker(\''+t.id+'\',\''+t.source+'\',\''+(t.projectId||'')+'\',this)">'+(t.timeEst?fmtTimeEst(t.timeEst):'+ time')+'</span>'+
+    dueHTML+
+    '</div></div>'+
+    '<span class="wt-clock-btn '+(_isScheduledToday(t.id)?'scheduled':'')+'" onclick="event.stopPropagation();handleWorkTodayClick(\''+(t.source==='standalone'?'task':'subtask')+'\',\''+t.id+'\',\''+(t.projectId||'')+'\')" title="Work on this today">&#128197;</span>'+
+    (t.source==='standalone'
+      ?'<span class="tl-del" onclick="deleteStandaloneTask(\''+t.id+'\')" title="Delete task">✕</span>'
+      :'<span class="tl-del" onclick="deleteSubtask(\''+t.projectId+'\',\''+t.id+'\')" title="Delete subtask">✕</span>')+
+    '</div>';
+}
+// Editable-cell wiring for one task row, factored alongside _taskRowHTML.
+// Caller is responsible for calling refreshEditables() once after wiring a batch.
+function _wireTaskRowEditable(t){
+  var nameEl=document.getElementById('tlname_'+t.id);
+  var dueEl=document.getElementById('tldue_'+t.id);
+  if(nameEl){
+    if(t.source==='standalone'){
+      makeEditable(nameEl,function(v){editStandaloneTaskName(t.id,v);});
+    }else{
+      makeEditable(nameEl,function(v){editSubtaskName(t.projectId,t.id,v);});
+    }
+  }
+  if(dueEl){
+    if(t.source==='standalone'){
+      makeDateClickable(dueEl,t.due,function(v){editStandaloneTaskDue(t.id,v);});
+    }else{
+      makeDateClickable(dueEl,t.due,function(v){editSubtaskDue(t.projectId,t.id,v);});
+    }
+  }
+}
+
 function renderTaskList(){
   if(_isEditingInPanel('taskListItems')){_deferPanelRender('taskListItems');return;}
   var el=document.getElementById('taskListItems');if(!el)return;
@@ -4642,49 +4785,8 @@ function renderTaskList(){
     if(pcEl){pcEl.style.flex='none';pcEl.style.minHeight='0';}
   }else{
     if(pcEl){pcEl.style.flex='';pcEl.style.minHeight='';}
-    el.innerHTML=all.map(function(t){
-      var nameId='tlname_'+t.id;
-      var dueId='tldue_'+t.id;
-      var dueHTML;
-      if(t.due){
-        dueHTML='<span class="date-editable tl-due-edit" id="'+dueId+'">'+fmtDate(t.due)+'</span>';
-      }else{
-        dueHTML='<span class="date-editable tl-due-edit" id="'+dueId+'" style="color:var(--text-faint);">+ date</span>';
-      }
-      return '<div class="tl-item">'+
-        '<div class="tl-check" onclick="toggleTaskDone(\''+t.id+'\',\''+t.source+'\',\''+t.projectId+'\')"></div>'+
-        '<div class="tl-body"><div class="tl-name"><span class="priority-dot clickable priority-'+t.priority+'" onclick="event.stopPropagation();'+(t.source==='standalone'?'cycleTaskPriority(\''+t.id+'\',event)':'cycleSubtaskPriority(\''+t.projectId+'\',\''+t.id+'\',event)')+'" title="Click to change priority"></span><span class="editable" id="'+nameId+'">'+esc(t.name)+'</span></div>'+
-        '<div class="tl-meta">'+
-        '<span class="tl-proj-badge tl-editable-badge" id="tlproj_'+t.id+'" onclick="event.stopPropagation();showTaskProjectPicker(\''+t.id+'\',\''+t.source+'\',\''+(t.projectId||'')+'\',this)">'+(t.projectName?esc(t.projectName):'+ project')+'</span>'+
-        '<span class="tl-time-badge tl-editable-badge" id="tltime_'+t.id+'" onclick="event.stopPropagation();showTaskTimePicker(\''+t.id+'\',\''+t.source+'\',\''+(t.projectId||'')+'\',this)">'+(t.timeEst?fmtTimeEst(t.timeEst):'+ time')+'</span>'+
-        dueHTML+
-        '</div></div>'+
-        '<span class="wt-clock-btn '+(_isScheduledToday(t.id)?'scheduled':'')+'" onclick="event.stopPropagation();handleWorkTodayClick(\''+(t.source==='standalone'?'task':'subtask')+'\',\''+t.id+'\',\''+(t.projectId||'')+'\')" title="Work on this today">&#128197;</span>'+
-        (t.source==='standalone'
-          ?'<span class="tl-del" onclick="deleteStandaloneTask(\''+t.id+'\')" title="Delete task">\u2715</span>'
-          :'<span class="tl-del" onclick="deleteSubtask(\''+t.projectId+'\',\''+t.id+'\')" title="Delete subtask">\u2715</span>')+
-        '</div>';
-    }).join('');
-    // Wire editables
-    all.forEach(function(t){
-      var nameEl=document.getElementById('tlname_'+t.id);
-      var dueEl=document.getElementById('tldue_'+t.id);
-      if(nameEl){
-        if(t.source==='standalone'){
-          makeEditable(nameEl,function(v){editStandaloneTaskName(t.id,v);});
-        }else{
-          // Subtask in a project
-          makeEditable(nameEl,function(v){editSubtaskName(t.projectId,t.id,v);});
-        }
-      }
-      if(dueEl){
-        if(t.source==='standalone'){
-          makeDateClickable(dueEl,t.due,function(v){editStandaloneTaskDue(t.id,v);});
-        }else{
-          makeDateClickable(dueEl,t.due,function(v){editSubtaskDue(t.projectId,t.id,v);});
-        }
-      }
-    });
+    el.innerHTML=all.map(_taskRowHTML).join('');
+    all.forEach(_wireTaskRowEditable);
     refreshEditables();
   }
   document.getElementById('taskListCount').textContent=totalCount;
@@ -4769,7 +4871,7 @@ function toggleTaskDone(id,source,projId){
       addPoints('task',srcEl);
     }
   }
-  save();renderTaskList();
+  save();renderTaskList();_refreshTodayViewIfVisible();
 }
 
 function addStandaloneTask(){

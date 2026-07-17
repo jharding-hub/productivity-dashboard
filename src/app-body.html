@@ -46,6 +46,11 @@
     <div class="focus-banner-task" id="focusBannerTask">Loading timeline...</div>
   </div>
 </div>
+<!-- TODAY VIEW (R2a) -- reachable via window.setViewMode('today') for now;
+     hidden by default, renderTodayView() populates it. R2b wires the
+     persistent, persisted Today/Everything toggle both platforms share. -->
+<div class="today-view" id="todayView" style="display:none;"></div>
+
 <div class="dashboard" id="dashboard">
 
 <!-- 1. PROJECTS -->
