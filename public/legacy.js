@@ -22,13 +22,18 @@ var TIER_CONFIG={
     label:'Free',
     color:'#6b7280',
     allowedThemeTiers:['free'],
-    // Free: basic panels only; no AI assistant, no Timeline, no Toolkit, no Brain Dump
-    panels:['projects','tasklist','notes','routines'],
+    // Free: basic panels + Toolkit (regulation only), no AI assistant, no
+    // Timeline, no Brain Dump. R3: regulation is free, power is paid --
+    // breath/HALT+/mood are the app's differentiator and shouldn't be
+    // paywalled from the users they'd hook. Urge Log and the Grounding
+    // Toolkit panel (data-panel="wellness") were already tier-agnostic before
+    // this change -- see TOOLKIT_CLASS_MAP and shouldShowWellness().
+    panels:['projects','tasklist','notes','routines','time'],
     maxProjects:3,
     maxTasks:20,
     maxNotes:10,
     maxReminders:5,
-    toolkitAllowed:[],
+    toolkitAllowed:['breath','halt','mood'],
     voiceInput:false,
     radar:false,
     dataExport:false,
@@ -3646,7 +3651,13 @@ function showMobilePanel(panelId){
   document.querySelectorAll('.panel').forEach(function(p){p.classList.remove('mobile-visible');});
   var target=document.querySelector('.panel[data-panel="'+panelId+'"]')
            ||document.querySelector('.panel[data-nav="'+panelId+'"]');
-  if(target&&!target.classList.contains('hidden-panel')&&!target.classList.contains('user-hidden')){
+  // R3: dropped the user-hidden check here. buildMobileHome() already filters
+  // visiblePanels===false panels out of the launcher's own nav rows, so this
+  // was a second, redundant guard whose only effect was silently blocking
+  // direct-jump callers (e.g. Today's "Open Tool Kit" button) whenever a
+  // panel's visibility toggle happened to be off -- true for 'time' on every
+  // brand-new account by default, tier aside. hidden-panel (admin) stays.
+  if(target&&!target.classList.contains('hidden-panel')){
     target.classList.add('mobile-visible');
     // Slide in from the right; class removed after the animation so it can replay
     target.classList.add('mobile-panel-enter');
