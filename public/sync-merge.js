@@ -94,24 +94,37 @@ function mergeProjects(localArr, cloudArr, tomb){
 // Array fields whose deletions/completions are tracked by the tombstone map.
 var SYNC_ACTIVE_ARRAYS = ['reminders','tasks','notes','thoughts'];
 // Append-mostly archive arrays: union by id so an entry added on one device
-// isn't dropped by a stale write, but NOT tombstone-filtered (a completed
-// task's id lives in _tombstones yet its archive record must remain visible).
+// isn't dropped by a stale write. These are NOT filtered by the live-item
+// _tombstones map — a completed task's archive record reuses the live item's
+// id, which is already tombstoned by the completion, so filtering there would
+// wipe every archive record. Instead they're filtered by the SEPARATE
+// _archiveTombstones map, which records only history-entry removals
+// (removeCompleted) — see reconcileSync below.
 var SYNC_UNION_ARRAYS = ['completedTasks','completedProjects','completedWorkouts'];
 
 // Reconcile a local state snapshot against a cloud snapshot. Returns ONLY the
-// fields it owns (the synced arrays + the merged tombstone map) for the caller
-// to Object.assign onto state. Pure — never mutates its inputs.
+// fields it owns (the synced arrays + both merged tombstone maps) for the
+// caller to Object.assign onto state. Pure — never mutates its inputs.
 function reconcileSync(local, cloud){
   local = local || {}; cloud = cloud || {};
   var tomb = mergeTombstones(local._tombstones, cloud._tombstones);
-  var out = { _tombstones: tomb };
+  // Removals of ARCHIVE records live in their own grow-only map. They can't
+  // share _tombstones: an archive record's id is the same id the live item
+  // had, which _tombstones already holds from the original completion, so a
+  // reused entry there would be indistinguishable and couldn't represent
+  // "the user cleared this history entry".
+  var archiveTomb = mergeTombstones(local._archiveTombstones, cloud._archiveTombstones);
+  var out = { _tombstones: tomb, _archiveTombstones: archiveTomb };
   SYNC_ACTIVE_ARRAYS.forEach(function(k){
     out[k] = _dropTombstoned(mergeById(local[k], cloud[k]), tomb);
   });
   out.projects = mergeProjects(local.projects, cloud.projects, tomb);
   SYNC_UNION_ARRAYS.forEach(function(k){
     if(Array.isArray(local[k]) || Array.isArray(cloud[k])){
-      out[k] = mergeById(local[k], cloud[k]);
+      // Union by id (concurrent completions on two devices both survive),
+      // then drop only entries the user removed from history — filtered by
+      // archiveTomb, never the live-item tomb (whose ids overlap by design).
+      out[k] = _dropTombstoned(mergeById(local[k], cloud[k]), archiveTomb);
     }
   });
   return out;

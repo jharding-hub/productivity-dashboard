@@ -619,6 +619,17 @@ function _tombstone(id){
   if(!state._tombstones)state._tombstones={};
   if(!state._tombstones[id])state._tombstones[id]=new Date().toISOString();
 }
+// Removing a COMPLETED-history entry (removeCompleted) is also a durable fact,
+// but it needs its OWN map: an archive record reuses the id of the live item
+// it archived, and that id is already in _tombstones from the completion --
+// so reusing _tombstones couldn't represent "clear this history entry", and
+// worse, the completed-* arrays are filtered by _archiveTombstones precisely
+// so a completion doesn't wipe its own archive record. See public/sync-merge.js.
+function _archiveTombstone(id){
+  if(id==null)return;
+  if(!state._archiveTombstones)state._archiveTombstones={};
+  if(!state._archiveTombstones[id])state._archiveTombstones[id]=new Date().toISOString();
+}
 
 // SAVE -- writes to localStorage + Firestore (per-user)
 var saveTimer=null;
@@ -786,6 +797,7 @@ async function load(){
   }
   if(!state.routines)state.routines={morning:[],evening:[],custom:[]};
   if(!state._tombstones)state._tombstones={};
+  if(!state._archiveTombstones)state._archiveTombstones={};
   if(!state.reminders)state.reminders=[];
   if(!state.notes)state.notes=[];if(!state.moodLog)state.moodLog=[];if(!state.tasks)state.tasks=[];if(!state.visiblePanels)state.visiblePanels={};if(!state.knownPanels)state.knownPanels=[];
   if(!state.panelUseLog)state.panelUseLog={};if(!state.usageMonthlyTotals)state.usageMonthlyTotals={};if(!state.points.monthlyTotals)state.points.monthlyTotals={};
@@ -1628,12 +1640,10 @@ function toggleSubtask(pid,sid){
   // Capture source element for popup positioning
   var srcEl=document.querySelector('.st-check[onclick*="'+sid+'"]');
   // Archive completed subtask (single record per group)
-  if(!state.completedTasks)state.completedTasks=[];
-  state.completedTasks.unshift({
+  _archiveCompletedTask({
     id:s.id,name:s.name,projectName:p.name,projectId:p.id,
     archivedAt:new Date().toISOString(),source:'project'
   });
-  if(state.completedTasks.length>100)state.completedTasks=state.completedTasks.slice(0,100);
   // Remove from this project AND any other project containing a linked sibling.
   // Completion is a durable fact -- tombstone every removed id so a stale device
   // can't re-add the checked item.
@@ -4718,14 +4728,13 @@ function renderTaskList(){
 }
 
 function toggleTaskDone(id,source,projId){
-  if(!state.completedTasks)state.completedTasks=[];
   var srcEl=document.querySelector('.tl-check[onclick*="'+id+'"]')||document.querySelector('.st-check[onclick*="'+id+'"]');
   if(source==='project'){
     var p=state.projects.find(function(p){return p.id===projId;});
     if(p){
       var s=p.subtasks.find(function(s){return s.id===id;});
       if(s){
-        state.completedTasks.unshift({
+        _archiveCompletedTask({
           id:s.id,name:s.name,projectName:p.name,projectId:p.id,
           archivedAt:new Date().toISOString(),source:'project'
         });
@@ -4748,7 +4757,7 @@ function toggleTaskDone(id,source,projId){
     var t=state.tasks.find(function(t){return t.id===id;});
     if(t){
       var pName=t.projectId?((state.projects.find(function(p){return p.id===t.projectId;})||{}).name||''):'';
-      state.completedTasks.unshift({
+      _archiveCompletedTask({
         id:t.id,name:t.name,projectName:pName,projectId:t.projectId||'',projectIds:t.projectIds||[],
         archivedAt:new Date().toISOString(),source:'standalone'
       });
@@ -4760,7 +4769,6 @@ function toggleTaskDone(id,source,projId){
       addPoints('task',srcEl);
     }
   }
-  if(state.completedTasks.length>100)state.completedTasks=state.completedTasks.slice(0,100);
   save();renderTaskList();
 }
 
@@ -5188,6 +5196,7 @@ function toggleCompletedFolder(header){
 }
 
 function removeCompleted(id){
+  _archiveTombstone(id); // durable removal -- a stale device can't re-add it
   state.completedTasks=state.completedTasks.filter(function(t){return t.id!==id;});
   save();renderTaskList();
 }
@@ -5346,12 +5355,10 @@ function pmdToggleSubtask(pid,sid){
   var s=p.subtasks.find(function(st){return st.id===sid;});
   if(!s)return;
   var srcEl=document.querySelector('.pmd-st-check[onclick*="'+sid+'"]');
-  if(!state.completedTasks)state.completedTasks=[];
-  state.completedTasks.unshift({
+  _archiveCompletedTask({
     id:s.id,name:s.name,projectName:p.name,projectId:p.id,
     archivedAt:new Date().toISOString(),source:'project'
   });
-  if(state.completedTasks.length>100)state.completedTasks=state.completedTasks.slice(0,100);
   if(s.linkGroupId){
     state.projects.forEach(function(pr){
       pr.subtasks=pr.subtasks.filter(function(x){return x.linkGroupId!==s.linkGroupId;});
@@ -5393,6 +5400,19 @@ function _logCheckIn(type,payload){
 function _checkinsSince(days){
   var cutoff=Date.now()-days*86400000;
   return (state.checkins||[]).filter(function(c){return new Date(c.ts).getTime()>=cutoff;});
+}
+
+// Single write path for the completed-tasks archive -- dedupes what used to be
+// three identical inline `unshift(...) + slice(0,100)` blocks (toggleSubtask,
+// toggleTaskDone x2, pmdToggleSubtask). The caller builds the record (its
+// fields vary by source), this only prepends and enforces the cap. Persistence
+// still rides save() for now; Stage 2b swaps that for an own-doc save here,
+// exactly as checkins/moodLog did (R5).
+var COMPLETED_TASKS_MAX=100;
+function _archiveCompletedTask(record){
+  if(!state.completedTasks)state.completedTasks=[];
+  state.completedTasks.unshift(record);
+  if(state.completedTasks.length>COMPLETED_TASKS_MAX)state.completedTasks=state.completedTasks.slice(0,COMPLETED_TASKS_MAX);
 }
 
 // R16 Phase A: mirrors _checkinsSince's window filter, but completedTasks

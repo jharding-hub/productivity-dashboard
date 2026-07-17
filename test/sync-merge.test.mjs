@@ -159,6 +159,47 @@ test('concurrent adds on different devices are both kept', () => {
     'the old keep-longer heuristic would have dropped one of these');
 });
 
+// ── 7. A cleared history entry (removeCompleted) stays gone across a stale write ─
+test('a removed completed-task history entry does not resurrect', () => {
+  // Both devices hold two archive records. Device A clears t1 from history:
+  // filtered out AND recorded in the SEPARATE _archiveTombstones map (not
+  // _tombstones — see removeCompleted / _archiveTombstone in legacy.js).
+  const both = [
+    { id:'t1', name:'a', archivedAt:'2026-07-17T10:00:00.000Z', source:'standalone' },
+    { id:'t2', name:'b', archivedAt:'2026-07-17T11:00:00.000Z', source:'standalone' },
+  ];
+  const A = {
+    completedTasks: both.filter(t => t.id !== 't1'),
+    _archiveTombstones: { t1: '2026-07-17T12:00:00.000Z' },
+  };
+  const staleB = { completedTasks: both.slice() }; // B never saw the removal
+
+  const reconciled = reconcileSync(staleB, A);
+  assert.deepEqual(reconciled.completedTasks.map(t => t.id), ['t2'],
+    'the cleared archive record does not come back from a stale client');
+  assert.ok(reconciled._archiveTombstones.t1, 'archive tombstone carries forward');
+});
+
+// ── 8. The live-item tombstone must NOT wipe a fresh archive record ─────────
+test('a just-completed archive record survives even though its id is tombstoned', () => {
+  // This is the whole reason _archiveTombstones is a separate map: completing
+  // t1 puts its id in _tombstones (so the LIVE item stays gone) while the
+  // archive record REUSES that same id. If the union arrays were filtered by
+  // _tombstones, the archive record would vanish the instant it was created.
+  const A = {
+    tasks: [{ id:'t2', name:'b', done:false }],
+    completedTasks: [{ id:'t1', name:'a', archivedAt:'2026-07-17T12:00:00.000Z', source:'standalone' }],
+    _tombstones: { t1: '2026-07-17T12:00:00.000Z' }, // completion tombstone
+    _archiveTombstones: {},                          // NOT removed from history
+  };
+  const staleB = { tasks: [{ id:'t1', name:'a', done:false }, { id:'t2', name:'b', done:false }], completedTasks: [] };
+
+  const reconciled = reconcileSync(staleB, A);
+  assert.ok(!reconciled.tasks.some(t => t.id === 't1'), 't1 stays out of the active list');
+  assert.ok(reconciled.completedTasks.some(t => t.id === 't1'),
+    'the archive record is NOT wiped by the live-item tombstone');
+});
+
 // ── mergeTombstones keeps the earliest time and is grow-only ────────────────
 test('mergeTombstones unions and keeps the earliest time', () => {
   const m = mergeTombstones({ a:'2026-07-17T12:00:00.000Z', b:'2026-07-01T00:00:00.000Z' },
