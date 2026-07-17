@@ -9,7 +9,8 @@
     "preview": "vite preview",
     "deploy": "npm run build && gh-pages -d dist -b gh-pages --dotfiles",
     "test:rules": "firebase emulators:exec --only firestore --project demo-centerpost \"node --test test/firestore.rules.test.mjs\"",
-    "test:sync": "node --test test/sync-merge.test.mjs"
+    "test:sync": "node --test test/sync-merge.test.mjs",
+    "test:sync-e2e": "firebase emulators:exec --only firestore --project demo-centerpost \"node --test test/sync-two-client.test.mjs\""
   },
   "repository": {
     "type": "git",
