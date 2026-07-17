@@ -11,3 +11,8 @@ function fmtTime(t){const[h,m]=t.split(':');const hr=parseInt(h);return(hr>12?hr
 function _hmToMin(hm){var a=(hm||'').split(':');return (parseInt(a[0],10)||0)*60+(parseInt(a[1],10)||0);}
 function _dayKey(d){d=d||new Date();return d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')+'-'+String(d.getDate()).padStart(2,'0');}
 function _monthKey(d){d=d||new Date();return d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0');}
+
+// Test-only export (no-op in the browser, where `module` is undefined).
+if(typeof module!=='undefined' && module.exports){
+  module.exports = { todayStr, fmtDate, fmtTime, _hmToMin, _dayKey, _monthKey };
+}
