@@ -6369,15 +6369,17 @@ function submitQuickCapture(){
 
 // R11: first-run guided tour. Nine short steps, skippable at every point;
 // mirrors QuickCapture's open/close conventions (_blurDashboard/.open class).
+// R2c: retargeted to the capture -> Today -> toolkit arc now that new
+// accounts land on the Today view (R2b), not a panel grid. Plain text cards,
+// no DOM anchoring -- renderOnboardingStep derives "X of N" from .length, so
+// changing the count here is self-consistent with no other code changes.
 var ONBOARDING_STEPS=[
-  {title:'Welcome to Centerpost',body:"A quick tour of the essentials — nine short steps, then you're on your own. Skip any time."},
+  {title:'Welcome to Centerpost',body:"A quick tour — seven short steps, then you're on your own. Skip any time."},
+  {title:'Today',body:"This is home: what's due, your current routine, and today's reminders, all in one place."},
   {title:'Quick Capture',body:"Tap the pencil (or press B) from anywhere and type — it figures out if it's a task or a thought."},
-  {title:'Brain Dump',body:'A place for anything unsorted. Type it and let it sit there — nothing here needs a plan yet.'},
-  {title:'Notes',body:'Give it a title, write in the body — bold, headers, links, and lists all work — then Add Note.'},
-  {title:'Projects',body:'Name it, optionally set a due date, and hit + Add.'},
-  {title:'Tag projects',body:"On a note, task, or reminder, use + Tag projects to link it to one you've made — it'll show up there too."},
+  {title:'Today / Everything',body:'Today stays calm and focused. Flip to Everything any time for the full set of panels.'},
+  {title:'Tool Kit',body:'Breathing, grounding, HALT+ check-ins, and the focus timer — always one tap away.'},
   {title:'Axis',body:'Your AI assistant. Ask it to plan your day, break down a task, or just talk something through.'},
-  {title:'Grounding Toolkit',body:'HALT+ check-ins and breathing/grounding exercises, always one tap away.'},
   {title:"That's the essentials",body:"You're all set — jump in whenever you're ready."}
 ];
 var _onboardingStep=0;
