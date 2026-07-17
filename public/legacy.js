@@ -721,11 +721,7 @@ async function load(){
         const cloud=JSON.parse(doc.data().state);
         if(cloud.projects||cloud.reminders||cloud.notes){
           // -- SAFE MERGE ----------------------------------------------------
-          // Spread cloud over local, then protect fields where local is more
-          // current. CRITICAL: for every array field, if local has MORE items
-          // than cloud, keep local -- this prevents an empty/partial cloud doc
-          // (e.g. from a save that fired before load completed) from wiping
-          // good local data on the next load.
+          // Spread cloud over local, then reconcile.
           var today=todayStr();
           var merged=Object.assign({},state,cloud);
           // Protect lastRoutineReset -- never let cloud roll it back to a past date
@@ -733,8 +729,19 @@ async function load(){
           if(state.lastRoutineReset===today&&cloud.lastRoutineReset!==today){
             merged.routines=state.routines;merged.lastRoutineReset=today;
           }
-          // For each array field, keep whichever side has more items.
-          ['projects','reminders','notes','tasks','thoughts','journal','moodLog','completedTasks','completedWorkouts'].forEach(function(key){
+          // Tombstone-aware reconciliation of the item arrays. Replaces the old
+          // "keep whichever side has more items" heuristic, which could never
+          // represent a deletion -- a shorter post-delete array always lost to a
+          // stale client still holding the longer pre-delete copy, resurrecting
+          // dismissed reminders and un-completing tasks. reconcileSync unions by
+          // id (so concurrent adds both survive) and drops any id in the merged
+          // tombstone map. See public/sync-merge.js.
+          if(typeof reconcileSync==='function'){
+            Object.assign(merged,reconcileSync(state,cloud));
+          }
+          // journal/moodLog aren't id-tombstoned here (encrypted / own-doc);
+          // keep the longer copy so a partial cloud doc can't wipe them.
+          ['journal','moodLog'].forEach(function(key){
             var localArr=state[key], cloudArr=cloud[key];
             if(Array.isArray(localArr) && (!Array.isArray(cloudArr) || localArr.length>cloudArr.length)){
               merged[key]=localArr;
@@ -868,7 +875,16 @@ function startRealtimeSync(){
       const localRoutines=JSON.parse(JSON.stringify(state.routines||{}));
       const localUpdatedAt=state._updatedAt||0;
       const localPoints=JSON.parse(JSON.stringify(state.points||{}));
+      const _reconLocal=state; // pre-spread local snapshot for reconciliation
       state={...state,...cloud};
+      // Tombstone-aware reconciliation (mirrors load()): a stale snapshot must
+      // not resurrect a locally-deleted/completed item, and concurrent adds on
+      // both sides must both survive. The plain spread above overwrites arrays
+      // wholesale with cloud's; this restores the correctly reconciled arrays +
+      // merged tombstone map. See public/sync-merge.js.
+      if(typeof reconcileSync==='function'){
+        Object.assign(state,reconcileSync(_reconLocal,cloud));
+      }
       // E-1: keep the newest stamp -- local unsaved edits may be newer than
       // the cloud doc this snapshot delivered.
       state._updatedAt=Math.max(localUpdatedAt,cloud._updatedAt||0);
