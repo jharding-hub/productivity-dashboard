@@ -6509,8 +6509,24 @@ function checkMonthReset(){
 function awardDailyLogin(){
   var today=_dayKey();
   if(state.points.lastLoginDate!==today){
+    var prevDate=state.points.lastLoginDate;
     state.points.lastLoginDate=today;
     addPoints('daily_login');
+    // R9: a gentle nudge after a real gap -- never a count of missed days.
+    // Matches the house style of signal-gated, non-moralizing copy (see
+    // _haltTrendLine). Local-midnight date math throughout -- never
+    // new Date('YYYY-MM-DD'), see CLAUDE.md's sync-invariants section.
+    if(prevDate){
+      var pd=prevDate.split('-'),td=today.split('-');
+      var prevMs=new Date(parseInt(pd[0],10),parseInt(pd[1],10)-1,parseInt(pd[2],10)).getTime();
+      var todayMs=new Date(parseInt(td[0],10),parseInt(td[1],10)-1,parseInt(td[2],10)).getTime();
+      var daysSince=Math.round((todayMs-prevMs)/86400000);
+      if(daysSince>=3&&typeof toast==='function'){
+        // Slight delay so this doesn't collide with/get clipped by other
+        // startup toasts (e.g. initPanelVisibility's "New panels available!").
+        setTimeout(function(){toast('Welcome back');},1500);
+      }
+    }
   }
 }
 
