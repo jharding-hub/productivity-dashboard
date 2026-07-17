@@ -111,7 +111,7 @@
   // now: optional Date override, for testing. Order matters: priority and
   // recurrence markers are unambiguous tokens, pull them first so date/time
   // extraction isn't confused by leftover punctuation.
-  window.parseQuickAdd = function (rawText, now) {
+  var parseQuickAdd = function (rawText, now) {
     now = now || new Date();
     var text = rawText || '';
 
@@ -128,4 +128,9 @@
       recurrence: rec.recurrence,
     };
   };
+
+  // R4: dual export, same shape as sync-merge.js -- window for the browser
+  // (unchanged behavior), module.exports for `node --test` (test/quick-add-parser.test.mjs).
+  if (typeof window !== 'undefined') window.parseQuickAdd = parseQuickAdd;
+  if (typeof module !== 'undefined' && module.exports) module.exports = { parseQuickAdd };
 })();
