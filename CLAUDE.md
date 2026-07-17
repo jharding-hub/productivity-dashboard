@@ -61,6 +61,32 @@ Two repos:
 - No automated test suite — verify changes by running make dev and checking
   the result in the browser.
 
+## Sync invariants — read before touching delete/complete or the merge
+- Deletion and completion are durable, SYNCED FACTS, never the mere absence of
+  an item from an array. The whole dashboard is one JSON blob in a single
+  Firestore doc (users/{uid}/data/dashboard), so every save() overwrites the
+  whole field — a stale client that still holds a pre-delete array will clobber.
+- Every genuine delete/complete calls `_tombstone(id)` (legacy.js), which records
+  the id in the grow-only map `state._tombstones` = { id: deletedAtISO }. Do NOT
+  tombstone a MOVE that reuses an id (e.g. task -> subtask) — that id is still
+  live, and reconciliation would wrongly drop it.
+- Reconciliation lives in the pure module public/sync-merge.js (reconcileSync),
+  called from both load() and the onSnapshot listener. It unions item arrays by
+  id (so concurrent adds on two devices both survive) and drops any id in the
+  merged tombstone map. It REPLACED the old "keep whichever array is longer"
+  heuristic, which structurally could not represent a deletion (a shorter
+  post-delete array always lost) and resurrected dismissed reminders /
+  un-completed tasks across the web and native builds.
+- Tested by test/sync-merge.test.mjs (`npm run test:sync`, pure node --test).
+  Add a case there for any new synced array or merge rule.
+- Tombstones are grow-only for now. A scheduled Worker (Pulse) that hard-deletes
+  tombstones older than 90 days is NOT yet built — until it is, _tombstones grows
+  slowly (id + ISO ≈ 40 bytes each); the existing size telemetry still applies.
+- Dates: store instants (with a time) as UTC ISO; store calendar days as local
+  YYYY-MM-DD via todayStr(). Never use `new Date('YYYY-MM-DD')` or
+  `new Date().toISOString().split('T')[0]` for a local day — both introduce a
+  one-day offset for western-hemisphere users. Use date-utils.js helpers.
+
 ## Service Worker
 - The SW version is AUTO-GENERATED at build time from the git short hash.
   NEVER bump it by hand.
