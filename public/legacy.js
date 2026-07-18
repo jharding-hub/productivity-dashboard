@@ -6148,9 +6148,68 @@ var _urgeStep='idle'; // idle -> running -> outcome
 var _urgeType=null,_urgeNote='';
 var urgeTimerLeft=0,urgeTimerEndAt=null,urgeTimerRunning=false,urgeTimerInterval=null,urgeDelayMinutes=0;
 
+// F5: give the urge pause the same native lock-screen presence the focus timer
+// has (R7 tier 2), threaded through the EXACT existing `notify`-channel plumbing
+// -- no new bridge, no new native target. The urge timer's real state lives in
+// the JS runtime (suspended in the background), so these are fire-and-forget:
+// the Live Activity counts down natively and a scheduled local notification
+// alerts on completion even while JS is asleep.
+//
+// PRIVACY: an impulse/craving pause on a LOCK SCREEN is sensitive. Everything
+// that can surface there uses NEUTRAL wording only -- never the urge type or
+// the user's note. Those stay in-app.
+var URGE_NOTIF_ID='urge-timer';
+function _urgeLiveActivityStart(){
+  var h=(typeof _notifNative==='function')?_notifNative():null;
+  if(h&&urgeTimerEndAt){
+    try{h.postMessage({action:'startLiveActivity',id:URGE_NOTIF_ID,at:urgeTimerEndAt,title:'Pause',label:'Riding it out',iconName:'hourglass'});}catch(e){}
+  }
+}
+function _urgeLiveActivityEnd(){
+  var h=(typeof _notifNative==='function')?_notifNative():null;
+  if(h){try{h.postMessage({action:'endLiveActivity',id:URGE_NOTIF_ID});}catch(e){}}
+}
+function _urgeNotifStart(){
+  var h=(typeof _notifNative==='function')?_notifNative():null;
+  if(h&&urgeTimerEndAt){
+    try{h.postMessage({action:'scheduleTimer',id:URGE_NOTIF_ID,at:urgeTimerEndAt,title:'Pause complete',body:'Your pause is complete — check in when you’re ready.'});}catch(e){}
+  }
+}
+function _urgeNotifCancel(){
+  var h=(typeof _notifNative==='function')?_notifNative():null;
+  if(h){try{h.postMessage({action:'cancelTimer',id:URGE_NOTIF_ID});}catch(e){}}
+}
+// Distinct tactile signature for the urge pause, deliberately different from the
+// breathwork swell. Gated on the same single haptics preference (state.breathHaptics)
+// -- if a user turned haptics off, they get none here either.
+function _urgeHaptic(kind){
+  if(!state.breathHaptics)return;
+  var h=(typeof _notifNative==='function')?_notifNative():null;
+  if(h){
+    try{h.postMessage({action:'haptic',kind:kind});}catch(e){}
+    return;
+  }
+  // Web fallback (Android only; desktop no-op). Distinct from breath patterns.
+  if(typeof navigator!=='undefined'&&typeof navigator.vibrate==='function'){
+    try{
+      if(kind==='urgeComplete')navigator.vibrate([30,50,30,50,50]);
+      else if(kind==='urgeStart')navigator.vibrate(20);
+    }catch(e){}
+  }
+}
+// Defensive teardown: if the pause is not running, make sure no Live Activity or
+// pending completion notification is left dangling.
+function _urgeClearNative(){
+  _urgeLiveActivityEnd();
+  _urgeNotifCancel();
+}
+
 function openUrgeModal(){
   document.getElementById('urgeModal').classList.add('open');
   _blurDashboard();
+  // Reopening after the pause already resolved (or was never started) shouldn't
+  // leave a stale Activity/notification around.
+  if(_urgeStep!=='running')_urgeClearNative();
   _renderUrge();
 }
 function closeUrgeModal(){
@@ -6173,6 +6232,11 @@ function urgeStartDelay(minutes){
   _urgeStep='running';
   clearInterval(urgeTimerInterval);
   urgeTimerInterval=setInterval(_urgeTick,500);
+  // F5: native lock-screen countdown + a completion alert that fires even if the
+  // app is backgrounded (JS suspended), plus a distinct "locking in" buzz.
+  _urgeLiveActivityStart();
+  _urgeNotifStart();
+  _urgeHaptic('urgeStart');
   _renderUrge();
 }
 function _urgeTick(){
@@ -6183,6 +6247,11 @@ function _urgeTick(){
 }
 function _urgeComplete(){
   urgeTimerRunning=false;clearInterval(urgeTimerInterval);urgeTimerInterval=null;urgeTimerEndAt=null;
+  // F5: the pause elapsed -- retire the Live Activity and give the distinct
+  // completion buzz. (This branch only runs with JS alive, i.e. foreground; in
+  // the background the native notification scheduled at start is the alert.)
+  _urgeLiveActivityEnd();
+  _urgeHaptic('urgeComplete');
   toast('⏳ Delay complete — how do you feel now?');
   if((typeof _notifNative!=='function'||!_notifNative())&&typeof _notifShow==='function'&&document.visibilityState!=='visible'){
     _notifShow('✋ Delay complete','How do you feel about the urge now?','urge-log');
@@ -6193,6 +6262,9 @@ function _urgeComplete(){
 function urgeDecideNow(){
   if(!urgeTimerRunning)return;
   urgeTimerRunning=false;clearInterval(urgeTimerInterval);urgeTimerInterval=null;urgeTimerEndAt=null;
+  // F5: decided early -- the pause never elapsed, so kill the Live Activity and
+  // the still-pending completion notification before it can fire.
+  _urgeClearNative();
   _urgeStep='outcome';
   _renderUrge();
 }
@@ -6202,6 +6274,8 @@ function urgeOutcome(result){
   addPoints('urge',document.getElementById('urgeOutcomeBtn-'+result));
   toast(result==='passed'?'✓ Logged — nice work riding it out.':'✓ Logged — no judgment, the pause still counted.');
   _urgeStep='idle';_urgeType=null;_urgeNote='';urgeDelayMinutes=0;urgeTimerLeft=0;
+  // F5: defensive -- back to idle, ensure nothing native is left dangling.
+  _urgeClearNative();
   _renderUrge();
 }
 function _renderUrge(){
