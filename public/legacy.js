@@ -6366,27 +6366,75 @@ function quickCaptureKeydown(e){
 // an input. Safe to call more than once for the same edit -- it clears the
 // input on success, so a second call (e.g. Enter followed by the blur that
 // naturally follows) just finds empty text and no-ops.
+// F1: routing core shared by Quick Capture (submitQuickCapture) and the native
+// capture-queue drain (__drainCaptureQueue). DOM-free and does NOT save/render/
+// toast -- it only parses the string and pushes the resulting task-or-thought
+// into state, returning {type,name,id}. That lets a single capture or a whole
+// batch decide when to persist and re-render. Same task/thought split
+// submitQuickCapture has always used; ids carry a random suffix so a batch
+// drained within one millisecond can't collide.
+function _captureString(text){
+  text=(text||'').trim();
+  if(!text)return null;
+  var p=(typeof window.parseQuickAdd==='function')?window.parseQuickAdd(text):{name:text,due:null,time:null,priority:null,recurrence:null};
+  var hasSignal=!!(p.due||p.time||p.priority||p.recurrence);
+  if(hasSignal){
+    var t={id:'tk'+Date.now()+Math.random().toString(36).slice(2,6),name:p.name,due:p.due||'',priority:p.priority||'med',timeEst:'',projectId:'',projectIds:[],done:false,recurrence:p.recurrence};
+    state.tasks.push(t);
+    return {type:'task',name:p.name,id:t.id};
+  }
+  if(!state.thoughts)state.thoughts=[];
+  var th={id:'th'+Date.now()+Math.random().toString(36).slice(2,6),text:text};
+  state.thoughts.push(th);
+  return {type:'thought',name:text,id:th.id};
+}
 function submitQuickCapture(){
   var input=document.getElementById('quickCaptureInput');
   if(!input)return;
   var text=input.value.trim();
   if(!text)return;
-  var p=(typeof window.parseQuickAdd==='function')?window.parseQuickAdd(text):{name:text,due:null,time:null,priority:null,recurrence:null};
-  var hasSignal=!!(p.due||p.time||p.priority||p.recurrence);
-  if(hasSignal){
-    state.tasks.push({id:'tk'+Date.now(),name:p.name,due:p.due||'',priority:p.priority||'med',timeEst:'',projectId:'',projectIds:[],done:false,recurrence:p.recurrence});
-    save();renderTaskList();
-    toast('✓ Task added: '+p.name);
+  var res=_captureString(text);
+  if(!res){closeQuickCapture();return;}
+  save();
+  if(res.type==='task'){
+    renderTaskList();
+    toast('✓ Task added: '+res.name);
     _trackEvent('tool_use','quick_capture_task','Quick Capture');
   }else{
-    if(!state.thoughts)state.thoughts=[];
-    state.thoughts.push({id:'th'+Date.now(),text:text});
-    save();renderThoughts();
+    renderThoughts();
     toast('✓ Captured to Brain Dump');
     _trackEvent('tool_use','quick_capture_thought','Quick Capture');
   }
   closeQuickCapture();
 }
+// F1: native capture-queue drain. The iOS shell reads the shared App Group
+// queue on foreground and calls this with a JSON array of {id,text}; each is
+// routed through the same _captureString core Quick Capture uses. Persists and
+// re-renders ONCE for the batch, then returns a JSON string of the ids it
+// processed -- the native side reads that back (via evaluateJavaScript) and
+// removes exactly those from the queue, so an item appended mid-drain survives.
+// No-ops safely off-shell or on malformed input.
+window.__drainCaptureQueue=function(itemsJson){
+  var items;
+  try{items=JSON.parse(itemsJson);}catch(e){return '[]';}
+  if(!Array.isArray(items)||items.length===0)return '[]';
+  var processed=[],sawTask=false,sawThought=false;
+  items.forEach(function(it){
+    if(!it||typeof it.text!=='string')return;
+    var res=_captureString(it.text);
+    if(!res)return;
+    if(res.type==='task')sawTask=true;else sawThought=true;
+    if(it.id!=null)processed.push(it.id);
+  });
+  if(processed.length){
+    save();
+    if(sawTask&&typeof renderTaskList==='function')renderTaskList();
+    if(sawThought&&typeof renderThoughts==='function')renderThoughts();
+    if(typeof toast==='function')toast('✓ Captured '+processed.length+' item'+(processed.length!==1?'s':''));
+    if(typeof _trackEvent==='function')_trackEvent('tool_use','native_capture_drain','Native Capture');
+  }
+  return JSON.stringify(processed);
+};
 
 // R11: first-run guided tour. Nine short steps, skippable at every point;
 // mirrors QuickCapture's open/close conventions (_blurDashboard/.open class).
