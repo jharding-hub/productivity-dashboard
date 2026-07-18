@@ -329,6 +329,16 @@ async function exportMyData(){
     // dashboard state is stored as a JSON string — inline it so the export is readable
     if(docs.dashboard&&typeof docs.dashboard.state==='string'){
       try{docs.dashboard.state=JSON.parse(docs.dashboard.state);}catch(e){}
+      // journal/journalPin are LEGACY pre-encryption fields (see
+      // _journalSetupAndMigrate / the Phase-3 scrub, ~line 7213-7316) — on any
+      // account that hasn't been scrubbed yet, journalPin can still hold a raw
+      // PIN and journal can still hold plaintext entries. Never let a
+      // user-downloadable export carry either; the encrypted journal doc
+      // (ciphertext, safe) is already included separately in `docs`.
+      if(docs.dashboard.state&&typeof docs.dashboard.state==='object'){
+        delete docs.dashboard.state.journalPin;
+        delete docs.dashboard.state.journal;
+      }
     }
     var bundle={
       exportedAt:new Date().toISOString(),
