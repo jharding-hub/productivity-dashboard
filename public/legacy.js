@@ -1240,53 +1240,20 @@ function updateLockUI(){const btn=document.getElementById('lockBtn');if(state.pa
 
 // INLINE EDITING - only works when unlocked
 //
-// Guards list-panel re-renders (projects/reminders/tasklist/thoughts) against
-// wiping an open inline edit. The Firestore realtime listener rebuilds every
-// panel's innerHTML on each snapshot (including the echo of our own saves);
-// without this, a snapshot landing mid-edit destroys the focused .editable
-// element and drops whatever the user was mid-typing. Mirrors the dedicated
-// guard already in place for notes (_noteEditorFocused/_notesRenderPending),
-// but centralized here since makeEditable() is the one shared entry point
-// every panel's inline text edits go through.
-var _panelRenderPending={};
-var _PANEL_RENDER_FNS={
+// The inline-edit layer (makeEditable/makeDateClickable/makeTimeClickable/
+// refreshEditables + the _isEditingInPanel guard and defer mechanism) now lives
+// in public/inline-edit.js so it can be regression-tested (test/inline-edit.
+// test.mjs). It loads as a plain <script> before legacy.js, so those symbols
+// are globals here. We only inject the panel->render-fn map it defers on, since
+// those render functions live in this file. The guard rebuilds every panel's
+// innerHTML on each Firestore snapshot echo; without deferring while an edit is
+// focused, a snapshot landing mid-edit would destroy the focused element.
+_registerPanelRenderers({
   projectList:function(){renderProjects();},
   reminderList:function(){renderReminders();},
   taskListItems:function(){renderTaskList();},
   thoughtChips:function(){renderThoughts();}
-};
-// While a date/time picker is open, this holds its cell element. A picker is a
-// transient <input> injected into a list row; any panel re-render (esp. the
-// Firestore onSnapshot echo) rebuilds that row's innerHTML and destroys the
-// input mid-interaction -- the picker "closes on its own" before the user can
-// pick. Guarding on document.activeElement (as the contenteditable path does)
-// is unreliable for a native date wheel, which can blur the input while its
-// overlay is up; an explicit flag, cleared exactly at commit, is robust.
-var _dateEditActive=null;
-function _isEditingInPanel(containerId){
-  var c=document.getElementById(containerId);
-  if(_dateEditActive&&c&&c.contains(_dateEditActive))return true;
-  var ae=document.activeElement;
-  if(!ae||!ae.classList||!ae.classList.contains('editable'))return false;
-  return !!(c&&c.contains(ae));
-}
-function _deferPanelRender(containerId){_panelRenderPending[containerId]=true;}
-function _flushPendingPanelRenders(){
-  Object.keys(_PANEL_RENDER_FNS).forEach(function(id){
-    if(_panelRenderPending[id]){_panelRenderPending[id]=false;_PANEL_RENDER_FNS[id]();}
-  });
-}
-function makeEditable(el,onSave){
-  el.classList.add('editable');
-  el.addEventListener('blur',function(){onSave(el.textContent.trim());_flushPendingPanelRenders();});
-  el.addEventListener('keydown',function(e){if(e.key==='Enter'){e.preventDefault();el.blur();}if(e.key==='Escape')el.blur();});
-}
-function refreshEditables(){
-  // Editables are ALWAYS editable now. The "lock" only affects panel drag-drop, not content edits.
-  document.querySelectorAll('.editable').forEach(el=>{
-    el.setAttribute('contenteditable','true');
-  });
-}
+});
 
 // DRAG & DROP
 var dragSrcPanel=null;
@@ -1831,38 +1798,7 @@ function showTaskProjectPicker(taskId,source,projectId,el){
 }
 function editReminderDate(id,v){const r=state.reminders.find(r=>r.id===id);if(r){r.date=v;save();renderReminders();}}
 function editReminderTime(id,v){const r=state.reminders.find(r=>r.id===id);if(r){r.time=v;save();renderReminders();}}
-function makeDateClickable(el,currentVal,onSave){
-  el.addEventListener('click',function(e){
-    e.stopPropagation();
-    if(el.querySelector('input.date-edit-input')) return;
-    const inp=document.createElement('input');
-    inp.type='date';inp.className='date-edit-input';
-    inp.value=currentVal||'';
-    el.innerHTML='';el.appendChild(inp);
-    _dateEditActive=el; // suspend panel re-renders until commit (see _isEditingInPanel)
-    inp.focus();
-    var committed=false;
-    function commit(){ if(committed) return; committed=true; _dateEditActive=null; onSave(inp.value); _flushPendingPanelRenders(); }
-    inp.addEventListener('blur',commit);
-    inp.addEventListener('keydown',function(ev){ if(ev.key==='Enter'){ ev.preventDefault(); inp.blur(); } });
-  });
-}
-function makeTimeClickable(el,currentVal,onSave){
-  el.addEventListener('click',function(e){
-    e.stopPropagation();
-    if(el.querySelector('input.date-edit-input')) return;
-    const inp=document.createElement('input');
-    inp.type='time';inp.className='date-edit-input';inp.style.width='100px';
-    inp.value=currentVal||'';
-    el.innerHTML='';el.appendChild(inp);
-    _dateEditActive=el; // suspend panel re-renders until commit (see _isEditingInPanel)
-    inp.focus();
-    var committed=false;
-    function commit(){ if(committed) return; committed=true; _dateEditActive=null; onSave(inp.value); _flushPendingPanelRenders(); }
-    inp.addEventListener('blur',commit);
-    inp.addEventListener('keydown',function(ev){ if(ev.key==='Enter'){ ev.preventDefault(); inp.blur(); } });
-  });
-}
+// makeDateClickable / makeTimeClickable moved to public/inline-edit.js (globals).
 
 // Helper -- projects sorted A→Z, used everywhere projects are listed
 function _sortedProjects(){

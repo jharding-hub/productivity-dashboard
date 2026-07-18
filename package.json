@@ -10,6 +10,7 @@
     "deploy": "npm run build && gh-pages -d dist -b gh-pages --dotfiles",
     "test:rules": "firebase emulators:exec --only firestore --project demo-centerpost \"node --test test/firestore.rules.test.mjs\"",
     "test:sync": "node --test test/sync-merge.test.mjs",
+    "test:inline": "node --test test/inline-edit.test.mjs",
     "test:sync-e2e": "firebase emulators:exec --only firestore --project demo-centerpost \"node --test test/sync-two-client.test.mjs\"",
     "test:parser": "node --test test/quick-add-parser.test.mjs"
   },
@@ -33,6 +34,7 @@
     "firebase-admin": "^14.1.0",
     "firebase-tools": "^15.22.4",
     "gh-pages": "^6.3.0",
+    "jsdom": "^29.1.1",
     "vite": "^8.0.16"
   },
   "dependencies": {
