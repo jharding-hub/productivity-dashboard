@@ -1242,10 +1242,19 @@ var _PANEL_RENDER_FNS={
   taskListItems:function(){renderTaskList();},
   thoughtChips:function(){renderThoughts();}
 };
+// While a date/time picker is open, this holds its cell element. A picker is a
+// transient <input> injected into a list row; any panel re-render (esp. the
+// Firestore onSnapshot echo) rebuilds that row's innerHTML and destroys the
+// input mid-interaction -- the picker "closes on its own" before the user can
+// pick. Guarding on document.activeElement (as the contenteditable path does)
+// is unreliable for a native date wheel, which can blur the input while its
+// overlay is up; an explicit flag, cleared exactly at commit, is robust.
+var _dateEditActive=null;
 function _isEditingInPanel(containerId){
+  var c=document.getElementById(containerId);
+  if(_dateEditActive&&c&&c.contains(_dateEditActive))return true;
   var ae=document.activeElement;
   if(!ae||!ae.classList||!ae.classList.contains('editable'))return false;
-  var c=document.getElementById(containerId);
   return !!(c&&c.contains(ae));
 }
 function _deferPanelRender(containerId){_panelRenderPending[containerId]=true;}
@@ -1817,9 +1826,10 @@ function makeDateClickable(el,currentVal,onSave){
     inp.type='date';inp.className='date-edit-input';
     inp.value=currentVal||'';
     el.innerHTML='';el.appendChild(inp);
+    _dateEditActive=el; // suspend panel re-renders until commit (see _isEditingInPanel)
     inp.focus();
     var committed=false;
-    function commit(){ if(committed) return; committed=true; onSave(inp.value); }
+    function commit(){ if(committed) return; committed=true; _dateEditActive=null; onSave(inp.value); _flushPendingPanelRenders(); }
     inp.addEventListener('blur',commit);
     inp.addEventListener('keydown',function(ev){ if(ev.key==='Enter'){ ev.preventDefault(); inp.blur(); } });
   });
@@ -1832,9 +1842,10 @@ function makeTimeClickable(el,currentVal,onSave){
     inp.type='time';inp.className='date-edit-input';inp.style.width='100px';
     inp.value=currentVal||'';
     el.innerHTML='';el.appendChild(inp);
+    _dateEditActive=el; // suspend panel re-renders until commit (see _isEditingInPanel)
     inp.focus();
     var committed=false;
-    function commit(){ if(committed) return; committed=true; onSave(inp.value); }
+    function commit(){ if(committed) return; committed=true; _dateEditActive=null; onSave(inp.value); _flushPendingPanelRenders(); }
     inp.addEventListener('blur',commit);
     inp.addEventListener('keydown',function(ev){ if(ev.key==='Enter'){ ev.preventDefault(); inp.blur(); } });
   });
