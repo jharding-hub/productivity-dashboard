@@ -918,14 +918,18 @@ function startRealtimeSync(){
       const localUpdatedAt=state._updatedAt||0;
       const localPoints=JSON.parse(JSON.stringify(state.points||{}));
       const _reconLocal=state; // pre-spread local snapshot for reconciliation
-      // F3 moved completedTasks to its own doc and dropped it from SYNC_UNION_ARRAYS,
-      // so reconcileSync (below) no longer touches it -- the plain spread is now the
-      // ONLY thing that can affect it here. A stale-build device can still write the
-      // old blob shape (completedTasks included), so a snapshot echoing that stale
-      // write would otherwise clobber the current in-memory list until the next
-      // _loadCompletedTasksDoc() reconcile. Strip it so the own-doc load stays the
-      // single source of truth, matching how save()/load() already exclude it from
-      // the blob on the write side.
+      // checkins/moodLog/completedTasks all live in their own docs now (R3/R5/F3)
+      // and were never in SYNC_ACTIVE_ARRAYS/SYNC_UNION_ARRAYS -- reconcileSync
+      // (below) has never touched any of them, so the plain spread is the ONLY
+      // thing that can affect them here. A stale-build device can still write the
+      // old blob shape (any of these fields included), so a snapshot echoing that
+      // stale write would otherwise clobber the current in-memory value until the
+      // next own-doc reconcile (_loadCheckinsDoc/_loadMoodLogDoc/
+      // _loadCompletedTasksDoc). Strip all three so each own-doc load stays the
+      // single source of truth, matching how save()/load() already exclude them
+      // from the blob on the write side.
+      delete cloud.checkins;
+      delete cloud.moodLog;
       delete cloud.completedTasks;
       state={...state,...cloud};
       // Tombstone-aware reconciliation (mirrors load()): a stale snapshot must
