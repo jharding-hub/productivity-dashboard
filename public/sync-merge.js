@@ -93,14 +93,18 @@ function mergeProjects(localArr, cloudArr, tomb){
 
 // Array fields whose deletions/completions are tracked by the tombstone map.
 var SYNC_ACTIVE_ARRAYS = ['reminders','tasks','notes','thoughts'];
-// Append-mostly archive arrays: union by id so an entry added on one device
-// isn't dropped by a stale write. These are NOT filtered by the live-item
-// _tombstones map — a completed task's archive record reuses the live item's
-// id, which is already tombstoned by the completion, so filtering there would
-// wipe every archive record. Instead they're filtered by the SEPARATE
-// _archiveTombstones map, which records only history-entry removals
-// (removeCompleted) — see reconcileSync below.
-var SYNC_UNION_ARRAYS = ['completedTasks','completedProjects','completedWorkouts'];
+// Append-mostly archive arrays still riding the dashboard blob: union by id so
+// an entry added on one device isn't dropped by a stale write. These are NOT
+// filtered by the live-item _tombstones map — a completed record reuses the
+// live item's id, which is already tombstoned by the completion, so filtering
+// there would wipe every archive record. Instead they're filtered by the
+// SEPARATE _archiveTombstones map, which records only history-entry removals —
+// see reconcileSync below.
+// NOTE (F3 / Stage 2b): completedTasks was moved OUT of this list into its own
+// Firestore doc; it reconciles on load with these same helpers there (see
+// _loadCompletedTasksDoc in legacy.js). completedProjects/completedWorkouts
+// stay here until their own split, so _archiveTombstones is still in use.
+var SYNC_UNION_ARRAYS = ['completedProjects','completedWorkouts'];
 
 // Reconcile a local state snapshot against a cloud snapshot. Returns ONLY the
 // fields it owns (the synced arrays + both merged tombstone maps) for the

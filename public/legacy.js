@@ -676,7 +676,7 @@ function save(){
   // (_saveCheckinsDoc/_saveMoodLogDoc) -- excluded here so they stop riding
   // along in every dashboard-doc write. JSON.stringify drops keys whose
   // value is undefined, so this omits them without deep-cloning the rest.
-  const blob=JSON.stringify(Object.assign({},state,{checkins:undefined,moodLog:undefined}));
+  const blob=JSON.stringify(Object.assign({},state,{checkins:undefined,moodLog:undefined,completedTasks:undefined}));
   try{localStorage.setItem('prodDash_'+uid,blob);}catch(e){}
   _checkStateSize(blob.length);
   if(typeof pushWatchSnapshot==='function')pushWatchSnapshot(); // mirror to Apple Watch
@@ -797,7 +797,7 @@ async function load(){
         // Push to new location. R5: exclude checkins/moodLog, same as save() --
         // they're adopted into their own docs by _loadCheckinsDoc/_loadMoodLogDoc
         // right after load() returns.
-        await db.collection('users').doc(currentUser.uid).collection('data').doc('dashboard').set({state:JSON.stringify(Object.assign({},state,{checkins:undefined,moodLog:undefined})),updated:firebase.firestore.FieldValue.serverTimestamp()});
+        await db.collection('users').doc(currentUser.uid).collection('data').doc('dashboard').set({state:JSON.stringify(Object.assign({},state,{checkins:undefined,moodLog:undefined,completedTasks:undefined})),updated:firebase.firestore.FieldValue.serverTimestamp()});
         setSyncStatus('synced','Synced');
       }
     }catch(e){console.log('Firestore load error:',e);setSyncStatus('error','Offline');}
@@ -5356,6 +5356,9 @@ function toggleCompletedFolder(header){
 function removeCompleted(id){
   _archiveTombstone(id); // durable removal -- a stale device can't re-add it
   state.completedTasks=state.completedTasks.filter(function(t){return t.id!==id;});
+  // F3: completedTasks persists to its own doc; save() still runs for the
+  // _archiveTombstones map (which stays in the blob) and the UI.
+  if(typeof _saveCompletedTasksDoc==='function')_saveCompletedTasksDoc();
   save();renderTaskList();
 }
 
@@ -5563,14 +5566,16 @@ function _checkinsSince(days){
 // Single write path for the completed-tasks archive -- dedupes what used to be
 // three identical inline `unshift(...) + slice(0,100)` blocks (toggleSubtask,
 // toggleTaskDone x2, pmdToggleSubtask). The caller builds the record (its
-// fields vary by source), this only prepends and enforces the cap. Persistence
-// still rides save() for now; Stage 2b swaps that for an own-doc save here,
-// exactly as checkins/moodLog did (R5).
+// fields vary by source), this prepends, enforces the cap, and (F3 / Stage 2b)
+// persists to the completedTasks OWN doc -- no longer the dashboard blob. The
+// callers still call save() too, for the live-item mutation (task removed from
+// state.tasks etc.); that no longer carries completedTasks.
 var COMPLETED_TASKS_MAX=100;
 function _archiveCompletedTask(record){
   if(!state.completedTasks)state.completedTasks=[];
   state.completedTasks.unshift(record);
   if(state.completedTasks.length>COMPLETED_TASKS_MAX)state.completedTasks=state.completedTasks.slice(0,COMPLETED_TASKS_MAX);
+  if(typeof _saveCompletedTasksDoc==='function')_saveCompletedTasksDoc();
 }
 
 // R16 Phase A: mirrors _checkinsSince's window filter, but completedTasks
@@ -5684,6 +5689,54 @@ async function _saveMoodLogDoc(){
       await db.collection('users').doc(currentUser.uid).collection('data').doc('moodLog')
         .set({v:1,entries:doc.entries,updated:firebase.firestore.FieldValue.serverTimestamp()});
     }catch(e){console.log('moodLog save (cloud) error:',e);}
+  }
+}
+
+// F3 (Stage 2b): completedTasks lives in its OWN doc now, off the 1 MB
+// dashboard blob -- same R5 recipe as checkins/moodLog (own doc, localStorage
+// mirror, eager load, zero-backend self-seed migration), with ONE difference:
+// the load RECONCILES rather than blindly overwriting. completedTasks used to
+// ride the dashboard's realtime union-reconcile (SYNC_UNION_ARRAYS +
+// _archiveTombstones); moving it to a load-once doc would otherwise reintroduce
+// the removeCompleted resurrection Stage 2a fixed. So on load we union the
+// cloud copy with local by id and drop anything in _archiveTombstones --
+// reusing the pure sync-merge helpers -- preserving "removed stays removed" and
+// "concurrent completions both survive". We give up only the LIVE cross-device
+// update of the completed folder (fine for an archive; same tradeoff
+// checkins/moodLog already make). completedProjects/completedWorkouts stay in
+// the blob for now (a later increment), so _archiveTombstones is still in use.
+function _completedTasksStorageKey(){return 'cpCompletedTasks_'+(currentUser?currentUser.uid:'local');}
+async function _loadCompletedTasksDoc(){
+  var loaded=null;
+  if(firebaseReady&&db&&currentUser){
+    try{
+      var snap=await db.collection('users').doc(currentUser.uid).collection('data').doc('completedTasks').get();
+      if(snap.exists)loaded=snap.data();
+    }catch(e){console.log('completedTasks load (cloud) error:',e);}
+  }
+  if(!loaded){
+    try{var s=localStorage.getItem(_completedTasksStorageKey());if(s)loaded=JSON.parse(s);}catch(e){}
+  }
+  if(loaded&&Array.isArray(loaded.items)){
+    // Reconcile (not overwrite): union local (old-blob or prior-session data)
+    // with the loaded copy by id, then drop history entries the user cleared.
+    state.completedTasks=_dropTombstoned(mergeById(state.completedTasks,loaded.items),state._archiveTombstones||{});
+    await _saveCompletedTasksDoc(); // persist the reconciled result back
+  }else if((state.completedTasks||[]).length){
+    // ONE-TIME MIGRATION: pre-Stage-2b data lives in state.completedTasks,
+    // adopted by load() from the old dashboard blob. Seed the new doc from it.
+    await _saveCompletedTasksDoc();
+  }
+  try{localStorage.setItem(_completedTasksStorageKey(),JSON.stringify({v:1,items:state.completedTasks||[]}));}catch(e){}
+}
+async function _saveCompletedTasksDoc(){
+  var doc={v:1,items:state.completedTasks||[]};
+  try{localStorage.setItem(_completedTasksStorageKey(),JSON.stringify(doc));}catch(e){}
+  if(firebaseReady&&db&&currentUser){
+    try{
+      await db.collection('users').doc(currentUser.uid).collection('data').doc('completedTasks')
+        .set({v:1,items:doc.items,updated:firebase.firestore.FieldValue.serverTimestamp()});
+    }catch(e){console.log('completedTasks save (cloud) error:',e);}
   }
 }
 
@@ -10114,7 +10167,7 @@ await load();
 // which is lazy-loaded on open -- since HALT+/State-&-Regulation/mood chart
 // can render at any time). Must run after load() so pre-migration data
 // already merged into state.checkins/state.moodLog is available to adopt.
-await Promise.all([_loadCheckinsDoc(),_loadMoodLogDoc()]);
+await Promise.all([_loadCheckinsDoc(),_loadMoodLogDoc(),_loadCompletedTasksDoc()]);
 initPanelVisibility();applyPanelOrder();applyPanelVisibility();updateLockUI();updateClock();updateTimeLeft();setInterval(updateClock,1000);setInterval(updateTimeLeft,30000);updateTimerDisplay();renderPointsBadge();awardDailyLogin();
 _bindPanelUsageTracking();
 // -- DAILY ROUTINE RESET -- robust against tabs left open overnight --
@@ -10207,6 +10260,7 @@ setTimeout(function(){
       if(typeof load==='function')await load();
       if(typeof _loadCheckinsDoc==='function')await _loadCheckinsDoc();
       if(typeof _loadMoodLogDoc==='function')await _loadMoodLogDoc();
+      if(typeof _loadCompletedTasksDoc==='function')await _loadCompletedTasksDoc();
       if(typeof renderProjects==='function')renderProjects();
       if(typeof renderReminders==='function')renderReminders();
       if(typeof renderNotes==='function')renderNotes();

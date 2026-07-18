@@ -10,7 +10,7 @@ import assert from 'node:assert/strict';
 import { createRequire } from 'node:module';
 const require = createRequire(import.meta.url);
 
-const { mergeById, mergeTombstones, reconcileSync } = require('../public/sync-merge.js');
+const { mergeById, mergeTombstones, reconcileSync, _dropTombstoned } = require('../public/sync-merge.js');
 const { fmtDate } = require('../public/date-utils.js');
 
 // The OLD reconciliation, copied verbatim in spirit from load() lines 725-731,
@@ -58,21 +58,22 @@ test('deleted reminder stays deleted when a stale client writes', () => {
   assert.ok(!roundTrip.reminders.some(r => r.id === 'X'), 'X does not resurrect on round-trip');
 });
 
-// ── 2. Same, for completion state ────────────────────────────────────────────
-test('completed task stays completed when a stale client still holds it', () => {
-  const tasks = [{id:'t1',name:'a',done:false}, {id:'t2',name:'b',done:false}];
+// ── 2. Same, for completion state (completedProjects — a still-in-blob union
+//      array; completedTasks moved to its own doc in F3, covered separately) ──
+test('completed archive record stays put when a stale client still holds it', () => {
+  const subs = [{id:'t1',name:'a',done:false}, {id:'t2',name:'b',done:false}];
 
-  // Client A completes t1: removed from tasks, archived, tombstoned.
+  // Client A completes t1: removed from active items, archived, tombstoned.
   const A = {
-    tasks: tasks.filter(t => t.id !== 't1'),
-    completedTasks: [{ id:'t1', name:'a', archivedAt:'2026-07-17T12:00:00.000Z', source:'standalone' }],
+    tasks: subs.filter(t => t.id !== 't1'),
+    completedProjects: [{ id:'t1', name:'a', archivedAt:'2026-07-17T12:00:00.000Z', source:'project' }],
     _tombstones: { t1: '2026-07-17T12:00:00.000Z' },
   };
-  const staleB = { tasks: tasks.slice(), completedTasks: [] };
+  const staleB = { tasks: subs.slice(), completedProjects: [] };
 
   const reconciled = reconcileSync(staleB, A);
   assert.deepEqual(reconciled.tasks.map(t => t.id), ['t2'], 't1 does not return to the active list');
-  assert.ok(reconciled.completedTasks.some(t => t.id === 't1'), 'archive record is preserved');
+  assert.ok(reconciled.completedProjects.some(t => t.id === 't1'), 'archive record is preserved');
 });
 
 // ── 2b. Completed SUBTASK inside a project doesn't re-appear ─────────────────
@@ -160,22 +161,22 @@ test('concurrent adds on different devices are both kept', () => {
 });
 
 // ── 7. A cleared history entry (removeCompleted) stays gone across a stale write ─
-test('a removed completed-task history entry does not resurrect', () => {
+test('a removed completed-project history entry does not resurrect', () => {
   // Both devices hold two archive records. Device A clears t1 from history:
   // filtered out AND recorded in the SEPARATE _archiveTombstones map (not
   // _tombstones — see removeCompleted / _archiveTombstone in legacy.js).
   const both = [
-    { id:'t1', name:'a', archivedAt:'2026-07-17T10:00:00.000Z', source:'standalone' },
-    { id:'t2', name:'b', archivedAt:'2026-07-17T11:00:00.000Z', source:'standalone' },
+    { id:'t1', name:'a', archivedAt:'2026-07-17T10:00:00.000Z', source:'project' },
+    { id:'t2', name:'b', archivedAt:'2026-07-17T11:00:00.000Z', source:'project' },
   ];
   const A = {
-    completedTasks: both.filter(t => t.id !== 't1'),
+    completedProjects: both.filter(t => t.id !== 't1'),
     _archiveTombstones: { t1: '2026-07-17T12:00:00.000Z' },
   };
-  const staleB = { completedTasks: both.slice() }; // B never saw the removal
+  const staleB = { completedProjects: both.slice() }; // B never saw the removal
 
   const reconciled = reconcileSync(staleB, A);
-  assert.deepEqual(reconciled.completedTasks.map(t => t.id), ['t2'],
+  assert.deepEqual(reconciled.completedProjects.map(t => t.id), ['t2'],
     'the cleared archive record does not come back from a stale client');
   assert.ok(reconciled._archiveTombstones.t1, 'archive tombstone carries forward');
 });
@@ -188,16 +189,36 @@ test('a just-completed archive record survives even though its id is tombstoned'
   // _tombstones, the archive record would vanish the instant it was created.
   const A = {
     tasks: [{ id:'t2', name:'b', done:false }],
-    completedTasks: [{ id:'t1', name:'a', archivedAt:'2026-07-17T12:00:00.000Z', source:'standalone' }],
+    completedProjects: [{ id:'t1', name:'a', archivedAt:'2026-07-17T12:00:00.000Z', source:'project' }],
     _tombstones: { t1: '2026-07-17T12:00:00.000Z' }, // completion tombstone
     _archiveTombstones: {},                          // NOT removed from history
   };
-  const staleB = { tasks: [{ id:'t1', name:'a', done:false }, { id:'t2', name:'b', done:false }], completedTasks: [] };
+  const staleB = { tasks: [{ id:'t1', name:'a', done:false }, { id:'t2', name:'b', done:false }], completedProjects: [] };
 
   const reconciled = reconcileSync(staleB, A);
   assert.ok(!reconciled.tasks.some(t => t.id === 't1'), 't1 stays out of the active list');
-  assert.ok(reconciled.completedTasks.some(t => t.id === 't1'),
+  assert.ok(reconciled.completedProjects.some(t => t.id === 't1'),
     'the archive record is NOT wiped by the live-item tombstone');
+});
+
+// ── 8b. F3: completedTasks moved to its own doc; its load reconcile uses the
+//        same helpers (_dropTombstoned(mergeById(local, cloud), archiveTomb) —
+//        see _loadCompletedTasksDoc). Verify it keeps the same two guarantees. ─
+test('completedTasks own-doc load reconcile: removed stays removed, concurrent adds survive', () => {
+  // removed-stays-removed: local cleared t1 (archiveTombstone set); the cloud
+  // doc is stale and still holds t1. The load reconcile must drop it.
+  const local = [{ id:'t2', name:'b' }];
+  const cloudDoc = [{ id:'t1', name:'a' }, { id:'t2', name:'b' }];
+  const archiveTomb = { t1: '2026-07-17T12:00:00.000Z' };
+  const merged = _dropTombstoned(mergeById(local, cloudDoc), archiveTomb);
+  assert.deepEqual(merged.map(t => t.id).sort(), ['t2'], 't1 stays removed on load');
+
+  // concurrent adds: device A archived t3 locally, device B's cloud doc has t4;
+  // union keeps both.
+  const localA = [{ id:'t3', name:'c' }];
+  const cloudB = [{ id:'t4', name:'d' }];
+  const both = _dropTombstoned(mergeById(localA, cloudB), {});
+  assert.deepEqual(both.map(t => t.id).sort(), ['t3', 't4'], 'both completions survive');
 });
 
 // ── mergeTombstones keeps the earliest time and is grow-only ────────────────
