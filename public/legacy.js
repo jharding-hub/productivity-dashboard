@@ -861,6 +861,7 @@ async function load(){
   if(!state.points)state.points={current:0,monthKey:'',lastTier:'bronze',totalsByDay:{},lastLoginDate:'',lifetimeTotal:0};
   if(!state.points.totalsByDay)state.points.totalsByDay={};
   if(state.points.lifetimeTotal===undefined)state.points.lifetimeTotal=0;
+  if(state.hidePoints===undefined)state.hidePoints=false;
   if(!state.wellnessNotes)state.wellnessNotes={};
   if(!state.completedProjects)state.completedProjects=[];
   if(!state.gcal)state.gcal={connected:false,email:null,calendarId:null,autoPush:false,showExternal:true,lastPush:null,lastPull:null,pulledEvents:[]};
@@ -1025,6 +1026,26 @@ function applyPanelVisibility(){
   updateFocusBanner();
 }
 
+// F6: hide-toggle only -- points still accrue in the background either way
+// (addPoints itself is untouched); this purely controls whether the Tool Kit
+// badge and its two celebratory surfaces (floater, tier-up fireworks) show.
+function setHidePoints(on){
+  state.hidePoints=!!on;
+  save();
+  applyPointsVisibility();
+  _renderPointsSettings();
+}
+function applyPointsVisibility(){
+  var wrap=document.getElementById('pointsWrap');
+  if(wrap)wrap.style.display=state.hidePoints?'none':'';
+}
+function _renderPointsSettings(){
+  var el=document.getElementById('pointsSettings');
+  if(!el)return;
+  var on=!!state.hidePoints;
+  el.innerHTML='<div class="panel-toggle"><span class="pt-icon">🏅</span><div class="pt-info"><div class="pt-name">Hide points</div><div class="pt-desc">Presence points still accrue in the background — this only hides them from view.</div></div><label class="toggle-switch"><input type="checkbox" '+(on?'checked':'')+' onchange="setHidePoints(this.checked)"><span class="toggle-slider"></span></label></div>';
+}
+
 function openCustomize(){
   const el=document.getElementById('panelToggles');
   const ids=getPanelIds();
@@ -1048,6 +1069,7 @@ function openCustomize(){
   _renderSupportLevelSettings();
   if(typeof _renderNotifSettings==='function')_renderNotifSettings();
   if(typeof _renderBreathHealthSettings==='function')_renderBreathHealthSettings();
+  if(typeof _renderPointsSettings==='function')_renderPointsSettings();
 }
 
 function closeCustomize(){
@@ -7013,6 +7035,7 @@ function addPoints(source,sourceEl){
 }
 
 function showPointFloater(amount,sourceEl){
+  if(state.hidePoints)return; // F6: hide-toggle suppresses the celebratory UI, not the tally
   var container=document.getElementById('pointPopupContainer');
   if(!container)return;
   var floater=document.createElement('div');
@@ -7431,6 +7454,7 @@ function _renderWeeklyReview(){
 }
 
 function triggerTierUp(tier){
+  if(state.hidePoints)return; // F6: hide-toggle suppresses the celebratory UI, not the tally
   var overlay=document.getElementById('fireworksOverlay');
   if(!overlay)return;
   overlay.classList.add('show');
@@ -10488,7 +10512,7 @@ await load();
 // can render at any time). Must run after load() so pre-migration data
 // already merged into state.checkins/state.moodLog is available to adopt.
 await Promise.all([_loadCheckinsDoc(),_loadMoodLogDoc(),_loadCompletedTasksDoc()]);
-initPanelVisibility();applyPanelOrder();applyPanelVisibility();updateLockUI();updateClock();updateTimeLeft();setInterval(updateClock,1000);setInterval(updateTimeLeft,30000);updateTimerDisplay();renderPointsBadge();awardDailyLogin();
+initPanelVisibility();applyPanelOrder();applyPanelVisibility();applyPointsVisibility();updateLockUI();updateClock();updateTimeLeft();setInterval(updateClock,1000);setInterval(updateTimeLeft,30000);updateTimerDisplay();renderPointsBadge();awardDailyLogin();
 _bindPanelUsageTracking();
 // -- DAILY ROUTINE RESET -- robust against tabs left open overnight --
 // 1. Run once immediately after load so stale checks clear before the user sees them.
