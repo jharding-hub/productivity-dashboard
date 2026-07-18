@@ -3750,6 +3750,84 @@ function toast(msg){const el=document.getElementById('toast');el.textContent=msg
 document.addEventListener('keydown',e=>{if(e.target.tagName==='INPUT'||e.target.tagName==='TEXTAREA'||e.target.tagName==='SELECT'||e.target.isContentEditable)return;if(e.key==='b'||e.key==='B'){openQuickCapture();e.preventDefault();}if(e.key==='s'||e.key==='S'){startTimer();e.preventDefault();}if(e.key==='p'||e.key==='P'){pauseTimer();e.preventDefault();}});
 
 // =======================================
+// COMMAND PALETTE (F4) -- action registry, future features just push onto
+// COMMAND_REGISTRY. Every entry here reuses an existing, already-wired
+// function; the palette adds no new app behavior of its own.
+// =======================================
+var COMMAND_REGISTRY=[
+  {id:'quick-capture',label:'Quick Capture / Brain Dump',keywords:'add note thought capture braindump',run:function(){openQuickCapture();}},
+  {id:'start-timer',label:'Start Timer',keywords:'focus pomodoro begin work',run:function(){startTimer();}},
+  {id:'pause-timer',label:'Pause Timer',keywords:'stop halt break',run:function(){pauseTimer();}},
+  {id:'view-today',label:'Switch to Today View',keywords:'today view switch',run:function(){setViewMode('today');}},
+  {id:'view-everything',label:'Switch to Everything View',keywords:'everything dashboard switch view',run:function(){setViewMode('everything');}},
+  {id:'export-data',label:'Export My Data',keywords:'export download json backup account',run:function(){exportMyData();}},
+  {id:'open-tasklist',label:'Open Task List',keywords:'tasks todo list',run:function(){openPanelOverlay('tasklist');}},
+  {id:'open-timeline',label:'Open Timeline',keywords:'schedule work today blocks',run:function(){openPanelOverlay('timeline');}},
+  {id:'open-toolkit',label:'Open Tool Kit',keywords:'grounding regulation halt breath wellness',run:function(){openPanelOverlay('time');}},
+  {id:'open-projects',label:'Open Projects',keywords:'project subtasks',run:function(){openPanelOverlay('projects');}},
+  {id:'open-reminders',label:'Open Reminders',keywords:'reminder alert',run:function(){openPanelOverlay('reminders');}},
+  {id:'open-notes',label:'Open Notes',keywords:'note journal',run:function(){openPanelOverlay('notes');}}
+];
+var _cmdPaletteSelected=0;
+var _cmdPaletteFiltered=COMMAND_REGISTRY;
+function openCommandPalette(){
+  var modal=document.getElementById('cmdPaletteModal');if(!modal)return;
+  modal.classList.add('open');
+  var input=document.getElementById('cmdPaletteInput');
+  if(input){input.value='';input.focus();}
+  _cmdPaletteSelected=0;
+  _cmdPaletteFiltered=COMMAND_REGISTRY;
+  _cmdPaletteRender();
+}
+function closeCommandPalette(){
+  var modal=document.getElementById('cmdPaletteModal');if(!modal)return;
+  modal.classList.remove('open');
+}
+function _cmdPaletteFilter(){
+  var input=document.getElementById('cmdPaletteInput');
+  var q=(input?input.value:'').trim().toLowerCase();
+  _cmdPaletteFiltered=!q?COMMAND_REGISTRY:COMMAND_REGISTRY.filter(function(c){
+    return c.label.toLowerCase().indexOf(q)>=0||c.keywords.toLowerCase().indexOf(q)>=0;
+  });
+  _cmdPaletteSelected=0;
+  _cmdPaletteRender();
+}
+function _cmdPaletteRender(){
+  var list=document.getElementById('cmdPaletteList');if(!list)return;
+  if(_cmdPaletteFiltered.length===0){
+    list.innerHTML='<div style="padding:12px;color:var(--text-faint);font-size:13px;">No matching commands</div>';
+    return;
+  }
+  list.innerHTML=_cmdPaletteFiltered.map(function(c,i){
+    return '<div class="cmd-palette-item" data-idx="'+i+'" onclick="_cmdPaletteRun('+i+')" style="padding:9px 10px;border-radius:6px;cursor:pointer;font-size:13px;'
+      +(i===_cmdPaletteSelected?'background:var(--accent-bg,rgba(91,232,255,0.12));':'')+'">'+esc(c.label)+'</div>';
+  }).join('');
+}
+function _cmdPaletteRun(i){
+  var cmd=_cmdPaletteFiltered[i];
+  if(!cmd)return;
+  closeCommandPalette();
+  cmd.run();
+}
+function _cmdPaletteKeydown(e){
+  if(e.key==='Escape'){closeCommandPalette();e.preventDefault();return;}
+  if(e.key==='ArrowDown'){_cmdPaletteSelected=Math.min(_cmdPaletteSelected+1,_cmdPaletteFiltered.length-1);_cmdPaletteRender();e.preventDefault();return;}
+  if(e.key==='ArrowUp'){_cmdPaletteSelected=Math.max(_cmdPaletteSelected-1,0);_cmdPaletteRender();e.preventDefault();return;}
+  if(e.key==='Enter'){_cmdPaletteRun(_cmdPaletteSelected);e.preventDefault();return;}
+}
+// Separate listener from the single-letter shortcut block above -- Cmd/Ctrl+K
+// is a modifier combo, so (unlike b/s/p) it should fire even while typing in
+// another field, and must not be folded into that input-focus-guarded block.
+document.addEventListener('keydown',function(e){
+  if((e.metaKey||e.ctrlKey)&&(e.key==='k'||e.key==='K')){
+    e.preventDefault();
+    var modal=document.getElementById('cmdPaletteModal');
+    if(modal&&modal.classList.contains('open')){closeCommandPalette();}
+    else{openCommandPalette();}
+  }
+});
+
+// =======================================
 // MOOD/ENERGY LOGGING & TRENDS
 // =======================================
 
@@ -4841,7 +4919,7 @@ function renderTaskList(){
     if(pcEl){pcEl.style.flex='none';pcEl.style.minHeight='0';}
   }else{
     if(pcEl){pcEl.style.flex='';pcEl.style.minHeight='';}
-    el.innerHTML=all.map(_taskRowHTML).join('');
+    el.innerHTML=all.map(_tlRowWithSelect).join('');
     all.forEach(_wireTaskRowEditable);
     refreshEditables();
   }
@@ -4882,7 +4960,175 @@ function renderTaskList(){
     }
   }
   updateTLProjectDropdowns();
+  _renderSavedFilterOptions();
   if(typeof _updateTileSummaryTasklist==='function')_updateTileSummaryTasklist();
+}
+
+// =======================================
+// TASK LIST -- FILTERS DISCLOSURE (F4). Everything view's task panel only:
+// this whole section is wired from the tasklist panel markup and reached only
+// through renderTaskList()'s own row map (_tlRowWithSelect). renderTodayView
+// renders its own rows straight from _taskRowHTML (no select-mode wrapper),
+// so none of this can appear on the Today view.
+// =======================================
+function toggleTaskFilters(headerEl){
+  var body=document.getElementById('tlFiltersBody');
+  if(!body)return;
+  var open=body.style.display!=='none';
+  body.style.display=open?'none':'';
+  var arrow=headerEl&&headerEl.querySelector('.tl-completed-arrow');
+  if(arrow)arrow.style.transform=open?'':'rotate(90deg)';
+}
+
+// -- Saved filter presets: bundle the existing sort/project/show-all controls --
+function _renderSavedFilterOptions(){
+  var sel=document.getElementById('tlSavedFilterSelect');if(!sel)return;
+  var presets=state.savedTaskFilters||[];
+  sel.innerHTML='<option value="">Saved filters…</option>'+presets.map(function(p,i){
+    return '<option value="'+i+'">'+esc(p.name)+'</option>';
+  }).join('');
+}
+function saveCurrentTaskFilter(){
+  var name=prompt('Name this filter:');
+  if(!name)return;
+  var sortBy=document.getElementById('tlSortBy');
+  var filterProj=document.getElementById('tlFilterProj');
+  var upcomingEl=document.getElementById('taskUpcomingOnly');
+  if(!state.savedTaskFilters)state.savedTaskFilters=[];
+  state.savedTaskFilters.push({
+    name:name,
+    sort:sortBy?sortBy.value:'due',
+    proj:filterProj?filterProj.value:'all',
+    upcomingOnly:!!(upcomingEl&&upcomingEl.checked)
+  });
+  save();
+  _renderSavedFilterOptions();
+  toast('Filter saved');
+}
+function applySavedTaskFilter(idxStr){
+  if(idxStr==='')return;
+  var preset=(state.savedTaskFilters||[])[parseInt(idxStr,10)];
+  if(!preset)return;
+  var sortBy=document.getElementById('tlSortBy');
+  var filterProj=document.getElementById('tlFilterProj');
+  var upcomingEl=document.getElementById('taskUpcomingOnly');
+  if(sortBy)sortBy.value=preset.sort;
+  if(filterProj)filterProj.value=preset.proj;
+  if(upcomingEl)upcomingEl.checked=preset.upcomingOnly;
+  renderTaskList();
+}
+
+// -- Batch select / bulk operations --
+var _tlSelectMode=false;
+var _tlSelected=Object.create(null);
+function toggleTaskSelectMode(on){
+  _tlSelectMode=!!on;
+  _tlSelected=Object.create(null);
+  var actions=document.getElementById('tlSelectModeActions');
+  if(actions)actions.style.display=_tlSelectMode?'flex':'none';
+  var selectAll=document.getElementById('tlSelectAll');
+  if(selectAll)selectAll.checked=false;
+  renderTaskList();
+}
+function _tlToggleSelect(id,checked){
+  if(checked)_tlSelected[id]=true;else delete _tlSelected[id];
+}
+function _tlToggleSelectAll(checked){
+  document.querySelectorAll('#taskListItems .tl-select-check').forEach(function(cb){
+    cb.checked=checked;
+    _tlToggleSelect(cb.dataset.id,checked);
+  });
+}
+// Wraps _taskRowHTML with a select checkbox ONLY when _tlSelectMode is on.
+// Deliberately a separate function (not a second param on _taskRowHTML)
+// since renderTodayView also calls _taskRowHTML via a bare .map() -- adding a
+// param there would receive the array index as a truthy "selectable" flag
+// for every row past the first and leak the checkbox onto Today.
+function _tlRowWithSelect(t){
+  var row=_taskRowHTML(t);
+  if(!_tlSelectMode)return row;
+  var checked=_tlSelected[t.id]?' checked':'';
+  return row.replace('<div class="tl-item">','<div class="tl-item"><input type="checkbox" class="tl-select-check" data-id="'+t.id+'"'+checked+' onclick="event.stopPropagation();_tlToggleSelect(\''+t.id+'\',this.checked)" style="margin-right:8px;flex-shrink:0;">');
+}
+function _tlBulkComplete(){
+  var ids=Object.keys(_tlSelected);
+  if(!ids.length){toast('No tasks selected');return;}
+  var all=getAllTasks();
+  var n=0;
+  ids.forEach(function(id){
+    var t=all.find(function(t){return t.id===id;});
+    if(t&&!t.done){toggleTaskDone(t.id,t.source,t.projectId);n++;}
+  });
+  _tlSelected=Object.create(null);
+  toast('Completed '+n+' task'+(n!==1?'s':''));
+}
+function _tlBulkDelete(){
+  var ids=Object.keys(_tlSelected);
+  if(!ids.length){toast('No tasks selected');return;}
+  var all=getAllTasks();
+  _confirm('Delete '+ids.length+' selected task'+(ids.length!==1?'s':'')+'?',function(){
+    ids.forEach(function(id){
+      var t=all.find(function(t){return t.id===id;});
+      if(!t)return;
+      _tombstone(id);
+      if(t.source==='standalone'){
+        state.tasks=state.tasks.filter(function(x){return x.id!==id;});
+      }else{
+        var p=state.projects.find(function(p){return p.id===t.projectId;});
+        if(p)p.subtasks=p.subtasks.filter(function(x){return x.id!==id;});
+      }
+    });
+    _tlSelected=Object.create(null);
+    save();renderProjects();renderTaskList();
+    toast('Deleted '+ids.length+' task'+(ids.length!==1?'s':''));
+  },{destructive:true,confirmText:'Delete'});
+}
+
+// -- Schedule to timeline: wires existing timeEst data into the existing
+// tlBlocks pipeline. Mirrors _writeBlock's block shape (legacy.js ~9050) and
+// reuses _suggestWorkTime's existing gap-finding so batched items stack
+// without conflicting, exactly like the single-item Work Today flow does.
+function _taskToTimelineBlock(t,targetDate){
+  targetDate=targetDate||todayStr();
+  var duration=Math.min(parseInt(t.timeEst)||60,720);
+  var startMin=_suggestWorkTime(duration,targetDate);
+  var hh=Math.floor(startMin/60),mm=startMin%60;
+  var timeVal=(hh<10?'0':'')+hh+':'+(mm<10?'0':'')+mm;
+  var block={
+    id:'tlb'+Date.now()+Math.random().toString(36).slice(2),
+    name:t.name,
+    date:targetDate,
+    time:timeVal,
+    duration:duration,
+    projectId:t.projectId||'',
+    projectIds:[],
+    priority:t.priority||'med',
+    linkedType:t.source==='standalone'?'task':'subtask',
+    linkedId:t.id
+  };
+  if(!state.tlBlocks)state.tlBlocks=[];
+  state.tlBlocks.push(block);
+  return block;
+}
+function _scheduleSelectedToTimeline(){
+  var ids=Object.keys(_tlSelected);
+  if(!ids.length){toast('No tasks selected');return;}
+  var all=getAllTasks();
+  var scheduled=0,noTime=0,already=0;
+  ids.forEach(function(id){
+    var t=all.find(function(t){return t.id===id;});
+    if(!t||t.done)return;
+    if(!t.timeEst){noTime++;return;}
+    if(_isScheduledToday(id)){already++;return;}
+    _taskToTimelineBlock(t);
+    scheduled++;
+  });
+  save();renderTaskList();renderTimeline();
+  if(typeof updateDayProgress==='function')updateDayProgress();
+  var msg='Scheduled '+scheduled+' task'+(scheduled!==1?'s':'');
+  if(noTime)msg+=', '+noTime+' skipped (no time estimate)';
+  if(already)msg+=', '+already+' already scheduled';
+  toast(msg);
 }
 
 function toggleTaskDone(id,source,projId){
