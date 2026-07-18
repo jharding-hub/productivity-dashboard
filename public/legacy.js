@@ -5147,18 +5147,16 @@ function _taskToTimelineBlock(t,targetDate){
   var startMin=_suggestWorkTime(duration,targetDate);
   var hh=Math.floor(startMin/60),mm=startMin%60;
   var timeVal=(hh<10?'0':'')+hh+':'+(mm<10?'0':'')+mm;
-  var block={
-    id:'tlb'+Date.now()+Math.random().toString(36).slice(2),
+  var block=_buildTimelineBlock({
     name:t.name,
     date:targetDate,
     time:timeVal,
     duration:duration,
     projectId:t.projectId||'',
-    projectIds:[],
     priority:t.priority||'med',
     linkedType:t.source==='standalone'?'task':'subtask',
     linkedId:t.id
-  };
+  });
   if(!state.tlBlocks)state.tlBlocks=[];
   state.tlBlocks.push(block);
   return block;
@@ -9404,6 +9402,30 @@ function _scheduleForTomorrow(timeVal,durVal){
   _writeBlock(tomorrowStr,timeVal,durVal);
 }
 
+// Single source of truth for a task/subtask-linked tlBlocks entry's shape,
+// shared by the single-item Work Today flow (_writeBlock, below) and the F4
+// batch "Add selected to Timeline" path (_taskToTimelineBlock). Previously
+// each hand-built the same object literal -- a drift risk if one gained a
+// field the other didn't. Deliberately pure (no state mutation, no save/
+// render): the two callers have different lifecycles by design -- the modal
+// flow does one save+render per confirm, the batch flow defers a single
+// save+render across N pushes -- so each keeps owning its own push and
+// side-effect timing; only the object shape is shared.
+function _buildTimelineBlock(opts){
+  return {
+    id:'tlb'+Date.now()+Math.random().toString(36).slice(2),
+    name:opts.name,
+    date:opts.date,
+    time:opts.time,
+    duration:opts.duration,
+    projectId:opts.projectId||'',
+    projectIds:[],
+    priority:opts.priority||'med',
+    linkedType:opts.linkedType,
+    linkedId:opts.linkedId
+  };
+}
+
 function _writeBlock(dateStr,timeVal,durVal){
   if(!state.tlBlocks)state.tlBlocks=[];
   // If editing an existing block, update it in place
@@ -9422,18 +9444,16 @@ function _writeBlock(dateStr,timeVal,durVal){
     }
   }
   // Otherwise create new
-  state.tlBlocks.push({
-    id:'tlb'+Date.now()+Math.random().toString(36).slice(2),
+  state.tlBlocks.push(_buildTimelineBlock({
     name:_wtCurrentItem.name,
     date:dateStr,
     time:timeVal,
     duration:durVal,
     projectId:(_wtCurrentItem.type==='subtask'||_wtCurrentItem.type==='project')?_wtCurrentItem.projectId:'',
-    projectIds:[],
     priority:_wtCurrentItem.priority,
     linkedType:_wtCurrentItem.type,
     linkedId:_wtCurrentItem.id
-  });
+  }));
   save();
   closeWorkTodayModal();
   renderProjects();renderTaskList();renderTimeline();
