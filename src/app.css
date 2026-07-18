@@ -2937,7 +2937,13 @@ body.admin-overlay-open #starryLayer,body.admin-overlay-open #galaxyLayer,body.a
 /* ═══ TODAY VIEW (R2a) ═══ container-level layout only -- rows reuse the
    existing .tl-item / .routine-item / .reminder-item / .empty-state / .btn
    styles verbatim, so nothing about their look needed to be redefined. */
-.today-view{max-width:640px;margin:0 auto;padding:20px 16px 140px;}
+/* position/z-index: the animated background themes (galaxy/storm/starry) live
+   inside .app-wrap as position:fixed z-index:0 layers. A static in-flow Today
+   view paints BEFORE those positioned layers, so a dense theme (galaxy) would
+   composite over the opaque task cards. Lifting the Today view into the same
+   positioned layer (z-index:1, matching .app-wrap's own) keeps its cards above
+   the animation -- same treatment .panel already gets on the dashboard. */
+.today-view{max-width:640px;margin:0 auto;padding:20px 16px 140px;position:relative;z-index:1;}
 .today-header{margin-bottom:24px;}
 .today-greeting{font-size:22px;font-weight:600;color:var(--text);}
 .today-date{font-size:14px;color:var(--text-dim);margin-top:2px;}
