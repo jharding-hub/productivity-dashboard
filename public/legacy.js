@@ -6385,11 +6385,16 @@ function submitQuickCapture(){
 // no DOM anchoring -- renderOnboardingStep derives "X of N" from .length, so
 // changing the count here is self-consistent with no other code changes.
 var ONBOARDING_STEPS=[
-  {title:'Welcome to Centerpost',body:"A quick tour — seven short steps, then you're on your own. Skip any time."},
+  {title:'Welcome to Centerpost',body:"A quick tour — eight short steps, then you're on your own. Skip any time."},
   {title:'Today',body:"This is home: what's due, your current routine, and today's reminders, all in one place."},
   {title:'Quick Capture',body:"Tap the pencil (or press B) from anywhere and type — it figures out if it's a task or a thought."},
   {title:'Today / Everything',body:'Today stays calm and focused. Flip to Everything any time for the full set of panels.'},
   {title:'Tool Kit',body:'Breathing, grounding, HALT+ check-ins, and the focus timer — always one tap away.'},
+  // R7: first-run version of the existing Settings toggle (setSupportLevel /
+  // _renderSupportLevelSettings). Placed right after Tool Kit -- the exact
+  // feature this preference controls. Renders its own markup in
+  // renderOnboardingStep() below; body is unused for this step.
+  {title:'How much support do you want?',interactive:'supportLevel'},
   {title:'Axis',body:'Your AI assistant. Ask it to plan your day, break down a task, or just talk something through.'},
   {title:"That's the essentials",body:"You're all set — jump in whenever you're ready."}
 ];
@@ -6429,7 +6434,25 @@ function renderOnboardingStep(){
   var backBtn=document.getElementById('onboardingBackBtn');
   var nextBtn=document.getElementById('onboardingNextBtn');
   if(titleEl)titleEl.textContent=step.title;
-  if(bodyEl)bodyEl.textContent=step.body;
+  if(bodyEl){
+    if(step.interactive==='supportLevel'){
+      // R7: same markup/copy as _renderSupportLevelSettings (Settings panel),
+      // reused verbatim so the tour and Settings never drift. setSupportLevel
+      // writes the real preference; the second call re-renders THIS step so
+      // the highlight updates immediately (Settings, if open elsewhere, was
+      // already refreshed by setSupportLevel itself).
+      var cur=state.supportLevel||'full';
+      bodyEl.innerHTML=
+        '<div class="support-level-row">'
+        +'<button class="support-level-btn'+(cur==='full'?' active':'')+'" onclick="setSupportLevel(\'full\');renderOnboardingStep();">'
+        +'<strong>Full</strong><span>Grounding Toolkit surfaces on its own when mood or energy is low</span></button>'
+        +'<button class="support-level-btn'+(cur==='lean'?' active':'')+'" onclick="setSupportLevel(\'lean\');renderOnboardingStep();">'
+        +'<strong>Lean</strong><span>Nothing pops up uninvited — open it yourself when you want it</span></button>'
+        +'</div>';
+    }else{
+      bodyEl.textContent=step.body;
+    }
+  }
   if(progEl)progEl.textContent=(_onboardingStep+1)+' of '+ONBOARDING_STEPS.length;
   if(backBtn)backBtn.style.visibility=_onboardingStep===0?'hidden':'visible';
   if(nextBtn)nextBtn.textContent=_onboardingStep===ONBOARDING_STEPS.length-1?'Get Started':'Next';
