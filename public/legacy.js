@@ -4800,7 +4800,7 @@ function renderTodayView(){
   html+='<div class="today-section"><button class="btn btn-accent" onclick="if(_isMobile()){showMobilePanel(\'time\');}else{openPanelOverlay(\'time\');}">Open Tool Kit</button></div>';
 
   el.innerHTML=html;
-  slice.tasks.forEach(_wireTaskRowEditable);
+  slice.tasks.forEach(function(t){_wireTaskRowEditable(t,el);});
   refreshEditables();
 }
 
@@ -4872,9 +4872,16 @@ function _taskRowHTML(t){
 }
 // Editable-cell wiring for one task row, factored alongside _taskRowHTML.
 // Caller is responsible for calling refreshEditables() once after wiring a batch.
-function _wireTaskRowEditable(t){
-  var nameEl=document.getElementById('tlname_'+t.id);
-  var dueEl=document.getElementById('tldue_'+t.id);
+// `root` scopes the cell lookup to ONE view's container. The Today view and the
+// Everything task list both render task rows from _taskRowHTML with identical
+// element ids (tlname_<id>/tldue_<id>), so a bare document.getElementById would
+// always resolve to whichever view is first in the DOM (Today) and leave the
+// other view's name/date cells unwired -- silently breaking inline editing there.
+// Scoping to the caller's container wires each view's own cells independently.
+function _wireTaskRowEditable(t,root){
+  var scope=root||document;
+  var nameEl=scope.querySelector('[id="tlname_'+t.id+'"]');
+  var dueEl=scope.querySelector('[id="tldue_'+t.id+'"]');
   if(nameEl){
     if(t.source==='standalone'){
       makeEditable(nameEl,function(v){editStandaloneTaskName(t.id,v);});
@@ -4942,7 +4949,7 @@ function renderTaskList(){
   }else{
     if(pcEl){pcEl.style.flex='';pcEl.style.minHeight='';}
     el.innerHTML=all.map(_tlRowWithSelect).join('');
-    all.forEach(_wireTaskRowEditable);
+    all.forEach(function(t){_wireTaskRowEditable(t,el);});
     refreshEditables();
   }
   document.getElementById('taskListCount').textContent=totalCount;
