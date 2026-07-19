@@ -912,6 +912,14 @@ function startRealtimeSync(){
       const localVP=state.visiblePanels;
       const localKP=state.knownPanels;
       const localFocusMode=state.focusMode;
+      // currentRoutineTab is per-device VIEW state (which routine tab you're
+      // looking at), not shared data. switchRoutineTab() doesn't even persist
+      // it, so the cloud copy lags behind your actual selection -- letting the
+      // spread below overwrite it reverts the routines panel to whatever tab was
+      // last saved ('morning' by default) on every snapshot echo, including one
+      // delivered when the app returns to the foreground (e.g. after a
+      // screenshot). Preserve the local selection, same as focusMode.
+      const localRoutineTab=state.currentRoutineTab;
       const localSavedVis=state._savedPanelVis;
       const localRoutineReset=state.lastRoutineReset;
       const localRoutines=JSON.parse(JSON.stringify(state.routines||{}));
@@ -949,6 +957,7 @@ function startRealtimeSync(){
       // value -- and the next save() would persist that reverted total.
       if(localUpdatedAt>(cloud._updatedAt||0))state.points=localPoints;
       state.focusMode=localFocusMode;
+      state.currentRoutineTab=localRoutineTab;
       if(localSavedVis)state._savedPanelVis=localSavedVis;else delete state._savedPanelVis;
       state.visiblePanels=Object.assign({},cloud.visiblePanels||{},localVP);
       state.knownPanels=localKP&&localKP.length>=(cloud.knownPanels||[]).length?localKP:cloud.knownPanels||localKP;
