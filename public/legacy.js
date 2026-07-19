@@ -3762,7 +3762,9 @@ var COMMAND_REGISTRY=[
   {id:'open-toolkit',label:'Open Tool Kit',keywords:'grounding regulation halt breath wellness',run:function(){openPanelOverlay('time');}},
   {id:'open-projects',label:'Open Projects',keywords:'project subtasks',run:function(){openPanelOverlay('projects');}},
   {id:'open-reminders',label:'Open Reminders',keywords:'reminder alert',run:function(){openPanelOverlay('reminders');}},
-  {id:'open-notes',label:'Open Notes',keywords:'note journal',run:function(){openPanelOverlay('notes');}}
+  {id:'open-notes',label:'Open Notes',keywords:'note journal',run:function(){openPanelOverlay('notes');}},
+  {id:'weekly-review',label:'Weekly Review',keywords:'recap summary week report review sunday',run:function(){openWeeklyReview();}},
+  {id:'insights',label:'Insights',keywords:'points mood trends report insights correlations',run:function(){openPointsInsights();}}
 ];
 var _cmdPaletteSelected=0;
 var _cmdPaletteFiltered=COMMAND_REGISTRY;
