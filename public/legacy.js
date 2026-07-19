@@ -3376,6 +3376,11 @@ function checkDailyRoutineReset(){
   save();
   renderRoutines();
 }
+// The time-appropriate routine tab: mornings show Morning, afternoons/evenings
+// show Evening. Used both for the Today view's routine slice and as the routines
+// panel's per-open default (set once in initApp, then switchRoutineTab owns it
+// for the rest of the session).
+function _defaultRoutineTab(){return new Date().getHours()<12?'morning':'evening';}
 function switchRoutineTab(tab,btn){state.currentRoutineTab=tab;document.querySelectorAll('.tab-btn').forEach(b=>b.classList.remove('active'));btn.classList.add('active');renderRoutines();}
 function toggleRoutine(tab,id,e){if(e){var t=e.target;if(t.classList.contains('r-delete')||t.classList.contains('r-name')||t.closest('.r-delete')||t.closest('.r-name'))return;}const r=state.routines[tab].find(r=>r.id===id);if(r){var wasUndone=!r.done;r.done=!r.done;if(wasUndone&&r.done){var srcEl=document.querySelector('[data-rid="'+id+'"] .r-check');addPoints('routine',srcEl);_trackEvent('tool_use','routine_check','Routine Check');}}save();renderRoutines();_refreshTodayViewIfVisible();}
 // Guarded cross-refresh so Today (R2) and Everything stay in sync regardless
@@ -4723,7 +4728,7 @@ function _todaySlice(){
     .sort(function(a,b){return (a.due||'').localeCompare(b.due||'');});
   var reminders=(state.reminders||[]).filter(function(r){return r.date&&r.date<=today;})
     .sort(function(a,b){return (a.date||'').localeCompare(b.date||'')||(a.time||'').localeCompare(b.time||'');});
-  var routineTab=new Date().getHours()<12?'morning':'evening';
+  var routineTab=_defaultRoutineTab();
   var routines=(state.routines&&state.routines[routineTab])||[];
   return {today:today,tasks:tasks,reminders:reminders,routineTab:routineTab,routines:routines};
 }
@@ -10688,6 +10693,11 @@ setTimeout(function(){
 
 document.addEventListener('visibilitychange',function(){if(!document.hidden){awardDailyLogin();renderTimeline();}});
 
+// Open the routines panel on the time-appropriate tab (Morning before noon,
+// Evening after). Set once here -- after load() has hydrated state and before
+// startRealtimeSync() -- so each app open defaults sensibly; switchRoutineTab()
+// then owns the choice for the session (preserved across sync echoes).
+state.currentRoutineTab=_defaultRoutineTab();
 renderProjects();renderReminders();renderThoughts();renderNotes();renderRoutines();renderTaskList();renderTimeline();checkDailyRoutineReset();newDecisionPrompt();initDragDrop();updateAllTileSummaries();_applySavedTheme();renderThemeSelector();applyTierGating();updateFocusBanner();updateFocusModeUI();
 // R2b: desktop keeps its header-visibility line; setViewMode owns the initial
 // paint of Today-vs-Everything (and, on mobile, home-vs-launcher) from the
