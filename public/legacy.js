@@ -8016,7 +8016,7 @@ var WO_EXERCISES={
   db_bench:{name:'DB Bench Press',muscles:'Chest · Anterior Deltoid · Triceps',
     steps:['Lie flat, feet on floor. Dumbbells at chest, palms forward.','Press upward until arms nearly locked, slight arc inward.','Lower slowly 2–3 s, feel chest stretch.','Shoulder blades pinched back throughout -- no shrugging.'],
     tip:'Control the descent. If no bench, do floor press.',
-    alts:['db_incline','db_floor_press','cable_chest','pushup_weighted','pec_deck','dips_chest','cable_crossover','smith_bench','chest_press_machine']},
+    alts:['smith_bench','db_incline','db_floor_press','cable_chest','pushup_weighted','pec_deck','dips_chest','cable_crossover','chest_press_machine']},
   db_incline:{name:'Incline DB Press',muscles:'Upper Chest · Anterior Deltoid · Triceps',
     steps:['Set bench 30–45°. Kick DBs up as you lie back.','Press upward at bench angle, not straight up.','Lower to outside upper chest, elbows ~60°.','Pause at bottom, drive back up.'],
     tip:'Upper chest is often underdeveloped. Go lighter than flat press.',
@@ -8120,7 +8120,7 @@ var WO_EXERCISES={
   chest_supported_row:{name:'Chest-Supported DB Row',muscles:'Rhomboids · Rear Delt · Lats · Biceps',
     steps:['Set incline bench to 30–45°. Lie chest-down, DBs hanging.','Row both DBs up toward hips simultaneously.','Squeeze shoulder blades together.','Lower slowly -- full stretch.'],
     tip:'Chest support eliminates lower-back fatigue. Pure back work.',
-    alts:['pullups','lat_pulldown','db_row','cable_row','t_bar_row','assisted_pullup','straight_arm_pulldown','ring_row','close_grip_pulldown']},
+    alts:['cable_row','db_row','pullups','lat_pulldown','t_bar_row','assisted_pullup','straight_arm_pulldown','ring_row','close_grip_pulldown']},
   straight_arm_pulldown:{name:'Straight-Arm Pulldown',muscles:'Lats (isolation) · Core',
     steps:['High cable, rope or straight bar. Arms nearly straight.','Pull bar down to thighs with a sweeping arc.','Feel the lat stretch at top -- that\'s the money.','Return slowly.'],
     tip:'Pure lat isolation. Great as a warm-up or finishing move.',
@@ -8330,7 +8330,7 @@ var WO_EXERCISES={
   trap_bar_dl:{name:'Trap Bar Deadlift',muscles:'Quads · Glutes · Hamstrings · Lower Back',
     steps:['Stand inside hex bar. Grip handles.','Hinge to grab, flat back, hips above knees.','Drive through floor simultaneously with hips and shoulders.','Lockout -- squeeze glutes, stand tall.'],
     tip:'Trap bar reduces lower back stress vs conventional. Higher quad involvement. Excellent for athletes.',
-    alts:['db_deadlift','rdl','hip_thrust','kb_swing','stiff_leg_dl','sumo_rdl','good_morning','cable_pull_through','nordic_curl']},
+    alts:['rdl','db_deadlift','hip_thrust','kb_swing','stiff_leg_dl','sumo_rdl','good_morning','cable_pull_through','nordic_curl']},
 
   // -- CORE (anti-extension, anti-rotation, anti-lateral flexion) --
   plank:{name:'Plank',muscles:'Core (anti-extension) · Glutes · Shoulders',
@@ -8584,28 +8584,28 @@ var WO_EXERCISES={
 // Each day trains upper AND lower body. Days alternate push/pull emphasis to allow recovery.
 var WO_PROGRAM=[
   {
-    day:'A',name:'Push + Knee-Dominant',
-    rationale:'Horizontal push + quad-dominant lower. Vertical push + unilateral. Tricep isolation. Core anti-extension finisher.',
+    day:'A',name:'Push + Squat (Heavy)',
+    rationale:'Horizontal push and knee-dominant squat lead the session heavy -- 6-10 reps, full 2-min rest -- since higher-intensity loading is the strongest driver of strength and bone density after 50. Vertical push and a row balance the pressing volume for shoulder health and weekly back frequency. Tricep, calves, and core finish it off.',
     exercises:[
-      {id:'db_bench',sets:'3×10–12',rest:'90 sec',note:'Horizontal push'},
-      {id:'goblet_squat',sets:'3×12–15',rest:'90 sec',note:'Knee-dominant lower'},
-      {id:'db_shoulder_press',sets:'3×10–12',rest:'90 sec',note:'Vertical push'},
-      {id:'step_ups',sets:'3×10 each',rest:'90 sec',note:'Unilateral quad/glute'},
-      {id:'db_tricep_ext',sets:'3×12–15',rest:'60 sec',note:'Tricep long-head'},
-      {id:'standing_calf_raise',sets:'3×12–15',rest:'45 sec',note:'Gastroc'},
+      {id:'db_bench',sets:'4×6–8',rest:'2 min',note:'Heavy horizontal push -- leave 1-2 reps in the tank'},
+      {id:'goblet_squat',sets:'3×6–10',rest:'2 min',note:'Heavy knee-dominant lower'},
+      {id:'db_shoulder_press',sets:'3×8–10',rest:'90 sec',note:'Vertical push'},
+      {id:'chest_supported_row',sets:'3×10–12',rest:'90 sec',note:'Horizontal pull -- balances the pressing volume'},
+      {id:'db_tricep_ext',sets:'2×12–15',rest:'60 sec',note:'Tricep long-head'},
+      {id:'standing_calf_raise',sets:'3×10–15',rest:'45 sec',note:'Gastroc'},
       {id:'plank',sets:'3×30–45 sec',rest:'45 sec',note:'Core finisher -- anti-extension'}
     ]
   },
   {
-    day:'B',name:'Pull + Hip-Dominant',
-    rationale:'Vertical pull + hip-hinge posterior. Horizontal pull + unilateral lower. Rear delt + bicep. Anti-extension core finisher.',
+    day:'B',name:'Pull + Hinge (Heavy)',
+    rationale:'Trap bar deadlift anchors the session heavy -- 8-10 reps, full 2-min rest -- the single highest-payoff lift for strength and bone density at this age. Pull-ups run on a rep-target progression instead of open-ended max sets. Incline press adds the week\'s second chest session. Unilateral leg work, rear delts, biceps, and deep core round it out.',
     exercises:[
-      {id:'pullups',sets:'3×max',rest:'2 min',note:'Vertical pull'},
-      {id:'rdl',sets:'3×10–12',rest:'90 sec',note:'Hip-dominant posterior'},
-      {id:'db_row',sets:'3×10 each',rest:'90 sec',note:'Horizontal pull'},
-      {id:'bulgarian_split',sets:'3×10 each',rest:'90 sec',note:'Unilateral posterior'},
+      {id:'pullups',sets:'3×6–10',rest:'2 min',note:'Vertical pull -- add load once you clear the top of the range'},
+      {id:'trap_bar_dl',sets:'4×8–10',rest:'2 min',note:'Heavy hip hinge -- the day\'s anchor lift'},
+      {id:'db_incline',sets:'3×10–12',rest:'90 sec',note:'Upper chest -- second weekly chest session'},
+      {id:'bulgarian_split',sets:'3×8–10 each',rest:'90 sec',note:'Unilateral posterior'},
       {id:'face_pull',sets:'3×15–20',rest:'60 sec',note:'Rear delt / rotator cuff'},
-      {id:'db_bicep_curl',sets:'3×12–15',rest:'60 sec',note:'Bicep isolation'},
+      {id:'db_bicep_curl',sets:'2×10–12',rest:'60 sec',note:'Bicep isolation'},
       {id:'dead_bug',sets:'3×8 each side',rest:'45 sec',note:'Core finisher -- deep core'}
     ]
   },
@@ -8970,7 +8970,9 @@ function setWorkoutTrack(dayLetter,trackId){
 function _renderExercise(ex,slotId){
   var exData=WO_EXERCISES[ex.id];
   var log=(state.workoutLog&&state.workoutLog[ex.id])||{weight:'',reps:'',sets:''};
-  var opts='<option value="'+ex.id+'">'+exData.name+'</option>'
+  var firstAlt=exData.alts&&exData.alts.length?WO_EXERCISES[exData.alts[0]]:null;
+  var primaryLabel=firstAlt?exData.name+' / '+firstAlt.name:exData.name;
+  var opts='<option value="'+ex.id+'">'+primaryLabel+'</option>'
     +exData.alts.map(function(aid){var a=WO_EXERCISES[aid];return a?'<option value="'+aid+'">'+a.name+'</option>':'';}).join('');
   return '<div class="wo-exercise">'
     +'<div class="wo-ex-top">'
