@@ -1789,6 +1789,37 @@ function showTaskTimePicker(taskId,source,projectId,el){
     document.addEventListener('click',close);
   },10);
 }
+function showTaskRepeatPicker(taskId,source,projectId,el){
+  var existing=document.querySelector('.tl-inline-picker');
+  if(existing)existing.remove();
+  var opts=[{v:'',l:'None'},{v:'daily',l:'Daily'},{v:'weekly',l:'Weekly'},{v:'monthly',l:'Monthly'}];
+  var dd=document.createElement('div');
+  dd.className='tl-inline-picker';
+  dd.innerHTML=opts.map(function(o){return '<div class="tl-pick-item" onclick="event.stopPropagation();editTaskRecurrence(\''+taskId+'\',\''+source+'\',\''+projectId+'\',\''+o.v+'\')">'+o.l+'</div>';}).join('');
+  el.style.position='relative';
+  el.appendChild(dd);
+  setTimeout(function(){
+    var close=function(e){if(!dd.contains(e.target)){dd.remove();document.removeEventListener('click',close);}};
+    document.addEventListener('click',close);
+  },10);
+}
+function editTaskRecurrence(taskId,source,projectId,freq){
+  var item;
+  if(source==='project'){
+    var pr=state.projects.find(function(p){return p.id===projectId;});
+    item=pr&&pr.subtasks.find(function(x){return x.id===taskId;});
+  }else{
+    item=state.tasks.find(function(x){return x.id===taskId;});
+  }
+  if(!item)return;
+  if(!freq){
+    item.recurrence=null;
+  }else{
+    item.recurrence={freq:freq,interval:1};
+    if(!item.due)item.due=todayStr();
+  }
+  save();renderTaskList();_refreshTodayViewIfVisible();
+}
 function showTaskProjectPicker(taskId,source,projectId,el){
   var existing=document.querySelector('.tl-inline-picker');
   if(existing)existing.remove();
@@ -4699,14 +4730,14 @@ function getAllTasks(){
   // Pull subtasks from all projects
   state.projects.forEach(function(p){
     p.subtasks.forEach(function(st){
-      tasks.push({id:st.id,name:st.name,done:st.done,priority:st.priority||'med',timeEst:st.timeEst||'',due:st.due||'',projectId:p.id,projectName:p.name,source:'project'});
+      tasks.push({id:st.id,name:st.name,done:st.done,priority:st.priority||'med',timeEst:st.timeEst||'',due:st.due||'',recurrence:st.recurrence||null,projectId:p.id,projectName:p.name,source:'project'});
     });
   });
   // Add standalone tasks
   (state.tasks||[]).forEach(function(t){
     var pName='';
     if(t.projectId){var pr=state.projects.find(function(p){return p.id===t.projectId;});if(pr)pName=pr.name;}
-    tasks.push({id:t.id,name:t.name,done:t.done,priority:t.priority||'med',timeEst:t.timeEst||'',due:t.due||'',projectId:t.projectId||'',projectName:pName,source:'standalone'});
+    tasks.push({id:t.id,name:t.name,done:t.done,priority:t.priority||'med',timeEst:t.timeEst||'',due:t.due||'',recurrence:t.recurrence||null,projectId:t.projectId||'',projectName:pName,source:'standalone'});
   });
   return tasks;
 }
@@ -4838,6 +4869,7 @@ function _taskRowHTML(t){
     '<div class="tl-meta">'+
     '<span class="tl-proj-badge tl-editable-badge" id="tlproj_'+t.id+'" onclick="event.stopPropagation();showTaskProjectPicker(\''+t.id+'\',\''+t.source+'\',\''+(t.projectId||'')+'\',this)">'+(t.projectName?esc(t.projectName):'+ project')+'</span>'+
     '<span class="tl-time-badge tl-editable-badge" id="tltime_'+t.id+'" onclick="event.stopPropagation();showTaskTimePicker(\''+t.id+'\',\''+t.source+'\',\''+(t.projectId||'')+'\',this)">'+(t.timeEst?fmtTimeEst(t.timeEst):'+ time')+'</span>'+
+    '<span class="tl-repeat-badge tl-editable-badge" id="tlrepeat_'+t.id+'" onclick="event.stopPropagation();showTaskRepeatPicker(\''+t.id+'\',\''+t.source+'\',\''+(t.projectId||'')+'\',this)">'+(t.recurrence&&t.recurrence.freq?'\u{1F501} '+(RECUR_LABEL[t.recurrence.freq]||t.recurrence.freq):'+ repeat')+'</span>'+
     dueHTML+
     '</div></div>'+
     '<span class="wt-clock-btn '+(_isScheduledToday(t.id)?'scheduled':'')+'" onclick="event.stopPropagation();handleWorkTodayClick(\''+(t.source==='standalone'?'task':'subtask')+'\',\''+t.id+'\',\''+(t.projectId||'')+'\')" title="Work on this today">&#128197;</span>'+

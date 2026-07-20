@@ -1759,6 +1759,7 @@ body.unlocked .date-editable{border-bottom-color:var(--border);}
 .tl-meta .overdue{color:var(--red);font-weight:600;}
 .tl-time-badge{font-size:10px;padding:1px 6px;border-radius:10px;background:var(--purple-dim);color:var(--purple);font-weight:500;}
 .tl-proj-badge{font-size:10px;padding:1px 6px;border-radius:10px;background:var(--accent-glow);color:var(--accent);}
+.tl-repeat-badge{font-size:10px;padding:1px 6px;border-radius:10px;background:var(--teal-dim);color:var(--teal);font-weight:500;}
 .tl-editable-badge{cursor:pointer;position:relative;transition:opacity 0.15s;-webkit-tap-highlight-color:transparent;}
 .tl-editable-badge:hover{opacity:0.8;}
 .tl-inline-picker{position:absolute;top:100%;left:0;margin-top:4px;background:var(--surface-raised);border:1px solid var(--border);border-radius:var(--radius-sm);min-width:120px;z-index:999;box-shadow:0 8px 24px rgba(0,0,0,0.4);max-height:200px;overflow-y:auto;}
