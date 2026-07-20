@@ -1740,6 +1740,7 @@ function editSubtaskDue(pid,sid,v){const p=state.projects.find(p=>p.id===pid);co
 function editStandaloneTaskName(id,v){if(!v)return;var t=(state.tasks||[]).find(function(x){return x.id===id;});if(t){t.name=v;save();renderTaskList();var modalOpen=document.getElementById('projDetailModal').classList.contains('open');if(modalOpen&&t.projectId)openProjectModal(t.projectId);else if(modalOpen&&t.projectIds&&t.projectIds.length)openProjectModal(t.projectIds[0]);}}
 function editStandaloneTaskDue(id,v){var t=(state.tasks||[]).find(function(x){return x.id===id;});if(t){t.due=v;save();renderTaskList();var modalOpen=document.getElementById('projDetailModal').classList.contains('open');if(modalOpen&&t.projectId)openProjectModal(t.projectId);else if(modalOpen&&t.projectIds&&t.projectIds.length)openProjectModal(t.projectIds[0]);}}
 function editTaskTimeEst(taskId,source,projectId,val){
+  _dateEditActive=null;
   if(source==='standalone'){
     var t=(state.tasks||[]).find(function(x){return x.id===taskId;});
     if(t){t.timeEst=val;save();renderTaskList();}
@@ -1747,8 +1748,10 @@ function editTaskTimeEst(taskId,source,projectId,val){
     var p=state.projects.find(function(x){return x.id===projectId;});
     if(p){var s=p.subtasks.find(function(x){return x.id===taskId;});if(s){s.timeEst=val;save();renderProjects();renderTaskList();}}
   }
+  _flushPendingPanelRenders();
 }
 function editTaskProject(taskId,source,oldProjectId,newProjectId){
+  _dateEditActive=null;
   if(source==='standalone'){
     var t=(state.tasks||[]).find(function(x){return x.id===taskId;});
     if(!t)return;
@@ -1774,37 +1777,49 @@ function editTaskProject(taskId,source,oldProjectId,newProjectId){
     }
   }
   save();renderProjects();renderTaskList();
+  _flushPendingPanelRenders();
 }
-function showTaskTimePicker(taskId,source,projectId,el){
+// Shared opener for the tl-inline-picker dropdowns (time/project/repeat).
+// Sets _dateEditActive so _isEditingInPanel (public/inline-edit.js) suspends
+// a Firestore-echo re-render while the dropdown is open -- without this, the
+// snapshot listener rebuilds the row's HTML mid-choice and the dropdown
+// vanishes before the user can click an option. Cleared on outside-click
+// here, and by each commit function (editTaskTimeEst/editTaskProject/
+// editTaskRecurrence) before their own save()+render, since a picked option
+// stops propagation and never reaches the outside-click listener below.
+function _showInlinePicker(el,itemsHTML){
   var existing=document.querySelector('.tl-inline-picker');
   if(existing)existing.remove();
-  var opts=[{v:'',l:'None'},{v:'30',l:'30m'},{v:'60',l:'1hr'},{v:'90',l:'1.5hr'},{v:'120',l:'2hr'},{v:'180',l:'3hr'},{v:'240',l:'4hr'},{v:'360',l:'6hr'},{v:'480',l:'8hr'},{v:'720',l:'12hr'}];
   var dd=document.createElement('div');
   dd.className='tl-inline-picker';
-  dd.innerHTML=opts.map(function(o){return '<div class="tl-pick-item" onclick="event.stopPropagation();editTaskTimeEst(\''+taskId+'\',\''+source+'\',\''+projectId+'\',\''+o.v+'\')">'+o.l+'</div>';}).join('');
+  dd.innerHTML=itemsHTML;
   el.style.position='relative';
   el.appendChild(dd);
+  _dateEditActive=el;
   setTimeout(function(){
-    var close=function(e){if(!dd.contains(e.target)){dd.remove();document.removeEventListener('click',close);}};
+    var close=function(e){
+      if(!dd.contains(e.target)){
+        dd.remove();
+        if(_dateEditActive===el)_dateEditActive=null;
+        _flushPendingPanelRenders();
+        document.removeEventListener('click',close);
+      }
+    };
     document.addEventListener('click',close);
   },10);
+}
+function showTaskTimePicker(taskId,source,projectId,el){
+  var opts=[{v:'',l:'None'},{v:'30',l:'30m'},{v:'60',l:'1hr'},{v:'90',l:'1.5hr'},{v:'120',l:'2hr'},{v:'180',l:'3hr'},{v:'240',l:'4hr'},{v:'360',l:'6hr'},{v:'480',l:'8hr'},{v:'720',l:'12hr'}];
+  var html=opts.map(function(o){return '<div class="tl-pick-item" onclick="event.stopPropagation();editTaskTimeEst(\''+taskId+'\',\''+source+'\',\''+projectId+'\',\''+o.v+'\')">'+o.l+'</div>';}).join('');
+  _showInlinePicker(el,html);
 }
 var WEEKDAY_NAMES=['Sunday','Monday','Tuesday','Wednesday','Thursday','Friday','Saturday'];
 function showTaskRepeatPicker(taskId,source,projectId,el){
-  var existing=document.querySelector('.tl-inline-picker');
-  if(existing)existing.remove();
   var opts=[{v:'',l:'None'},{v:'daily',l:'Daily'}];
   WEEKDAY_NAMES.forEach(function(name,i){opts.push({v:'weekly_'+i,l:'Every '+name});});
   opts.push({v:'monthly',l:'Monthly'});
-  var dd=document.createElement('div');
-  dd.className='tl-inline-picker';
-  dd.innerHTML=opts.map(function(o){return '<div class="tl-pick-item" onclick="event.stopPropagation();editTaskRecurrence(\''+taskId+'\',\''+source+'\',\''+projectId+'\',\''+o.v+'\')">'+o.l+'</div>';}).join('');
-  el.style.position='relative';
-  el.appendChild(dd);
-  setTimeout(function(){
-    var close=function(e){if(!dd.contains(e.target)){dd.remove();document.removeEventListener('click',close);}};
-    document.addEventListener('click',close);
-  },10);
+  var html=opts.map(function(o){return '<div class="tl-pick-item" onclick="event.stopPropagation();editTaskRecurrence(\''+taskId+'\',\''+source+'\',\''+projectId+'\',\''+o.v+'\')">'+o.l+'</div>';}).join('');
+  _showInlinePicker(el,html);
 }
 // Next date on or after dateStr (or today, if omitted/invalid) that falls on weekdayIdx.
 function _nextWeekdayOnOrAfter(dateStr,weekdayIdx){
@@ -1814,6 +1829,7 @@ function _nextWeekdayOnOrAfter(dateStr,weekdayIdx){
   return _dayKey(base);
 }
 function editTaskRecurrence(taskId,source,projectId,val){
+  _dateEditActive=null;
   var item;
   if(source==='project'){
     var pr=state.projects.find(function(p){return p.id===projectId;});
@@ -1834,22 +1850,13 @@ function editTaskRecurrence(taskId,source,projectId,val){
     if(!item.due)item.due=todayStr();
   }
   save();renderTaskList();_refreshTodayViewIfVisible();
+  _flushPendingPanelRenders();
 }
 function showTaskProjectPicker(taskId,source,projectId,el){
-  var existing=document.querySelector('.tl-inline-picker');
-  if(existing)existing.remove();
   var projs=_sortedProjects();
-  var dd=document.createElement('div');
-  dd.className='tl-inline-picker';
   var html='<div class="tl-pick-item" onclick="event.stopPropagation();editTaskProject(\''+taskId+'\',\''+source+'\',\''+projectId+'\',\'\')">None</div>';
   html+=projs.map(function(p){return '<div class="tl-pick-item'+(p.id===projectId?' tl-pick-current':'')+'" onclick="event.stopPropagation();editTaskProject(\''+taskId+'\',\''+source+'\',\''+projectId+'\',\''+p.id+'\')">'+esc(p.name)+'</div>';}).join('');
-  dd.innerHTML=html;
-  el.style.position='relative';
-  el.appendChild(dd);
-  setTimeout(function(){
-    var close=function(e){if(!dd.contains(e.target)){dd.remove();document.removeEventListener('click',close);}};
-    document.addEventListener('click',close);
-  },10);
+  _showInlinePicker(el,html);
 }
 function editReminderDate(id,v){const r=state.reminders.find(r=>r.id===id);if(r){r.date=v;save();renderReminders();}}
 function editReminderTime(id,v){const r=state.reminders.find(r=>r.id===id);if(r){r.time=v;save();renderReminders();}}
