@@ -1261,7 +1261,8 @@ _registerPanelRenderers({
   projectList:function(){renderProjects();},
   reminderList:function(){renderReminders();},
   taskListItems:function(){renderTaskList();},
-  thoughtChips:function(){renderThoughts();}
+  thoughtChips:function(){renderThoughts();},
+  todayView:function(){renderTodayView();}
 });
 
 // DRAG & DROP
@@ -4789,6 +4790,7 @@ function _todaySlice(){
 }
 
 function renderTodayView(){
+  if(_isEditingInPanel('todayView')){_deferPanelRender('todayView');return;}
   var el=document.getElementById('todayView');
   if(!el)return;
   var slice=_todaySlice();
