@@ -6930,10 +6930,23 @@ function _nextRecurrenceDate(dueStr,recurrence){
   if(!dueStr||!recurrence||!recurrence.freq)return null;
   var d=new Date(dueStr+'T00:00:00');
   if(isNaN(d.getTime()))return null;
+  // Completed late (due date already in the past): count forward from today
+  // instead of the stale due date, so the next occurrence isn't born overdue.
+  var today=new Date(todayStr()+'T00:00:00');
+  if(d.getTime()<today.getTime())d=today;
   var n=recurrence.interval||1;
+  var origDay=d.getDate();
   if(recurrence.freq==='daily')d.setDate(d.getDate()+n);
   else if(recurrence.freq==='weekly')d.setDate(d.getDate()+7*n);
-  else if(recurrence.freq==='monthly')d.setMonth(d.getMonth()+n);
+  else if(recurrence.freq==='monthly'){
+    // setMonth overflows into the following month when the target month is
+    // shorter (Jan 31 + 1mo -> Mar 3, not Feb 28) -- clamp to the target
+    // month's actual last day instead.
+    d.setDate(1);
+    d.setMonth(d.getMonth()+n);
+    var lastDay=new Date(d.getFullYear(),d.getMonth()+1,0).getDate();
+    d.setDate(Math.min(origDay,lastDay));
+  }
   else return null;
   return _dayKey(d);
 }
