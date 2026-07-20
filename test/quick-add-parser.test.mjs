@@ -35,6 +35,22 @@ test('recurrence: every day/week/month, case-insensitive; no match is null', () 
   assert.deepEqual(parseQuickAdd('rent EVERY MONTH', NOW).recurrence, { freq: 'monthly', interval: 1 });
   assert.equal(parseQuickAdd('trash', NOW).recurrence, null);
 });
+test('recurrence: every N days/weeks/months carries the interval', () => {
+  assert.deepEqual(parseQuickAdd('water plants every 3 days', NOW).recurrence, { freq: 'daily', interval: 3 });
+  assert.deepEqual(parseQuickAdd('standup every 2 weeks', NOW).recurrence, { freq: 'weekly', interval: 2 });
+  assert.deepEqual(parseQuickAdd('review budget every 6 months', NOW).recurrence, { freq: 'monthly', interval: 6 });
+});
+test('recurrence: every <weekday> is weekly, and pins the due date to the next occurrence', () => {
+  // NOW is Friday 2026-07-17 -- next Monday is 2026-07-20.
+  const r = parseQuickAdd('trash every monday', NOW);
+  assert.deepEqual(r.recurrence, { freq: 'weekly', interval: 1 });
+  assert.equal(r.due, '2026-07-20');
+});
+test('recurrence: every <weekday> never overrides an explicit date in the same text', () => {
+  const r = parseQuickAdd('trash every monday 2026-09-01', NOW);
+  assert.deepEqual(r.recurrence, { freq: 'weekly', interval: 1 });
+  assert.equal(r.due, '2026-09-01');
+});
 
 // ── Time ──────────────────────────────────────────────────────────────────
 test('time: 12h with am/pm, 24h with colon, "at N" prefix', () => {

@@ -1789,10 +1789,13 @@ function showTaskTimePicker(taskId,source,projectId,el){
     document.addEventListener('click',close);
   },10);
 }
+var WEEKDAY_NAMES=['Sunday','Monday','Tuesday','Wednesday','Thursday','Friday','Saturday'];
 function showTaskRepeatPicker(taskId,source,projectId,el){
   var existing=document.querySelector('.tl-inline-picker');
   if(existing)existing.remove();
-  var opts=[{v:'',l:'None'},{v:'daily',l:'Daily'},{v:'weekly',l:'Weekly'},{v:'monthly',l:'Monthly'}];
+  var opts=[{v:'',l:'None'},{v:'daily',l:'Daily'}];
+  WEEKDAY_NAMES.forEach(function(name,i){opts.push({v:'weekly_'+i,l:'Every '+name});});
+  opts.push({v:'monthly',l:'Monthly'});
   var dd=document.createElement('div');
   dd.className='tl-inline-picker';
   dd.innerHTML=opts.map(function(o){return '<div class="tl-pick-item" onclick="event.stopPropagation();editTaskRecurrence(\''+taskId+'\',\''+source+'\',\''+projectId+'\',\''+o.v+'\')">'+o.l+'</div>';}).join('');
@@ -1803,7 +1806,14 @@ function showTaskRepeatPicker(taskId,source,projectId,el){
     document.addEventListener('click',close);
   },10);
 }
-function editTaskRecurrence(taskId,source,projectId,freq){
+// Next date on or after dateStr (or today, if omitted/invalid) that falls on weekdayIdx.
+function _nextWeekdayOnOrAfter(dateStr,weekdayIdx){
+  var base=new Date((dateStr||todayStr())+'T00:00:00');
+  if(isNaN(base.getTime()))base=new Date(todayStr()+'T00:00:00');
+  base.setDate(base.getDate()+((weekdayIdx-base.getDay()+7)%7));
+  return _dayKey(base);
+}
+function editTaskRecurrence(taskId,source,projectId,val){
   var item;
   if(source==='project'){
     var pr=state.projects.find(function(p){return p.id===projectId;});
@@ -1812,10 +1822,15 @@ function editTaskRecurrence(taskId,source,projectId,freq){
     item=state.tasks.find(function(x){return x.id===taskId;});
   }
   if(!item)return;
-  if(!freq){
+  if(!val){
     item.recurrence=null;
+  }else if(val.indexOf('weekly_')===0){
+    var wd=parseInt(val.slice(7),10);
+    item.recurrence={freq:'weekly',interval:1};
+    var alreadyOnDay=item.due&&new Date(item.due+'T00:00:00').getDay()===wd;
+    if(!alreadyOnDay)item.due=_nextWeekdayOnOrAfter(todayStr(),wd);
   }else{
-    item.recurrence={freq:freq,interval:1};
+    item.recurrence={freq:val,interval:1};
     if(!item.due)item.due=todayStr();
   }
   save();renderTaskList();_refreshTodayViewIfVisible();
@@ -4869,7 +4884,7 @@ function _taskRowHTML(t){
     '<div class="tl-meta">'+
     '<span class="tl-proj-badge tl-editable-badge" id="tlproj_'+t.id+'" onclick="event.stopPropagation();showTaskProjectPicker(\''+t.id+'\',\''+t.source+'\',\''+(t.projectId||'')+'\',this)">'+(t.projectName?esc(t.projectName):'+ project')+'</span>'+
     '<span class="tl-time-badge tl-editable-badge" id="tltime_'+t.id+'" onclick="event.stopPropagation();showTaskTimePicker(\''+t.id+'\',\''+t.source+'\',\''+(t.projectId||'')+'\',this)">'+(t.timeEst?fmtTimeEst(t.timeEst):'+ time')+'</span>'+
-    '<span class="tl-repeat-badge tl-editable-badge" id="tlrepeat_'+t.id+'" onclick="event.stopPropagation();showTaskRepeatPicker(\''+t.id+'\',\''+t.source+'\',\''+(t.projectId||'')+'\',this)">'+(t.recurrence&&t.recurrence.freq?'\u{1F501} '+(RECUR_LABEL[t.recurrence.freq]||t.recurrence.freq):'+ repeat')+'</span>'+
+    '<span class="tl-repeat-badge tl-editable-badge" id="tlrepeat_'+t.id+'" onclick="event.stopPropagation();showTaskRepeatPicker(\''+t.id+'\',\''+t.source+'\',\''+(t.projectId||'')+'\',this)">'+(t.recurrence&&t.recurrence.freq?'\u{1F501} '+_recurrenceBadgeLabel(t):'+ repeat')+'</span>'+
     dueHTML+
     '</div></div>'+
     '<span class="wt-clock-btn '+(_isScheduledToday(t.id)?'scheduled':'')+'" onclick="event.stopPropagation();handleWorkTodayClick(\''+(t.source==='standalone'?'task':'subtask')+'\',\''+t.id+'\',\''+(t.projectId||'')+'\')" title="Work on this today">&#128197;</span>'+
@@ -6711,6 +6726,17 @@ function _applyQuickAdd(nameValue,current,opts){
   return out;
 }
 var RECUR_LABEL={daily:'daily',weekly:'weekly',monthly:'monthly'};
+// Short label for the task-row repeat badge -- weekly recurrence always
+// tracks the due date's weekday, so show that day (e.g. "Mon") instead of
+// the generic "weekly".
+function _recurrenceBadgeLabel(t){
+  if(!t||!t.recurrence||!t.recurrence.freq)return '';
+  if(t.recurrence.freq==='weekly'&&t.due){
+    var dow=new Date(t.due+'T00:00:00').getDay();
+    if(!isNaN(dow))return WEEKDAY_NAMES[dow].slice(0,3);
+  }
+  return RECUR_LABEL[t.recurrence.freq]||t.recurrence.freq;
+}
 // Live "→ Jul 16, 3:00 PM, High priority, repeats monthly" chip under a
 // quick-add text input -- informational only, teaches the syntax as you
 // type. Shows only badges the target form actually supports (see opts).

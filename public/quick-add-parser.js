@@ -32,13 +32,26 @@
     return { priority: val, text: (text.slice(0, m.index) + text.slice(m.index + m[0].length)) };
   }
 
-  // -- Recurrence: "every day|week|month" / "every weekday" (as daily-ish
-  // shorthand is NOT supported in v1 -- keep to the three real frequencies).
+  // -- Recurrence: "every day|week|month", "every N days|weeks|months", or
+  // "every <weekday>" (weekly, anchored to that weekday -- weekly recurrence
+  // already repeats on whatever weekday the due date lands on, so this just
+  // needs to pin the due date to the right day; see dayOfWeek below).
   function extractRecurrence(text) {
-    var m = text.match(/\bevery\s+(day|week|month)\b/i);
-    if (!m) return { recurrence: null, text: text };
-    var freq = { day: 'daily', week: 'weekly', month: 'monthly' }[m[1].toLowerCase()];
-    return { recurrence: { freq: freq, interval: 1 }, text: (text.slice(0, m.index) + text.slice(m.index + m[0].length)) };
+    var m = text.match(/\bevery\s+(\d+)\s+(day|week|month)s?\b/i);
+    if (m) {
+      var freqN = { day: 'daily', week: 'weekly', month: 'monthly' }[m[2].toLowerCase()];
+      return { recurrence: { freq: freqN, interval: parseInt(m[1], 10) }, dayOfWeek: null, text: strip(text, m) };
+    }
+    m = text.match(/\bevery\s+(day|week|month)\b/i);
+    if (m) {
+      var freq = { day: 'daily', week: 'weekly', month: 'monthly' }[m[1].toLowerCase()];
+      return { recurrence: { freq: freq, interval: 1 }, dayOfWeek: null, text: strip(text, m) };
+    }
+    m = text.match(/\bevery\s+(sunday|monday|tuesday|wednesday|thursday|friday|saturday)\b/i);
+    if (m) {
+      return { recurrence: { freq: 'weekly', interval: 1 }, dayOfWeek: WEEKDAYS.indexOf(m[1].toLowerCase()), text: strip(text, m) };
+    }
+    return { recurrence: null, dayOfWeek: null, text: text };
   }
 
   // -- Time: "3pm", "3:30pm", "15:00", "at 9am" -> 'HH:MM' (24h) ----------
@@ -120,9 +133,18 @@
     var tm = extractTime(text); text = tm.text;
     var dt = extractDate(text, now); text = dt.text;
 
+    // "every <weekday>" with no other date signal: pin the due date to the
+    // next occurrence of that weekday so the weekly recurrence actually
+    // lands on it (an explicit date elsewhere in the text always wins).
+    var due = dt.due;
+    if (!due && rec.dayOfWeek != null) {
+      var delta = ((rec.dayOfWeek - now.getDay() + 7) % 7) || 7;
+      due = dayKey(addDays(now, delta));
+    }
+
     return {
       name: cleanName(text),
-      due: dt.due,
+      due: due,
       time: tm.time,
       priority: pr.priority,
       recurrence: rec.recurrence,
