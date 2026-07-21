@@ -2360,7 +2360,7 @@ async function _bdoRequestPlan(){
     + 'ADHD brains benefit from actionable items more than reference text.\n\n'
     + 'When you are NOT confident, add a clarifying question instead of guessing.\n\n'
     + 'Return this exact JSON shape:\n'
-    + '{"items":[{"thoughtId":"<id>","text":"<concise restatement>","dest":"task|note|reminder|newproject","project":"<project name or empty>","newProjectName":"<only if newproject>","priority":"low|med|high"}],'
+    + '{"items":[{"thoughtId":"<id>","text":"<concise restatement>","dest":"task|note|reminder|newproject","project":"<project name or empty>","newProjectName":"<only if newproject>"}],'
     + '"questions":[{"thoughtId":"<id>","text":"<original>","question":"<short question>","options":["<opt1>","<opt2>","<opt3>"]}]}\n\n'
     + 'Every thought must appear in EITHER items OR questions. Keep questions rare. '
     + 'Rephrase each item\'s text as a clean, concise action or title -- remove filler words.';
@@ -2647,7 +2647,7 @@ async function _norgRequestPlan(noteId){
     + 'IMPORTANT: The original note is NEVER deleted. You are extracting action items from it.\n\n'
     + 'Return this exact JSON shape:\n'
     + '{"items":[\n'
-    + '  {"text":"<clear actionable restatement>","dest":"task|reminder|ignore","project":"<existing project name or empty>","priority":"low|med|high"}\n'
+    + '  {"text":"<clear actionable restatement>","dest":"task|reminder|ignore","project":"<existing project name or empty>"}\n'
     + ']}\n\n'
     + 'Keep text concise and actionable. Bias toward creating tasks from anything that looks like a to-do.';
 
@@ -6684,13 +6684,12 @@ var POINT_VALUES={
 // no visible "untouched" state to protect. opts picks which fields this
 // particular form actually has a home for (see call sites).
 function _applyQuickAdd(nameValue,current,opts){
-  var out={name:nameValue,due:current.due||'',time:current.time||'',priority:current.priority,recurrence:null};
+  var out={name:nameValue,due:current.due||'',time:current.time||'',recurrence:null};
   if(typeof window.parseQuickAdd!=='function')return out;
   var parsed=window.parseQuickAdd(nameValue);
   out.name=parsed.name||nameValue;
   if(opts.date&&parsed.due&&!current.due)out.due=parsed.due;
   if(opts.time&&parsed.time&&!current.time)out.time=parsed.time;
-  if(opts.priority&&parsed.priority)out.priority=parsed.priority;
   if(opts.recurrence&&parsed.recurrence)out.recurrence=parsed.recurrence;
   return out;
 }
@@ -6706,9 +6705,9 @@ function _recurrenceBadgeLabel(t){
   }
   return RECUR_LABEL[t.recurrence.freq]||t.recurrence.freq;
 }
-// Live "→ Jul 16, 3:00 PM, High priority, repeats monthly" chip under a
-// quick-add text input -- informational only, teaches the syntax as you
-// type. Shows only badges the target form actually supports (see opts).
+// Live "→ Jul 16, 3:00 PM, repeats monthly" chip under a quick-add text
+// input -- informational only, teaches the syntax as you type. Shows only
+// badges the target form actually supports (see opts).
 function _renderQuickAddPreview(inputId,previewId,opts){
   var inp=document.getElementById(inputId),el=document.getElementById(previewId);
   if(!inp||!el)return;
@@ -6717,7 +6716,6 @@ function _renderQuickAddPreview(inputId,previewId,opts){
   var bits=[];
   if(opts.date&&p.due)bits.push(fmtDate(p.due));
   if(opts.time&&p.time)bits.push(fmtTime(p.time));
-  if(opts.priority&&p.priority)bits.push(p.priority.charAt(0).toUpperCase()+p.priority.slice(1)+' priority');
   if(opts.recurrence&&p.recurrence)bits.push('repeats '+(RECUR_LABEL[p.recurrence.freq]||p.recurrence.freq));
   if(bits.length===0){el.style.display='none';el.textContent='';return;}
   el.style.display='block';
@@ -6779,10 +6777,10 @@ function quickCaptureKeydown(e){
 function _captureString(text){
   text=(text||'').trim();
   if(!text)return null;
-  var p=(typeof window.parseQuickAdd==='function')?window.parseQuickAdd(text):{name:text,due:null,time:null,priority:null,recurrence:null};
-  var hasSignal=!!(p.due||p.time||p.priority||p.recurrence);
+  var p=(typeof window.parseQuickAdd==='function')?window.parseQuickAdd(text):{name:text,due:null,time:null,recurrence:null};
+  var hasSignal=!!(p.due||p.time||p.recurrence);
   if(hasSignal){
-    var t={id:'tk'+Date.now()+Math.random().toString(36).slice(2,6),name:p.name,due:p.due||'',priority:p.priority||'med',timeEst:'',projectId:'',projectIds:[],done:false,recurrence:p.recurrence};
+    var t={id:'tk'+Date.now()+Math.random().toString(36).slice(2,6),name:p.name,due:p.due||'',priority:'med',timeEst:'',projectId:'',projectIds:[],done:false,recurrence:p.recurrence};
     state.tasks.push(t);
     return {type:'task',name:p.name,id:t.id};
   }
@@ -10006,7 +10004,6 @@ function exportTimelineICS(){
   blocks.forEach(function(b){
     var proj=b.projectId?(state.projects||[]).find(function(p){return p.id===b.projectId;}):null;
     var summary=b.name;
-    if(b.priority==='high')summary='[HIGH] '+summary;
     var description=(proj?'Project: '+proj.name+'\n':'')+'Source: '+b.source+' (Centerpost)';
     lines.push('BEGIN:VEVENT');
     lines.push('UID:'+b.id+'@centerpost.app');
@@ -10050,7 +10047,6 @@ function _gcalUrl(block,dateStr){
   
   var proj=block.projectId?(state.projects||[]).find(function(p){return p.id===block.projectId;}):null;
   var title=block.name;
-  if(block.priority==='high')title='[HIGH] '+title;
   var details=(proj?'Project: '+proj.name+'\n':'')+'Source: Centerpost ('+block.source+')';
   
   var params=new URLSearchParams({
@@ -11106,7 +11102,7 @@ var JARVIS_SYSTEM=function(){
     var scopeLabel=_jarvisMode==='breakdown:projects'?'project':'task';
     return 'You are Axis in BREAKDOWN MODE inside Centerpost -- '+_axisPersonaLine()+' It is now '+dateStr+', '+timeStr+'.\n\n'
       +'Your single job: break a chosen '+scopeLabel+' into actionable micro-steps for an ADHD brain.\n\n'
-      +'The user\'s items are listed below in suggested completion order: not-done before done; within not-done: overdue → today → tomorrow → later → undated; tiebreak by priority (high → med → low), then shorter time-estimate first to reduce initiation friction.\n\n'
+      +'The user\'s items are listed below in suggested completion order: not-done before done; within not-done: overdue → today → tomorrow → later → undated; tiebreak by shorter time-estimate first to reduce initiation friction.\n\n'
       +'=== ITEMS IN COMPLETION ORDER ===\n'+ordered+'\n=== END ITEMS ===\n\n'
       +'CRITICAL OUTPUT FORMAT: respond with ONLY a raw JSON object -- no markdown fences. Format: {"reply":"...","actions":[]}. In breakdown mode you NEVER use actions -- leave the array empty and put the breakdown inside reply.\n\n'
       +'When the user names or numbers an item, do this:\n'
@@ -11119,7 +11115,7 @@ var JARVIS_SYSTEM=function(){
       +'If the user types something that does not match any listed item, ask once for clarification and re-show the top 5 items by completion order.';
   }
 
-  return 'You are Axis, an AI assistant embedded in Centerpost -- '+_axisPersonaLine()+'\n\nIt is now '+dateStr+', '+timeStr+'.\n\nYou have FULL access to the dashboard state below. Reference it precisely to answer questions about due dates, subtasks, projects, completed work, wellness reflections, routines, energy/mood, or anything else.\n\n=== DATA FIELD GUIDE ===\n- timelineBlocks = items manually scheduled on the TIMELINE PANEL (name, date, time, duration). Use THIS field for any question about the timeline, schedule, or blocked time. Do NOT substitute task due dates for timeline questions.\n- standaloneTasks / projects = task list and project subtasks. Use for task management questions.\n- upcomingReminders = reminders panel items.\n\n=== DASHBOARD STATE ===\n'+JSON.stringify(context,null,2)+'\n=== END STATE ===\n\nCRITICAL OUTPUT FORMAT: Respond with ONLY a raw JSON object. No markdown, no code fences, no explanation before or after. Format: {"reply":"...","actions":[]}\n\n=== RESPONSE STYLE RULES (STRICT -- ADHD-OPTIMIZED) ===\n\n1. **Count questions get count-first replies.** When asked "how many" or for any count: give the NUMBER first, then a single short urgency flag if applicable, then offer to expand. Maximum 2 short sentences.\n   - Example query: "How many tasks do I have?"\n   - GOOD reply: "You have 14 open tasks. 3 are high priority and 2 are overdue. Want me to list them?"\n   - GOOD reply: "8 active projects. All on track. Want me to list them by due date?"\n   - BAD reply: "You currently have 14 open tasks across 5 projects. The high priority ones are [lists everything]..." -- TOO MUCH UPFRONT.\n\n2. **List questions still default to a summary.** Even for "show me" or "what are", lead with a count + urgency summary, then offer to expand UNLESS the user explicitly said "list them all" or "show me each."\n   - "What\\\'s due this week?" → "6 items due this week, 2 today. Want the full list or just today\\\'s?"\n\n3. **Always end open-ended summary replies with an expansion offer** ("Want me to list them?", "Want details?", "Want today\\\'s breakdown?"). Phrase it naturally, not robotically.\n\n4. **If urgency flagging would clutter the reply, omit it.** No flag needed when nothing is high-priority and nothing is overdue.\n\n5. **Definitions of urgency flags:**\n   - "Overdue" = due date is BEFORE today\\\'s date '+todayKey+'.\n   - "High priority" = priority field === "high".\n   - "Due today" = due date === '+todayKey+'.\n\n6. **For action confirmations after add/complete/etc**: One short sentence. "Added \\\'Call dispatch\\\' as high priority, due tomorrow." No follow-up question needed.\n\n7. **For specific data lookups** (e.g. "when is X due", "what\\\'s the priority of Y"): Direct answer, no expansion offer.\n\n8. **Once the user confirms they want details**, THEN provide the full list -- but still use compact formatting: each item on one line with priority/due in parentheses. Group by project or urgency if list >8 items.\n\n=== ACTION TYPES ===\n{"type":"add_task","name":"string","priority":"low|med|high","due":"YYYY-MM-DD or null"}\n{"type":"add_project","name":"string","due":"YYYY-MM-DD or null"}\n{"type":"add_subtask","projectName":"string","name":"string","priority":"low|med|high","due":"YYYY-MM-DD or null"}\n{"type":"add_note","label":"string","body":"string"}\n{"type":"add_reminder","text":"string","date":"YYYY-MM-DD or null","time":"HH:MM or null"}\n{"type":"complete_task","name":"string"}\n\nFor pure questions with no state changes, use actions:[]. Parse relative dates using today\\\'s date.\n\n=== TIMELINE READOUT FORMAT ===\nWhen the user asks what is on their timeline (any phrasing: \"what\\\'s on my timeline\", \"what do I have scheduled\", \"read my timeline\", \"what\\\'s tomorrow\", etc.) ALWAYS read out the full list of blocks directly. Do NOT use the count-first-then-offer pattern for timeline questions -- just give the items. Format each entry as \"{time} -- {name}\" only. Do NOT include duration, project, or priority unless the user explicitly asks. If there are no blocks, say so directly. Example reply: \"3 blocks tomorrow: 9:00 AM -- Station meeting, 1:30 PM -- Report writing, 3:00 PM -- Training review.\"';
+  return 'You are Axis, an AI assistant embedded in Centerpost -- '+_axisPersonaLine()+'\n\nIt is now '+dateStr+', '+timeStr+'.\n\nYou have FULL access to the dashboard state below. Reference it precisely to answer questions about due dates, subtasks, projects, completed work, wellness reflections, routines, energy/mood, or anything else.\n\n=== DATA FIELD GUIDE ===\n- timelineBlocks = items manually scheduled on the TIMELINE PANEL (name, date, time, duration). Use THIS field for any question about the timeline, schedule, or blocked time. Do NOT substitute task due dates for timeline questions.\n- standaloneTasks / projects = task list and project subtasks. Use for task management questions.\n- upcomingReminders = reminders panel items.\n\n=== DASHBOARD STATE ===\n'+JSON.stringify(context,null,2)+'\n=== END STATE ===\n\nCRITICAL OUTPUT FORMAT: Respond with ONLY a raw JSON object. No markdown, no code fences, no explanation before or after. Format: {"reply":"...","actions":[]}\n\n=== RESPONSE STYLE RULES (STRICT -- ADHD-OPTIMIZED) ===\n\n1. **Count questions get count-first replies.** When asked "how many" or for any count: give the NUMBER first, then a single short urgency flag if applicable, then offer to expand. Maximum 2 short sentences.\n   - Example query: "How many tasks do I have?"\n   - GOOD reply: "You have 14 open tasks. 2 are overdue. Want me to list them?"\n   - GOOD reply: "8 active projects. All on track. Want me to list them by due date?"\n   - BAD reply: "You currently have 14 open tasks across 5 projects. The high priority ones are [lists everything]..." -- TOO MUCH UPFRONT.\n\n2. **List questions still default to a summary.** Even for "show me" or "what are", lead with a count + urgency summary, then offer to expand UNLESS the user explicitly said "list them all" or "show me each."\n   - "What\\\'s due this week?" → "6 items due this week, 2 today. Want the full list or just today\\\'s?"\n\n3. **Always end open-ended summary replies with an expansion offer** ("Want me to list them?", "Want details?", "Want today\\\'s breakdown?"). Phrase it naturally, not robotically.\n\n4. **If urgency flagging would clutter the reply, omit it.** No flag needed when nothing is overdue.\n\n5. **Definitions of urgency flags:**\n   - "Overdue" = due date is BEFORE today\\\'s date '+todayKey+'.\n   - "Due today" = due date === '+todayKey+'.\n\n6. **For action confirmations after add/complete/etc**: One short sentence. "Added \\\'Call dispatch\\\', due tomorrow." No follow-up question needed.\n\n7. **For specific data lookups** (e.g. "when is X due", "what project is X in"): Direct answer, no expansion offer.\n\n8. **Once the user confirms they want details**, THEN provide the full list -- but still use compact formatting: each item on one line with due date in parentheses. Group by project or urgency if list >8 items.\n\n=== ACTION TYPES ===\n{"type":"add_task","name":"string","due":"YYYY-MM-DD or null"}\n{"type":"add_project","name":"string","due":"YYYY-MM-DD or null"}\n{"type":"add_subtask","projectName":"string","name":"string","due":"YYYY-MM-DD or null"}\n{"type":"add_note","label":"string","body":"string"}\n{"type":"add_reminder","text":"string","date":"YYYY-MM-DD or null","time":"HH:MM or null"}\n{"type":"complete_task","name":"string"}\n\nFor pure questions with no state changes, use actions:[]. Parse relative dates using today\\\'s date.\n\n=== TIMELINE READOUT FORMAT ===\nWhen the user asks what is on their timeline (any phrasing: \"what\\\'s on my timeline\", \"what do I have scheduled\", \"read my timeline\", \"what\\\'s tomorrow\", etc.) ALWAYS read out the full list of blocks directly. Do NOT use the count-first-then-offer pattern for timeline questions -- just give the items. Format each entry as \"{time} -- {name}\" only. Do NOT include duration or project unless the user explicitly asks. If there are no blocks, say so directly. Example reply: \"3 blocks tomorrow: 9:00 AM -- Station meeting, 1:30 PM -- Report writing, 3:00 PM -- Training review.\"';
 };
 
 function _jarvisCurrentTier(){
@@ -11202,7 +11198,6 @@ function _jarvisBuildBreakdownContext(scope){
       subs.forEach(function(s){
         var bits=[];
         if(s.timeEst)bits.push(s.timeEst+'m');
-        if(s.priority&&s.priority!=='med')bits.push(s.priority);
         if(s.due)bits.push('due '+_jarvisFmtDate(s.due));
         var meta=bits.length?' ['+bits.join(' · ')+']':'';
         out+='   - '+mark(s)+' '+s.name+meta+'\n';
@@ -11214,7 +11209,6 @@ function _jarvisBuildBreakdownContext(scope){
       _jarvisOrderByCompletion(linked).forEach(function(t){
         var bits=[];
         if(t.timeEst)bits.push(t.timeEst+'m');
-        if(t.priority&&t.priority!=='med')bits.push(t.priority);
         if(t.due)bits.push('due '+_jarvisFmtDate(t.due));
         var meta=bits.length?' ['+bits.join(' · ')+']':'';
         out+='   - '+mark(t)+' '+t.name+meta+' (task)\n';
@@ -11242,7 +11236,6 @@ function _jarvisBuildBreakdownContext(scope){
     ordered.forEach(function(t,i){
       var bits=[];
       if(t.timeEst)bits.push(t.timeEst+'m');
-      if(t.priority&&t.priority!=='med')bits.push(t.priority);
       if(t.due)bits.push('due '+_jarvisFmtDate(t.due));
       var meta=bits.length?' ['+bits.join(' · ')+']':'';
       var projTag=t._proj?' -- '+t._proj:'';

@@ -1,5 +1,5 @@
 // Tests for public/quick-add-parser.js -- the natural-language date/time/
-// priority/recurrence parser behind every task/reminder/subtask quick-add
+// recurrence parser behind every task/reminder/subtask quick-add
 // field. Pure function, no browser, no Firestore. Run: npm run test:parser
 //
 // TZ pinned before any Date/Intl use so date math is deterministic anywhere.
@@ -15,17 +15,11 @@ const { parseQuickAdd } = require('../public/quick-add-parser.js');
 // Fixed reference instant for every date-dependent case: Friday, 2026-07-17.
 const NOW = new Date('2026-07-17T12:00:00');
 
-// ── Priority ──────────────────────────────────────────────────────────────
-test('priority: !high, !med, !medium, !low, case-insensitive', () => {
-  assert.equal(parseQuickAdd('call bob !high', NOW).priority, 'high');
-  assert.equal(parseQuickAdd('call bob !med', NOW).priority, 'med');
-  assert.equal(parseQuickAdd('call bob !medium', NOW).priority, 'med');
-  assert.equal(parseQuickAdd('call bob !low', NOW).priority, 'low');
-  assert.equal(parseQuickAdd('call bob !HIGH', NOW).priority, 'high');
-});
-test('priority: no marker is null; an unrecognized word is null, not a crash', () => {
+// ── Priority (removed) ──────────────────────────────────────────────────────
+test('priority: no longer parsed -- "!high" etc. is left as literal text, and the field is always null', () => {
+  assert.equal(parseQuickAdd('call bob !high', NOW).name, 'call bob !high');
+  assert.equal(parseQuickAdd('call bob !high', NOW).priority, null);
   assert.equal(parseQuickAdd('call bob', NOW).priority, null);
-  assert.equal(parseQuickAdd('call bob !urgent', NOW).priority, null);
 });
 
 // ── Recurrence ────────────────────────────────────────────────────────────
@@ -91,13 +85,13 @@ test('date: no signal is null', () => {
 });
 
 // ── Combined: the exact example used throughout the product review ────────
-test('combined: date + time + priority + recurrence together, with a clean leftover name', () => {
+test('combined: date + time + recurrence together; a leftover "!high" is inert, plain text', () => {
   const r = parseQuickAdd('pay rent friday 3pm !high every month', NOW);
   assert.deepEqual(r, {
-    name: 'pay rent',
+    name: 'pay rent !high',
     due: '2026-07-24',
     time: '15:00',
-    priority: 'high',
+    priority: null,
     recurrence: { freq: 'monthly', interval: 1 },
   });
 });

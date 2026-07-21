@@ -1,5 +1,5 @@
 // ═══════════════════════════════════════════════════════════════════════
-// quick-add-parser.js — R8: natural-language date/time/priority/recurrence
+// quick-add-parser.js — R8: natural-language date/time/recurrence
 // parsing for the task/reminder/subtask quick-add inputs.
 // ═══════════════════════════════════════════════════════════════════════
 //
@@ -21,16 +21,6 @@
   function addDays(d, n) { var r = new Date(d); r.setDate(r.getDate() + n); return r; }
 
   var WEEKDAYS = ['sunday', 'monday', 'tuesday', 'wednesday', 'thursday', 'friday', 'saturday'];
-  var PRIORITY_MAP = { high: 'high', med: 'med', medium: 'med', low: 'low' };
-
-  // -- Priority: "!high" / "!med" / "!low" (case-insensitive) -------------
-  function extractPriority(text) {
-    var m = text.match(/(^|\s)!(\w+)\b/i);
-    if (!m) return { priority: null, text: text };
-    var val = PRIORITY_MAP[m[2].toLowerCase()];
-    if (!val) return { priority: null, text: text };
-    return { priority: val, text: (text.slice(0, m.index) + text.slice(m.index + m[0].length)) };
-  }
 
   // -- Recurrence: "every day|week|month", "every N days|weeks|months", or
   // "every <weekday>" (weekly, anchored to that weekday -- weekly recurrence
@@ -121,14 +111,13 @@
   }
 
   // -- Public entry point ---------------------------------------------------
-  // now: optional Date override, for testing. Order matters: priority and
-  // recurrence markers are unambiguous tokens, pull them first so date/time
+  // now: optional Date override, for testing. Order matters: recurrence
+  // markers are unambiguous tokens, pull them first so date/time
   // extraction isn't confused by leftover punctuation.
   var parseQuickAdd = function (rawText, now) {
     now = now || new Date();
     var text = rawText || '';
 
-    var pr = extractPriority(text); text = pr.text;
     var rec = extractRecurrence(text); text = rec.text;
     var tm = extractTime(text); text = tm.text;
     var dt = extractDate(text, now); text = dt.text;
@@ -146,7 +135,7 @@
       name: cleanName(text),
       due: due,
       time: tm.time,
-      priority: pr.priority,
+      priority: null,
       recurrence: rec.recurrence,
     };
   };
