@@ -32,14 +32,6 @@ function fmtTimeEst(t) {
   return `${Math.floor(m / 60)}h${m % 60 ? ` ${m % 60}m` : ''}`;
 }
 
-function priorityColor(p) {
-  return { high: 'var(--red)', med: 'var(--accent)', low: 'var(--text-faint)' }[p] || 'var(--accent)';
-}
-
-function priorityLabel(p) {
-  return { high: 'High', med: 'Med', low: 'Low' }[p] || 'Med';
-}
-
 function getAllTasks(pid) {
   const s = getState();
   const project = (s.projects || []).find(p => p.id === pid);
@@ -439,7 +431,6 @@ export default function ProjectDashboard({ open, onClose }) {
   const [tick, setTick] = useState(0);
   const [newTaskName, setNewTaskName] = useState('');
   const [newTaskDue, setNewTaskDue] = useState('');
-  const [newTaskPri, setNewTaskPri] = useState('med');
   const [newTaskTime, setNewTaskTime] = useState('');
   const [newNoteName, setNewNoteName] = useState('');
   const [scheduleFor, setScheduleFor] = useState(null);
@@ -502,7 +493,7 @@ export default function ProjectDashboard({ open, onClose }) {
     if (!s.tasks) s.tasks = [];
     s.tasks.push({
       id: 'tl' + Date.now(), name: newTaskName.trim(), due: newTaskDue,
-      priority: newTaskPri, timeEst: newTaskTime, done: false, projectIds: [selectedId],
+      priority: 'med', timeEst: newTaskTime, done: false, projectIds: [selectedId],
     });
     setNewTaskName('');
     setNewTaskDue('');
@@ -530,19 +521,6 @@ export default function ProjectDashboard({ open, onClose }) {
       if (proj) proj.subtasks = proj.subtasks.filter(st => st.id !== t.id);
     } else {
       s.tasks = (s.tasks || []).filter(x => x.id !== t.id);
-    }
-    save(); refresh(); syncLegacy();
-  };
-
-  const cyclePriority = (t) => {
-    const cycle = { low: 'med', med: 'high', high: 'low' };
-    if (t._source === 'subtask') {
-      const proj = s.projects.find(p => p.id === t._pid);
-      const st = proj?.subtasks.find(st => st.id === t.id);
-      if (st) st.priority = cycle[st.priority || 'med'] || 'med';
-    } else {
-      const task = (s.tasks || []).find(x => x.id === t.id);
-      if (task) task.priority = cycle[task.priority || 'med'] || 'med';
     }
     save(); refresh(); syncLegacy();
   };
@@ -729,7 +707,6 @@ export default function ProjectDashboard({ open, onClose }) {
                       borderRadius: 'var(--radius-sm)',
                     }}>
                       <Checkbox checked={t.done} onChange={() => toggleTask(t)} />
-                      <PriorityDot priority={t.priority} onClick={() => cyclePriority(t)} />
                       <span style={{
                         flex: 1, fontSize: 13, minWidth: 0,
                         textDecoration: t.done ? 'line-through' : 'none',
@@ -799,11 +776,6 @@ export default function ProjectDashboard({ open, onClose }) {
                   placeholder="Add task..."
                   style={inputStyle({})} />
                 <div style={{ display: 'flex', gap: 5 }}>
-                  <select value={newTaskPri} onChange={e => setNewTaskPri(e.target.value)} style={selectStyle}>
-                    <option value="low">Low</option>
-                    <option value="med">Med</option>
-                    <option value="high">High</option>
-                  </select>
                   <input type="date" value={newTaskDue} onChange={e => setNewTaskDue(e.target.value)}
                     style={inputStyle({ flex: 1, fontSize: 11 })} />
                   <input type="text" value={newTaskTime} onChange={e => setNewTaskTime(e.target.value)}
@@ -896,16 +868,6 @@ function Checkbox({ checked, onChange }) {
     }}>
       {checked && <span style={{ color: '#fff', fontSize: 10, fontWeight: 700 }}>✓</span>}
     </div>
-  );
-}
-
-function PriorityDot({ priority, onClick }) {
-  return (
-    <div onClick={e => { e.stopPropagation(); onClick(); }} style={{
-      width: 7, height: 7, borderRadius: '50%', flexShrink: 0,
-      background: priorityColor(priority),
-      cursor: 'pointer',
-    }} title={`Priority: ${priorityLabel(priority)}`} />
   );
 }
 

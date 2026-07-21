@@ -283,9 +283,6 @@ a:hover{text-decoration:underline;}
 }
 .mockup-task.done .check{background:var(--green);border-color:var(--green);}
 .mockup-task.done .text{color:var(--text-faint);text-decoration:line-through;}
-.mockup-task .priority-dot{
-  width:8px;height:8px;border-radius:50%;flex-shrink:0;
-}
 .mockup-task .meta{margin-left:auto;font-size:11px;color:var(--text-faint);}
 
 .kbd{
@@ -468,7 +465,7 @@ a:hover{text-decoration:underline;}
   <!-- show all checkbox -->
   <g transform="translate(24, 60)">
     <rect width="14" height="14" rx="3" fill="#1a2532" stroke="#1f2937"/>
-    <text x="22" y="11" font-size="12" fill="#94a3b8">Show all projects (by priority)</text>
+    <text x="22" y="11" font-size="12" fill="#94a3b8">Show all projects</text>
   </g>
   <!-- project card 1 -->
   <g transform="translate(24, 92)">
@@ -484,21 +481,18 @@ a:hover{text-decoration:underline;}
     </g>
     <g transform="translate(16, 82)">
       <rect width="14" height="14" rx="3" fill="none" stroke="#64748b" stroke-width="1.5"/>
-      <circle cx="32" cy="7" r="4" fill="#ef4444"/>
       <text x="46" y="11" font-size="12" fill="#e2e8f0">Draft narrative section</text>
-      <text x="690" y="11" font-size="10" fill="#64748b">3hr · high</text>
+      <text x="690" y="11" font-size="10" fill="#64748b">3hr</text>
     </g>
     <g transform="translate(16, 108)">
       <rect width="14" height="14" rx="3" fill="none" stroke="#64748b" stroke-width="1.5"/>
-      <circle cx="32" cy="7" r="4" fill="#fbbf24"/>
       <text x="46" y="11" font-size="12" fill="#e2e8f0">Review with EDO</text>
-      <text x="690" y="11" font-size="10" fill="#64748b">1hr · med</text>
+      <text x="690" y="11" font-size="10" fill="#64748b">1hr</text>
     </g>
     <g transform="translate(16, 134)">
       <rect width="14" height="14" rx="3" fill="none" stroke="#64748b" stroke-width="1.5"/>
-      <circle cx="32" cy="7" r="4" fill="#22c55e"/>
       <text x="46" y="11" font-size="12" fill="#e2e8f0">Submit final to medical director</text>
-      <text x="690" y="11" font-size="10" fill="#64748b">30m · low</text>
+      <text x="690" y="11" font-size="10" fill="#64748b">30m</text>
     </g>
   </g>
   <!-- project card 2 (collapsed) -->
@@ -521,11 +515,11 @@ a:hover{text-decoration:underline;}
    
     <h2>Projects panel</h2>
     <p class="slide-sub">For anything bigger than a single task.</p>
-    <p>A project is a container with a name, a due date, and a list of subtasks. Each subtask has its own priority, time estimate, and due date — so you can break "Plan vacation" into "Book flights", "Reserve hotel", "Arrange pet care" and let each piece live with its own metadata.</p>
+    <p>A project is a container with a name, a due date, and a list of subtasks. Each subtask has its own time estimate and due date — so you can break "Plan vacation" into "Book flights", "Reserve hotel", "Arrange pet care" and let each piece live with its own metadata.</p>
     <p><strong>To create one:</strong> type the project name at the bottom of the panel and hit <span class="kbd">Add</span>. Then click the project to expand it and add subtasks.</p>
-    <p><strong>Show all toggle.</strong> The checkbox below the panel header is hidden by default for a clean view. Check it to show every project sorted by the highest priority of its open subtasks.</p>
+    <p><strong>Show all toggle.</strong> The checkbox below the panel header is hidden by default for a clean view. Check it to show every project.</p>
     <div class="callout gold">
-      <strong>Why subtasks have priorities, not just projects:</strong> when you're picking what to work on next, you don't pick a whole project — you pick a single 30-minute action. Subtask-level metadata is what makes Axis able to suggest a real next step.
+      <strong>Why subtasks have their own metadata, not just projects:</strong> when you're picking what to work on next, you don't pick a whole project — you pick a single 30-minute action. Subtask-level detail is what makes Axis able to suggest a real next step.
     </div>
   </div>
 
@@ -545,7 +539,7 @@ a:hover{text-decoration:underline;}
   <!-- sort controls -->
   <g transform="translate(24, 56)">
     <rect width="140" height="28" rx="6" fill="#1a2532" stroke="#fbbf24" stroke-width="2"/>
-    <text x="10" y="18" font-size="11" fill="#e2e8f0" font-family="DM Sans, sans-serif">Sort: Priority</text>
+    <text x="10" y="18" font-size="11" fill="#e2e8f0" font-family="DM Sans, sans-serif">Sort: Due Date</text>
     <text x="124" y="18" font-size="11" fill="#64748b">▾</text>
     <rect x="150" y="0" width="140" height="28" rx="6" fill="#1a2532" stroke="#1f2937"/>
     <text x="160" y="18" font-size="11" fill="#e2e8f0" font-family="DM Sans, sans-serif">All Projects</text>
@@ -553,13 +547,12 @@ a:hover{text-decoration:underline;}
   </g>
   <!-- sort dropdown (open) -->
   <g transform="translate(24, 88)">
-    <rect width="160" height="120" rx="6" fill="#121b25" stroke="#1f2937" filter="url(#sh1)"/>
-    <rect x="0" y="0" width="160" height="28" fill="rgba(91,232,255,0.08)"/>
-    <text x="10" y="18" font-size="11" font-weight="600" fill="#5be8ff">Priority</text>
-    <text x="146" y="18" font-size="11" fill="#5be8ff">✓</text>
-    <text x="10" y="46" font-size="11" fill="#e2e8f0">Time Needed</text>
-    <text x="10" y="68" font-size="11" fill="#e2e8f0">Project</text>
-    <text x="10" y="90" font-size="11" fill="#e2e8f0">Due Date</text>
+    <rect width="160" height="98" rx="6" fill="#121b25" stroke="#1f2937" filter="url(#sh1)"/>
+    <text x="10" y="18" font-size="11" fill="#e2e8f0">Time Needed</text>
+    <text x="10" y="40" font-size="11" fill="#e2e8f0">Project</text>
+    <rect x="0" y="48" width="160" height="28" fill="rgba(91,232,255,0.08)"/>
+    <text x="10" y="66" font-size="11" font-weight="600" fill="#5be8ff">Due Date</text>
+    <text x="146" y="66" font-size="11" fill="#5be8ff">✓</text>
   </g>
   <!-- tasks list (behind dropdown) -->
   <g transform="translate(204, 96)" opacity="0.7">
@@ -569,43 +562,37 @@ a:hover{text-decoration:underline;}
   <g transform="translate(204, 100)">
     <rect width="592" height="32" rx="6" fill="#121b25" stroke="#1f2937"/>
     <rect width="14" height="14" rx="3" x="10" y="9" fill="none" stroke="#64748b" stroke-width="1.5"/>
-    <circle cx="38" cy="16" r="4" fill="#ef4444"/>
     <text x="52" y="20" font-size="12" fill="#e2e8f0">Submit overtime report</text>
     <text x="500" y="20" font-size="10" fill="#64748b">30m · today</text>
   </g>
   <g transform="translate(204, 140)">
     <rect width="592" height="32" rx="6" fill="#121b25" stroke="#1f2937"/>
     <rect width="14" height="14" rx="3" x="10" y="9" fill="none" stroke="#64748b" stroke-width="1.5"/>
-    <circle cx="38" cy="16" r="4" fill="#ef4444"/>
     <text x="52" y="20" font-size="12" fill="#e2e8f0">Draft Q2 narrative</text>
     <text x="490" y="20" font-size="10" fill="#64748b">3hr · QA Report</text>
   </g>
   <g transform="translate(204, 180)">
     <rect width="592" height="32" rx="6" fill="#121b25" stroke="#1f2937"/>
     <rect width="14" height="14" rx="3" x="10" y="9" fill="none" stroke="#64748b" stroke-width="1.5"/>
-    <circle cx="38" cy="16" r="4" fill="#fbbf24"/>
     <text x="52" y="20" font-size="12" fill="#e2e8f0">Call back Dr. Patel</text>
-    <text x="528" y="20" font-size="10" fill="#64748b">1hr · med</text>
+    <text x="528" y="20" font-size="10" fill="#64748b">1hr</text>
   </g>
   <g transform="translate(204, 220)">
     <rect width="592" height="32" rx="6" fill="#121b25" stroke="#1f2937"/>
     <rect width="14" height="14" rx="3" x="10" y="9" fill="none" stroke="#64748b" stroke-width="1.5"/>
-    <circle cx="38" cy="16" r="4" fill="#fbbf24"/>
     <text x="52" y="20" font-size="12" fill="#e2e8f0">Review CIT slides</text>
-    <text x="528" y="20" font-size="10" fill="#64748b">45m · med</text>
+    <text x="528" y="20" font-size="10" fill="#64748b">45m</text>
   </g>
   <g transform="translate(204, 260)">
     <rect width="592" height="32" rx="6" fill="#121b25" stroke="#1f2937"/>
     <rect width="14" height="14" rx="3" x="10" y="9" fill="none" stroke="#64748b" stroke-width="1.5"/>
-    <circle cx="38" cy="16" r="4" fill="#22c55e"/>
     <text x="52" y="20" font-size="12" fill="#e2e8f0">Order creatine refill</text>
-    <text x="538" y="20" font-size="10" fill="#64748b">15m · low</text>
+    <text x="538" y="20" font-size="10" fill="#64748b">15m</text>
   </g>
   <g transform="translate(204, 300)">
     <rect width="592" height="32" rx="6" fill="#121b25" stroke="#1f2937"/>
     <rect width="14" height="14" rx="3" x="10" y="9" fill="#22c55e"/>
     <text x="17" y="20" text-anchor="middle" font-size="11" font-weight="700" fill="#0e1620">✓</text>
-    <circle cx="38" cy="16" r="4" fill="#22c55e"/>
     <text x="52" y="20" font-size="12" fill="#64748b" text-decoration="line-through">Workout — upper body</text>
   </g>
 
@@ -622,17 +609,16 @@ a:hover{text-decoration:underline;}
     <p class="slide-sub">Sort by what your brain can actually do right now.</p>
     <p>The Task List shows every standalone task and every open project subtask in one place. The <strong>Sort</strong> dropdown is the secret weapon:</p>
     <ul>
-      <li><strong>Priority</strong> — High → Med → Low. The default.</li>
+      <li><strong>Due Date</strong> — Most urgent first. The default.</li>
       <li><strong>Time Needed</strong> — Shortest first. Pick this when you have 20 minutes between meetings and want a task that actually fits.</li>
       <li><strong>Project</strong> — Groups everything by parent project.</li>
-      <li><strong>Due Date</strong> — Most urgent first.</li>
     </ul>
     <div class="mockup-preview">
-      <div class="mockup-task"><span class="check"></span><span class="priority-dot" style="background:#ef4444;"></span><span class="text">Pull Q2 run report stats</span><span class="meta">30m · high · today</span></div>
-      <div class="mockup-task"><span class="check"></span><span class="priority-dot" style="background:#f59e0b;"></span><span class="text">Call back Dr. Patel</span><span class="meta">1hr · med</span></div>
-      <div class="mockup-task done"><span class="check"></span><span class="priority-dot" style="background:#22c55e;"></span><span class="text">Workout — upper body</span><span class="meta">45m</span></div>
+      <div class="mockup-task"><span class="check"></span><span class="text">Pull Q2 run report stats</span><span class="meta">30m · today</span></div>
+      <div class="mockup-task"><span class="check"></span><span class="text">Call back Dr. Patel</span><span class="meta">1hr</span></div>
+      <div class="mockup-task done"><span class="check"></span><span class="text">Workout — upper body</span><span class="meta">45m</span></div>
     </div>
-    <p>Like Projects, there's a <em>Show all (sorted by priority)</em> checkbox. Off = clean panel. On = everything visible in current sort order.</p>
+    <p>Like Projects, there's a <em>Show all</em> checkbox. Off = clean panel. On = everything visible in current sort order.</p>
   </div>
 
   <!-- 4 -->
@@ -1647,7 +1633,7 @@ a:hover{text-decoration:underline;}
   <rect x="52" y="672" width="536" height="58" rx="10" fill="white" stroke="#e2e8f0" stroke-width="1"/>
   <text x="82" y="698" font-size="15">📋</text>
   <text x="106" y="696" font-size="14" font-weight="600" fill="#1a2332" font-family="DM Sans,sans-serif">Task List</text>
-  <text x="106" y="715" font-size="11" fill="#94a3b8" font-family="DM Sans,sans-serif">Unified view of all tasks sorted by priority or time</text>
+  <text x="106" y="715" font-size="11" fill="#94a3b8" font-family="DM Sans,sans-serif">Unified view of all tasks sorted by due date or time</text>
   <rect x="542" y="690" width="40" height="22" rx="11" fill="#e2e8f0"/><circle cx="554" cy="701" r="8" fill="white"/>
 
   <!-- Annotation: arrow pointing to OFF toggle on Task List -->
