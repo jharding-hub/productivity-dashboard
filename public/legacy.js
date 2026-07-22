@@ -6010,17 +6010,25 @@ async function _loadCompletedTasksDoc(){
   if(loaded&&Array.isArray(loaded.items)){
     state.completedTasks=_dropTombstoned(mergeById(state.completedTasks,loaded.items),state._archiveTombstones||{});
   }
-  // 2. Reconcile the lifetime COUNTERS. reconcileLifetimeCounter takes the max
-  //    of {in-memory, loaded doc, array length as floor}: it seeds a
-  //    pre-counter doc from the array, preserves a real synced total, and
-  //    self-heals a `lifetime:0` an earlier save may have persisted before the
-  //    counter existed (the bug that pinned the badge at 0 across reloads).
-  //    Because array length is a floor, the counter can never read below the
-  //    archive in hand. See public/sync-merge.js for the full invariant.
+  // 2. Reconcile the lifetime COUNTERS: max of {in-memory, loaded doc, array
+  //    length as floor}. Seeds a pre-counter doc from the array, preserves a
+  //    real synced total, and self-heals a `lifetime:0` an earlier save may
+  //    have persisted before the counter existed (the bug that pinned the
+  //    badge at 0 across reloads). Because array length is a floor, the counter
+  //    can never read below the archive in hand.
+  //    reconcileLifetimeCounter is the canonical, unit-tested impl in
+  //    sync-merge.js. This path runs during initApp's Promise.all, so it must
+  //    NOT throw if a stale Service-Worker cache serves an old sync-merge.js
+  //    that predates that symbol (a real prod crash: legacy.js updated but the
+  //    unhashed sync-merge.js came from cache). Fall back to the identical
+  //    one-line max so init always completes; the two stay in lockstep.
+  var _rlc=(typeof reconcileLifetimeCounter==='function')
+    ?reconcileLifetimeCounter
+    :function(a,b,c){return Math.max(a||0,b||0,c||0);};
   var _arr=state.completedTasks||[];
-  state.completedTasksLifetime=reconcileLifetimeCounter(
+  state.completedTasksLifetime=_rlc(
     state.completedTasksLifetime, loaded&&loaded.lifetime, _arr.length);
-  state.completedProjectSubtasksLifetime=reconcileLifetimeCounter(
+  state.completedProjectSubtasksLifetime=_rlc(
     state.completedProjectSubtasksLifetime, loaded&&loaded.projectLifetime,
     _arr.filter(function(t){return t.source==='project';}).length);
   // 3. Persist the reconciled array + healed counters back ONCE (cloud + local
