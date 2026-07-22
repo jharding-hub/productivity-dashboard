@@ -619,7 +619,7 @@ try {
 
 // ── SCRIPT 3: APP LOGIC ─────────────────────────────────────────
 // STATE
-var state={projects:[],reminders:[],thoughts:[],notes:[],moodLog:[],tasks:[],completedTasks:[],journal:[],journalPin:'',workoutLog:{},completedWorkouts:[],focusPlaylistId:null,points:{current:0,monthKey:'',lastTier:'bronze',totalsByDay:{},lastLoginDate:'',lifetimeTotal:0,monthlyTotals:{}},panelUseLog:{},usageMonthlyTotals:{},routines:{morning:[{id:'m1',name:'Hydrate \u2014 glass of water',done:false},{id:'m2',name:"Review today's calendar",done:false},{id:'m3',name:'Pick top 3 priorities',done:false},{id:'m4',name:'Quick workspace tidy',done:false}],evening:[{id:'e1',name:'Review what got done today',done:false},{id:'e2',name:"Brain dump tomorrow's thoughts",done:false},{id:'e3',name:"Set out tomorrow's essentials",done:false},{id:'e4',name:'Wind-down activity',done:false}],custom:[]},currentRoutineTab:'morning',energy:null,mood:null,panelOrder:['projects','reminders','time','tasklist','notes','brain','routines','wellness','decision','admin'],panelsLocked:true,lastRoutineReset:null,visiblePanels:{},knownPanels:[]};
+var state={projects:[],reminders:[],thoughts:[],notes:[],moodLog:[],tasks:[],completedTasks:[],completedTasksLifetime:undefined,completedProjectSubtasksLifetime:undefined,journal:[],journalPin:'',workoutLog:{},completedWorkouts:[],focusPlaylistId:null,points:{current:0,monthKey:'',lastTier:'bronze',totalsByDay:{},lastLoginDate:'',lifetimeTotal:0,monthlyTotals:{}},panelUseLog:{},usageMonthlyTotals:{},routines:{morning:[{id:'m1',name:'Hydrate \u2014 glass of water',done:false},{id:'m2',name:"Review today's calendar",done:false},{id:'m3',name:'Pick top 3 priorities',done:false},{id:'m4',name:'Quick workspace tidy',done:false}],evening:[{id:'e1',name:'Review what got done today',done:false},{id:'e2',name:"Brain dump tomorrow's thoughts",done:false},{id:'e3',name:"Set out tomorrow's essentials",done:false},{id:'e4',name:'Wind-down activity',done:false}],custom:[]},currentRoutineTab:'morning',energy:null,mood:null,panelOrder:['projects','reminders','time','tasklist','notes','brain','routines','wellness','decision','admin'],panelsLocked:true,lastRoutineReset:null,visiblePanels:{},knownPanels:[]};
 
 // SYNC STATUS
 function setSyncStatus(status,label){const el=document.getElementById('syncStatus');if(!el)return;el.className='sync-status '+status;var icon={synced:'✓',syncing:'↻',error:'⚠',offline:'•'}[status]||'•';el.innerHTML='<span class="sync-icon">'+icon+'</span> '+label;}
@@ -676,7 +676,7 @@ function save(){
   // (_saveCheckinsDoc/_saveMoodLogDoc) -- excluded here so they stop riding
   // along in every dashboard-doc write. JSON.stringify drops keys whose
   // value is undefined, so this omits them without deep-cloning the rest.
-  const blob=JSON.stringify(Object.assign({},state,{checkins:undefined,moodLog:undefined,completedTasks:undefined}));
+  const blob=JSON.stringify(Object.assign({},state,{checkins:undefined,moodLog:undefined,completedTasks:undefined,completedTasksLifetime:undefined,completedProjectSubtasksLifetime:undefined}));
   try{localStorage.setItem('prodDash_'+uid,blob);}catch(e){}
   _checkStateSize(blob.length);
   if(typeof pushWatchSnapshot==='function')pushWatchSnapshot(); // mirror to Apple Watch
@@ -797,7 +797,7 @@ async function load(){
         // Push to new location. R5: exclude checkins/moodLog, same as save() --
         // they're adopted into their own docs by _loadCheckinsDoc/_loadMoodLogDoc
         // right after load() returns.
-        await db.collection('users').doc(currentUser.uid).collection('data').doc('dashboard').set({state:JSON.stringify(Object.assign({},state,{checkins:undefined,moodLog:undefined,completedTasks:undefined})),updated:firebase.firestore.FieldValue.serverTimestamp()});
+        await db.collection('users').doc(currentUser.uid).collection('data').doc('dashboard').set({state:JSON.stringify(Object.assign({},state,{checkins:undefined,moodLog:undefined,completedTasks:undefined,completedTasksLifetime:undefined,completedProjectSubtasksLifetime:undefined})),updated:firebase.firestore.FieldValue.serverTimestamp()});
         setSyncStatus('synced','Synced');
       }
     }catch(e){console.log('Firestore load error:',e);setSyncStatus('error','Offline');}
@@ -935,10 +935,15 @@ function startRealtimeSync(){
       // next own-doc reconcile (_loadCheckinsDoc/_loadMoodLogDoc/
       // _loadCompletedTasksDoc). Strip all three so each own-doc load stays the
       // single source of truth, matching how save()/load() already exclude them
-      // from the blob on the write side.
+      // from the blob on the write side. The lifetime counters live in the
+      // completedTasks own-doc too (loaded by _loadCompletedTasksDoc), so they
+      // get the same treatment -- otherwise a stale blob echo resets them and
+      // the badge falls back to the 100-capped array length.
       delete cloud.checkins;
       delete cloud.moodLog;
       delete cloud.completedTasks;
+      delete cloud.completedTasksLifetime;
+      delete cloud.completedProjectSubtasksLifetime;
       state={...state,...cloud};
       // Tombstone-aware reconciliation (mirrors load()): a stale snapshot must
       // not resurrect a locally-deleted/completed item, and concurrent adds on
@@ -1862,7 +1867,7 @@ var upcomingEl=document.getElementById('projUpcomingOnly');
 var showAll=!inOverlay&&upcomingEl&&upcomingEl.checked;
 // Always sort alphabetically regardless of showAll / overlay mode
 var visibleProjects=_sortedProjects();
-if(state.projects.length===0){el.innerHTML='<div class="empty-state"><p style="margin:0 0 8px;color:var(--text-dim);">No projects yet. Create one to start tracking goals and subtasks.</p><button class="btn btn-accent btn-sm" onclick="document.getElementById(\'newProjName\').focus()" style="margin:0 auto;display:block;">+ Create your first project</button></div>'+_renderCompletedProjectsSection();document.getElementById('projCount').textContent='0';var emptyProjCompCount=(state.completedTasks||[]).filter(function(t){return t.source==='project';}).length;var emptyProjCompBadge=document.getElementById('projCompletedBadge');if(emptyProjCompBadge){emptyProjCompBadge.textContent='✓ '+emptyProjCompCount;emptyProjCompBadge.title=emptyProjCompCount+' completed subtask'+(emptyProjCompCount!==1?'s':'');emptyProjCompBadge.style.display=emptyProjCompCount>0?'inline-flex':'none';}updateNoteSelectors();if(typeof _updateTileSummaryProjects==='function')_updateTileSummaryProjects();return;}
+if(state.projects.length===0){el.innerHTML='<div class="empty-state"><p style="margin:0 0 8px;color:var(--text-dim);">No projects yet. Create one to start tracking goals and subtasks.</p><button class="btn btn-accent btn-sm" onclick="document.getElementById(\'newProjName\').focus()" style="margin:0 auto;display:block;">+ Create your first project</button></div>'+_renderCompletedProjectsSection();document.getElementById('projCount').textContent='0';var emptyProjCompCount=state.completedProjectSubtasksLifetime!==undefined?state.completedProjectSubtasksLifetime:(state.completedTasks||[]).filter(function(t){return t.source==='project';}).length;var emptyProjCompBadge=document.getElementById('projCompletedBadge');if(emptyProjCompBadge){emptyProjCompBadge.textContent='✓ '+emptyProjCompCount;emptyProjCompBadge.title=emptyProjCompCount+' completed subtask'+(emptyProjCompCount!==1?'s':'');emptyProjCompBadge.style.display=emptyProjCompCount>0?'inline-flex':'none';}updateNoteSelectors();if(typeof _updateTileSummaryProjects==='function')_updateTileSummaryProjects();return;}
 var pcpEl=document.getElementById('pc_projects');
 // Tile mode, unchecked -- blank panel so add-form anchors to bottom
 if(!inOverlay&&!showAll){
@@ -1916,8 +1921,8 @@ return '<div class="project-card"><div class="proj-header" onclick="openProjectM
 document.getElementById('projCount').textContent=state.projects.length;
 // Append "Completed Projects" section at the bottom of the projects list
 el.innerHTML+=_renderCompletedProjectsSection();
-// Update completed subtasks badge (green)
-var projCompCount=(state.completedTasks||[]).filter(function(t){return t.source==='project';}).length;
+// Update completed subtasks badge (green) -- lifetime total, see taskListCompletedBadge above
+var projCompCount=state.completedProjectSubtasksLifetime!==undefined?state.completedProjectSubtasksLifetime:(state.completedTasks||[]).filter(function(t){return t.source==='project';}).length;
 var projCompBadge=document.getElementById('projCompletedBadge');
 if(projCompBadge){
   projCompBadge.textContent='✓ '+projCompCount;
@@ -4929,6 +4934,49 @@ function renderTaskList(){
   // Save total count (for badge) before any further filtering
   var totalCount=all.filter(function(t){return !t.done;}).length;
 
+  // Update completed counter badge (green) -- lifetime total, not the capped
+  // archive's length (that pins at COMPLETED_TASKS_MAX once you cross it).
+  // Computed here, before the tile/overlay branching below, because the tile
+  // (collapsed) branch used to `return` before ever reaching this -- the
+  // badge is part of the panel header (visible in tile mode too) but was
+  // only ever updated when the panel was expanded/showAll, so completing a
+  // task from the tile silently never moved it.
+  var compCount=state.completedTasksLifetime!==undefined?state.completedTasksLifetime:(state.completedTasks||[]).length;
+  var compBadge=document.getElementById('taskListCompletedBadge');
+  if(compBadge){
+    compBadge.textContent='✓ '+compCount;
+    compBadge.title=compCount+' completed task'+(compCount!==1?'s':'');
+    compBadge.style.display=compCount>0?'inline-flex':'none';
+  }
+  // Completed archive folder (only present in the expanded view, hence the
+  // null guard -- harmless no-op when the tile branch returns below)
+  var compEl=document.getElementById('taskListCompleted');
+  if(compEl){
+    var comp=state.completedTasks||[];
+    if(comp.length===0){
+      compEl.innerHTML='';
+    }else{
+      compEl.innerHTML='<div class="tl-completed-header" onclick="toggleCompletedFolder(this)">'
+        +'<span class="tl-completed-arrow">&#9654;</span>'
+        +'<span>&#10003; Completed ('+comp.length+')</span>'
+        +'</div>'
+        +'<div class="tl-completed-list">'
+        +comp.slice(0,50).map(function(t){
+          var d=t.archivedAt?new Date(t.archivedAt).toLocaleDateString('en-US',{month:'short',day:'numeric'}):'';
+          return '<div class="tl-item tl-done" style="opacity:0.65;">'
+            +'<div class="tl-check checked" style="cursor:default;">✓</div>'
+            +'<div class="tl-body"><div class="tl-name">'+esc(t.name)+'</div>'
+            +'<div class="tl-meta">'+(t.projectName?'<span class="tl-proj-badge">'+esc(t.projectName)+'</span>':'')
+            +(d?'<span style="font-size:10px;color:var(--text-faint);">'+d+'</span>':'')
+            +'</div></div>'
+            +'<span class="tl-del" onclick="removeCompleted(\''+t.id+'\')" title="Remove">✕</span>'
+            +'</div>';
+        }).join('')
+        +(comp.length>50?'<div class="tl-completed-empty">+'+( comp.length-50)+' older items</div>':'')
+        +'</div>';
+    }
+  }
+
   // Sort
   if(sort==='time'){
     all.sort(function(a,b){var ta=TIME_ORDER[a.timeEst]||9999,tb=TIME_ORDER[b.timeEst]||9999;return ta-tb;});
@@ -4961,41 +5009,6 @@ function renderTaskList(){
     refreshEditables();
   }
   document.getElementById('taskListCount').textContent=totalCount;
-  // Update completed counter badge (green)
-  var compCount=(state.completedTasks||[]).length;
-  var compBadge=document.getElementById('taskListCompletedBadge');
-  if(compBadge){
-    compBadge.textContent='✓ '+compCount;
-    compBadge.title=compCount+' completed task'+(compCount!==1?'s':'');
-    compBadge.style.display=compCount>0?'inline-flex':'none';
-  }
-  // Completed archive folder
-  var compEl=document.getElementById('taskListCompleted');
-  if(compEl){
-    var comp=state.completedTasks||[];
-    if(comp.length===0){
-      compEl.innerHTML='';
-    }else{
-      compEl.innerHTML='<div class="tl-completed-header" onclick="toggleCompletedFolder(this)">'
-        +'<span class="tl-completed-arrow">&#9654;</span>'
-        +'<span>&#10003; Completed ('+comp.length+')</span>'
-        +'</div>'
-        +'<div class="tl-completed-list">'
-        +comp.slice(0,50).map(function(t){
-          var d=t.archivedAt?new Date(t.archivedAt).toLocaleDateString('en-US',{month:'short',day:'numeric'}):'';
-          return '<div class="tl-item tl-done" style="opacity:0.65;">'
-            +'<div class="tl-check checked" style="cursor:default;">\u2713</div>'
-            +'<div class="tl-body"><div class="tl-name">'+esc(t.name)+'</div>'
-            +'<div class="tl-meta">'+(t.projectName?'<span class="tl-proj-badge">'+esc(t.projectName)+'</span>':'')
-            +(d?'<span style="font-size:10px;color:var(--text-faint);">'+d+'</span>':'')
-            +'</div></div>'
-            +'<span class="tl-del" onclick="removeCompleted(\''+t.id+'\')" title="Remove">\u2715</span>'
-            +'</div>';
-        }).join('')
-        +(comp.length>50?'<div class="tl-completed-empty">+'+( comp.length-50)+' older items</div>':'')
-        +'</div>';
-    }
-  }
   updateTLProjectDropdowns();
   _renderSavedFilterOptions();
   if(typeof _updateTileSummaryTasklist==='function')_updateTileSummaryTasklist();
@@ -5840,6 +5853,12 @@ function _archiveCompletedTask(record){
   if(!state.completedTasks)state.completedTasks=[];
   state.completedTasks.unshift(record);
   if(state.completedTasks.length>COMPLETED_TASKS_MAX)state.completedTasks=state.completedTasks.slice(0,COMPLETED_TASKS_MAX);
+  // Lifetime counters are separate from the capped archive above -- the array
+  // only ever holds the most recent COMPLETED_TASKS_MAX items, so its .length
+  // cannot be used as a running total once that cap is hit. These increment
+  // forever regardless of the slice.
+  state.completedTasksLifetime=(state.completedTasksLifetime||0)+1;
+  if(record.source==='project')state.completedProjectSubtasksLifetime=(state.completedProjectSubtasksLifetime||0)+1;
   if(typeof _saveCompletedTasksDoc==='function')_saveCompletedTasksDoc();
 }
 
@@ -5982,6 +6001,14 @@ async function _loadCompletedTasksDoc(){
   if(!loaded){
     try{var s=localStorage.getItem(_completedTasksStorageKey());if(s)loaded=JSON.parse(s);}catch(e){}
   }
+  // Lifetime counters: monotonic, so take the max of whatever we already have
+  // in memory and whatever the loaded doc carries. `loaded.lifetime` is absent
+  // on pre-counter docs (undefined -> treated as 0 here); the seed below then
+  // establishes a floor from the capped array.
+  if(loaded&&loaded.lifetime!==undefined){
+    state.completedTasksLifetime=Math.max(state.completedTasksLifetime||0,loaded.lifetime||0);
+    state.completedProjectSubtasksLifetime=Math.max(state.completedProjectSubtasksLifetime||0,loaded.projectLifetime||0);
+  }
   if(loaded&&Array.isArray(loaded.items)){
     // Reconcile (not overwrite): union local (old-blob or prior-session data)
     // with the loaded copy by id, then drop history entries the user cleared.
@@ -5992,15 +6019,29 @@ async function _loadCompletedTasksDoc(){
     // adopted by load() from the old dashboard blob. Seed the new doc from it.
     await _saveCompletedTasksDoc();
   }
-  try{localStorage.setItem(_completedTasksStorageKey(),JSON.stringify({v:1,items:state.completedTasks||[]}));}catch(e){}
+  // One-time seed for accounts that predate the lifetime counters: the capped
+  // archive is the only history we have, so use its current contents as a
+  // floor. Older completions that already fell off the 100-item cap are lost
+  // and can't be recovered -- the counters just resume climbing accurately
+  // from here on. Runs only when neither memory nor the loaded doc supplied a
+  // counter (both undefined), so it can't stomp a real synced total.
+  if(state.completedTasksLifetime===undefined){
+    state.completedTasksLifetime=(state.completedTasks||[]).length;
+    state.completedProjectSubtasksLifetime=(state.completedTasks||[]).filter(function(t){return t.source==='project';}).length;
+    await _saveCompletedTasksDoc();
+  }
+  try{localStorage.setItem(_completedTasksStorageKey(),JSON.stringify({v:1,items:state.completedTasks||[],lifetime:state.completedTasksLifetime||0,projectLifetime:state.completedProjectSubtasksLifetime||0}));}catch(e){}
 }
 async function _saveCompletedTasksDoc(){
-  var doc={v:1,items:state.completedTasks||[]};
+  // Lifetime counters live HERE, in the completedTasks own-doc, not the
+  // dashboard blob -- they count this doc's history, so keeping them atomic
+  // with it gives one load/save/reconcile path instead of two docs that drift.
+  var doc={v:1,items:state.completedTasks||[],lifetime:state.completedTasksLifetime||0,projectLifetime:state.completedProjectSubtasksLifetime||0};
   try{localStorage.setItem(_completedTasksStorageKey(),JSON.stringify(doc));}catch(e){}
   if(firebaseReady&&db&&currentUser){
     try{
       await db.collection('users').doc(currentUser.uid).collection('data').doc('completedTasks')
-        .set({v:1,items:doc.items,updated:firebase.firestore.FieldValue.serverTimestamp()});
+        .set({v:1,items:doc.items,lifetime:doc.lifetime,projectLifetime:doc.projectLifetime,updated:firebase.firestore.FieldValue.serverTimestamp()});
     }catch(e){console.log('completedTasks save (cloud) error:',e);}
   }
 }
