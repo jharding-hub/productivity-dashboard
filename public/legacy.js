@@ -6001,33 +6001,31 @@ async function _loadCompletedTasksDoc(){
   if(!loaded){
     try{var s=localStorage.getItem(_completedTasksStorageKey());if(s)loaded=JSON.parse(s);}catch(e){}
   }
-  // Lifetime counters: monotonic, so take the max of whatever we already have
-  // in memory and whatever the loaded doc carries. `loaded.lifetime` is absent
-  // on pre-counter docs (undefined -> treated as 0 here); the seed below then
-  // establishes a floor from the capped array.
-  if(loaded&&loaded.lifetime!==undefined){
-    state.completedTasksLifetime=Math.max(state.completedTasksLifetime||0,loaded.lifetime||0);
-    state.completedProjectSubtasksLifetime=Math.max(state.completedProjectSubtasksLifetime||0,loaded.projectLifetime||0);
-  }
+  // 1. Reconcile the archive ARRAY first, so its length is final before we use
+  //    it as the lifetime floor below. Union local (old-blob or prior-session
+  //    data) with the loaded copy by id, then drop history entries the user
+  //    cleared. (When there's no loaded doc but we already hold items from the
+  //    old dashboard blob, this leaves them in place for the seed/save below --
+  //    the pre-Stage-2b one-time migration.)
   if(loaded&&Array.isArray(loaded.items)){
-    // Reconcile (not overwrite): union local (old-blob or prior-session data)
-    // with the loaded copy by id, then drop history entries the user cleared.
     state.completedTasks=_dropTombstoned(mergeById(state.completedTasks,loaded.items),state._archiveTombstones||{});
-    await _saveCompletedTasksDoc(); // persist the reconciled result back
-  }else if((state.completedTasks||[]).length){
-    // ONE-TIME MIGRATION: pre-Stage-2b data lives in state.completedTasks,
-    // adopted by load() from the old dashboard blob. Seed the new doc from it.
-    await _saveCompletedTasksDoc();
   }
-  // One-time seed for accounts that predate the lifetime counters: the capped
-  // archive is the only history we have, so use its current contents as a
-  // floor. Older completions that already fell off the 100-item cap are lost
-  // and can't be recovered -- the counters just resume climbing accurately
-  // from here on. Runs only when neither memory nor the loaded doc supplied a
-  // counter (both undefined), so it can't stomp a real synced total.
-  if(state.completedTasksLifetime===undefined){
-    state.completedTasksLifetime=(state.completedTasks||[]).length;
-    state.completedProjectSubtasksLifetime=(state.completedTasks||[]).filter(function(t){return t.source==='project';}).length;
+  // 2. Reconcile the lifetime COUNTERS. reconcileLifetimeCounter takes the max
+  //    of {in-memory, loaded doc, array length as floor}: it seeds a
+  //    pre-counter doc from the array, preserves a real synced total, and
+  //    self-heals a `lifetime:0` an earlier save may have persisted before the
+  //    counter existed (the bug that pinned the badge at 0 across reloads).
+  //    Because array length is a floor, the counter can never read below the
+  //    archive in hand. See public/sync-merge.js for the full invariant.
+  var _arr=state.completedTasks||[];
+  state.completedTasksLifetime=reconcileLifetimeCounter(
+    state.completedTasksLifetime, loaded&&loaded.lifetime, _arr.length);
+  state.completedProjectSubtasksLifetime=reconcileLifetimeCounter(
+    state.completedProjectSubtasksLifetime, loaded&&loaded.projectLifetime,
+    _arr.filter(function(t){return t.source==='project';}).length);
+  // 3. Persist the reconciled array + healed counters back ONCE (cloud + local
+  //    mirror). Skip only the truly-empty first-run case (no doc, no items).
+  if((loaded&&Array.isArray(loaded.items))||_arr.length){
     await _saveCompletedTasksDoc();
   }
   try{localStorage.setItem(_completedTasksStorageKey(),JSON.stringify({v:1,items:state.completedTasks||[],lifetime:state.completedTasksLifetime||0,projectLifetime:state.completedProjectSubtasksLifetime||0}));}catch(e){}

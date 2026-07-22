@@ -27,7 +27,15 @@ jobs:
         with:
           node-version: 20
       - run: npm ci
-      - run: npm audit --audit-level=high
+      # Audit only what SHIPS to users. Runtime deps (react, react-dom,
+      # @sentry/react) are bundled by Vite; the firebase CLIENT SDK is loaded
+      # from the gstatic.com CDN, not from node_modules. Everything under
+      # devDependencies (firebase-admin, firebase-tools, vite, gh-pages, test
+      # harnesses) is local build/deploy tooling that never reaches a browser,
+      # so a high-sev advisory there is not a user-facing risk and must not
+      # block a deploy. --omit=dev keeps full coverage of the shipped bundle
+      # while dropping that tooling noise.
+      - run: npm audit --omit=dev --audit-level=high
 
   build:
     name: Production Build

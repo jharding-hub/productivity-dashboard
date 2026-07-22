@@ -134,9 +134,31 @@ function reconcileSync(local, cloud){
   return out;
 }
 
+// Reconcile a monotonic lifetime completion counter across every source we
+// have on load: the value already in memory, the value carried by the loaded
+// doc, and the length of the archive array the counter summarizes.
+//
+// KEY INVARIANT: the archive array is a capped recent-SUBSET of all completions
+// (state.completedTasks is sliced to COMPLETED_TASKS_MAX), so the true lifetime
+// total can NEVER be smaller than the array currently in hand. `arrayFloor` is
+// therefore always a valid lower bound, and taking the max of all three:
+//   - seeds a pre-counter doc (loadedValue undefined) from the array,
+//   - preserves a real, higher synced total from another device,
+//   - and SELF-HEALS a `0` that was persisted before the counter existed.
+//
+// That last case is the bug this replaces: the old code seeded only when the
+// counter was `=== undefined`, but _saveCompletedTasksDoc persists
+// `lifetime: counter || 0`, so a save firing before the seed wrote a literal
+// `0` into the doc. On the next load `loadedValue` was `0` (not undefined), the
+// seed never re-fired, and the badge was pinned at 0 across every reload. A
+// max-with-floor has no such gate: the array length drags it back up.
+function reconcileLifetimeCounter(inMemory, loadedValue, arrayFloor){
+  return Math.max(inMemory||0, loadedValue||0, arrayFloor||0);
+}
+
 // Test-only export. `module` is undefined in the browser, so this is a no-op
 // there; under Node's CommonJS loader it exposes the pure functions for
 // test/sync-merge.test.mjs.
 if(typeof module!=='undefined' && module.exports){
-  module.exports = { _syncItemTime, mergeById, mergeTombstones, _dropTombstoned, mergeProjects, reconcileSync, SYNC_ACTIVE_ARRAYS, SYNC_UNION_ARRAYS };
+  module.exports = { _syncItemTime, mergeById, mergeTombstones, _dropTombstoned, mergeProjects, reconcileSync, reconcileLifetimeCounter, SYNC_ACTIVE_ARRAYS, SYNC_UNION_ARRAYS };
 }

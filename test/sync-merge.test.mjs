@@ -10,7 +10,7 @@ import assert from 'node:assert/strict';
 import { createRequire } from 'node:module';
 const require = createRequire(import.meta.url);
 
-const { mergeById, mergeTombstones, reconcileSync, _dropTombstoned } = require('../public/sync-merge.js');
+const { mergeById, mergeTombstones, reconcileSync, _dropTombstoned, reconcileLifetimeCounter } = require('../public/sync-merge.js');
 const { fmtDate } = require('../public/date-utils.js');
 
 // The OLD reconciliation, copied verbatim in spirit from load() lines 725-731,
@@ -74,6 +74,39 @@ test('completed archive record stays put when a stale client still holds it', ()
   const reconciled = reconcileSync(staleB, A);
   assert.deepEqual(reconciled.tasks.map(t => t.id), ['t2'], 't1 does not return to the active list');
   assert.ok(reconciled.completedProjects.some(t => t.id === 't1'), 'archive record is preserved');
+});
+
+// ── Lifetime completion counter: seed, monotonicity, and poisoned-zero heal ──
+// The green "✓ N" badge reads a lifetime counter, not the 100-capped archive
+// array. reconcileLifetimeCounter reconciles it on every load.
+test('lifetime counter seeds from the archive array for a pre-counter doc', () => {
+  // Old own-doc has 100 archived items but no `lifetime` field yet (undefined).
+  // The array length is the floor, so the badge starts at 100, not 0.
+  assert.equal(reconcileLifetimeCounter(undefined, undefined, 100), 100);
+});
+
+test('lifetime counter self-heals a persisted 0 (the badge-stuck-at-100/0 bug)', () => {
+  // THE REGRESSION: a save fired before the counter was seeded and wrote
+  // `lifetime: 0` into the doc. The old `=== undefined` seed guard then never
+  // re-fired (0 is defined), pinning the badge at 0 across every reload.
+  // With the array (100 items) as a floor, the counter recovers to 100.
+  assert.equal(reconcileLifetimeCounter(undefined, 0, 100), 100,
+    'a poisoned lifetime:0 must not survive when 100 items are in the archive');
+  assert.equal(reconcileLifetimeCounter(0, 0, 100), 100,
+    'even with 0 already in memory, the array floor drags it back up');
+});
+
+test('lifetime counter is monotonic and preserves a real synced total', () => {
+  // A genuine total higher than the (capped) array must win and never shrink.
+  assert.equal(reconcileLifetimeCounter(0, 250, 100), 250, 'a real synced 250 beats the 100-item floor');
+  assert.equal(reconcileLifetimeCounter(250, 100, 100), 250, 'an in-memory 250 is not rolled back by a lower doc/floor');
+  // Clearing archive items (array shrinks) does NOT decrement the lifetime.
+  assert.equal(reconcileLifetimeCounter(250, 250, 50), 250, 'removing archived items leaves the lifetime total intact');
+});
+
+test('lifetime counter never regresses below what a fresh completion just set', () => {
+  // Complete-then-stale-snapshot: memory is 101, an older doc still says 100.
+  assert.equal(reconcileLifetimeCounter(101, 100, 100), 101);
 });
 
 // ── 2b. Completed SUBTASK inside a project doesn't re-appear ─────────────────
