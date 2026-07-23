@@ -67,7 +67,11 @@ const HTML_PATH = /\.html?$|\/$/;
 // cached copy instantly after a deploy that changed one -- the fresh copy
 // only lands in cache for the NEXT load. Route these network-first instead,
 // same as HTML, so a deploy takes effect on the very next page load.
-const APP_SCRIPT_PATH = /\/(legacy|config|journal-crypto|quick-add-parser)\.js$/;
+// EVERY unhashed module legacy.js consumes at load time must be listed here:
+// if legacy.js (network-first) updates but a dependency (sync-merge, date-utils)
+// is served stale, legacy.js can call a symbol the old copy lacks and throw at
+// init -- a real prod crash (reconcileLifetimeCounter ReferenceError, cc0eee5).
+const APP_SCRIPT_PATH = /\/(legacy|config|journal-crypto|quick-add-parser|sync-merge|date-utils)\.js$/;
 
 // ─── Install ────────────────────────────────────────────────────────────
 self.addEventListener('install', e => {
