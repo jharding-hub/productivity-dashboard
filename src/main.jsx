@@ -22,11 +22,14 @@ if (window.SENTRY_DSN) {
       httpBodies: [],
       genAI: { inputs: false, outputs: false },
     },
-    // Drop a known-benign iOS WKWebView × Firebase noise event: WebKit closes
-    // IndexedDB transactions across awaits / when the app is backgrounded, and
-    // Firebase Auth's IDB session store then throws "Attempt to get records
-    // from database without an in-progress transaction". Non-fatal — Auth
-    // re-reads on resume. Matched narrowly so real errors still report.
+    // Drop known-benign iOS WKWebView × IndexedDB noise events. WebKit's IDB
+    // implementation is flaky across backgrounding/foregrounding and app
+    // suspension (long-standing WebKit engine bug, not app code -- see
+    // bugs.webkit.org #197050/#235579, firebase-js-sdk #1670/#2232). Firebase
+    // Auth's/Firestore's IDB persistence hits it in a couple of message
+    // variants; both are non-fatal (Auth re-reads / Firestore re-syncs on
+    // resume) and confirmed 2026-07-24 to leave the app working fine when it
+    // fires. Matched narrowly on message text so real errors still report.
     beforeSend(event, hint) {
       try {
         const ex = hint && hint.originalException;
@@ -36,7 +39,11 @@ if (window.SENTRY_DSN) {
           msg = event.exception.values.map((v) => (v && v.value) || '').join(' ');
         }
         if (!msg && event.message) msg = String(event.message);
-        if (msg.indexOf('without an in-progress transaction') !== -1) return null;
+        const benignIDBNoise = [
+          'without an in-progress transaction',
+          'An internal error was encountered in the Indexed Database server',
+        ];
+        if (benignIDBNoise.some((s) => msg.indexOf(s) !== -1)) return null;
       } catch (_e) { /* never let the filter break reporting */ }
       return event;
     },
