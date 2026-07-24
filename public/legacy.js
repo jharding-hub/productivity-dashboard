@@ -4784,6 +4784,30 @@ function renderTodayView(){
 
   var html='<div class="today-header"><div class="today-greeting">'+greeting+'</div><div class="today-date">'+dateLine+'</div></div>';
 
+  // Timeline: reuses _tlCollectBlocks (same composite the desktop day-progress
+  // banner draws from -- manual blocks + reminders/subtasks/tasks that have a
+  // specific time set, deduped so a scheduled item doesn't double up). A timed
+  // task/reminder can therefore also appear below in Tasks/Reminders -- same
+  // overlap the Timeline panel and Task List already have on desktop, not new.
+  var tlBlocks=(typeof _tlCollectBlocks==='function'?_tlCollectBlocks():[])
+    .slice().sort(function(a,b){return a.startMin-b.startMin;});
+  html+='<div class="today-section"><div class="today-section-title">Timeline</div>';
+  html+=tlBlocks.length===0
+    ?'<div class="empty-state">Nothing scheduled today.</div>'
+    :'<div id="todayTimelineList">'+tlBlocks.map(function(b){
+        var colorIdx=_tlProjectColor(b.projectId);
+        var palette=['#5b8ce8','#7fb3a0','#e88c6a','#c77dba','#a0a0aa','#9e7bff','#5be8ff','#ff6b9d'];
+        var color=colorIdx==='no-proj'?'rgba(255,255,255,0.4)':palette[colorIdx];
+        var endMin=b.startMin+b.durMin;
+        return '<div class="reminder-item" onclick="editTimelineBlock(\''+b.id+'\')">'
+          +'<span class="rem-icon" style="color:'+color+';">●</span>'
+          +'<div class="rem-body">'
+          +'<div class="rem-text">'+esc(b.name)+'</div>'
+          +'<div class="rem-when">'+_tlFmtTime(b.startMin)+' – '+_tlFmtTime(endMin)+'</div>'
+          +'</div></div>';
+      }).join('')+'</div>';
+  html+='</div>';
+
   html+='<div class="today-section"><div class="today-section-title">Today &amp; overdue</div>';
   html+=slice.tasks.length===0
     ?'<div class="empty-state">Nothing due today.</div>'
@@ -9962,6 +9986,11 @@ function renderTimeline(){
   _tlBuildLegend();
   // Refresh banner overlay
   if(typeof renderBannerBlocks==='function')renderBannerBlocks();
+  // Refresh the Today view's Timeline section (no-ops if Today isn't the
+  // active view). Every tlBlocks mutation (add/delete/edit/drag/unlink)
+  // already routes through this function, same as renderBannerBlocks above --
+  // one call here covers all of them instead of threading it into each site.
+  if(typeof _refreshTodayViewIfVisible==='function')_refreshTodayViewIfVisible();
 }
 
 function addTimelineBlock(){
