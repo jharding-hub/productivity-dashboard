@@ -3633,6 +3633,7 @@ var MOBILE_PANELS=[
   {id:'projects', icon:'<i class="ti ti-folder" aria-hidden="true"></i>',   label:'Projects',   badge:'projCount'},
   {id:'reminders',icon:'<i class="ti ti-bell" aria-hidden="true"></i>',     label:'Reminders',  badge:'remCount'},
   {id:'tasklist', icon:'<i class="ti ti-checklist" aria-hidden="true"></i>',label:'Tasks',       badge:'taskListCount'},
+  {id:'timeline', icon:'<i class="ti ti-calendar-time" aria-hidden="true"></i>',label:'Timeline', badge:'tlBlockCount'},
   {id:'notes',    icon:'<i class="ti ti-notebook" aria-hidden="true"></i>', label:'Notes',       badge:'noteCount'},
   {id:'brain',    icon:'<i class="ti ti-brain" aria-hidden="true"></i>',    label:'Brain Dump',  badge:null},
   {id:'routines', icon:'<i class="ti ti-repeat" aria-hidden="true"></i>',   label:'Routines',    badge:null},
