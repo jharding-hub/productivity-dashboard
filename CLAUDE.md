@@ -58,8 +58,9 @@ Two repos:
 - Clean build artifacts:     make clean   -> rm -rf dist node_modules/.cache
 - vite.config.js `base` must stay correct or the deployed page renders blank
   (React never mounts). This has bitten me before.
-- No automated test suite — verify changes by running make dev and checking
-  the result in the browser.
+- No broad test suite — verify changes by running `make dev` and checking the
+  result in the browser. The one exception is `test/sync-merge.test.mjs`
+  (`npm run test:sync`), which is mandatory for any merge/tombstone change.
 
 ## Sync invariants — read before touching delete/complete or the merge
 - Deletion and completion are durable, SYNCED FACTS, never the mere absence of
@@ -87,6 +88,17 @@ Two repos:
   `new Date().toISOString().split('T')[0]` for a local day — both introduce a
   one-day offset for western-hemisphere users. Use date-utils.js helpers.
 
+## Known recurring bug classes — re-check when touching these areas
+1. **Duplicate DOM ids.** `_taskRowHTML` renders in BOTH the Today and
+   Everything views. Any DOM wiring must be container-scoped or inline task
+   editing silently breaks. This has regressed after being fixed.
+2. **onSnapshot inline-edit clobber.** A Firestore snapshot arriving mid-edit
+   wipes the field the user is typing in. This is distinct from the sync-merge
+   problem above: reconcileSync handles WHICH data wins, this handles the
+   in-flight edit being overwritten while it's still uncommitted. Any new
+   editable field needs the same guard the other panels already use — copy it,
+   don't reinvent it.
+
 ## Service Worker
 - The SW version is AUTO-GENERATED at build time from the git short hash.
   NEVER bump it by hand.
@@ -98,11 +110,6 @@ Two repos:
   Worker secrets live in Cloudflare, never in the repo.
 - Before any commit, scan for hardcoded keys, tokens, or credentials.
 - Flag anything that would log user input, tokens, or PII.
-
-## How I work
-- Explain the plan in plain English BEFORE editing. I review, then you build.
-- Small, verifiable steps — one change at a time, and tell me how to confirm it.
-- Prefer patterns already in the codebase over pulling in new libraries.
 
 ## Repo etiquette
 - GitHub: jharding-hub
