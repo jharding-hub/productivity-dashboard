@@ -3524,29 +3524,61 @@ function pushWatchSnapshot(){
 // bridge into the shared App Group container whenever it actually changes;
 // native writes it to UserDefaults(suiteName:) and asks WidgetKit to reload.
 // =======================================
-function _computeWidgetSnapshot(){
-  var today=todayStr();
+// Builds one day's payload. Split out of _computeWidgetSnapshot so the
+// snapshot can carry TODAY *and* TOMORROW -- see the `days` array below for
+// why that matters.
+function _widgetDayPayload(day){
   var pr={high:0,med:1,low:2};
   // NOTE: pr[x]||1 would be wrong here -- high's rank is 0, which is falsy,
   // so || would silently coerce it to 1 (med) and scramble the sort. Use an
   // explicit undefined check instead.
   var prRank=function(p){var r=pr[p];return r===undefined?1:r;};
-  var tasks=(state.tasks||[]).filter(function(t){return !t.done&&t.due===today;})
+  var tasks=(state.tasks||[]).filter(function(t){return !t.done&&t.due===day;})
     .sort(function(a,b){return prRank(a.priority)-prRank(b.priority);});
-  var reminders=(state.reminders||[]).filter(function(r){return r.date===today;});
-  // Same source + shape as the watch app's "Today" view (_buildWatchSnapshot
-  // above) -- Joe's ask: show today's actual schedule, not a task-due count.
-  var timeline=(state.tlBlocks||[]).filter(function(b){return (b.date||'')===today;})
-    .sort(function(a,b){return (a.time||'').localeCompare(b.time||'');})
-    .map(function(b){return {name:b.name||'',time:b.time?fmtTime(b.time):''};});
+  var reminders=(state.reminders||[]).filter(function(r){return r.date===day;});
+  // Reads _tlCollectBlocks rather than raw state.tlBlocks so the widget shows
+  // the SAME composite the app draws -- manual blocks plus the auto-derived
+  // task/subtask/reminder rows, including the untimed 9am-cascade ones. Before
+  // this it read tlBlocks directly, so a task that appeared on the in-app
+  // timeline was simply missing from the widget.
+  var blocks=(typeof _tlCollectBlocks==='function')?_tlCollectBlocks(day):[];
+  var timeline=blocks.slice().sort(function(a,b){return a.startMin-b.startMin;})
+    .map(function(b){
+      var hh=Math.floor(b.startMin/60),mm=b.startMin%60;
+      return {name:b.name||'',
+              time:fmtTime((hh<10?'0':'')+hh+':'+(mm<10?'0':'')+mm)};
+    });
   return {
-    date:today,
+    date:day,
     taskCount:tasks.length,
     reminderCount:reminders.length,
     items:tasks.slice(0,4).map(function(t){return {title:t.name,priority:t.priority||'med'};}),
-    timeline:timeline.slice(0,6),
+    timeline:timeline.slice(0,6)
+  };
+}
+
+function _computeWidgetSnapshot(){
+  var today=_widgetDayPayload(todayStr());
+  // `days` carries today AND tomorrow. This is what fixes the widget being
+  // stuck on yesterday until the app is opened: the extension process can't
+  // recompute anything on its own, so at midnight it had nothing new to read
+  // and just re-rendered the previous day. With tomorrow already in the
+  // container, TodayWidget.swift schedules a midnight entry that switches to
+  // it unattended. Keep this ordered [today, tomorrow] -- the Swift side
+  // matches on `date`, but the order keeps it readable in the debugger.
+  var snap={
+    days:[today,_widgetDayPayload(tomorrowStr())],
     presence:(state.points&&state.points.current)||0
   };
+  // Today's fields stay MIRRORED at the top level so a widget build that
+  // predates `days` (an older TestFlight install reading a newer snapshot)
+  // still decodes and shows today correctly instead of going blank.
+  snap.date=today.date;
+  snap.taskCount=today.taskCount;
+  snap.reminderCount=today.reminderCount;
+  snap.items=today.items;
+  snap.timeline=today.timeline;
+  return snap;
 }
 var _lastWidgetSnapshot=null;
 function _updateWidgetSnapshot(){
@@ -9819,7 +9851,7 @@ function _tlCollectBlocks(targetDate){
   // 3. Subtasks with due matching AND time -- auto-derive only if no tlBlock links to it
   (state.projects||[]).forEach(function(p){
     (p.subtasks||[]).forEach(function(st){
-      if(st.due===today&&st.time&&!linkedIds[st.id]){
+      if(!st.done&&st.due===today&&st.time&&!linkedIds[st.id]){
         blocks.push({
           id:'st_'+st.id,name:st.name,startMin:_tlParseTime(st.time),
           durMin:parseInt(st.timeEst)||60,
@@ -9841,8 +9873,60 @@ function _tlCollectBlocks(targetDate){
     }
   });
   
-  // Filter out blocks with no valid time
-  return blocks.filter(function(b){return b.startMin!==null&&!isNaN(b.startMin);});
+  // Drop anything whose time didn't parse BEFORE the untimed pass below --
+  // otherwise a garbage time would count as an occupied slot and push the
+  // 9am cascade around for no reason.
+  blocks=blocks.filter(function(b){return b.startMin!==null&&!isNaN(b.startMin);});
+
+  // 5. Untimed tasks/subtasks due on this date. Joe's ask: a task that "falls
+  // on" a day should show up on that day's timeline without having to set a
+  // time. They get a default 9am start, cascading in 30-min steps so several
+  // untimed items don't render exactly on top of each other (tl-blocks are
+  // absolutely positioned with no lane splitting -- a pile-up is invisible,
+  // not just ugly). The cascade also SKIPS slots already taken by a real
+  // timed block, so an untimed task never buries a 9am meeting.
+  //
+  // 30 minutes, not the usual timeEst/60 default: the start time is already
+  // invented here, and inventing an hour of duration on top of it makes the
+  // day read as fuller than it is.
+  //
+  // Same `source` values as the timed rows above, so these are equally
+  // undeletable from the timeline -- they disappear only when the item is
+  // checked off in Tasks/Projects, which is the requested behavior.
+  var UNTIMED_START=9*60, UNTIMED_DUR=30, UNTIMED_LAST=TL_DAY_END_H*60-UNTIMED_DUR;
+  var untimed=[];
+  (state.projects||[]).forEach(function(p){
+    (p.subtasks||[]).forEach(function(st){
+      if(!st.done&&st.due===today&&!st.time&&!linkedIds[st.id]){
+        untimed.push({id:'st_'+st.id,name:st.name,projectId:p.id,
+          priority:st.priority||'med',source:'subtask'});
+      }
+    });
+  });
+  (state.tasks||[]).forEach(function(t){
+    if(!t.done&&t.due===today&&!t.time&&!linkedIds[t.id]){
+      untimed.push({id:'task_'+t.id,name:t.name,
+        projectId:t.projectId||(t.projectIds&&t.projectIds[0])||'',
+        priority:t.priority||'med',source:'task'});
+    }
+  });
+
+  if(untimed.length){
+    // Occupied = every block placed so far, growing as we place each untimed
+    // one (so they cascade past each other as well as past real blocks).
+    var taken=blocks.map(function(b){return [b.startMin,b.startMin+b.durMin];});
+    untimed.forEach(function(u){
+      var slot=UNTIMED_START;
+      while(slot<UNTIMED_LAST&&taken.some(function(iv){
+        return slot<iv[1]&&slot+UNTIMED_DUR>iv[0];
+      })){slot+=UNTIMED_DUR;}
+      taken.push([slot,slot+UNTIMED_DUR]);
+      blocks.push({id:u.id,name:u.name,startMin:slot,durMin:UNTIMED_DUR,
+        projectId:u.projectId,priority:u.priority,source:u.source});
+    });
+  }
+
+  return blocks;
 }
 
 function _tlBuildLegend(){
@@ -10634,8 +10718,19 @@ _bindPanelUsageTracking();
 // 2. Poll every 60s for the date change.
 // 3. Also re-check whenever the tab becomes visible again (handles iOS/PWA where
 //    a backgrounded app may not fire intervals for hours but will fire visibilitychange).
-try { checkDailyRoutineReset(); } catch(e){}
-setInterval(checkDailyRoutineReset,60000);
+// Rolls the home-screen widget over at midnight WITHOUT needing the app to be
+// reopened, for the case where the phone is sitting there with Centerpost
+// still in the foreground. _updateWidgetSnapshot no-ops unless the JSON
+// actually changed, so running it on this existing 60s tick is nearly free --
+// and when the date flips, the snapshot's `date`/`days` change, so it pushes.
+// (The extension ALSO rolls itself over via its midnight timeline entry --
+// see TodayWidget.swift. This handles app-open, that handles app-closed.)
+function _dayRolloverTick(){
+  try { checkDailyRoutineReset(); } catch(e){}
+  try { if(typeof _updateWidgetSnapshot==='function')_updateWidgetSnapshot(); } catch(e){}
+}
+_dayRolloverTick();
+setInterval(_dayRolloverTick,60000);
 // Notifications (R1 phase 1): dedupe store + periodic scan while the app is open.
 if(typeof _notifLoadFired==='function'){
   _notifLoadFired();_ensureNotifPrefs();
@@ -10648,10 +10743,10 @@ if(typeof _notifLoadFired==='function'){
 }
 document.addEventListener('visibilitychange',function(){
   if(!document.hidden){
-    try { checkDailyRoutineReset(); } catch(e){}
+    _dayRolloverTick();
   }
 });
-window.addEventListener('focus',function(){ try { checkDailyRoutineReset(); } catch(e){} });
+window.addEventListener('focus',function(){ _dayRolloverTick(); });
 
 // -- Reminder auto-schedule + popup (deferred so Firestore data is loaded) --
 setTimeout(function(){
