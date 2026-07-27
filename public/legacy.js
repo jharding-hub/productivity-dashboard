@@ -1686,7 +1686,7 @@ function _toggleProjCompleted(pid){
   _projCompletedOpen[pid]=!_projCompletedOpen[pid];
   renderProjects();
 }
-function addSubtask(pid){const ne=document.getElementById('stN_'+pid),de=document.getElementById('stD_'+pid),te=document.getElementById('stT_'+pid);const nm=ne.value.trim();if(!nm)return;const pr=state.projects.find(p=>p.id===pid);if(!pr)return;const q=_applyQuickAdd(nm,{due:de.value},{date:true,recurrence:true});pr.subtasks.push({id:'st'+Date.now(),name:q.name,due:q.due,priority:'med',timeEst:te?te.value:'',done:false,recurrence:q.recurrence});ne.value='';de.value='';save();renderProjects();renderTaskList();}
+function addSubtask(pid){const ne=document.getElementById('stN_'+pid),de=document.getElementById('stD_'+pid),te=document.getElementById('stT_'+pid);const nm=ne.value.trim();if(!nm)return;const pr=state.projects.find(p=>p.id===pid);if(!pr)return;const q=_applyQuickAdd(nm,{due:de.value},{date:true,time:true,recurrence:true});pr.subtasks.push({id:'st'+Date.now(),name:q.name,due:q.due,priority:'med',timeEst:te?te.value:'',time:q.time||'',done:false,recurrence:q.recurrence});ne.value='';de.value='';save();renderProjects();renderTaskList();}
 function toggleSubtask(pid,sid){
   const p=state.projects.find(p=>p.id===pid);
   if(!p)return;
@@ -1704,14 +1704,17 @@ function toggleSubtask(pid,sid){
   // can't re-add the checked item.
   if(s.linkGroupId){
     state.projects.forEach(function(pr){
-      pr.subtasks=pr.subtasks.filter(function(x){if(x.linkGroupId===s.linkGroupId){_tombstone(x.id);return false;}return true;});
+      pr.subtasks=pr.subtasks.filter(function(x){if(x.linkGroupId===s.linkGroupId){_tombstone(x.id);_tlUnlinkBlocks(x.id);return false;}return true;});
     });
   }else{
     _tombstone(sid);
+    _tlUnlinkBlocks(sid);
     p.subtasks=p.subtasks.filter(x=>x.id!==sid);
   }
+  // `time` rides along with timeEst -- a recurring 6am workout has to come back
+  // at 6am tomorrow, not fall back to the auto-placed slot.
   if(typeof _materializeRecurrence==='function')_materializeRecurrence(s,function(nextDue){
-    p.subtasks.push({id:'st'+Date.now()+Math.random().toString(36).slice(2,5),name:s.name,due:nextDue,priority:s.priority,timeEst:s.timeEst||'',done:false,recurrence:s.recurrence});
+    p.subtasks.push({id:'st'+Date.now()+Math.random().toString(36).slice(2,5),name:s.name,due:nextDue,priority:s.priority,timeEst:s.timeEst||'',time:s.time||'',done:false,recurrence:s.recurrence});
   });
   addPoints('subtask',srcEl);
   save();renderProjects();renderTaskList();
@@ -1797,6 +1800,42 @@ function showTaskTimePicker(taskId,source,projectId,el){
   var opts=[{v:'',l:'None'},{v:'30',l:'30m'},{v:'60',l:'1hr'},{v:'90',l:'1.5hr'},{v:'120',l:'2hr'},{v:'180',l:'3hr'},{v:'240',l:'4hr'},{v:'360',l:'6hr'},{v:'480',l:'8hr'},{v:'720',l:'12hr'}];
   var html=opts.map(function(o){return '<div class="tl-pick-item" onclick="event.stopPropagation();editTaskTimeEst(\''+taskId+'\',\''+source+'\',\''+projectId+'\',\''+o.v+'\')">'+o.l+'</div>';}).join('');
   _showInlinePicker(el,html);
+}
+// Start-time picker -- the counterpart to showTaskTimePicker (which sets the
+// DURATION, timeEst). Setting a start time is what makes a task land at a fixed
+// spot on the timeline instead of being auto-placed in the first open slot, and
+// it survives recurrence, so "workout, 6am, daily" comes back at 6am every day.
+// 30-minute granularity: 15 would be ~68 rows in the dropdown, and anything
+// finer is what dragging the block is for.
+function showTaskStartPicker(taskId,source,projectId,el){
+  var opts=[{v:'',l:'Auto (first open slot)'}];
+  for(var m=TL_DAY_START_H*60;m<TL_DAY_END_H*60;m+=30){
+    var hh=Math.floor(m/60),mm=m%60;
+    opts.push({v:(hh<10?'0':'')+hh+':'+(mm<10?'0':'')+mm,l:_tlFmtTime(m)});
+  }
+  var html=opts.map(function(o){return '<div class="tl-pick-item" onclick="event.stopPropagation();editTaskStartTime(\''+taskId+'\',\''+source+'\',\''+projectId+'\',\''+o.v+'\')">'+o.l+'</div>';}).join('');
+  _showInlinePicker(el,html);
+}
+function editTaskStartTime(taskId,source,projectId,val){
+  _dateEditActive=null;
+  var item;
+  if(source==='standalone'){
+    item=(state.tasks||[]).find(function(x){return x.id===taskId;});
+  }else{
+    var p=state.projects.find(function(x){return x.id===projectId;});
+    item=p&&p.subtasks.find(function(x){return x.id===taskId;});
+  }
+  if(!item)return;
+  item.time=val;
+  // A pinned tlBlock (dragged, or scheduled with the clock button) is canonical
+  // and would suppress the new time entirely -- clear it so the explicit choice
+  // the user just made is the one that shows.
+  if(val)_tlUnlinkBlocks(taskId);
+  save();
+  if(source!=='standalone')renderProjects();
+  renderTaskList();
+  if(typeof renderTimeline==='function')renderTimeline();
+  _flushPendingPanelRenders();
 }
 var WEEKDAY_NAMES=['Sunday','Monday','Tuesday','Wednesday','Thursday','Friday','Saturday'];
 function showTaskRepeatPicker(taskId,source,projectId,el){
@@ -4769,14 +4808,14 @@ function getAllTasks(){
   // Pull subtasks from all projects
   state.projects.forEach(function(p){
     p.subtasks.forEach(function(st){
-      tasks.push({id:st.id,name:st.name,done:st.done,priority:st.priority||'med',timeEst:st.timeEst||'',due:st.due||'',recurrence:st.recurrence||null,projectId:p.id,projectName:p.name,source:'project'});
+      tasks.push({id:st.id,name:st.name,done:st.done,priority:st.priority||'med',timeEst:st.timeEst||'',time:st.time||'',due:st.due||'',recurrence:st.recurrence||null,projectId:p.id,projectName:p.name,source:'project'});
     });
   });
   // Add standalone tasks
   (state.tasks||[]).forEach(function(t){
     var pName='';
     if(t.projectId){var pr=state.projects.find(function(p){return p.id===t.projectId;});if(pr)pName=pr.name;}
-    tasks.push({id:t.id,name:t.name,done:t.done,priority:t.priority||'med',timeEst:t.timeEst||'',due:t.due||'',recurrence:t.recurrence||null,projectId:t.projectId||'',projectName:pName,source:'standalone'});
+    tasks.push({id:t.id,name:t.name,done:t.done,priority:t.priority||'med',timeEst:t.timeEst||'',time:t.time||'',due:t.due||'',recurrence:t.recurrence||null,projectId:t.projectId||'',projectName:pName,source:'standalone'});
   });
   return tasks;
 }
@@ -4933,6 +4972,7 @@ function _taskRowHTML(t){
     '<div class="tl-meta">'+
     '<span class="tl-proj-badge tl-editable-badge" id="tlproj_'+t.id+'" onclick="event.stopPropagation();showTaskProjectPicker(\''+t.id+'\',\''+t.source+'\',\''+(t.projectId||'')+'\',this)">'+(t.projectName?esc(t.projectName):'+ project')+'</span>'+
     '<span class="tl-time-badge tl-editable-badge" id="tltime_'+t.id+'" onclick="event.stopPropagation();showTaskTimePicker(\''+t.id+'\',\''+t.source+'\',\''+(t.projectId||'')+'\',this)">'+(t.timeEst?fmtTimeEst(t.timeEst):'+ time')+'</span>'+
+    '<span class="tl-time-badge tl-editable-badge" id="tlstart_'+t.id+'" onclick="event.stopPropagation();showTaskStartPicker(\''+t.id+'\',\''+t.source+'\',\''+(t.projectId||'')+'\',this)">'+(t.time?'\u{1F551} '+_tlFmtTime(_tlParseTime(t.time)):'+ start')+'</span>'+
     '<span class="tl-repeat-badge tl-editable-badge" id="tlrepeat_'+t.id+'" onclick="event.stopPropagation();showTaskRepeatPicker(\''+t.id+'\',\''+t.source+'\',\''+(t.projectId||'')+'\',this)">'+(t.recurrence&&t.recurrence.freq?'\u{1F501} '+_recurrenceBadgeLabel(t):'+ repeat')+'</span>'+
     dueHTML+
     '</div></div>'+
@@ -5249,14 +5289,15 @@ function toggleTaskDone(id,source,projId){
         });
         if(s.linkGroupId){
           state.projects.forEach(function(pr){
-            pr.subtasks=pr.subtasks.filter(function(x){if(x.linkGroupId===s.linkGroupId){_tombstone(x.id);return false;}return true;});
+            pr.subtasks=pr.subtasks.filter(function(x){if(x.linkGroupId===s.linkGroupId){_tombstone(x.id);_tlUnlinkBlocks(x.id);return false;}return true;});
           });
         }else{
           _tombstone(id);
+          _tlUnlinkBlocks(id);
           p.subtasks=p.subtasks.filter(function(x){return x.id!==id;});
         }
         if(typeof _materializeRecurrence==='function')_materializeRecurrence(s,function(nextDue){
-          p.subtasks.push({id:'st'+Date.now()+Math.random().toString(36).slice(2,5),name:s.name,due:nextDue,priority:s.priority,timeEst:s.timeEst||'',done:false,recurrence:s.recurrence});
+          p.subtasks.push({id:'st'+Date.now()+Math.random().toString(36).slice(2,5),name:s.name,due:nextDue,priority:s.priority,timeEst:s.timeEst||'',time:s.time||'',done:false,recurrence:s.recurrence});
         });
         addPoints('subtask',srcEl);
       }
@@ -5271,9 +5312,10 @@ function toggleTaskDone(id,source,projId){
         archivedAt:new Date().toISOString(),source:'standalone'
       });
       _tombstone(id);
+      _tlUnlinkBlocks(id);
       state.tasks=state.tasks.filter(function(x){return x.id!==id;});
       if(typeof _materializeRecurrence==='function')_materializeRecurrence(t,function(nextDue){
-        state.tasks.push({id:'tk'+Date.now()+Math.random().toString(36).slice(2,5),name:t.name,due:nextDue,priority:t.priority,timeEst:t.timeEst||'',projectId:'',projectIds:[],done:false,recurrence:t.recurrence});
+        state.tasks.push({id:'tk'+Date.now()+Math.random().toString(36).slice(2,5),name:t.name,due:nextDue,priority:t.priority,timeEst:t.timeEst||'',time:t.time||'',projectId:'',projectIds:[],done:false,recurrence:t.recurrence});
       });
       addPoints('task',srcEl);
     }
@@ -5289,7 +5331,10 @@ function addStandaloneTask(){
   var projIds=projVal?projVal.split(',').filter(Boolean):[];
   var timeEst=document.getElementById('tlNewTime').value;
   var due=document.getElementById('tlNewDue').value;
-  var q=_applyQuickAdd(name,{due:due},{date:true,recurrence:true});
+  // time:true so "workout 6am daily" captures the start time on creation, the
+  // same way the reminders form already does. Without a start time the task is
+  // auto-placed in the first open slot instead.
+  var q=_applyQuickAdd(name,{due:due},{date:true,time:true,recurrence:true});
   name=q.name;due=q.due;
 
   if(projIds.length>=1){
@@ -5301,7 +5346,7 @@ function addStandaloneTask(){
       if(pr){
         pr.subtasks.push({
           id:'st'+Date.now()+'_'+Math.random().toString(36).slice(2,7),
-          name:name,due:due,priority:'med',timeEst:timeEst,done:false,
+          name:name,due:due,priority:'med',timeEst:timeEst,time:q.time||'',done:false,
           linkGroupId:groupId,recurrence:q.recurrence
         });
         addedCount++;
@@ -5312,7 +5357,7 @@ function addStandaloneTask(){
     else ;
   }else{
     // Add as standalone task
-    state.tasks.push({id:'tk'+Date.now(),name:name,due:due,priority:'med',timeEst:timeEst,projectId:'',projectIds:[],done:false,recurrence:q.recurrence});
+    state.tasks.push({id:'tk'+Date.now(),name:name,due:due,priority:'med',timeEst:timeEst,time:q.time||'',projectId:'',projectIds:[],done:false,recurrence:q.recurrence});
     ;
   }
   nameEl.value='';document.getElementById('tlNewDue').value='';
@@ -9633,21 +9678,72 @@ function deleteEditingBlock(){
 // === Drag-to-reschedule (works on both banner and timeline) ===
 var _tlDragInProgress=false;
 
-function _tlAttachDragHandlers(el,blockId,mode){
+// Drop any timeline block pinned to an item that has just been completed.
+//
+// Without this, completing a task that had been dragged (or scheduled with the
+// clock button) leaves an orphan block sitting on the timeline forever: the
+// auto-derived rows check `done`, but a real tlBlock is independent state and
+// nothing was clearing it. That breaks the core rule for these blocks -- they
+// go away when the item is checked off, and only then.
+//
+// Plain filter + save, matching what reminderPopupDone already does for
+// reminder-linked blocks. No _tombstone: tlBlocks is not one of
+// SYNC_ACTIVE_ARRAYS in sync-merge.js, so it is not tombstone-reconciled and a
+// tombstone here would be inert.
+function _tlUnlinkBlocks(itemId){
+  if(!itemId||!state.tlBlocks)return;
+  state.tlBlocks=state.tlBlocks.filter(function(b){return b.linkedId!==itemId;});
+}
+
+// Turn an auto-placed (derived) task/subtask block into a REAL linked tlBlock at
+// the given time. Once materialized it is canonical: _tlCollectBlocks skips
+// auto-derivation for any item a tlBlock links to, so the item stops being
+// re-placed at its computed slot and stays where the user dropped it.
+function _tlMaterializeDerived(d,timeVal,dateStr){
+  var realId=d.id.replace(/^task_/,'').replace(/^st_/,'');
+  var block=_buildTimelineBlock({
+    name:d.name,
+    date:dateStr||todayStr(),
+    time:timeVal,
+    duration:d.durMin,
+    projectId:d.projectId||'',
+    priority:d.priority||'med',
+    linkedType:d.source==='task'?'task':'subtask',
+    linkedId:realId
+  });
+  if(!state.tlBlocks)state.tlBlocks=[];
+  state.tlBlocks.push(block);
+  return block;
+}
+
+function _tlAttachDragHandlers(el,blockId,mode,derived,dateStr){
   // mode: 'banner' (horizontal drag) or 'timeline' (vertical drag)
-  // Only state.tlBlocks entries (manual blocks + clock-button scheduled) are draggable;
-  // source-linked auto-blocks (reminders/tasks with embedded times) skip drag.
+  // state.tlBlocks entries (manual + clock-button scheduled) drag directly.
+  // Auto-placed task/subtask blocks also drag: the first drag materializes them
+  // into a real linked tlBlock at the drop point (see _tlMaterializeDerived).
+  // Reminder-derived blocks stay fixed -- they follow the reminder's own time,
+  // so dragging one would just be overwritten on the next render.
   var inTlBlocks=(state.tlBlocks||[]).some(function(b){return b.id===blockId;});
-  if(!inTlBlocks){el.style.cursor='default';return;}
-  
+  var canMaterialize=!inTlBlocks&&!!derived&&
+    (derived.source==='task'||derived.source==='subtask');
+  if(!inTlBlocks&&!canMaterialize){el.style.cursor='default';return;}
+
   var dragging=false,startCoord=0,initialStartMin=0,pxPerMin=0,blockRef=null,pendingMin=null;
-  
+
   el.addEventListener('pointerdown',function(e){
     if(e.button!==0&&e.pointerType==='mouse')return; // left button only for mouse
     // If pointerdown originated on the delete X (or any element marked as a control),
     // bail out -- let that element's own click handler fire normally.
     if(e.target&&e.target.closest&&e.target.closest('.tl-block-del'))return;
     blockRef=(state.tlBlocks||[]).find(function(b){return b.id===blockId;});
+    // Derived block: stand in with its rendered geometry so the drag maths
+    // below are identical. Nothing is written to state until the drop, so a
+    // tap that doesn't move creates nothing.
+    if(!blockRef&&canMaterialize){
+      var _hh=Math.floor(derived.startMin/60),_mm=derived.startMin%60;
+      blockRef={time:(_hh<10?'0':'')+_hh+':'+(_mm<10?'0':'')+_mm,
+                duration:derived.durMin};
+    }
     if(!blockRef)return;
     e.preventDefault();
     e.stopPropagation();
@@ -9722,6 +9818,12 @@ function _tlAttachDragHandlers(el,blockId,mode){
     var hh=Math.floor(pendingMin/60),mm=pendingMin%60;
     var newTime=(hh<10?'0':'')+hh+':'+(mm<10?'0':'')+mm;
     var liveBlock=(state.tlBlocks||[]).find(function(b){return b.id===blockId;});
+    // First drag of an auto-placed task: promote it to a real linked block at
+    // the drop point. Done here rather than on pointerdown so a stray tap never
+    // silently pins a task to its computed slot.
+    if(!liveBlock&&canMaterialize){
+      liveBlock=_tlMaterializeDerived(derived,newTime,dateStr);
+    }
     if(liveBlock){
       liveBlock.time=newTime;
       save();
@@ -9773,7 +9875,7 @@ function renderBannerBlocks(){
     block.style.background=color;
     block.title=b.name+' -- '+_tlFmtTime(startMin)+' to '+_tlFmtTime(endMin)+' · drag to reschedule';
     block.dataset.blockId=b.id;
-    _tlAttachDragHandlers(block,b.id,'banner');
+    _tlAttachDragHandlers(block,b.id,'banner',b,todayStr());
     block.addEventListener('click',function(ev){
       if(_tlDragInProgress)return;
       ev.stopPropagation();
@@ -9878,28 +9980,37 @@ function _tlCollectBlocks(targetDate){
   // 9am cascade around for no reason.
   blocks=blocks.filter(function(b){return b.startMin!==null&&!isNaN(b.startMin);});
 
-  // 5. Untimed tasks/subtasks due on this date. Joe's ask: a task that "falls
-  // on" a day should show up on that day's timeline without having to set a
-  // time. They get a default 9am start, cascading in 30-min steps so several
-  // untimed items don't render exactly on top of each other (tl-blocks are
-  // absolutely positioned with no lane splitting -- a pile-up is invisible,
-  // not just ugly). The cascade also SKIPS slots already taken by a real
-  // timed block, so an untimed task never buries a 9am meeting.
+  // 5. Untimed tasks/subtasks due on this date -- a task that "falls on" a day
+  // shows up on that day's timeline without needing a time set. It is placed in
+  // the FIRST GAP BIG ENOUGH FOR ITS OWN LENGTH, searching forward from 9am,
+  // stepping 15 min (matching the drag snap). Anything already placed -- real
+  // blocks, timed items, and earlier untimed ones -- is treated as occupied, so
+  // a derived block never buries a real 6am workout or an existing meeting.
   //
-  // 30 minutes, not the usual timeEst/60 default: the start time is already
-  // invented here, and inventing an hour of duration on top of it makes the
-  // day read as fuller than it is.
+  // Length comes from the task's own time estimate, the same `timeEst` the
+  // timed rows above use. An earlier version hardcoded 30 minutes here and
+  // silently squashed hour-long tasks; the estimate is real user input and is
+  // not ours to discard. 30 min is only the fallback when no estimate is set.
   //
-  // Same `source` values as the timed rows above, so these are equally
-  // undeletable from the timeline -- they disappear only when the item is
-  // checked off in Tasks/Projects, which is the requested behavior.
-  var UNTIMED_START=9*60, UNTIMED_DUR=30, UNTIMED_LAST=TL_DAY_END_H*60-UNTIMED_DUR;
+  // Same `source` values as the timed rows above, so these can't be deleted
+  // from the timeline -- they clear when the item is checked off, which is the
+  // requested behavior. They CAN be dragged: _tlAttachDragHandlers materializes
+  // a derived block into a real linked tlBlock on first drag.
+  var UNTIMED_START=9*60, UNTIMED_STEP=15, UNTIMED_FALLBACK_DUR=30;
+  var DAY_END=TL_DAY_END_H*60;
+  // '999' is the "4hr+" sentinel in TIME_LABELS, not a real 999-minute task.
+  // Left as-is it would swallow the whole grid and shove everything else out.
+  var estDur=function(v){
+    var n=parseInt(v);
+    if(!n||isNaN(n))return UNTIMED_FALLBACK_DUR;
+    return n>=999?240:n;
+  };
   var untimed=[];
   (state.projects||[]).forEach(function(p){
     (p.subtasks||[]).forEach(function(st){
       if(!st.done&&st.due===today&&!st.time&&!linkedIds[st.id]){
         untimed.push({id:'st_'+st.id,name:st.name,projectId:p.id,
-          priority:st.priority||'med',source:'subtask'});
+          priority:st.priority||'med',source:'subtask',durMin:estDur(st.timeEst)});
       }
     });
   });
@@ -9907,21 +10018,29 @@ function _tlCollectBlocks(targetDate){
     if(!t.done&&t.due===today&&!t.time&&!linkedIds[t.id]){
       untimed.push({id:'task_'+t.id,name:t.name,
         projectId:t.projectId||(t.projectIds&&t.projectIds[0])||'',
-        priority:t.priority||'med',source:'task'});
+        priority:t.priority||'med',source:'task',durMin:estDur(t.timeEst)});
     }
   });
 
   if(untimed.length){
-    // Occupied = every block placed so far, growing as we place each untimed
-    // one (so they cascade past each other as well as past real blocks).
+    // Occupied intervals, growing as each item is placed so later ones pack in
+    // after earlier ones rather than on top of them.
     var taken=blocks.map(function(b){return [b.startMin,b.startMin+b.durMin];});
-    untimed.forEach(function(u){
+    // Longest first: a 2hr task placed after three 30m ones would otherwise be
+    // pushed past gaps that were big enough for it before they got filled.
+    untimed.sort(function(a,b){return b.durMin-a.durMin;}).forEach(function(u){
+      var dur=u.durMin;
+      var lastStart=DAY_END-dur;
       var slot=UNTIMED_START;
-      while(slot<UNTIMED_LAST&&taken.some(function(iv){
-        return slot<iv[1]&&slot+UNTIMED_DUR>iv[0];
-      })){slot+=UNTIMED_DUR;}
-      taken.push([slot,slot+UNTIMED_DUR]);
-      blocks.push({id:u.id,name:u.name,startMin:slot,durMin:UNTIMED_DUR,
+      var fits=function(s){
+        return !taken.some(function(iv){return s<iv[1]&&s+dur>iv[0];});
+      };
+      while(slot<=lastStart&&!fits(slot))slot+=UNTIMED_STEP;
+      // Day genuinely full: park it at 9am rather than off the end of the grid.
+      // It will overlap, but an overlapping visible block beats an invisible one.
+      if(slot>lastStart)slot=UNTIMED_START;
+      taken.push([slot,slot+dur]);
+      blocks.push({id:u.id,name:u.name,startMin:slot,durMin:dur,
         projectId:u.projectId,priority:u.priority,source:u.source});
     });
   }
@@ -10054,7 +10173,7 @@ function renderTimeline(){
         editTimelineBlock(b.id);
       });
     }
-    _tlAttachDragHandlers(div,b.id,'timeline');
+    _tlAttachDragHandlers(div,b.id,'timeline',b,viewDate);
     grid.appendChild(div);
   });
   
