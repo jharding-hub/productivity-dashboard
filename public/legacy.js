@@ -1777,17 +1777,28 @@ function editTaskProject(taskId,source,oldProjectId,newProjectId){
 // stops propagation and never reaches the outside-click listener below.
 function _showInlinePicker(el,itemsHTML){
   var existing=document.querySelector('.tl-inline-picker');
-  if(existing)existing.remove();
+  // Clear the open-marker off whichever badge previously owned the picker,
+  // otherwise that badge stays pinned at full opacity after its picker closes.
+  if(existing){
+    if(existing.parentElement)existing.parentElement.classList.remove('tl-picker-open');
+    existing.remove();
+  }
   var dd=document.createElement('div');
   dd.className='tl-inline-picker';
   dd.innerHTML=itemsHTML;
   el.style.position='relative';
   el.appendChild(dd);
+  // Suppresses .tl-editable-badge:hover{opacity:0.8} while the dropdown is open.
+  // The dropdown is a CHILD of the badge, so that hover rule was fading the menu
+  // itself -- and on touch the hover state sticks, so it stayed translucent the
+  // whole time. See the matching rule in src/app.css.
+  el.classList.add('tl-picker-open');
   _dateEditActive=el;
   setTimeout(function(){
     var close=function(e){
       if(!dd.contains(e.target)){
         dd.remove();
+        el.classList.remove('tl-picker-open');
         if(_dateEditActive===el)_dateEditActive=null;
         _flushPendingPanelRenders();
         document.removeEventListener('click',close);
