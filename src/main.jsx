@@ -8,10 +8,36 @@ import App from './App';
 // break a stuck Cloudflare Pages deploy that's serving a missing asset.
 window.__CP_BUILD = '2026-07-14a';
 
+// Local development never reports. Sentry used to initialise on every
+// hostname and merely TAG localhost as 'development', which meant anything
+// thrown while poking at the app in a dev console -- a typo in a one-off
+// snippet, a deliberate throw while testing -- landed in the same project as
+// real user errors and had to be triaged as if it were one. A console typo on
+// a dev server is not an incident.
+//
+// Hostname-based, not import.meta.env.DEV, for two reasons: a production
+// BUILD served locally (vite preview, or checking dist/) must stay silent
+// too, and this repo deliberately avoids import.meta.env (see CLAUDE.md).
+// Private-range addresses are included so hitting the dev server from a phone
+// on the LAN is just as silent.
+//
+// Deliberately NOT extended to preview/branch deploys: those are real hosted
+// builds and their errors are worth seeing. They keep the 'development' tag.
+const _cpHost = location.hostname;
+const _cpIsLocalDev =
+  _cpHost === 'localhost' ||
+  _cpHost === '127.0.0.1' ||
+  _cpHost === '::1' ||
+  _cpHost === '[::1]' ||
+  _cpHost.endsWith('.local') ||
+  /^192\.168\./.test(_cpHost) ||
+  /^10\./.test(_cpHost) ||
+  /^172\.(1[6-9]|2\d|3[01])\./.test(_cpHost);
+
 // DSN comes from config.js (public identifier, not a secret). Init before
 // render so the global error handlers cover everything on the page,
 // including legacy.js.
-if (window.SENTRY_DSN) {
+if (window.SENTRY_DSN && !_cpIsLocalDev) {
   Sentry.init({
     dsn: window.SENTRY_DSN,
     environment: location.hostname === 'centerpost.app' ? 'production' : 'development',
