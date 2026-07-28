@@ -5118,7 +5118,6 @@ function renderTaskList(){
   }
   document.getElementById('taskListCount').textContent=totalCount;
   updateTLProjectDropdowns();
-  _renderSavedFilterOptions();
   if(typeof _updateTileSummaryTasklist==='function')_updateTileSummaryTasklist();
 }
 
@@ -5129,14 +5128,10 @@ function renderTaskList(){
 // renders its own rows straight from _taskRowHTML (no select-mode wrapper),
 // so none of this can appear on the Today view.
 // =======================================
-function toggleTaskFilters(headerEl){
-  var body=document.getElementById('tlFiltersBody');
-  if(!body)return;
-  var open=body.style.display!=='none';
-  body.style.display=open?'none':'';
-  var arrow=headerEl&&headerEl.querySelector('.tl-completed-arrow');
-  if(arrow)arrow.style.transform=open?'':'rotate(90deg)';
-}
+// toggleTaskFilters removed with the Filters disclosure it opened (Joe's call:
+// the task panel was too cluttered). The saved-filter and bulk-select helpers
+// below are now unreachable from the UI but left intact and guarded, so the
+// section can be restored by re-adding the markup alone.
 
 // -- Saved filter presets: bundle the existing sort/project/show-all controls --
 function _renderSavedFilterOptions(){
@@ -5602,14 +5597,20 @@ function _updateTileSummaryTasklist(){
     if(t.due===todayKey)dueToday++;
     else if(t.due&&t.due<todayKey)overdue++;
   });
-  var done=(state.completedTasks||[]).length;
-
+  // Only the two pills that actually prompt action. Dropped deliberately:
+  //  - "N active": a raw backlog count, already on the panel-header badge.
+  //  - "N done": read state.completedTasks.length, which is a CAPPED recent
+  //    subset (COMPLETED_TASKS_MAX), so it plateaus at the cap and reports a
+  //    number that is simply wrong. The header's completed badge is the
+  //    accurate one -- it uses the lifetime counter -- so this was both
+  //    redundant and misleading. Do not reintroduce it from that array.
   var html='';
-  if(allTasks.length>0)html+=_summaryPill(allTasks.length+' active');
   if(overdue>0)html+=_summaryPill(overdue+' overdue','urgent');
   if(dueToday>0)html+=_summaryPill(dueToday+' today','warn');
-  if(done>0)html+=_summaryPill('\u2713 '+done+' done','',done+' completed task'+(done!==1?'s':''));
-  if(!html)html='<span style="color:var(--text-faint);font-style:italic;">No tasks yet</span>';
+  // "No tasks yet" must mean exactly that -- with the active pill gone, a
+  // healthy list with nothing overdue or due today also produces no pills, and
+  // claiming there are no tasks then would be a lie.
+  if(!html&&allTasks.length===0)html='<span style="color:var(--text-faint);font-style:italic;">No tasks yet</span>';
   el.innerHTML=html;
 }
 
