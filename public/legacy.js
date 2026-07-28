@@ -6851,6 +6851,11 @@ function _applyQuickAdd(nameValue,current,opts){
   if(opts.date&&parsed.due&&!current.due)out.due=parsed.due;
   if(opts.time&&parsed.time&&!current.time)out.time=parsed.time;
   if(opts.recurrence&&parsed.recurrence)out.recurrence=parsed.recurrence;
+  // A repeat with nothing to repeat FROM never fires: the recurrence engine
+  // advances from the due date, and the timeline only shows dated items -- so
+  // "workout 6am daily" with no date would silently show up nowhere. Anchor it
+  // to today, exactly as editTaskRecurrence already does for the repeat badge.
+  if(out.recurrence&&!out.due)out.due=todayStr();
   return out;
 }
 var RECUR_LABEL={daily:'daily',weekly:'weekly',monthly:'monthly'};

@@ -44,6 +44,27 @@
     return { recurrence: null, dayOfWeek: null, text: text };
   }
 
+  // -- Bare "daily"/"weekly"/"monthly", TRAILING ONLY ----------------------
+  // "workout 6am daily" is the phrasing people reach for first, but a bare
+  // keyword anywhere in the string is too greedy: "Daily report", "daily
+  // standup" and "read monthly magazine" are ordinary task NAMES and must not
+  // be silently turned into recurring tasks with the word cut out of them.
+  // Requiring the keyword to be the last token (and to have something before
+  // it) keeps the natural phrasing working while leaving those names alone.
+  //
+  // Run AFTER time/date extraction, unlike the "every ..." forms above, so
+  // that "workout daily at 6am" also works -- once "at 6am" is stripped the
+  // keyword is trailing.
+  function extractBareRecurrence(text) {
+    var m = text.match(/\S\s+(daily|weekly|monthly)\s*$/i);
+    if (!m) return { recurrence: null, text: text };
+    var freq = m[1].toLowerCase();
+    // Keep the matched leading character -- the regex only consumed it to
+    // prove the keyword isn't the entire input.
+    var cut = text.slice(0, m.index + 1) + text.slice(m.index + m[0].length);
+    return { recurrence: { freq: freq, interval: 1 }, text: cut };
+  }
+
   // -- Time: "3pm", "3:30pm", "15:00", "at 9am" -> 'HH:MM' (24h) ----------
   function extractTime(text) {
     var re = /\b(?:at\s+)?(\d{1,2})(?::(\d{2}))?\s*(am|pm)?\b/i;
@@ -122,6 +143,14 @@
     var tm = extractTime(text); text = tm.text;
     var dt = extractDate(text, now); text = dt.text;
 
+    // Bare trailing daily/weekly/monthly, only if no "every ..." form already
+    // matched (an explicit "every 2 weeks" must never be overridden).
+    var recurrence = rec.recurrence;
+    if (!recurrence) {
+      var bare = extractBareRecurrence(text);
+      if (bare.recurrence) { recurrence = bare.recurrence; text = bare.text; }
+    }
+
     // "every <weekday>" with no other date signal: pin the due date to the
     // next occurrence of that weekday so the weekly recurrence actually
     // lands on it (an explicit date elsewhere in the text always wins).
@@ -136,7 +165,7 @@
       due: due,
       time: tm.time,
       priority: null,
-      recurrence: rec.recurrence,
+      recurrence: recurrence,
     };
   };
 

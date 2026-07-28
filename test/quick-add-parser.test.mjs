@@ -107,3 +107,38 @@ test('empty input', () => {
     name: '', due: null, time: null, priority: null, recurrence: null,
   });
 });
+
+// ── Bare trailing daily/weekly/monthly ────────────────────────────────────
+// "workout 6am daily" is the phrasing reached for first; the "every ..." forms
+// above did not cover it, so the keyword was left sitting in the task name.
+test('bare recurrence: trailing daily/weekly/monthly is recognised', () => {
+  assert.deepEqual(parseQuickAdd('workout 6am daily', NOW), {
+    name: 'workout', due: null, time: '06:00', priority: null,
+    recurrence: { freq: 'daily', interval: 1 },
+  });
+  assert.equal(parseQuickAdd('review inbox weekly', NOW).recurrence.freq, 'weekly');
+  assert.equal(parseQuickAdd('pay rent monthly', NOW).recurrence.freq, 'monthly');
+});
+test('bare recurrence: works after the time is stripped, not just at end of raw input', () => {
+  const r = parseQuickAdd('workout daily at 6am', NOW);
+  assert.equal(r.time, '06:00');
+  assert.deepEqual(r.recurrence, { freq: 'daily', interval: 1 });
+  assert.equal(r.name, 'workout');
+});
+test('bare recurrence: NON-trailing keyword is a task name, left untouched', () => {
+  // These are ordinary names -- turning them into recurring tasks and cutting
+  // the word out of the title would be worse than not matching at all.
+  for (const s of ['Daily report', 'daily standup with crew', 'read monthly magazine']) {
+    const r = parseQuickAdd(s, NOW);
+    assert.equal(r.recurrence, null, s);
+    assert.equal(r.name, s, s);
+  }
+});
+test('bare recurrence: keyword alone is not a recurrence', () => {
+  assert.equal(parseQuickAdd('daily', NOW).recurrence, null);
+  assert.equal(parseQuickAdd('daily', NOW).name, 'daily');
+});
+test('bare recurrence: never overrides an explicit "every N" form', () => {
+  const r = parseQuickAdd('water plants every 2 weeks', NOW);
+  assert.deepEqual(r.recurrence, { freq: 'weekly', interval: 2 });
+});
