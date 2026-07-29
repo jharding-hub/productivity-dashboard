@@ -366,18 +366,48 @@ function deleteMyAccount(){
     _confirm('Last check: this really is forever and cannot be undone. Export your data first if you want a copy. Delete everything?',_performAccountDeletion,{destructive:true,confirmText:'Yes, delete everything',icon:'ti-trash-x'});
   },{destructive:true,confirmText:'Delete my account'});
 }
+// Clear every device-local trace of this account. Deleting the cloud copy is
+// not enough on its own: the local mirrors below are what the app reads FIRST
+// on load, and reconcileLifetimeCounter takes a max, so a surviving local
+// cache would resurrect the "deleted" data and push it straight back up.
+function _wipeLocalAccountData(uid){
+  try{
+    localStorage.removeItem('prodDash_'+uid);
+    localStorage.removeItem('cpCompletedTasks_'+uid);
+    localStorage.removeItem('cpNotifFired');
+    localStorage.removeItem('devTierOverride');
+    // Legacy pre-multi-account key. The migration that read it is gone, but a
+    // long-lived browser can still be holding a full copy of the data.
+    localStorage.removeItem('prodDash_v1');
+  }catch(e){}
+}
+
 async function _performAccountDeletion(){
+  var uid=currentUser?currentUser.uid:null;
+  if(!uid){toast('Sign in first');return;}
   try{
     var idToken=await currentUser.getIdToken(true);
-    var resp=await fetch(JARVIS_PROXY_URL+'/account/delete',{method:'POST',headers:{'Authorization':'Bearer '+idToken}});
-    if(resp.status===404){toast('Account deletion isn’t live yet — no changes were made.');return;}
+    var resp=await fetch(JARVIS_PROXY_URL+'/account/delete',{
+      method:'POST',
+      headers:{'Authorization':'Bearer '+idToken,'Content-Type':'application/json'},
+      // The route needs no input, but the worker parses a JSON body before it
+      // routes -- an empty body would 400 before deletion was ever reached.
+      body:'{}'
+    });
+    var payload=null;
+    try{payload=await resp.json();}catch(e){}
     if(!resp.ok){
-      var body=await resp.text();
-      throw new Error('HTTP '+resp.status+(body?' — '+body.slice(0,120):''));
+      var msg=(payload&&payload.error)?payload.error
+        :'Deletion failed (HTTP '+resp.status+'). Your account was not changed.';
+      toast(msg);
+      return;
     }
+    // Stop every writer BEFORE clearing, so nothing recreates what we erase.
+    _accountDeleted=true;
+    _wipeLocalAccountData(uid);
     toast('Account deleted. Take care of yourself out there.');
     setTimeout(function(){firebase.auth().signOut();},1500);
-  }catch(e){toast('Deletion failed: '+(e.message||'unknown error')+'. Try again or contact support.');}
+  }catch(e){toast('Deletion failed: '+(e.message||'unknown error')+'. Your account was not changed.');}
 }
 
 function showApp(){
@@ -667,7 +697,14 @@ function _checkStateSize(bytes){
   }
 }
 
+// Set once an account deletion succeeds. Everything that could write state
+// back out -- save(), the completed-tasks doc, the watch/widget mirrors --
+// checks this first, so an in-flight timer or a 60s tick can't recreate the
+// data we just erased in the window before signOut() completes.
+var _accountDeleted=false;
+
 function save(){
+  if(_accountDeleted)return;
   const uid=currentUser?currentUser.uid:'local';
   // E-1: stamp the state itself so every copy carries the time of the last
   // edit it reflects -- this is what the write guard below compares.
@@ -6171,6 +6208,7 @@ async function _loadCompletedTasksDoc(){
   try{localStorage.setItem(_completedTasksStorageKey(),JSON.stringify({v:1,items:state.completedTasks||[],lifetime:state.completedTasksLifetime||0,projectLifetime:state.completedProjectSubtasksLifetime||0}));}catch(e){}
 }
 async function _saveCompletedTasksDoc(){
+  if(_accountDeleted)return;
   // Lifetime counters live HERE, in the completedTasks own-doc, not the
   // dashboard blob -- they count this doc's history, so keeping them atomic
   // with it gives one load/save/reconcile path instead of two docs that drift.
