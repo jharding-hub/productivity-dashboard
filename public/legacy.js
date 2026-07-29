@@ -736,8 +736,6 @@ async function load(){
   _loadAxisProfile(); // independent of dashboard state; fire-and-forget, ready well before chat is opened
   // Always load localStorage as baseline
   try{const s=localStorage.getItem('prodDash_'+uid);if(s){const p=JSON.parse(s);state={...state,...p};}}catch(e){}
-  // Also try old key for migration
-  if(uid!=='local'){try{const old=localStorage.getItem('prodDash_v1');if(old&&!localStorage.getItem('prodDash_'+uid)){const p=JSON.parse(old);state={...state,...p};console.log('Migrated from old local key');}}catch(e){}}
   // Try Firestore
   if(firebaseReady&&db&&currentUser){
     try{
