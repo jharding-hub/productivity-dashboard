@@ -5064,12 +5064,29 @@ function renderTaskList(){
     if(comp.length===0){
       compEl.innerHTML='';
     }else{
+      // Three different numbers used to be in play here: the lifetime total,
+      // the stored archive (capped at COMPLETED_TASKS_MAX), and a hardcoded
+      // slice of 50 that actually got rendered. The header showed the middle
+      // one, so it read "Completed (100)" while listing 50 rows and while the
+      // real total was higher -- it looked like a ceiling on work done.
+      //
+      // Now: the headline number is the LIFETIME total (same source as the
+      // panel-header badge, so the two agree), and the qualifier states how
+      // many are actually listed. Everything the archive holds is rendered --
+      // it is already in memory and the folder is collapsed by default, so
+      // there was nothing bought by rendering only half of it.
+      var compLifetime=state.completedTasksLifetime!==undefined?state.completedTasksLifetime:comp.length;
+      // Only qualify when something is genuinely hidden; under the cap the
+      // count and the list match and the extra clause is just noise.
+      var compSub=compLifetime>comp.length
+        ?' <span style="font-size:11px;color:var(--text-faint);font-weight:400;">· '+comp.length+' most recent</span>'
+        :'';
       compEl.innerHTML='<div class="tl-completed-header" onclick="toggleCompletedFolder(this)">'
         +'<span class="tl-completed-arrow">&#9654;</span>'
-        +'<span>&#10003; Completed ('+comp.length+')</span>'
+        +'<span>&#10003; Completed ('+compLifetime+')'+compSub+'</span>'
         +'</div>'
         +'<div class="tl-completed-list">'
-        +comp.slice(0,50).map(function(t){
+        +comp.map(function(t){
           var d=t.archivedAt?new Date(t.archivedAt).toLocaleDateString('en-US',{month:'short',day:'numeric'}):'';
           return '<div class="tl-item tl-done" style="opacity:0.65;">'
             +'<div class="tl-check checked" style="cursor:default;">✓</div>'
@@ -5080,7 +5097,10 @@ function renderTaskList(){
             +'<span class="tl-del" onclick="removeCompleted(\''+t.id+'\')" title="Remove">✕</span>'
             +'</div>';
         }).join('')
-        +(comp.length>50?'<div class="tl-completed-empty">+'+( comp.length-50)+' older items</div>':'')
+        // The old "+N older items" footer counted the gap between the 50 rows
+        // rendered and the 100 stored. Every stored item is listed now, so it
+        // would always read "+0"; what is genuinely not shown (completions
+        // older than the archive cap) is covered by the header's qualifier.
         +'</div>';
     }
   }
