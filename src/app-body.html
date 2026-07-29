@@ -322,6 +322,12 @@
 <div class="section-label" style="margin-bottom:8px;">Account &amp; data</div>
 <p class="cust-sub">Your data belongs to you. Download a full copy anytime, or permanently delete your account and everything in it.</p>
 <div class="customize-actions">
+<!-- Sign out lives here as well as the status bar: on phone the status-bar strip
+     wraps below the viewport and the home screen doesn't scroll, so its Sign out
+     was unreachable -- leaving "Delete my account" as the only reachable way off
+     an account. Sign out is listed FIRST so the destructive button isn't the one
+     a thumb finds by default. -->
+<button class="btn" onclick="doLogout()">Sign out</button>
 <button class="btn" onclick="exportMyData()">&#11015; Export my data</button>
 <button class="btn btn-danger" onclick="deleteMyAccount()">Delete my account</button>
 </div>
