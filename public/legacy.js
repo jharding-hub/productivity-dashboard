@@ -5152,10 +5152,30 @@ function renderTaskList(){
   var today=todayStr();
   var pcEl=document.getElementById('pc_tasklist');
   
-  // If unchecked and in tile mode -- blank so add-form anchors at bottom
+  // Mobile/tile default: show TODAY's due tasks instead of blanking the tile.
+  // The tile used to render nothing here regardless of what state.tasks held,
+  // while the count badge above it kept showing the real total -- a fresh
+  // capture looked like it vanished (F9). "Show all" (checked) still renders
+  // the full unfiltered list via the branch below; this only changes the
+  // unchecked default.
   if(!inOverlay&&!showAll){
-    el.innerHTML='';
-    if(pcEl){pcEl.style.flex='none';pcEl.style.minHeight='0';}
+    var todayTasks=all.filter(function(t){return !t.done&&t.due===today;});
+    var hiddenCount=totalCount-todayTasks.length;
+    var showAllLink='<a href="#" onclick="document.getElementById(\'taskUpcomingOnly\').checked=true;renderTaskList();return false;">Show all</a>';
+    if(todayTasks.length===0){
+      el.innerHTML='<div class="tl-empty-hint" style="padding:8px 0;color:var(--text-dim);font-size:13px;">'
+        +(hiddenCount>0
+          ?'Nothing due today. '+hiddenCount+' other task'+(hiddenCount!==1?'s':'')+' — '+showAllLink
+          :'Nothing due today. Add one below.')
+        +'</div>';
+      if(pcEl){pcEl.style.flex='none';pcEl.style.minHeight='0';}
+    }else{
+      if(pcEl){pcEl.style.flex='';pcEl.style.minHeight='';}
+      el.innerHTML=todayTasks.map(_tlRowWithSelect).join('')
+        +(hiddenCount>0?'<div class="tl-empty-hint" style="padding:8px 0 0;color:var(--text-dim);font-size:13px;">'+hiddenCount+' more task'+(hiddenCount!==1?'s':'')+' not due today — '+showAllLink+'</div>':'');
+      todayTasks.forEach(function(t){_wireTaskRowEditable(t,el);});
+      refreshEditables();
+    }
     document.getElementById('taskListCount').textContent=totalCount;
     if(typeof _updateTileSummaryTasklist==='function')_updateTileSummaryTasklist();
     return;
