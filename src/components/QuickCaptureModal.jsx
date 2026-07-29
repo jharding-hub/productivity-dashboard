@@ -21,7 +21,13 @@ export default function QuickCaptureModal() {
           <div className="qc-actions">
             <button className="qc-save-btn" onClick={() => window.submitQuickCapture()}>Save</button>
           </div>
-          <div className="qc-hint">Leaving the box saves it &middot; Esc discards &middot; try &quot;tomorrow&quot; or &quot;every week&quot; &mdash; task-like text becomes a Task, otherwise it's a Brain Dump thought</div>
+          <div className="qc-hint">
+            {/* "Esc discards" is desktop-only copy -- touch devices have no Esc key,
+                and this modal is reached from a tap, not a keyboard shortcut, on phone. */}
+            {window._isMobile && window._isMobile()
+              ? <>Tap outside to save &middot; try &quot;tomorrow&quot; or &quot;every week&quot; &mdash; task-like text becomes a Task, otherwise it's a Brain Dump thought</>
+              : <>Leaving the box saves it &middot; Esc discards &middot; try &quot;tomorrow&quot; or &quot;every week&quot; &mdash; task-like text becomes a Task, otherwise it's a Brain Dump thought</>}
+          </div>
         </div>
       </div>
     </>

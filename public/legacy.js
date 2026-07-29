@@ -6981,7 +6981,12 @@ function openQuickCapture(){
   var preview=document.getElementById('quickCapturePreview');
   if(input)input.value='';
   if(preview){preview.style.display='none';preview.textContent='';}
-  if(input)setTimeout(function(){input.focus();},10);
+  // Focus MUST happen synchronously in the same call stack as the tap/click
+  // that opened this modal -- iOS WebKit only raises the soft keyboard for a
+  // focus() called with "transient activation" still active, and a
+  // setTimeout (even a few ms) drops that flag. The visibility toggle above
+  // is a synchronous classList change, so the element is already focusable.
+  if(input)input.focus();
 }
 // Clears + blurs the input BEFORE hiding the modal, so a discard is always
 // unambiguous: Escape calls this directly (never wants a save), and if the
