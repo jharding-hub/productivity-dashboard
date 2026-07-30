@@ -3068,3 +3068,11 @@ body.admin-overlay-open #starryLayer,body.admin-overlay-open #galaxyLayer,body.a
 .tl-triage-btn{padding:5px 10px;min-height:32px;font-size:12px;border:1px solid var(--border-focus);border-radius:var(--radius-sm);background:var(--surface);color:var(--text);cursor:pointer;font-family:inherit;transition:border-color 0.15s,color 0.15s;}
 .tl-triage-btn:hover{border-color:var(--accent-dim);color:var(--accent);}
 .tl-triage-note a{color:var(--accent);cursor:pointer;text-decoration:underline;}
+
+/* R3 stage 4 (F11): immersive surfaces (breathwork session, journal incl.
+   its PIN screens) get no floating chrome -- the capture FAB and Axis orb
+   otherwise render ON TOP of them (z-index 900 vs the breath overlay's 500).
+   The body class is added/removed by startBreathwork/stopBreathwork and
+   openJournal/closeJournal in legacy.js. */
+body.cp-immersive .qc-fab,
+body.cp-immersive .jarvis-fab{display:none;}

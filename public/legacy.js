@@ -4774,6 +4774,11 @@ function _healthLogMindful(startMs,endMs){
 function startBreathwork(){
   const id=document.getElementById('breathSelect').value;
   if(!id)return;
+  // R3 stage 4 (F11): the floating capture + Axis buttons stayed on top of
+  // the full-screen calming session (overlay z-index 500 < their 900).
+  // Chrome has no place inside an immersive surface -- body class hides both
+  // (see .cp-immersive in app.css); removed again on stop.
+  document.body.classList.add('cp-immersive');
   const t=breathTechniques[id];
   breathActive=true;
   _trackEvent('tool_use','breathwork','Breathwork');
@@ -4887,6 +4892,7 @@ function startBreathwork(){
 
 function stopBreathwork(){
   breathActive=false;
+  document.body.classList.remove('cp-immersive');
   clearInterval(breathInterval);breathInterval=null;
   _breathHaptic('release'); // R15: tear down the native haptic engine
   if(_breathCurrentAudio){_breathCurrentAudio.pause();_breathCurrentAudio=null;}
@@ -8168,6 +8174,9 @@ async function openJournal(){
   _journalUnlocked=false;_journalKey=null;_journalPlain={};
   _pinBuffer='';_setPinBuffer='';_setPinStage=0;_setPinFirst='';_changingPin=false;
   document.getElementById('journalOverlay').classList.add('open');
+  // R3 stage 4 (F11): journal is a full-screen surface too -- the FAB floated
+  // over the PIN pad and the editor's character count. Same immersive rule.
+  document.body.classList.add('cp-immersive');
   _blurDashboard();
   document.getElementById('journalMain').style.display='none';
   document.getElementById('journalPinGate').style.display='none';
@@ -8194,6 +8203,7 @@ async function openJournal(){
 
 function closeJournal(){
   document.getElementById('journalOverlay').classList.remove('open');
+  document.body.classList.remove('cp-immersive');
   _unblurDashboard();
   _journalUnlocked=false;_journalKey=null;_journalPlain={};
   _pinBuffer='';_setPinBuffer='';_setPinStage=0;_setPinFirst='';_changingPin=false;
