@@ -2940,7 +2940,31 @@ document.getElementById('thoughtChips').innerHTML=state.thoughts.map(t=>'<div cl
 function setEnergy(el,v){state.energy=v;document.querySelectorAll('#energyPills .em-pill').forEach(c=>c.classList.remove('selected'));el.classList.add('selected');logMoodEntry();save();showStateAdvice();updateWellnessVisibility();var today=_dayKey();if(state.points&&state.points.lastEnergyDate!==today){state.points.lastEnergyDate=today;save();addPoints('mood_energy',el);}}
 function setMood(el,v){state.mood=v;document.querySelectorAll('#moodPills .em-pill').forEach(c=>c.classList.remove('selected'));el.classList.add('selected');logMoodEntry();save();showStateAdvice();updateWellnessVisibility();var today=_dayKey();if(state.points&&state.points.lastMoodDate!==today){state.points.lastMoodDate=today;save();addPoints('mood_energy',el);}}
 var adviceMap={'high-focused':{t:'\u{1F525} Peak state \u2014 tackle your hardest task now.',cls:'state-advice-positive'},'high-scattered':{t:'\u26A1 Energy but no focus. Start a Pomodoro.',cls:'state-advice'},'high-anxious':{t:'\u{1F4A8} Burn off anxious energy with something physical.',cls:'state-advice'},'high-calm':{t:'\u2728 Great for creative work or complex problems.',cls:'state-advice-positive'},'good-focused':{t:'\u{1F44D} Solid state. Pick a medium-priority task.',c:'var(--green)'},'good-scattered':{t:'\u{1F4CB} List 3 things, do just the first one.',cls:'state-advice'},'good-anxious':{t:'\u{1F4DD} Channel worry into a task with a clear endpoint.',c:'var(--blue)'},'good-calm':{t:'\u{1F33F} Good baseline. Handle routine tasks or admin.',c:'var(--green)'},'low-focused':{t:'\u{1F3AF} Low but present? Detail work \u2014 editing, reviewing.',c:'var(--blue)'},'low-scattered':{t:'\u{1FAE7} Not deep work time. 5-min break, then one tiny task.',cls:'state-advice-alert'},'low-anxious':{t:'\u{1F9CA} Pause. Check the Grounding Toolkit \u2192',c:'var(--purple)'},'low-calm':{t:'\u2601\uFE0F Rest state. Gentle tasks or a proper break.',c:'var(--blue)'},'crashed-focused':{t:'\u26A0\uFE0F Running on fumes. Only truly urgent items.',cls:'state-advice-alert'},'crashed-scattered':{t:'\u{1F6D1} Brain needs a reset. Check the Grounding Toolkit \u2192',cls:'state-advice-alert'},'crashed-anxious':{t:'\u{1FAC2} Hardest state. Grounding Toolkit first, then reassess.',c:'var(--red)'},'crashed-calm':{t:'\u{1F319} Depleted but peaceful. Gentle admin or rest.',cls:'state-advice'}};
-function showStateAdvice(){const el=document.getElementById('stateAdvice');if(!state.energy||!state.mood){el.innerHTML='';return;}const k=state.energy+'-'+state.mood;const a=adviceMap[k];if(a)el.innerHTML='<div class="decision-prompt state-advice '+(a.cls||'')+'">'+a.t+'</div>';}
+// R3 stage 2: when the advice text itself points at the Grounding Toolkit
+// ("Check the Grounding Toolkit →"), that pointer must BE the door -- it was
+// inert text, and on mobile the wellness panel had no other entry point at
+// all (no MOBILE_PANELS row, no direct-jump caller): the app named its own
+// remedy in its worst states and then dead-ended. Detected by text match so
+// any future adviceMap copy that mentions the toolkit is automatically live.
+function showStateAdvice(){const el=document.getElementById('stateAdvice');if(!state.energy||!state.mood){el.innerHTML='';return;}const k=state.energy+'-'+state.mood;const a=adviceMap[k];if(!a)return;var gt=/Grounding Toolkit/.test(a.t);el.innerHTML='<div class="decision-prompt state-advice '+(a.cls||'')+'"'+(gt?' role="button" tabindex="0" aria-label="Open the Grounding Toolkit" style="cursor:pointer;" onclick="openGroundingToolkit()" onkeydown="if(event.key===\'Enter\'||event.key===\' \'){event.preventDefault();openGroundingToolkit();}"':'')+'>'+a.t+(gt?' <span style="text-decoration:underline;">Open</span>':'')+'</div>';}
+
+// The one door that always opens. An explicit tap is an invitation, so this
+// intentionally overrides the 'lean' Support Level -- R12's contract is that
+// lean only suppresses UNINVITED popups, while the tools stay a tap away.
+// Closes the Energy & Mood modal first (the advice banner lives inside it),
+// then navigates: mobile pushes the wellness panel, desktop scrolls to it.
+function openGroundingToolkit(){
+  var wp=document.querySelector('[data-panel="wellness"]');
+  if(!wp)return;
+  wp.classList.remove('hidden-panel');
+  if(typeof populateWellnessDropdown==='function')populateWellnessDropdown();
+  if(typeof closeEnergyModal==='function')closeEnergyModal();
+  if(_isMobile()){
+    showMobilePanel('wellness');
+  }else{
+    wp.scrollIntoView({behavior:'smooth',block:'center'});
+  }
+}
 
 // WELLNESS TOOLKIT - conditional visibility
 var triggerStates=['low','crashed','anxious','scattered'];
