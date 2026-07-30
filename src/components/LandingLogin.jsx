@@ -1,27 +1,13 @@
 export default function LandingLogin() {
-  return (
+  // R6: native first-run. The marketing page (hero/mockup/features/story) is
+  // built for centerpost.app web traffic -- on the native app there's no one
+  // to sell, only an already-invited beta user who needs the sign-in card,
+  // not a scroll past a dashboard mockup. Web behavior is untouched.
+  const isNative = typeof window !== 'undefined' && window.Capacitor?.isNativePlatform?.();
+
+  const marketingBody = (
     <>
-      {/* AUTH GATE */}
-      <div className="login-gate landing-mode" id="loginGate">
-        <div className="landing">
-
-          {/* BETA BANNER */}
-          <div className="landing-beta-banner">
-            <span className="beta-tag">BETA</span>
-            <span className="beta-text">Centerpost is in active beta testing — <strong>all features are free</strong> while the developer is testing and iterating. Sign up and help shape it.</span>
-          </div>
-
-          {/* NAV */}
-          <nav className="landing-nav">
-            <div className="landing-logo"><span className="logo-dot"></span> Centerpost</div>
-            <div className="landing-nav-right">
-              <a href="kids.html" className="landing-nav-link">Kids Mode</a>
-              <button className="landing-signin-btn" onClick={() => window.showSigninPanel()}>Sign In</button>
-              <button className="landing-signup-btn" onClick={() => window.showSignupPanel()}>Sign Up</button>
-            </div>
-          </nav>
-
-          {/* HERO */}
+      {/* HERO */}
           <section className="landing-hero">
             <div className="landing-hero-text">
               <div className="landing-badge"><span className="badge-dot"></span> Built by a first responder, for getting things done</div>
@@ -203,6 +189,52 @@ export default function LandingLogin() {
               <a className="landing-footer-link" onClick={() => window.showSignupPanel()}>Sign Up</a>
             </div>
           </footer>
+    </>
+  );
+
+  return (
+    <>
+      {/* AUTH GATE */}
+      <div className="login-gate landing-mode" id="loginGate">
+        <div className="landing">
+
+          {isNative ? (
+            <div className="landing-native-brand">
+              <div className="landing-logo"><span className="logo-dot"></span> Centerpost</div>
+              <p className="landing-native-tagline">A workspace for brains that don't quit.</p>
+              <div className="landing-native-cta-row">
+                <button className="landing-signin-btn" onClick={() => window.showSigninPanel()}>Sign In</button>
+                <button className="landing-signup-btn" onClick={() => window.showSignupPanel()}>Sign Up</button>
+              </div>
+              <div className="landing-native-links">
+                <a className="landing-nav-link" onClick={() => document.getElementById('nativeMoreContent').classList.toggle('open')}>What is Centerpost?</a>
+                <a href="kids.html" className="landing-nav-link">Kids Mode</a>
+              </div>
+              <div id="nativeMoreContent" className="landing-native-more">
+                {marketingBody}
+              </div>
+            </div>
+          ) : (
+            <>
+              {/* BETA BANNER */}
+              <div className="landing-beta-banner">
+                <span className="beta-tag">BETA</span>
+                <span className="beta-text">Centerpost is in active beta testing — <strong>all features are free</strong> while the developer is testing and iterating. Sign up and help shape it.</span>
+              </div>
+
+              {/* NAV */}
+              <nav className="landing-nav">
+                <div className="landing-logo"><span className="logo-dot"></span> Centerpost</div>
+                <div className="landing-nav-right">
+                  <a href="kids.html" className="landing-nav-link">Kids Mode</a>
+                  <button className="landing-signin-btn" onClick={() => window.showSigninPanel()}>Sign In</button>
+                  <button className="landing-signup-btn" onClick={() => window.showSignupPanel()}>Sign Up</button>
+                </div>
+              </nav>
+
+              {marketingBody}
+            </>
+          )}
 
         </div>
       </div>

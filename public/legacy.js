@@ -638,6 +638,11 @@ function initAuthListener(){
     }else{
       currentUser=null;isAdmin=false;userProfile=null;
       hideApp();
+      // R6: native has no marketing page to tap "Sign In" from anymore, so
+      // open the card automatically instead of leaving a bare brand screen.
+      if(document.body.classList.contains('capacitor-native')&&typeof showSigninPanel==='function'){
+        showSigninPanel();
+      }
     }
   });
 }
