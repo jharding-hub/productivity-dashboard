@@ -2061,7 +2061,12 @@ function clearPastReminders(){var _t=todayStr();(state.reminders||[]).forEach(fu
 function editReminderText(id,v){if(!v)return;const r=state.reminders.find(r=>r.id===id);if(r)r.text=v;save();}
 function renderReminders(){
 if(_isEditingInPanel('reminderList')){_deferPanelRender('reminderList');return;}
-const el=document.getElementById('reminderList');const today=todayStr();const sorted=[...state.reminders].sort((a,b)=>{if(a.date&&b.date){const d=a.date.localeCompare(b.date);if(d!==0)return d;}if(a.date&&!b.date)return -1;if(!a.date&&b.date)return 1;if(a.time&&b.time)return a.time.localeCompare(b.time);return 0;});
+const el=document.getElementById('reminderList');const today=todayStr();const sorted=[...state.reminders].sort((a,b)=>{if(a.date&&b.date){const d=a.date.localeCompare(b.date);if(d!==0)return d;
+  // R7 stage 2: same date -- an untimed reminder means "sometime that day",
+  // so put it ahead of ones with a scheduled clock time rather than after
+  // (a plain localeCompare tie fell through to insertion order before).
+  if(a.time&&!b.time)return 1;if(!a.time&&b.time)return -1;
+  if(a.time&&b.time)return a.time.localeCompare(b.time);return 0;}if(a.date&&!b.date)return -1;if(!a.date&&b.date)return 1;return 0;});
 if(sorted.length===0){el.innerHTML='<div class="empty-state">No reminders.</div>';document.getElementById('remCount').textContent='0';if(typeof _updateTileSummaryReminders==='function')_updateTileSummaryReminders();return;}
 el.innerHTML=sorted.map(r=>{return '<div class="reminder-item"><span class="rem-icon">\u{1F535}</span><div class="rem-body"><div class="rem-text editable" id="rt_'+r.id+'">'+esc(r.text)+'</div><div class="rem-when">'+'<span class="date-editable" id="rd_'+r.id+'">'+(r.date?fmtDate(r.date):'+ set date')+'</span>'+(r.time?' at <span class="date-editable" id="rt2_'+r.id+'">'+fmtTime(r.time)+'</span>':' <span class="date-editable" id="rt2_'+r.id+'" style="color:var(--text-faint);">+ time</span>')+'</div></div><div style="display:flex;gap:2px;"><span class="st-btn st-cal" onclick="exportReminderICS(\''+r.id+'\')">\u{1F4C5}</span><span class="st-btn st-del" onclick="deleteReminder(\''+r.id+'\')">\u2715</span></div></div>';}).join('');
 document.getElementById('remCount').textContent=sorted.filter(r=>!r.date||r.date>=today).length;
