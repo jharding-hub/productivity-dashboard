@@ -141,7 +141,7 @@ function applyTierGating(){
   document.querySelectorAll('.panel[data-panel]').forEach(function(panel){
     var key=panel.getAttribute('data-panel');
     if(key==='wellness'||key==='admin')return; // managed elsewhere
-    var allowed=cfg.panels.indexOf(key)>=0;
+    var allowed=BETA_ALL_FEATURES||cfg.panels.indexOf(key)>=0;
     if(!allowed){
       panel.classList.add('tier-locked-panel');
       panel.classList.remove('hidden-panel');
@@ -158,7 +158,7 @@ function applyTierGating(){
     // music and timer are wrappers, find the button inside
     var el=document.querySelector('.toolkit-'+key+'-wrap .toolkit-btn')||document.querySelector('.'+cls);
     if(!el)return;
-    var allowed=cfg.toolkitAllowed.indexOf(key)>=0;
+    var allowed=BETA_ALL_FEATURES||cfg.toolkitAllowed.indexOf(key)>=0;
     el.classList.toggle('tier-locked-btn',!allowed);
     // swap onclick so locked buttons show upgrade toast instead
     if(!allowed){
@@ -172,14 +172,15 @@ function applyTierGating(){
 
   // -- Voice input buttons ------------------------------------------------------
   document.querySelectorAll('.mic-btn').forEach(function(btn){
-    btn.classList.toggle('tier-locked-btn',!cfg.voiceInput);
-    btn.disabled=!cfg.voiceInput;
-    btn.title=cfg.voiceInput?'Voice input':'Voice input (Pro)';
+    var voiceOk=BETA_ALL_FEATURES||cfg.voiceInput;
+    btn.classList.toggle('tier-locked-btn',!voiceOk);
+    btn.disabled=!voiceOk;
+    btn.title=voiceOk?'Voice input':'Voice input (Pro)';
   });
 
   // -- Completed history --------------------------------------------------------
   document.querySelectorAll('.completed-projects-section,.completed-tasks-section,#taskListCompleted').forEach(function(el){
-    el.style.display=cfg.completedHistory?'':'none';
+    el.style.display=(BETA_ALL_FEATURES||cfg.completedHistory)?'':'none';
   });
 
   // -- Dev switcher badge -------------------------------------------------------
@@ -188,15 +189,15 @@ function applyTierGating(){
   // -- AI assistant (Axis FAB + Breakdown buttons) -----------------------------
   var fab=document.getElementById('jarvisFab');
   if(fab){
-    fab.style.display=cfg.aiAssistant===false?'none':'';
+    fab.style.display=(!BETA_ALL_FEATURES&&cfg.aiAssistant===false)?'none':'';
   }
   document.querySelectorAll('.breakdown-btn').forEach(function(b){
-    b.style.display=cfg.aiAssistant===false?'none':'';
+    b.style.display=(!BETA_ALL_FEATURES&&cfg.aiAssistant===false)?'none':'';
   });
 
   // -- Music streaming button (only Owner/Legacy/Premium) -----------------------
   var musicBtn=document.getElementById('toolkitMusicStreamBtn');
-  if(musicBtn)musicBtn.style.display=cfg.musicStreaming?'':'none';
+  if(musicBtn)musicBtn.style.display=(BETA_ALL_FEATURES||cfg.musicStreaming)?'':'none';
 }
 
 function _injectPanelLockBadge(panel,key){
@@ -10738,6 +10739,17 @@ var APP_BUILD='2026.06.06b-beta';
 // BETA: ignore tier gating for themes (every theme selectable). Set to false
 // to restore the per-tier theme locks after beta.
 var BETA_ALL_THEMES=true;
+// R4 (F13): the landing banner promises "all features are free while the
+// developer is testing" -- an unqualified claim. Meanwhile applyTierGating()
+// still blur-locked panels whose OWN home row advertised a live item count
+// (e.g. Reminders showing "40" then opening behind an Upgrade paywall), and
+// _injectPanelLockBadge's "Upgrade to Pro" button called only _tierUpgradeToast
+// -- a toast, no purchase flow, so the lock protected nothing anyway. Same
+// single-flag pattern as BETA_ALL_THEMES, applied to the rest of
+// applyTierGating() so the beta banner stops contradicting the UI under it.
+// Set to false to restore real tier enforcement post-beta -- every check
+// below reads this flag, nothing else needs to change.
+var BETA_ALL_FEATURES=true;
 
 function applyTheme(key){
   // Block if theme is above current tier
@@ -11096,7 +11108,11 @@ function renderThemeSelector(){
   el.innerHTML=THEMES.filter(function(t){return RETIRED_THEME_KEYS.indexOf(t.key)<0;}).map(function(t){
     var allowed=BETA_ALL_THEMES||cfg.allowedThemeTiers.indexOf(t.tier)>=0;
     var active=t.key===currentTheme?' active':'';
-    var tierLabel=t.tier.charAt(0).toUpperCase()+t.tier.slice(1);
+    // R4 (F13): the badge rendered "Pro"/"Premium" even on themes BETA_ALL_THEMES
+    // had already made clickable -- paid-tier signaling on a feature the user
+    // can actually use for free reads as a paywall regardless of whether it's
+    // technically locked.
+    var tierLabel=(BETA_ALL_THEMES&&t.tier!=='free')?'Beta':(t.tier.charAt(0).toUpperCase()+t.tier.slice(1));
     var tierClass='theme-tier-'+t.tier;
     if(!allowed){
       return '<button class="theme-btn theme-btn-locked" onclick="_tierUpgradeToast()" title="Upgrade to '+tierLabel+' to unlock">'+
