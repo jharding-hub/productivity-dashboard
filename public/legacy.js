@@ -2076,7 +2076,7 @@ var remSearchEl=document.getElementById('remSearch');
 var remSearch=remInOverlay&&remSearchEl?remSearchEl.value.toLowerCase().trim():'';
 var visible=remSearch?sorted.filter(r=>(r.text||'').toLowerCase().indexOf(remSearch)>=0):sorted;
 if(visible.length===0){el.innerHTML='<div class="empty-state">'+(remSearch?'No matching reminders.':'No reminders.')+'</div>';document.getElementById('remCount').textContent=sorted.filter(r=>!r.date||r.date>=today).length;if(typeof _updateTileSummaryReminders==='function')_updateTileSummaryReminders();return;}
-el.innerHTML=remInOverlay?_remGroupedListHTML(visible,today):visible.map(_remRowHTML).join('');
+el.innerHTML=remInOverlay?_remGroupedListHTML(visible,today,_remRenderLimit):visible.map(_remRowHTML).join('');
 document.getElementById('remCount').textContent=sorted.filter(r=>!r.date||r.date>=today).length;
 state.reminders.forEach(r=>{const e=document.getElementById('rt_'+r.id);if(e)makeEditable(e,v=>editReminderText(r.id,v));const rde=document.getElementById('rd_'+r.id);if(rde)makeDateClickable(rde,r.date,v=>editReminderDate(r.id,v));const rte=document.getElementById('rt2_'+r.id);if(rte)makeTimeClickable(rte,r.time,v=>editReminderTime(r.id,v));});refreshEditables();if(typeof _updateTileSummaryReminders==='function')_updateTileSummaryReminders();}
 function _remRowHTML(r){return '<div class="reminder-item"><span class="rem-icon">\u{1F535}</span><div class="rem-body"><div class="rem-text editable" id="rt_'+r.id+'">'+esc(r.text)+'</div><div class="rem-when">'+'<span class="date-editable" id="rd_'+r.id+'">'+(r.date?fmtDate(r.date):'+ set date')+'</span>'+(r.time?' at <span class="date-editable" id="rt2_'+r.id+'">'+fmtTime(r.time)+'</span>':' <span class="date-editable" id="rt2_'+r.id+'" style="color:var(--text-faint);">+ time</span>')+'</div></div><div style="display:flex;gap:2px;"><span class="st-btn st-cal" onclick="exportReminderICS(\''+r.id+'\')">\u{1F4C5}</span><span class="st-btn st-del" onclick="deleteReminder(\''+r.id+'\')">✕</span></div></div>';}
@@ -2084,7 +2084,7 @@ function _remRowHTML(r){return '<div class="reminder-item"><span class="rem-icon
 // -- Reminders has no sort dropdown, it's always date+time order, so this
 // applies whenever the full list is showing rather than being gated on a
 // sort value.
-function _remGroupedListHTML(items,today){
+function _remGroupedListHTML(items,today,limit){
   var tomorrow=_tlPlusDays(today,1);
   var weekEnd=_tlPlusDays(today,7);
   var order=['overdue','today','tomorrow','week','later','none'];
@@ -2095,14 +2095,19 @@ function _remGroupedListHTML(items,today){
     buckets[info.key].rows.push(r);
   });
   var present=order.filter(function(k){return buckets[k];});
-  if(present.length<2)return items.map(_remRowHTML).join('');
+  if(present.length<2)return _tlBatchedRowsHTML(items,limit,_remRowHTML,_remShowMoreHTML);
   var chips=present.map(function(k){
     return '<button type="button" class="tl-jump-chip" onclick="document.getElementById(\'remgroup-'+k+'\').scrollIntoView({behavior:\'smooth\',block:\'start\'})">'+esc(buckets[k].label)+' <span class="tl-jump-chip-count">'+buckets[k].rows.length+'</span></button>';
   }).join('');
+  var remaining=limit;
   var body=present.map(function(k){
+    var rows=buckets[k].rows;
+    var take=Math.max(0,Math.min(remaining,rows.length));
+    remaining-=take;
     return '<div class="tl-group-header" id="remgroup-'+k+'">'+esc(buckets[k].label)+'</div>'
-      +buckets[k].rows.map(_remRowHTML).join('');
+      +rows.slice(0,take).map(_remRowHTML).join('');
   }).join('');
+  if(items.length>limit)body+=_remShowMoreHTML(items.length-limit);
   return '<div class="tl-jump-chips">'+chips+'</div>'+body;
 }
 
@@ -3938,6 +3943,10 @@ function showMobilePanel(panelId){
     // rendered (and CSS-capped) as if they were the small home-tile summary --
     // a 220px scrollbox with a 17,000px+ scrollable interior at real volume.
     target.classList.remove('panel-tile');
+    // R7 stage 5: start each fresh open back at the first batch rather than
+    // silently carrying over a "Show more" expansion from a prior visit.
+    if(panelId==='tasklist')_tlRenderLimit=_TL_RENDER_BATCH;
+    else if(panelId==='reminders')_remRenderLimit=_TL_RENDER_BATCH;
     if(panelId==='projects'&&typeof renderProjects==='function')renderProjects();
     else if(panelId==='notes'&&typeof renderNotes==='function')renderNotes();
     else if(panelId==='tasklist'&&typeof renderTaskList==='function')renderTaskList();
@@ -5344,7 +5353,9 @@ function renderTaskList(){
     if(pcEl){pcEl.style.flex='none';pcEl.style.minHeight='0';}
   }else{
     if(pcEl){pcEl.style.flex='';pcEl.style.minHeight='';}
-    el.innerHTML=(sort==='due')?_tlGroupedListHTML(all,today):all.map(_tlRowWithSelect).join('');
+    el.innerHTML=(sort==='due')
+      ?_tlGroupedListHTML(all,today,_tlRenderLimit)
+      :_tlBatchedRowsHTML(all,_tlRenderLimit,_tlRowWithSelect,_tlShowMoreHTML);
     all.forEach(function(t){_wireTaskRowEditable(t,el);});
     refreshEditables();
   }
@@ -5406,7 +5417,7 @@ function _tlTriageBarHTML(all,today){
 // (F10); stage 1 made the list reachable, this makes it navigable. Only
 // meaningful when sorted by due date and when there's more than one bucket
 // present -- otherwise it's pure noise over the plain row list.
-function _tlGroupedListHTML(items,today){
+function _tlGroupedListHTML(items,today,limit){
   var tomorrow=_tlPlusDays(today,1);
   var weekEnd=_tlPlusDays(today,7);
   var order=['overdue','today','tomorrow','week','later','none'];
@@ -5417,14 +5428,23 @@ function _tlGroupedListHTML(items,today){
     buckets[info.key].rows.push(t);
   });
   var present=order.filter(function(k){return buckets[k];});
-  if(present.length<2)return items.map(_tlRowWithSelect).join('');
+  if(present.length<2)return _tlBatchedRowsHTML(items,limit,_tlRowWithSelect,_tlShowMoreHTML);
   var chips=present.map(function(k){
     return '<button type="button" class="tl-jump-chip" onclick="document.getElementById(\'tlgroup-'+k+'\').scrollIntoView({behavior:\'smooth\',block:\'start\'})">'+esc(buckets[k].label)+' <span class="tl-jump-chip-count">'+buckets[k].rows.length+'</span></button>';
   }).join('');
+  // Every header renders regardless of the batch limit so jump chips always
+  // have a real target -- only the ROWS under each bucket are capped, in
+  // bucket order, so a "Show more" at the end always reveals the next
+  // chronological rows rather than jumping around.
+  var remaining=limit;
   var body=present.map(function(k){
+    var rows=buckets[k].rows;
+    var take=Math.max(0,Math.min(remaining,rows.length));
+    remaining-=take;
     return '<div class="tl-group-header" id="tlgroup-'+k+'">'+esc(buckets[k].label)+'</div>'
-      +buckets[k].rows.map(_tlRowWithSelect).join('');
+      +rows.slice(0,take).map(_tlRowWithSelect).join('');
   }).join('');
+  if(items.length>limit)body+=_tlShowMoreHTML(items.length-limit);
   return '<div class="tl-jump-chips">'+chips+'</div>'+body;
 }
 function tlTriage(mode){
@@ -5516,6 +5536,32 @@ function applySavedTaskFilter(idxStr){
   if(filterProj)filterProj.value=preset.proj;
   if(upcomingEl)upcomingEl.checked=preset.upcomingOnly;
   renderTaskList();
+}
+
+// R7 stage 5: progressive rendering past ~100 items (F10). Stage 1 made the
+// panel grow to its full natural height (page scrolls, no inner scrollbox
+// anymore) rather than a bounded scrollable div -- that rules out classic
+// windowed/recycling virtualization (translateY row positioning needs a
+// fixed-height scroll viewport, and reintroducing one would undo stage 1).
+// This is the safe equivalent: render the first 100 rows, a manual "Show
+// more" control appends the next 100. Existing rendered rows are never
+// removed/recycled, so an in-progress inline edit is never at risk -- and
+// renderTaskList()/renderReminders() already defer any re-render while
+// editing is active (_isEditingInPanel), so a show-more click mid-edit
+// elsewhere in the list is already covered by that same guard.
+var _TL_RENDER_BATCH=100;
+var _tlRenderLimit=_TL_RENDER_BATCH;
+var _remRenderLimit=_TL_RENDER_BATCH;
+function _tlShowMoreHTML(remainingCount){
+  return '<div class="tl-show-more"><button type="button" class="tl-jump-chip" onclick="_tlRenderLimit+='+_TL_RENDER_BATCH+';renderTaskList();">Show more ('+remainingCount+' left)</button></div>';
+}
+function _remShowMoreHTML(remainingCount){
+  return '<div class="tl-show-more"><button type="button" class="tl-jump-chip" onclick="_remRenderLimit+='+_TL_RENDER_BATCH+';renderReminders();">Show more ('+remainingCount+' left)</button></div>';
+}
+function _tlBatchedRowsHTML(items,limit,rowFn,showMoreFn){
+  var html=items.slice(0,limit).map(rowFn).join('');
+  if(items.length>limit)html+=showMoreFn(items.length-limit);
+  return html;
 }
 
 // -- Batch select / bulk operations --
@@ -5830,6 +5876,9 @@ function openPanelOverlay(panelKey){
   _panelOverlayCurrent=panelKey;
   _trackEvent('panel_view',panelKey,panelKey);
 
+  // R7 stage 5: same fresh-batch reset as the mobile tab-bar path.
+  if(panelKey==='tasklist')_tlRenderLimit=_TL_RENDER_BATCH;
+  else if(panelKey==='reminders')_remRenderLimit=_TL_RENDER_BATCH;
   // Re-render to refresh content (some renderers depend on element visibility)
   if(panelKey==='projects'&&typeof renderProjects==='function')renderProjects();
   else if(panelKey==='reminders'&&typeof renderReminders==='function')renderReminders();

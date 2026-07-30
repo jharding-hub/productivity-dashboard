@@ -3087,6 +3087,9 @@ body.admin-overlay-open #starryLayer,body.admin-overlay-open #galaxyLayer,body.a
 .tl-jump-chip-count{color:var(--text-faint);}
 .tl-group-header{font-size:12px;font-weight:600;color:var(--text-dim);text-transform:uppercase;letter-spacing:0.4px;padding:14px 0 4px;}
 .tl-group-header:first-of-type{padding-top:0;}
+/* R7 stage 5: progressive-render "Show more" control */
+.tl-show-more{padding:14px 0 4px;text-align:center;}
+.tl-show-more .tl-jump-chip{width:100%;}
 
 /* R3 stage 4 (F11): immersive surfaces (breathwork session, journal incl.
    its PIN screens) get no floating chrome -- the capture FAB and Axis orb
