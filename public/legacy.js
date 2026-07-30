@@ -3005,6 +3005,14 @@ function populateWellnessDropdown(){
   sorted.sort((a,b)=>{const ar=triggers.some(t=>a.bestFor.includes(t))?0:1;const br=triggers.some(t=>b.bestFor.includes(t))?0:1;return ar-br;});
   sel.innerHTML='<option value="">Choose a technique...</option>'+sorted.map(t=>{const rel=triggers.some(tr=>t.bestFor.includes(tr));return '<option value="'+t.id+'">'+(rel?'\u2605 ':'')+t.icon+' '+t.name+'</option>';}).join('');
   document.getElementById('techniqueDetail').innerHTML='';
+  // R3 stage 3: same no-decision-wall rule as the breathwork picker. The sort
+  // above already ranks by match to the CURRENT mood/energy -- surface that
+  // ranking as a preselected top pick with its steps rendered, instead of a
+  // blank "Choose a technique..." at exactly the moment this panel exists
+  // for. Rebuilding innerHTML wiped any prior selection anyway, so
+  // auto-selecting is strictly more helpful, never less. showSelectedTechnique
+  // only renders steps + a Start button; nothing auto-starts.
+  if(sorted.length){sel.value=sorted[0].id;showSelectedTechnique();}
 }
 
 function showSelectedTechnique(){
