@@ -314,6 +314,19 @@ function doLogout(){
   firebase.auth().signOut();
 }
 
+// Moved off the primary status bar into Settings (R2): it used to sit on the
+// bottom bar one thumb-width from Settings itself and eject straight to
+// Safari with zero confirmation -- easy to hit by mistake, high context loss.
+function openKidsMode(){
+  if(currentUser){
+    try{
+      localStorage.setItem('_kidsParentUid',currentUser.uid);
+      localStorage.setItem('_kidsParentEmail',currentUser.email||'');
+    }catch(e){}
+  }
+  window.open('https://centerpost.app/kids.html','_blank');
+}
+
 // -- Self-serve data export + account deletion (Settings > Account & data) --
 // Export runs fully client-side: the signed-in user already has read access
 // to everything under users/{uid}. If data ever nests deeper than

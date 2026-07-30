@@ -683,7 +683,21 @@ body[data-theme="storm-dark"] .day-progress-elapsed{
 .ht-dd-reset{border-top:1px solid var(--border);color:var(--text-dim);}
 .time-left-wrap{position:relative;z-index:2;}
 /* BOTTOM STATUS BAR */
-.status-bar{position:fixed;bottom:0;left:0;right:0;z-index:200;background:var(--surface);border-top:1px solid var(--border);padding:8px 20px;display:flex;align-items:center;gap:14px;height:52px;}
+/* R2 stage A: .status-bar's flex/align/gap rules were dead weight -- its ONLY
+   DOM child is #status-bar-root (StatusBar.jsx portals into it), a plain
+   block div, so the actual buttons never took part in this flex layout at
+   all. They wrapped as inline-block content instead, at a total height (113px
+   on a 375px phone, 72px on desktop) that the bar's hardcoded height:52px
+   then clipped -- "Sign out" ended up 10px visible on phone, ~30px on
+   desktop. Fix: make #status-bar-root the real flex row, and let the bar's
+   height grow to fit instead of clipping whatever's inside.
+   Known tradeoff: a narrow window with a long email address could still wrap
+   to 2 rows and grow taller than the 60px .app-wrap padding-bottom accounts
+   for. Not fixed here -- Stage B replaces the mobile contents entirely with a
+   fixed 4-slot tab bar, which makes this moot for phone; verify on your usual
+   desktop window width before considering this done there too. */
+.status-bar{position:fixed;bottom:0;left:0;right:0;z-index:200;background:var(--surface);border-top:1px solid var(--border);padding:8px 20px;display:flex;align-items:center;gap:14px;min-height:52px;}
+#status-bar-root{display:flex;align-items:center;gap:14px;flex-wrap:wrap;width:100%;}
 .status-bar .user-email-display{font-size:11px;color:var(--text-faint);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:180px;}
 .status-bar .sync-status{font-size:11px;padding:2px 8px;}
 .status-bar .logout-btn{font-size:12px;padding:5px 12px;}
@@ -764,7 +778,8 @@ body[data-theme="storm-dark"] .day-progress-elapsed{
   .points-badge-lg .points-tier-icon{font-size:22px !important;}
   .points-badge-lg .points-value{font-size:18px !important;}
   /* Bottom status bar */
-  .status-bar{padding:8px 14px;gap:8px;height:52px;}
+  .status-bar{padding:8px 14px;gap:8px;min-height:52px;}
+  #status-bar-root{gap:8px;}
   .status-bar .user-email-display{max-width:90px;}
 }
 /* Hide mobile-only title on desktop */
@@ -1190,9 +1205,13 @@ body.unlocked .date-editable{border-bottom-color:var(--border);}
    the same dark gradient/blue glow at rest. bottom:64px clears the 52px
    status bar (.status-bar, height same on web and mobile) plus a gap. */
 .qc-fab{
-  position:fixed;bottom:64px;left:24px;width:58px;height:58px;border-radius:50%;
+  /* Smaller rectangular footprint (was a 58px circle) so it overlaps less of
+     what's underneath -- see F11: it used to sit on top of Today's "Open Tool
+     Kit" button, the add-task controls, the PIN pad, and the Journal char
+     count. A rounded rect this size clears more of that than a circle would. */
+  position:fixed;bottom:64px;left:24px;width:52px;height:36px;border-radius:var(--radius);
   background:radial-gradient(circle at center,#0a2530 0%,#06131a 70%,#020a10 100%);
-  border:none;color:#5be8ff;font-size:22px;cursor:pointer;z-index:900;
+  border:none;color:#5be8ff;font-size:18px;cursor:pointer;z-index:900;
   display:flex;align-items:center;justify-content:center;line-height:1;
   box-shadow:
     0 0 0 1px rgba(91,232,255,0.4) inset,
@@ -1203,6 +1222,11 @@ body.unlocked .date-editable{border-bottom-color:var(--border);}
   transition:transform 0.2s ease,box-shadow 0.3s ease;
 }
 .qc-fab:hover{transform:scale(1.06);box-shadow:0 0 0 2px rgba(91,232,255,0.45) inset,0 4px 20px rgba(0,0,0,0.5);}
+.qc-fab-icon{
+  /* The ✎ glyph's tip points up-right on most platforms (like a "/"); rotating
+     -45deg lays the pencil flat/horizontal to match the wider, shorter button. */
+  display:inline-block;transform:rotate(-45deg);
+}
 .qc-panel{
   position:relative;z-index:1;
   /* Darker custom themes (e.g. "starry") pack --surface/--surface-raised/

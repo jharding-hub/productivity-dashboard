@@ -2,7 +2,7 @@ export default function QuickCaptureModal() {
   return (
     <>
       <button className="qc-fab" id="quickCaptureFab" onClick={() => window.openQuickCapture()} title="Quick Capture (B)">
-        &#9998;
+        <span className="qc-fab-icon">&#9998;</span>
       </button>
       <div className="modal-blur-overlay" id="quickCaptureModal">
         <div className="modal-blur-backdrop" onClick={() => window.closeQuickCapture()}></div>
