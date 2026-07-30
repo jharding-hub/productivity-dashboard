@@ -2961,14 +2961,28 @@ body.admin-overlay-open #starryLayer,body.admin-overlay-open #galaxyLayer,body.a
 
 /* Quick-capture landing cue (Stage 3): briefly highlights the row/chip a
    capture just landed in, so "added" is provably visible, not only toasted --
-   the toast fades in ~2s and is easy to miss if you looked away. */
+   the toast fades in ~2s and is easy to miss if you looked away.
+
+   Confirmed on device 2026-07-29 that the first version of this was invisible.
+   Three reasons, all fixed here: (1) it ended at background-color:transparent,
+   which REPLACED the row's own background:var(--surface-raised) for the whole
+   animation -- the row lost its fill and read as a slight darkening, not a
+   glow; it now lands back on surface-raised so the row never looks wrong.
+   (2) A 15%-alpha fill under ease-out decays past noticing in ~300ms -- the
+   signal is now a full-strength --accent ring, held to 30% of the timeline
+   before fading. (3) .thought-chip already owns animation:chipIn, so a single
+   shorthand here silently replaced its entrance animation -- the chip rule
+   below re-declares both instead of clobbering. */
 @keyframes cp-just-captured{
-  0%{background-color:var(--accent-glow);box-shadow:0 0 0 2px var(--accent-dim) inset;}
-  100%{background-color:transparent;box-shadow:0 0 0 0 transparent inset;}
+  0%,30%{background-color:var(--accent-glow);box-shadow:inset 0 0 0 2px var(--accent),inset 0 0 14px var(--accent-glow);}
+  100%{background-color:var(--surface-raised);box-shadow:inset 0 0 0 0 transparent;}
 }
-.tl-item.cp-just-captured,.thought-chip.cp-just-captured{animation:cp-just-captured 1.6s ease-out;}
+.tl-item.cp-just-captured{animation:cp-just-captured 2s ease-in-out;}
+.thought-chip.cp-just-captured{animation:chipIn 0.25s ease both,cp-just-captured 2s ease-in-out;}
 @media (prefers-reduced-motion: reduce){
-  .tl-item.cp-just-captured,.thought-chip.cp-just-captured{animation:none;background-color:var(--accent-glow);}
+  /* No motion, but still visible: the JS timeout removes the class, so a
+     static ring self-clears without needing an animation to fade it. */
+  .tl-item.cp-just-captured,.thought-chip.cp-just-captured{animation:none;background-color:var(--accent-glow);box-shadow:inset 0 0 0 2px var(--accent);}
 }
 
 /* Overdue triage bar (R1 stage 4): calm, not alarmed -- surface colors on

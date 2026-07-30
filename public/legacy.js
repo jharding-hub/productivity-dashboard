@@ -7149,7 +7149,9 @@ function _flashNewCapture(containerId,innerIdPrefix,id,rowClass){
   if(!row)return;
   row.scrollIntoView({behavior:'smooth',block:'nearest'});
   row.classList.add('cp-just-captured');
-  setTimeout(function(){row.classList.remove('cp-just-captured');},1600);
+  // Must match the cp-just-captured animation duration in app.css (2s) --
+  // removing the class early truncates the fade mid-flight.
+  setTimeout(function(){row.classList.remove('cp-just-captured');},2000);
 }
 function submitQuickCapture(){
   var input=document.getElementById('quickCaptureInput');
