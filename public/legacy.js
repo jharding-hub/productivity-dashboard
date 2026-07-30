@@ -3872,8 +3872,13 @@ function showMobilePanel(panelId){
   // Hide home; the banner stays as the top chrome (back bar retired)
   document.getElementById('mobileHome').classList.remove('active');
   document.querySelector('.app-wrap').classList.add('panel-open');
-  // Show requested panel
-  document.querySelectorAll('.panel').forEach(function(p){p.classList.remove('mobile-visible');});
+  // Show requested panel. Also restore tile mode on every panel first --
+  // mirrors closePanelOverlay()'s cleanup so whichever panel was previously
+  // opened here (or on desktop) resets to its compact/summary render.
+  document.querySelectorAll('.panel').forEach(function(p){
+    p.classList.remove('mobile-visible');
+    p.classList.add('panel-tile');
+  });
   var target=document.querySelector('.panel[data-panel="'+panelId+'"]')
            ||document.querySelector('.panel[data-nav="'+panelId+'"]');
   // R3: dropped the user-hidden check here. buildMobileHome() already filters
@@ -3887,6 +3892,17 @@ function showMobilePanel(panelId){
     // Slide in from the right; class removed after the animation so it can replay
     target.classList.add('mobile-panel-enter');
     setTimeout(function(){target.classList.remove('mobile-panel-enter');},350);
+    // F10: this tab-bar path never learned the desktop "expand" panel's trick
+    // (openPanelOverlay) of dropping tile mode so the full, untruncated list
+    // renders instead of the compact tile preview. Without this, Tasks/Notes/
+    // Projects opened from the mobile tab bar looked full-screen but still
+    // rendered (and CSS-capped) as if they were the small home-tile summary --
+    // a 220px scrollbox with a 17,000px+ scrollable interior at real volume.
+    target.classList.remove('panel-tile');
+    if(panelId==='projects'&&typeof renderProjects==='function')renderProjects();
+    else if(panelId==='notes'&&typeof renderNotes==='function')renderNotes();
+    else if(panelId==='tasklist'&&typeof renderTaskList==='function')renderTaskList();
+    else if(panelId==='reminders'&&typeof renderReminders==='function')renderReminders();
     _ensurePanelBackBtn(target);
     // Scroll to top
     window.scrollTo(0,0);

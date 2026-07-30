@@ -2248,30 +2248,23 @@ body[data-theme="storm-dark"] .tl-hour-label{
      and tile-mode panels (projects/tasks/notes) would leak through the hide. */
   .panel:not(.mobile-visible){display:none;}
   .panel.mobile-visible{display:flex;}
-  /* All panels show full content on mobile vertical scroll — override tile-mode hiding */
-  /* EXCEPT notes, projects, tasklist — those stay collapsed and open via overlay */
-  .panel.panel-tile.mobile-visible:not([data-panel="notes"]):not([data-panel="projects"]):not([data-panel="tasklist"]) .panel-content{display:block !important;max-height:none !important;}
-  .panel.panel-tile.mobile-visible:not([data-panel="notes"]):not([data-panel="projects"]):not([data-panel="tasklist"]) .tasklist-controls{display:flex !important;}
-  .panel.panel-tile.mobile-visible:not([data-panel="notes"]):not([data-panel="projects"]):not([data-panel="tasklist"]) .panel-tile-summary{display:none !important;}
-  .panel.panel-tile.mobile-visible:not([data-panel="notes"]):not([data-panel="projects"]):not([data-panel="tasklist"]) .panel-header{cursor:default;}
-  .panel.panel-tile.mobile-visible:not([data-panel="notes"]):not([data-panel="projects"]):not([data-panel="tasklist"]) .panel-header:hover{opacity:1;}
-  .panel.panel-tile.mobile-visible:not([data-panel="notes"]):not([data-panel="projects"]):not([data-panel="tasklist"]) .panel-content-extra{display:block !important;}
-  .panel.panel-tile.mobile-visible:not([data-panel="notes"]):not([data-panel="projects"]):not([data-panel="tasklist"]) .completed-projects-section{display:block !important;}
-  .panel.panel-tile.mobile-visible:not([data-panel="notes"]):not([data-panel="projects"]):not([data-panel="tasklist"]) .note-filter-row{display:flex !important;}
-  .panel.panel-tile.mobile-visible:not([data-panel="notes"]):not([data-panel="projects"]):not([data-panel="tasklist"]) .panel-header .expand-btn{display:none;}
-  /* Remove max-height constraint so panels expand fully (not notes/projects/tasklist) */
-  .panel.mobile-visible:not([data-panel="notes"]):not([data-panel="projects"]):not([data-panel="tasklist"]) .panel-content{max-height:none !important;}
-  /* notes, projects, tasklist on mobile: keep tile mode, header clickable to open overlay */
-  .panel.panel-tile.mobile-visible[data-panel="notes"] .panel-header,
-  .panel.panel-tile.mobile-visible[data-panel="projects"] .panel-header,
-  .panel.panel-tile.mobile-visible[data-panel="tasklist"] .panel-header{cursor:pointer;}
+  /* R7 stage 1 (F10): the real cause of the mobile "fixed-height inner
+     scroll" bug wasn't tile-mode CSS at all -- .panel never left the desktop
+     .dashboard grid, and .dashboard{grid-auto-rows:629px} clamped the open
+     panel's row to 629px (with .panel{overflow:hidden} silently clipping the
+     rest -- not even a nested scrollbar, just gone). Only one panel is ever
+     .mobile-visible at a time here, so letting rows size to content is safe.
+     showMobilePanel() also now strips .panel-tile on open (mirrors the
+     desktop openPanelOverlay/closePanelOverlay pair), which is what makes
+     the base (non-mobile) .panel-tile-summary/.tasklist-controls/etc. rules
+     in the TILE MODE block above do the right thing automatically -- no
+     mobile-specific duplicates of those needed here anymore. */
+  .dashboard{grid-auto-rows:auto;}
   /* Vertical spacing between panels */
   /* R2 stage B: bumped from 80px to clear the new mobile tab bar (52px content
      + safe-area) plus the FAB now floating just above it -- see .mobile-tab-bar
      and the .qc-fab mobile override below. */
   .dashboard{gap:14px !important;padding-bottom:calc(112px + env(safe-area-inset-bottom)) !important;}
-  /* Remove panel-tile min-height on mobile — let content define height */
-  .panel.panel-tile.mobile-visible:not([data-panel="notes"]):not([data-panel="projects"]):not([data-panel="tasklist"]){min-height:auto !important;}
   .panel.hidden-panel{display:none!important;}
   .panel.user-hidden{display:none!important;}
   .drag-handle{display:none!important;}
