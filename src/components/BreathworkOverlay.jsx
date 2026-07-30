@@ -55,8 +55,10 @@ export default function BreathworkOverlay() {
             <button className="modal-blur-close" onClick={() => window.closeBreathworkModal()}>&#10005;</button>
           </div>
           <div className="modal-blur-body">
+            {/* R3 stage 1: copy matches the new preselect-and-go behavior --
+                "Choose a technique" framed the modal as a required decision. */}
             <p style={{ fontSize: 13, color: 'var(--text-dim)', marginBottom: 16, lineHeight: 1.6 }}>
-              Choose a technique. Each is evidence-based and takes 1–3 minutes.
+              Ready when you are &mdash; begin, or pick a different technique. Each is evidence-based and takes 1&ndash;3 minutes.
             </p>
             <select
               className="breathwork-select"

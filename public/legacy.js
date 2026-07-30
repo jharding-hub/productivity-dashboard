@@ -7984,6 +7984,17 @@ function closeEnergyModal(){
 function openBreathworkModal(){
   document.getElementById('breathworkModal').classList.add('open');
   _blurDashboard();
+  // R3 stage 1: no decision wall at the door (F12). A blank "Choose a
+  // technique..." dropdown asks a dysregulated user to make a choice before
+  // anything happens -- exactly the moment the app's own premise says choice
+  // is hardest. Preselect the Physiological Sigh (shortest at ~1 min, and per
+  // its own citation the fastest known voluntary downshift) and render its
+  // description so Begin Session is visible with ZERO taps. The dropdown
+  // stays for switching; a selection the user already made this session is
+  // respected, not overwritten.
+  var sel=document.getElementById('breathSelect');
+  if(sel&&!sel.value)sel.value='sigh';
+  showBreathDesc();
 }
 function closeBreathworkModal(){
   document.getElementById('breathworkModal').classList.remove('open');
