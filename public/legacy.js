@@ -2067,8 +2067,16 @@ const el=document.getElementById('reminderList');const today=todayStr();const so
   // (a plain localeCompare tie fell through to insertion order before).
   if(a.time&&!b.time)return 1;if(!a.time&&b.time)return -1;
   if(a.time&&b.time)return a.time.localeCompare(b.time);return 0;}if(a.date&&!b.date)return -1;if(!a.date&&b.date)return 1;return 0;});
-if(sorted.length===0){el.innerHTML='<div class="empty-state">No reminders.</div>';document.getElementById('remCount').textContent='0';if(typeof _updateTileSummaryReminders==='function')_updateTileSummaryReminders();return;}
-el.innerHTML=sorted.map(r=>{return '<div class="reminder-item"><span class="rem-icon">\u{1F535}</span><div class="rem-body"><div class="rem-text editable" id="rt_'+r.id+'">'+esc(r.text)+'</div><div class="rem-when">'+'<span class="date-editable" id="rd_'+r.id+'">'+(r.date?fmtDate(r.date):'+ set date')+'</span>'+(r.time?' at <span class="date-editable" id="rt2_'+r.id+'">'+fmtTime(r.time)+'</span>':' <span class="date-editable" id="rt2_'+r.id+'" style="color:var(--text-faint);">+ time</span>')+'</div></div><div style="display:flex;gap:2px;"><span class="st-btn st-cal" onclick="exportReminderICS(\''+r.id+'\')">\u{1F4C5}</span><span class="st-btn st-del" onclick="deleteReminder(\''+r.id+'\')">\u2715</span></div></div>';}).join('');
+// R7 stage 3: search, full-list view only -- same inOverlay guard as Tasks
+// (the #remSearch input is CSS-hidden in tile mode but its value persists,
+// so without the guard a leftover query would silently filter the tile too).
+var remPanel=document.querySelector('.panel[data-panel="reminders"]');
+var remInOverlay=remPanel&&!remPanel.classList.contains('panel-tile');
+var remSearchEl=document.getElementById('remSearch');
+var remSearch=remInOverlay&&remSearchEl?remSearchEl.value.toLowerCase().trim():'';
+var visible=remSearch?sorted.filter(r=>(r.text||'').toLowerCase().indexOf(remSearch)>=0):sorted;
+if(visible.length===0){el.innerHTML='<div class="empty-state">'+(remSearch?'No matching reminders.':'No reminders.')+'</div>';document.getElementById('remCount').textContent=sorted.filter(r=>!r.date||r.date>=today).length;if(typeof _updateTileSummaryReminders==='function')_updateTileSummaryReminders();return;}
+el.innerHTML=visible.map(r=>{return '<div class="reminder-item"><span class="rem-icon">\u{1F535}</span><div class="rem-body"><div class="rem-text editable" id="rt_'+r.id+'">'+esc(r.text)+'</div><div class="rem-when">'+'<span class="date-editable" id="rd_'+r.id+'">'+(r.date?fmtDate(r.date):'+ set date')+'</span>'+(r.time?' at <span class="date-editable" id="rt2_'+r.id+'">'+fmtTime(r.time)+'</span>':' <span class="date-editable" id="rt2_'+r.id+'" style="color:var(--text-faint);">+ time</span>')+'</div></div><div style="display:flex;gap:2px;"><span class="st-btn st-cal" onclick="exportReminderICS(\''+r.id+'\')">\u{1F4C5}</span><span class="st-btn st-del" onclick="deleteReminder(\''+r.id+'\')">\u2715</span></div></div>';}).join('');
 document.getElementById('remCount').textContent=sorted.filter(r=>!r.date||r.date>=today).length;
 state.reminders.forEach(r=>{const e=document.getElementById('rt_'+r.id);if(e)makeEditable(e,v=>editReminderText(r.id,v));const rde=document.getElementById('rd_'+r.id);if(rde)makeDateClickable(rde,r.date,v=>editReminderDate(r.id,v));const rte=document.getElementById('rt2_'+r.id);if(rte)makeTimeClickable(rte,r.time,v=>editReminderTime(r.id,v));});refreshEditables();if(typeof _updateTileSummaryReminders==='function')_updateTileSummaryReminders();}
 
@@ -5182,6 +5190,15 @@ function renderTaskList(){
 
   // Save total count (for badge) before any further filtering
   var totalCount=all.filter(function(t){return !t.done;}).length;
+
+  // R7 stage 3: search, full-list view only. Guarded on inOverlay -- the
+  // #tlSearch input is CSS-hidden in tile mode (same rule as Notes' search),
+  // but its DOM node and value persist once hidden, so without this guard a
+  // query typed during a prior full-list visit would silently keep filtering
+  // the tile's "due today" view after the panel collapsed again.
+  var tlSearchEl=document.getElementById('tlSearch');
+  var tlSearch=inOverlay&&tlSearchEl?tlSearchEl.value.toLowerCase().trim():'';
+  if(tlSearch)all=all.filter(function(t){return (t.name||'').toLowerCase().indexOf(tlSearch)>=0;});
 
   // Update completed counter badge (green) -- lifetime total, not the capped
   // archive's length (that pins at COMPLETED_TASKS_MAX once you cross it).
