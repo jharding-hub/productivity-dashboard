@@ -3078,6 +3078,15 @@ body.admin-overlay-open #starryLayer,body.admin-overlay-open #galaxyLayer,body.a
 .tl-triage-btn{padding:5px 10px;min-height:32px;font-size:12px;border:1px solid var(--border-focus);border-radius:var(--radius-sm);background:var(--surface);color:var(--text);cursor:pointer;font-family:inherit;transition:border-color 0.15s,color 0.15s;}
 .tl-triage-btn:hover{border-color:var(--accent-dim);color:var(--accent);}
 .tl-triage-note a{color:var(--accent);cursor:pointer;text-decoration:underline;}
+/* R7 stage 4: jump chips + group headers for the full-list Tasks/Reminders
+   view (F10 -- this is what actually makes a 380-item list navigable, stage
+   1 only made it reachable). Shared classes, used by both panels. */
+.tl-jump-chips{display:flex;flex-wrap:wrap;gap:6px;padding:0 0 10px;margin-bottom:8px;border-bottom:1px solid var(--border);}
+.tl-jump-chip{padding:5px 10px;min-height:32px;font-size:12px;border:1px solid var(--border);border-radius:var(--radius-sm);background:var(--surface-raised);color:var(--text-dim);cursor:pointer;font-family:inherit;transition:border-color 0.15s,color 0.15s;}
+.tl-jump-chip:hover{border-color:var(--accent-dim);color:var(--accent);}
+.tl-jump-chip-count{color:var(--text-faint);}
+.tl-group-header{font-size:12px;font-weight:600;color:var(--text-dim);text-transform:uppercase;letter-spacing:0.4px;padding:14px 0 4px;}
+.tl-group-header:first-of-type{padding-top:0;}
 
 /* R3 stage 4 (F11): immersive surfaces (breathwork session, journal incl.
    its PIN screens) get no floating chrome -- the capture FAB and Axis orb

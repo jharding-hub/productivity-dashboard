@@ -2076,9 +2076,35 @@ var remSearchEl=document.getElementById('remSearch');
 var remSearch=remInOverlay&&remSearchEl?remSearchEl.value.toLowerCase().trim():'';
 var visible=remSearch?sorted.filter(r=>(r.text||'').toLowerCase().indexOf(remSearch)>=0):sorted;
 if(visible.length===0){el.innerHTML='<div class="empty-state">'+(remSearch?'No matching reminders.':'No reminders.')+'</div>';document.getElementById('remCount').textContent=sorted.filter(r=>!r.date||r.date>=today).length;if(typeof _updateTileSummaryReminders==='function')_updateTileSummaryReminders();return;}
-el.innerHTML=visible.map(r=>{return '<div class="reminder-item"><span class="rem-icon">\u{1F535}</span><div class="rem-body"><div class="rem-text editable" id="rt_'+r.id+'">'+esc(r.text)+'</div><div class="rem-when">'+'<span class="date-editable" id="rd_'+r.id+'">'+(r.date?fmtDate(r.date):'+ set date')+'</span>'+(r.time?' at <span class="date-editable" id="rt2_'+r.id+'">'+fmtTime(r.time)+'</span>':' <span class="date-editable" id="rt2_'+r.id+'" style="color:var(--text-faint);">+ time</span>')+'</div></div><div style="display:flex;gap:2px;"><span class="st-btn st-cal" onclick="exportReminderICS(\''+r.id+'\')">\u{1F4C5}</span><span class="st-btn st-del" onclick="deleteReminder(\''+r.id+'\')">\u2715</span></div></div>';}).join('');
+el.innerHTML=remInOverlay?_remGroupedListHTML(visible,today):visible.map(_remRowHTML).join('');
 document.getElementById('remCount').textContent=sorted.filter(r=>!r.date||r.date>=today).length;
 state.reminders.forEach(r=>{const e=document.getElementById('rt_'+r.id);if(e)makeEditable(e,v=>editReminderText(r.id,v));const rde=document.getElementById('rd_'+r.id);if(rde)makeDateClickable(rde,r.date,v=>editReminderDate(r.id,v));const rte=document.getElementById('rt2_'+r.id);if(rte)makeTimeClickable(rte,r.time,v=>editReminderTime(r.id,v));});refreshEditables();if(typeof _updateTileSummaryReminders==='function')_updateTileSummaryReminders();}
+function _remRowHTML(r){return '<div class="reminder-item"><span class="rem-icon">\u{1F535}</span><div class="rem-body"><div class="rem-text editable" id="rt_'+r.id+'">'+esc(r.text)+'</div><div class="rem-when">'+'<span class="date-editable" id="rd_'+r.id+'">'+(r.date?fmtDate(r.date):'+ set date')+'</span>'+(r.time?' at <span class="date-editable" id="rt2_'+r.id+'">'+fmtTime(r.time)+'</span>':' <span class="date-editable" id="rt2_'+r.id+'" style="color:var(--text-faint);">+ time</span>')+'</div></div><div style="display:flex;gap:2px;"><span class="st-btn st-cal" onclick="exportReminderICS(\''+r.id+'\')">\u{1F4C5}</span><span class="st-btn st-del" onclick="deleteReminder(\''+r.id+'\')">✕</span></div></div>';}
+// R7 stage 4: same grouping/jump-chip treatment as Tasks (_tlGroupedListHTML)
+// -- Reminders has no sort dropdown, it's always date+time order, so this
+// applies whenever the full list is showing rather than being gated on a
+// sort value.
+function _remGroupedListHTML(items,today){
+  var tomorrow=_tlPlusDays(today,1);
+  var weekEnd=_tlPlusDays(today,7);
+  var order=['overdue','today','tomorrow','week','later','none'];
+  var buckets={};
+  items.forEach(function(r){
+    var info=_dateGroupInfo(r.date,today,tomorrow,weekEnd);
+    if(!buckets[info.key])buckets[info.key]={label:info.label,rows:[]};
+    buckets[info.key].rows.push(r);
+  });
+  var present=order.filter(function(k){return buckets[k];});
+  if(present.length<2)return items.map(_remRowHTML).join('');
+  var chips=present.map(function(k){
+    return '<button type="button" class="tl-jump-chip" onclick="document.getElementById(\'remgroup-'+k+'\').scrollIntoView({behavior:\'smooth\',block:\'start\'})">'+esc(buckets[k].label)+' <span class="tl-jump-chip-count">'+buckets[k].rows.length+'</span></button>';
+  }).join('');
+  var body=present.map(function(k){
+    return '<div class="tl-group-header" id="remgroup-'+k+'">'+esc(buckets[k].label)+'</div>'
+      +buckets[k].rows.map(_remRowHTML).join('');
+  }).join('');
+  return '<div class="tl-jump-chips">'+chips+'</div>'+body;
+}
 
 // ICS
 function generateICS(events){let ics='BEGIN:VCALENDAR\r\nVERSION:2.0\r\nPRODID:-//Centerpost//EN\r\nCALSCALE:GREGORIAN\r\nMETHOD:PUBLISH\r\n';events.forEach(ev=>{const uid='cd-'+Date.now()+'-'+Math.random().toString(36).substr(2,8);const d=ev.date?ev.date.replace(/-/g,''):todayStr().replace(/-/g,'');ics+='BEGIN:VEVENT\r\nUID:'+uid+'\r\nDTSTAMP:'+new Date().toISOString().replace(/[-:]/g,'').split('.')[0]+'Z\r\n';if(ev.time){const t=ev.time.replace(':','')+'00';ics+='DTSTART:'+d+'T'+t+'\r\n';const sm=parseInt(ev.time.split(':')[0])*60+parseInt(ev.time.split(':')[1])+60;ics+='DTEND:'+d+'T'+String(Math.floor(sm/60)).padStart(2,'0')+String(sm%60).padStart(2,'0')+'00\r\n';}else{ics+='DTSTART;VALUE=DATE:'+d+'\r\nDTEND;VALUE=DATE:'+d+'\r\n';}ics+='SUMMARY:'+icsEsc(ev.title)+'\r\n';if(ev.description)ics+='DESCRIPTION:'+icsEsc(ev.description)+'\r\n';ics+='BEGIN:VALARM\r\nTRIGGER:-PT15M\r\nACTION:DISPLAY\r\nDESCRIPTION:Reminder\r\nEND:VALARM\r\nEND:VEVENT\r\n';});ics+='END:VCALENDAR\r\n';return ics;}
@@ -5318,7 +5344,7 @@ function renderTaskList(){
     if(pcEl){pcEl.style.flex='none';pcEl.style.minHeight='0';}
   }else{
     if(pcEl){pcEl.style.flex='';pcEl.style.minHeight='';}
-    el.innerHTML=all.map(_tlRowWithSelect).join('');
+    el.innerHTML=(sort==='due')?_tlGroupedListHTML(all,today):all.map(_tlRowWithSelect).join('');
     all.forEach(function(t){_wireTaskRowEditable(t,el);});
     refreshEditables();
   }
@@ -5374,6 +5400,32 @@ function _tlTriageBarHTML(all,today){
   b+='<button class="tl-triage-btn" onclick="tlTriage(\'snooze\')">'+(one?'Snooze a week':'Snooze all a week')+'</button>';
   b+='</div>';
   return b;
+}
+// R7 stage 4: group the full (expanded) list by due-date bucket with jump
+// chips at the top -- this is the actual fix for "380 tasks is 150+ swipes"
+// (F10); stage 1 made the list reachable, this makes it navigable. Only
+// meaningful when sorted by due date and when there's more than one bucket
+// present -- otherwise it's pure noise over the plain row list.
+function _tlGroupedListHTML(items,today){
+  var tomorrow=_tlPlusDays(today,1);
+  var weekEnd=_tlPlusDays(today,7);
+  var order=['overdue','today','tomorrow','week','later','none'];
+  var buckets={};
+  items.forEach(function(t){
+    var info=_dateGroupInfo(t.due,today,tomorrow,weekEnd);
+    if(!buckets[info.key])buckets[info.key]={label:info.label,rows:[]};
+    buckets[info.key].rows.push(t);
+  });
+  var present=order.filter(function(k){return buckets[k];});
+  if(present.length<2)return items.map(_tlRowWithSelect).join('');
+  var chips=present.map(function(k){
+    return '<button type="button" class="tl-jump-chip" onclick="document.getElementById(\'tlgroup-'+k+'\').scrollIntoView({behavior:\'smooth\',block:\'start\'})">'+esc(buckets[k].label)+' <span class="tl-jump-chip-count">'+buckets[k].rows.length+'</span></button>';
+  }).join('');
+  var body=present.map(function(k){
+    return '<div class="tl-group-header" id="tlgroup-'+k+'">'+esc(buckets[k].label)+'</div>'
+      +buckets[k].rows.map(_tlRowWithSelect).join('');
+  }).join('');
+  return '<div class="tl-jump-chips">'+chips+'</div>'+body;
 }
 function tlTriage(mode){
   // Recollect at click time -- the rendered bar may be stale (sync, edits).
