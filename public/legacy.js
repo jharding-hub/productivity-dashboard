@@ -1137,6 +1137,11 @@ function openCustomize(){
     el.innerHTML+='<div class="panel-toggle" style="border-top:1px solid var(--border);margin-top:8px;padding-top:12px;cursor:pointer;" onclick="closeCustomize();openAdminRoute()"><span class="pt-icon">\u{1F6E1}</span><div class="pt-info"><div class="pt-name">Admin Panel</div><div class="pt-desc">User management, invite codes (opens full page)</div></div><span style="color:var(--text-dim);font-size:18px;">→</span></div>';
   }
   document.getElementById('customizeOverlay').classList.add('show');
+  // F11: Settings is a full-screen sheet at z-300, BELOW the z-900 capture FAB
+  // and Axis orb -- observed during the original review with the pencil sitting
+  // on top of the "Evening routine nudge" row. Same immersive rule as the
+  // breathwork/journal/guided-timer surfaces.
+  document.body.classList.add('cp-immersive');
   var _cb=document.getElementById('custBuild');
   if(_cb)_cb.textContent='Build '+APP_BUILD;
   _renderDevSwitcherInSettings();
@@ -1149,6 +1154,7 @@ function openCustomize(){
 
 function closeCustomize(){
   document.getElementById('customizeOverlay').classList.remove('show');
+  document.body.classList.remove('cp-immersive');
 }
 
 function togglePanelVisibility(id,visible){
@@ -3024,8 +3030,15 @@ function showSelectedTechnique(){
 }
 
 var guidedInterval=null;
-function startGuided(id){const t=wellnessTechniques.find(t=>t.id===id);if(!t||!t.guided)return;const disp=document.getElementById('guidedDisplay');disp.classList.add('active');disp.scrollIntoView({behavior:'smooth',block:'nearest'});const{phases,dur,cycles}=t.gd;let cycle=0,pi=0,count=dur[0];function tick(){document.getElementById('guidedPhase').textContent=phases[pi];document.getElementById('guidedCount').textContent=count;document.getElementById('guidedInstruction').textContent='Cycle '+(cycle+1)+' of '+cycles;count--;if(count<0){pi++;if(pi>=phases.length){pi=0;cycle++;if(cycle>=cycles){stopGuided();document.getElementById('guidedPhase').textContent='\u2713 Complete';document.getElementById('guidedCount').textContent='';document.getElementById('guidedInstruction').textContent='Well done. Take a moment.';if(typeof _logCheckIn==='function')_logCheckIn('grounding',{techniqueId:id,techniqueName:t.name});return;}}count=dur[pi];}}tick();guidedInterval=setInterval(tick,1000);}
-function stopGuided(){clearInterval(guidedInterval);guidedInterval=null;document.getElementById('guidedDisplay').classList.remove('active');}
+// R3 stage 4 follow-up (F11): the THIRD session surface, missed in the first
+// pass. Unlike breathwork this timer runs IN-PANEL (no overlay of its own), so
+// the z-900 capture FAB and Axis orb float straight over it -- confirmed on
+// device in build 52. It's also the surface the new advice-banner path leads
+// to, so it's the one a dysregulated user is most likely to actually reach.
+// stopGuided() is called both by the Stop button and by the completion branch
+// below, so the class is always torn down.
+function startGuided(id){const t=wellnessTechniques.find(t=>t.id===id);if(!t||!t.guided)return;document.body.classList.add('cp-immersive');const disp=document.getElementById('guidedDisplay');disp.classList.add('active');disp.scrollIntoView({behavior:'smooth',block:'nearest'});const{phases,dur,cycles}=t.gd;let cycle=0,pi=0,count=dur[0];function tick(){document.getElementById('guidedPhase').textContent=phases[pi];document.getElementById('guidedCount').textContent=count;document.getElementById('guidedInstruction').textContent='Cycle '+(cycle+1)+' of '+cycles;count--;if(count<0){pi++;if(pi>=phases.length){pi=0;cycle++;if(cycle>=cycles){stopGuided();document.getElementById('guidedPhase').textContent='\u2713 Complete';document.getElementById('guidedCount').textContent='';document.getElementById('guidedInstruction').textContent='Well done. Take a moment.';if(typeof _logCheckIn==='function')_logCheckIn('grounding',{techniqueId:id,techniqueName:t.name});return;}}count=dur[pi];}}tick();guidedInterval=setInterval(tick,1000);}
+function stopGuided(){clearInterval(guidedInterval);guidedInterval=null;document.body.classList.remove('cp-immersive');document.getElementById('guidedDisplay').classList.remove('active');}
 
 // NOTES
 // ── Rich-text (WYSIWYG) note editor support ───────────────────────────────
