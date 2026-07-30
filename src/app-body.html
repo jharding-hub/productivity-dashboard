@@ -510,6 +510,22 @@
 <div class="toast" id="toast"></div>
 </div><!-- end app-wrap -->
 <div class="status-bar" id="statusBar"><div id="status-bar-root"></div></div>
+
+<!-- R2 stage B: mobile-only 4-slot tab bar. Replaces the status bar as the
+     PRIMARY thumb-reachable nav on phone (status bar still exists above for
+     Menu/Settings/Tour/Lock/Sign out/Export/Delete -- CSS hides one and
+     shows the other per viewport, they never coexist). Home/Today share the
+     existing .vms-btn class + data-mode so setViewMode()'s own active-state
+     loop (legacy.js) keeps this bar in sync with the top Today/Everything
+     switch for free -- no new JS state to maintain. Tool Kit direct-jumps
+     into the panel (same precedent as Today's "Open Tool Kit" button);
+     Settings opens the same sheet the top-bar Settings button does. -->
+<div class="mobile-tab-bar" id="mobileTabBar">
+  <button class="mtb-btn vms-btn" data-mode="everything" onclick="setViewMode('everything')"><i class="ti ti-home-2" aria-hidden="true"></i><span>Home</span></button>
+  <button class="mtb-btn vms-btn" data-mode="today" onclick="setViewMode('today')"><i class="ti ti-calendar-event" aria-hidden="true"></i><span>Today</span></button>
+  <button class="mtb-btn" onclick="showMobilePanel('time')"><i class="ti ti-tool" aria-hidden="true"></i><span>Tool Kit</span></button>
+  <button class="mtb-btn" onclick="openCustomize()"><i class="ti ti-settings" aria-hidden="true"></i><span>Settings</span></button>
+</div>
 <!-- JARVIS AI ASSISTANT -->
 <div id="axis-assistant-root"></div>
 

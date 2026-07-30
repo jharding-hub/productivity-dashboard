@@ -704,6 +704,32 @@ body[data-theme="storm-dark"] .day-progress-elapsed{
 .status-bar .customize-btn{font-size:12px;padding:5px 12px;}
 .status-bar .lock-btn{font-size:12px;padding:5px 12px;}
 .status-bar-spacer{flex:1;}
+/* R2 stage B: mobile-only 4-slot tab bar (Home/Today/Tool Kit/Settings),
+   thumb-reachable replacement for the status bar's role as primary mobile
+   nav. Hidden by default; the mobile media query below shows this and hides
+   .status-bar instead -- they never render at once. */
+.mobile-tab-bar{
+  display:none;position:fixed;bottom:0;left:0;right:0;z-index:210;
+  background:var(--surface);border-top:1px solid var(--border);
+  padding:0 4px calc(env(safe-area-inset-bottom));
+}
+.mtb-btn{
+  flex:1;display:flex;flex-direction:column;align-items:center;justify-content:center;
+  gap:2px;height:52px;background:none;border:none;color:var(--text-dim);
+  font-family:inherit;font-size:10.5px;font-weight:600;cursor:pointer;
+}
+.mtb-btn .ti{font-size:20px;font-style:normal;}
+.mtb-btn.active{color:var(--accent);}
+@media(max-width:768px),(orientation:landscape) and (max-height:600px){
+  .mobile-tab-bar{display:flex;}
+  .status-bar{display:none;}
+  .app-wrap{padding-bottom:calc(52px + env(safe-area-inset-bottom) + 8px);}
+  /* FAB used to float 12px above the old 52px-flat status bar (bottom:64px).
+     The new tab bar adds env(safe-area-inset-bottom) on top of that same
+     52px, so the FAB has to clear a taller floor on notched phones or the
+     two would overlap. */
+  .qc-fab{bottom:calc(52px + env(safe-area-inset-bottom) + 12px);}
+}
 /* Push content above bottom bar */
 .app-wrap{padding-bottom:60px;}
 @media(max-width:768px),(orientation:landscape) and (max-height:600px){
@@ -793,7 +819,10 @@ body[data-theme="storm-dark"] .day-progress-elapsed{
    The home sits in normal flow below the sticky header (banner + points/timer),
    so the header owns the notch clearance and the page scrolls as one. */
 .nav-tabs{display:none;}
-.mobile-home{display:none;background:var(--bg);padding:6px 14px calc(env(safe-area-inset-bottom)+90px);}
+/* R2 stage B: bumped 90px->112px for the same reason as .dashboard above --
+   this rule is only ever visible via .mobile-home.active, itself gated
+   inside the mobile media query, so it's safe to edit directly here. */
+.mobile-home{display:none;background:var(--bg);padding:6px 14px calc(env(safe-area-inset-bottom)+112px);}
 
 /* ═══ PULL-TO-REFRESH ═══ */
 .ptr-indicator{
@@ -2216,7 +2245,10 @@ body[data-theme="storm-dark"] .tl-hour-label{
   .panel.panel-tile.mobile-visible[data-panel="projects"] .panel-header,
   .panel.panel-tile.mobile-visible[data-panel="tasklist"] .panel-header{cursor:pointer;}
   /* Vertical spacing between panels */
-  .dashboard{gap:14px !important;padding-bottom:calc(80px + env(safe-area-inset-bottom)) !important;}
+  /* R2 stage B: bumped from 80px to clear the new mobile tab bar (52px content
+     + safe-area) plus the FAB now floating just above it -- see .mobile-tab-bar
+     and the .qc-fab mobile override below. */
+  .dashboard{gap:14px !important;padding-bottom:calc(112px + env(safe-area-inset-bottom)) !important;}
   /* Remove panel-tile min-height on mobile — let content define height */
   .panel.panel-tile.mobile-visible:not([data-panel="notes"]):not([data-panel="projects"]):not([data-panel="tasklist"]){min-height:auto !important;}
   .panel.hidden-panel{display:none!important;}
