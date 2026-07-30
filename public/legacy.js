@@ -5162,8 +5162,15 @@ function renderTaskList(){
     var todayTasks=all.filter(function(t){return !t.done&&t.due===today;});
     var hiddenCount=totalCount-todayTasks.length;
     var showAllLink='<a href="#" onclick="document.getElementById(\'taskUpcomingOnly\').checked=true;renderTaskList();return false;">Show all</a>';
+    // Overdue triage bar: with the tile defaulting to "just today", overdue
+    // items are otherwise invisible here -- after a few days away they'd
+    // silently rot behind the Show-all toggle. One-tap batch actions, no
+    // per-item decisions (that's the point: triage must be cheaper than
+    // avoidance). Muted styling on purpose -- it's a count, not an alarm.
+    var triageHTML=_tlTriageBarHTML(all,today);
     if(todayTasks.length===0){
-      el.innerHTML='<div class="tl-empty-hint" style="padding:8px 0;color:var(--text-dim);font-size:13px;">'
+      el.innerHTML=triageHTML
+        +'<div class="tl-empty-hint" style="padding:8px 0;color:var(--text-dim);font-size:13px;">'
         +(hiddenCount>0
           ?'Nothing due today. '+hiddenCount+' other task'+(hiddenCount!==1?'s':'')+' — '+showAllLink
           :'Nothing due today. Add one below.')
@@ -5171,7 +5178,8 @@ function renderTaskList(){
       if(pcEl){pcEl.style.flex='none';pcEl.style.minHeight='0';}
     }else{
       if(pcEl){pcEl.style.flex='';pcEl.style.minHeight='';}
-      el.innerHTML=todayTasks.map(_tlRowWithSelect).join('')
+      el.innerHTML=triageHTML
+        +todayTasks.map(_tlRowWithSelect).join('')
         +(hiddenCount>0?'<div class="tl-empty-hint" style="padding:8px 0 0;color:var(--text-dim);font-size:13px;">'+hiddenCount+' more task'+(hiddenCount!==1?'s':'')+' not due today — '+showAllLink+'</div>':'');
       todayTasks.forEach(function(t){_wireTaskRowEditable(t,el);});
       refreshEditables();
@@ -5194,6 +5202,95 @@ function renderTaskList(){
   document.getElementById('taskListCount').textContent=totalCount;
   updateTLProjectDropdowns();
   if(typeof _updateTileSummaryTasklist==='function')_updateTileSummaryTasklist();
+}
+
+// =======================================
+// OVERDUE TRIAGE (R1 stage 4) -- one-tap batch recovery for the re-entry-
+// after-days-away case. The tile's "just today" default (stage 1) means
+// overdue tasks never render there; this bar is how they surface, with an
+// exit ramp instead of a wall. Design constraints, in order: (1) each action
+// is ONE tap that decides for every overdue item at once -- no per-item
+// review pass; (2) nothing here deletes or completes anything, so no
+// tombstones and no new merge rules -- due-date edits ride the same save()
+// path as editStandaloneTaskDue/editSubtaskDue; (3) a batch rewrite of due
+// dates gets an 8s in-bar Undo (in-memory only) since there is no other way
+// back to the old dates.
+// "Top 3" = the three MOST RECENTLY due (b.due vs a.due below): a task due
+// yesterday is far likelier still live than one from three weeks ago, so the
+// recent ones surface and the stale ones snooze. Recurring tasks are included
+// on purpose -- _nextRecurrenceDate already counts forward from today for
+// late completions, so shifting their due can't derail the cadence.
+// =======================================
+var _tlTriageUndo=null,_tlTriageNote='',_tlTriageNoteTimer=null;
+function _tlPlusDays(dayStr,days){
+  var d=new Date(dayStr+'T00:00:00');
+  d.setDate(d.getDate()+days);
+  return _dayKey(d);
+}
+function _tlSetDueByRef(ref,newDue){
+  if(ref.source==='standalone'){
+    var t=(state.tasks||[]).find(function(x){return x.id===ref.id;});
+    if(t)t.due=newDue;
+  }else{
+    var p=state.projects.find(function(p){return p.id===ref.projectId;});
+    var s=p&&p.subtasks.find(function(s){return s.id===ref.id;});
+    if(s)s.due=newDue;
+  }
+}
+function _tlTriageBarHTML(all,today){
+  if(_tlTriageNote){
+    return '<div class="tl-triage-bar tl-triage-note">'+_tlTriageNote
+      +' · <a onclick="tlTriageUndo()">Undo</a></div>';
+  }
+  var od=all.filter(function(t){return !t.done&&t.due&&t.due<today;});
+  if(!od.length)return '';
+  var n=od.length,one=(n===1);
+  var b='<div class="tl-triage-bar"><span class="tl-triage-label">'+n+' overdue</span>';
+  b+='<button class="tl-triage-btn" onclick="tlTriage(\'all\')">'+(one?'Move to today':'Move all to today')+'</button>';
+  if(n>=4)b+='<button class="tl-triage-btn" onclick="tlTriage(\'top3\')">Top 3 today, snooze rest</button>';
+  b+='<button class="tl-triage-btn" onclick="tlTriage(\'snooze\')">'+(one?'Snooze a week':'Snooze all a week')+'</button>';
+  b+='</div>';
+  return b;
+}
+function tlTriage(mode){
+  // Recollect at click time -- the rendered bar may be stale (sync, edits).
+  var today=todayStr();
+  var od=getAllTasks().filter(function(t){return !t.done&&t.due&&t.due<today;});
+  if(!od.length){renderTaskList();return;}
+  od.sort(function(a,b){return b.due.localeCompare(a.due);}); // most recently due first
+  _tlTriageUndo=od.map(function(t){return {id:t.id,source:t.source,projectId:t.projectId,oldDue:t.due};});
+  var week=_tlPlusDays(today,7);
+  var n=od.length;
+  if(mode==='all'){
+    od.forEach(function(t){_tlSetDueByRef(t,today);});
+    _tlTriageNote='Moved '+n+' to today';
+  }else if(mode==='snooze'){
+    od.forEach(function(t){_tlSetDueByRef(t,week);});
+    _tlTriageNote='Snoozed '+n+' to next week';
+  }else{
+    var k=Math.min(3,n);
+    od.slice(0,k).forEach(function(t){_tlSetDueByRef(t,today);});
+    od.slice(k).forEach(function(t){_tlSetDueByRef(t,week);});
+    _tlTriageNote=k+' moved to today, '+(n-k)+' snoozed a week';
+  }
+  save();
+  renderProjects(); // subtask due dates show in the Projects panel too
+  renderTaskList();
+  if(_tlTriageNoteTimer)clearTimeout(_tlTriageNoteTimer);
+  _tlTriageNoteTimer=setTimeout(function(){
+    _tlTriageNote='';_tlTriageUndo=null;_tlTriageNoteTimer=null;
+    renderTaskList();
+  },8000);
+}
+function tlTriageUndo(){
+  if(!_tlTriageUndo)return;
+  _tlTriageUndo.forEach(function(r){_tlSetDueByRef(r,r.oldDue);});
+  _tlTriageUndo=null;_tlTriageNote='';
+  if(_tlTriageNoteTimer){clearTimeout(_tlTriageNoteTimer);_tlTriageNoteTimer=null;}
+  save();
+  renderProjects();
+  renderTaskList();
+  toast('Restored previous due dates');
 }
 
 // =======================================

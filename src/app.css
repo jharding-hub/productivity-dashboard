@@ -2970,3 +2970,11 @@ body.admin-overlay-open #starryLayer,body.admin-overlay-open #galaxyLayer,body.a
 @media (prefers-reduced-motion: reduce){
   .tl-item.cp-just-captured,.thought-chip.cp-just-captured{animation:none;background-color:var(--accent-glow);}
 }
+
+/* Overdue triage bar (R1 stage 4): calm, not alarmed -- surface colors on
+   purpose, the red "N overdue" pill above already carries the urgency. */
+.tl-triage-bar{display:flex;flex-wrap:wrap;align-items:center;gap:6px;padding:8px 10px;margin-bottom:8px;background:var(--surface-raised);border:1px solid var(--border);border-radius:var(--radius-sm);font-size:12px;color:var(--text-dim);}
+.tl-triage-label{font-weight:600;color:var(--text);margin-right:2px;}
+.tl-triage-btn{padding:5px 10px;min-height:32px;font-size:12px;border:1px solid var(--border-focus);border-radius:var(--radius-sm);background:var(--surface);color:var(--text);cursor:pointer;font-family:inherit;transition:border-color 0.15s,color 0.15s;}
+.tl-triage-btn:hover{border-color:var(--accent-dim);color:var(--accent);}
+.tl-triage-note a{color:var(--accent);cursor:pointer;text-decoration:underline;}
