@@ -2260,9 +2260,15 @@ body[data-theme="storm-dark"] .tl-hour-label{
      .mobile-visible at a time here, so letting rows size to content is safe.
      showMobilePanel() also now strips .panel-tile on open (mirrors the
      desktop openPanelOverlay/closePanelOverlay pair), which is what makes
-     the base (non-mobile) .panel-tile-summary/.tasklist-controls/etc. rules
-     in the TILE MODE block above do the right thing automatically -- no
-     mobile-specific duplicates of those needed here anymore. */
+     the base (non-mobile) .tasklist-controls/.note-filter-row/etc. rules in
+     the TILE MODE block above do the right thing automatically -- those all
+     have their own unconditional non-tile default (shown), overridden to
+     none only while .panel-tile is present. .panel-tile-summary is the one
+     exception: it has no such default (only ever set to flex, by the
+     .panel-tile rule), so on desktop the .panel-overlay-body ancestor rule
+     hides it -- the mobile tab-bar path was never wrapped in that ancestor,
+     so it needs the same "opened, no panel-tile" hide spelled out here. */
+  .panel.mobile-visible:not(.panel-tile) .panel-tile-summary{display:none !important;}
   .dashboard{grid-auto-rows:auto;}
   /* Vertical spacing between panels */
   /* R2 stage B: bumped from 80px to clear the new mobile tab bar (52px content
