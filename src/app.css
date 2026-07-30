@@ -2557,7 +2557,11 @@ body[data-theme="storm-dark"] .tl-hour-label{
    `vh` against the full screen, which can push a centered, vh-capped box's
    bottom (where Storm Light/Dark live) off-screen and out of reach. */
 @media(max-width:768px),(orientation:landscape) and (max-height:600px){
-  .customize-overlay{align-items:flex-start;overflow-y:auto;-webkit-overflow-scrolling:touch;padding:16px 14px calc(16px + env(safe-area-inset-bottom));}
+  /* R5 (F4): top padding was a flat 16px -- fine with no notch, but on a
+     Dynamic Island phone (~59pt inset) the "Customize Panels" title rendered
+     under the status bar once the sheet's own overflow-y let it scroll up
+     that far. Bottom already accounted for the safe area; top didn't. */
+  .customize-overlay{align-items:flex-start;overflow-y:auto;-webkit-overflow-scrolling:touch;padding:calc(16px + env(safe-area-inset-top)) 14px calc(16px + env(safe-area-inset-bottom));}
   .customize-box{max-height:none;}
 }
 .customize-box h3{font-family:'Fraunces',serif;font-size:18px;color:var(--accent);margin-bottom:4px;}
