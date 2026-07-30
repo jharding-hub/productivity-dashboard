@@ -724,11 +724,12 @@ body[data-theme="storm-dark"] .day-progress-elapsed{
   .mobile-tab-bar{display:flex;}
   .status-bar{display:none;}
   .app-wrap{padding-bottom:calc(52px + env(safe-area-inset-bottom) + 8px);}
-  /* FAB used to float 12px above the old 52px-flat status bar (bottom:64px).
-     The new tab bar adds env(safe-area-inset-bottom) on top of that same
-     52px, so the FAB has to clear a taller floor on notched phones or the
-     two would overlap. */
-  .qc-fab{bottom:calc(52px + env(safe-area-inset-bottom) + 12px);}
+  /* FAB and Axis used to float 12px above the old 52px-flat status bar
+     (bottom:64px). The new tab bar adds env(safe-area-inset-bottom) on top
+     of that same 52px, so both have to clear a taller floor on notched
+     phones or they'd overlap it. Axis (.jarvis-fab) was missed when this
+     was first added for .qc-fab -- same bug class as F11. */
+  .qc-fab,.jarvis-fab{bottom:calc(52px + env(safe-area-inset-bottom) + 12px);}
 }
 /* Push content above bottom bar */
 .app-wrap{padding-bottom:60px;}
