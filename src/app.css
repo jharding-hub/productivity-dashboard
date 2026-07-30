@@ -897,6 +897,26 @@ body.capacitor-native a[target="_blank"]{-webkit-touch-callout:none;}
 .mobile-back-bar{display:none;position:fixed;top:0;left:0;right:0;z-index:60;background:var(--surface);border-bottom:1px solid var(--border);padding:10px 16px calc(10px + env(safe-area-inset-top));padding-top:calc(10px + env(safe-area-inset-top));}
 .mobile-back-btn{display:flex;align-items:center;gap:8px;background:none;border:none;color:var(--accent);font-size:15px;font-weight:600;font-family:inherit;cursor:pointer;padding:0;}
 .mobile-back-btn::before{content:'‹';font-size:22px;line-height:1;}
+/* R2 stage C: visible back affordance for open panels (F6 -- the untaught
+   swipe-right was the ONLY way out). The old .mobile-back-bar above is a
+   dead fixed top strip; reviving it collided with .header, which stays
+   visible over an open panel by design (see showMobileHome's "shared top
+   chrome" comment) -- confirmed on-device-equivalent in the preview browser
+   before choosing this approach instead. panel-mobile-back-btn is inserted
+   by showMobilePanel() as the first child of the OPEN panel's own
+   .panel-title (already flex, 7px gap), so it sits in that panel's normal
+   in-flow content instead of fighting the sticky header for the same space.
+   Reuses .mobile-back-btn's exact chevron; hidden on desktop both because
+   showMobilePanel() only runs there in the first place AND here, in case a
+   window is resized past the breakpoint without a reload. */
+/* The ::before chevron glyph is the only rendered content, so the button's
+   natural box is ~8px wide with no real tap target -- padding + a matching
+   negative margin grows the hit area to a legible size without inflating
+   .panel-title's own row height or shifting the title text/icon rightward. */
+.panel-mobile-back-btn{display:none;padding:12px 18px;margin:-12px 2px -12px -18px;}
+@media(max-width:768px),(orientation:landscape) and (max-height:600px){
+  .panel-mobile-back-btn{display:flex;}
+}
 .dashboard{display:grid;grid-template-columns:2fr 2fr 1fr;gap:16px;padding:16px 24px 24px;max-width:1600px;margin:0 auto;grid-auto-rows:629px;}
 .panel-narrow{min-width:0;}
 .panel{background:var(--surface);border:1px solid var(--border);border-radius:var(--radius);padding:18px;animation:fadeUp 0.4s ease both;transition:box-shadow 0.2s,opacity 0.2s,transform 0.2s;display:flex;flex-direction:column;overflow:hidden;}

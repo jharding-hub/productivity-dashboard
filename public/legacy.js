@@ -3837,9 +3837,25 @@ function showMobilePanel(panelId){
     // Slide in from the right; class removed after the animation so it can replay
     target.classList.add('mobile-panel-enter');
     setTimeout(function(){target.classList.remove('mobile-panel-enter');},350);
+    _ensurePanelBackBtn(target);
     // Scroll to top
     window.scrollTo(0,0);
   }
+}
+// R2 stage C: a visible way back out of a panel (F6 -- previously only an
+// untaught swipe-right). Inserted as the FIRST child of the panel's own
+// .panel-title (in-flow content) rather than a separate fixed bar, which
+// would collide with .header -- it stays visible over an open panel by
+// design. Guarded so re-opening the same panel doesn't stack duplicates.
+function _ensurePanelBackBtn(panelEl){
+  var title=panelEl.querySelector('.panel-title');
+  if(!title||title.querySelector('.panel-mobile-back-btn'))return;
+  var btn=document.createElement('button');
+  btn.type='button';
+  btn.className='mobile-back-btn panel-mobile-back-btn';
+  btn.setAttribute('aria-label','Back');
+  btn.onclick=function(){_goMobileHome();};
+  title.insertBefore(btn,title.firstChild);
 }
 
 // Swipe right on an open mobile panel to go back home. Direction-locked so
