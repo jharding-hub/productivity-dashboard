@@ -7036,6 +7036,24 @@ function _captureString(text){
   state.thoughts.push(th);
   return {type:'thought',name:text,id:th.id};
 }
+// Scroll a freshly captured row/chip into view and flash it briefly, so a
+// capture is provably visible rather than only toasted -- the toast fades in
+// ~2s and is easy to miss if you looked away. Scoped to ONE container's
+// subtree (not a bare getElementById) because Today and Everything render
+// task rows from the same _taskRowHTML ids -- see _wireTaskRowEditable's
+// comment on the same bug class. Silently no-ops if the row isn't rendered
+// at all (e.g. Stage 1's "today only" tile hid a task not due today; the
+// "N more tasks -- Show all" hint already explains that case).
+function _flashNewCapture(containerId,innerIdPrefix,id,rowClass){
+  var container=document.getElementById(containerId);
+  if(!container)return;
+  var inner=container.querySelector('[id="'+innerIdPrefix+id+'"]');
+  var row=inner&&inner.closest('.'+rowClass);
+  if(!row)return;
+  row.scrollIntoView({behavior:'smooth',block:'nearest'});
+  row.classList.add('cp-just-captured');
+  setTimeout(function(){row.classList.remove('cp-just-captured');},1600);
+}
 function submitQuickCapture(){
   var input=document.getElementById('quickCaptureInput');
   if(!input)return;
@@ -7046,10 +7064,12 @@ function submitQuickCapture(){
   save();
   if(res.type==='task'){
     renderTaskList();
+    _flashNewCapture('taskListItems','tlname_',res.id,'tl-item');
     toast('✓ Task added: '+res.name);
     _trackEvent('tool_use','quick_capture_task','Quick Capture');
   }else{
     renderThoughts();
+    _flashNewCapture('thoughtChips','tt_',res.id,'thought-chip');
     toast('✓ Captured to Brain Dump');
     _trackEvent('tool_use','quick_capture_thought','Quick Capture');
   }

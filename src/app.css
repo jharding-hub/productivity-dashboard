@@ -2958,3 +2958,15 @@ body.admin-overlay-open #starryLayer,body.admin-overlay-open #galaxyLayer,body.a
 @media(max-width:768px),(orientation:landscape) and (max-height:600px){
   .view-mode-switch .tab-btn{padding:5px 10px;font-size:11px;}
 }
+
+/* Quick-capture landing cue (Stage 3): briefly highlights the row/chip a
+   capture just landed in, so "added" is provably visible, not only toasted --
+   the toast fades in ~2s and is easy to miss if you looked away. */
+@keyframes cp-just-captured{
+  0%{background-color:var(--accent-glow);box-shadow:0 0 0 2px var(--accent-dim) inset;}
+  100%{background-color:transparent;box-shadow:0 0 0 0 transparent inset;}
+}
+.tl-item.cp-just-captured,.thought-chip.cp-just-captured{animation:cp-just-captured 1.6s ease-out;}
+@media (prefers-reduced-motion: reduce){
+  .tl-item.cp-just-captured,.thought-chip.cp-just-captured{animation:none;background-color:var(--accent-glow);}
+}
