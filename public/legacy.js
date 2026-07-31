@@ -3960,6 +3960,18 @@ function showMobilePanel(panelId){
   // Hide home; the banner stays as the top chrome (back bar retired)
   document.getElementById('mobileHome').classList.remove('active');
   document.querySelector('.app-wrap').classList.add('panel-open');
+  // Bug: in Today view, setViewMode('today') sets #dashboard{display:none}
+  // as an inline style -- EVERY .panel, Tool Kit included, lives inside
+  // #dashboard, so toggling .mobile-visible on the panel itself did nothing
+  // while its ancestor stayed display:none. Worked fine from Everything
+  // view only because #dashboard is already shown there. #todayView hides
+  // in exchange so its content doesn't sit behind the opened panel; going
+  // back restores whichever mode was active (_goMobileHome -> setViewMode
+  // re-applies state.viewMode, untouched by this function).
+  var dashEl=document.getElementById('dashboard');
+  var todayEl=document.getElementById('todayView');
+  if(dashEl)dashEl.style.display='';
+  if(todayEl)todayEl.style.display='none';
   // Show requested panel. Also restore tile mode on every panel first --
   // mirrors closePanelOverlay()'s cleanup so whichever panel was previously
   // opened here (or on desktop) resets to its compact/summary render.
