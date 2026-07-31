@@ -917,6 +917,8 @@ async function load(){
   // checkDailyRoutineReset, right before each day's checkmarks are wiped) so a
   // week of consistency can be shown in the Weekly Review.
   if(!state.routineHistory)state.routineHistory=[];
+  // Seed the presence-day counter once for pre-existing accounts (no-op after).
+  if(typeof _seedPresenceDays==='function')_seedPresenceDays();
   if(!state.completedTasks)state.completedTasks=[];
   if(!state.remindersArchive)state.remindersArchive=[];
   if(!state.completedWorkouts)state.completedWorkouts=[];
@@ -7462,12 +7464,27 @@ function _updateMusicUI(){
 // =======================================
 // POINTS / REWARDS SYSTEM
 // =======================================
+// Tiers are milestones in DAYS SHOWN UP, not point totals. Joe's goal for this
+// system, stated directly: "award showing up. not how often you show up or how
+// many things you show up to do, but just showing up and giving effort."
+//
+// A point-total tier fails that three ways: it measures how MANY things you did,
+// a heavy user maxes it by the 8th of the month, and the monthly reset demoted
+// Mythic to Bronze on the 1st for doing nothing wrong -- a streak break wearing
+// a calendar for a hat, which two review personas flagged independently on an
+// app that had deliberately avoided streaks.
+//
+// Day milestones fix all three: one day of one breathing session counts exactly
+// as much as one day of thirty tasks (not "how many"), and the count is
+// MONOTONIC -- a missed day subtracts nothing, it simply doesn't add, so there
+// is never anything to lose or protect (not "how often"). The arc is first
+// week, first month, a season, a year.
 var TIER_THRESHOLDS=[
-  {name:'bronze',label:'Bronze',icon:'🥉',min:0,max:100,color:'#cd7f32'},
-  {name:'silver',label:'Silver',icon:'🥈',min:100,max:300,color:'#dadada'},
-  {name:'gold',label:'Gold',icon:'🥇',min:300,max:700,color:'#ffd700'},
-  {name:'diamond',label:'Diamond',icon:'💎',min:700,max:1500,color:'#b9f2ff'},
-  {name:'mythic',label:'Mythic',icon:'⭐',min:1500,max:Infinity,color:'#ff9ec0'}
+  {name:'bronze',label:'Bronze',icon:'🥉',min:0,max:7,color:'#cd7f32'},
+  {name:'silver',label:'Silver',icon:'🥈',min:7,max:30,color:'#dadada'},
+  {name:'gold',label:'Gold',icon:'🥇',min:30,max:100,color:'#ffd700'},
+  {name:'diamond',label:'Diamond',icon:'💎',min:100,max:365,color:'#b9f2ff'},
+  {name:'mythic',label:'Mythic',icon:'⭐',min:365,max:Infinity,color:'#ff9ec0'}
 ];
 
 // Rebalanced (F24 follow-up). The old table let productivity drown
@@ -7858,6 +7875,37 @@ function _materializeRecurrence(item,pushFn){
   pushFn(nextDue);
 }
 
+// ── PRESENCE DAYS ───────────────────────────────────────────────────────
+// The headline number. Counts DAYS on which you did at least one real thing,
+// lifetime, and only ever goes up. See TIER_THRESHOLDS above for why this
+// replaced the monthly point total as what the badge shows.
+//
+// "Showing up AND giving effort": opening the app is not enough on its own.
+// daily_login is excluded below, so a day you launched Centerpost and did
+// nothing does not count -- but any single real action does, however small.
+var PRESENCE_EXCLUDED_SOURCES={daily_login:1};
+function _markPresenceToday(source){
+  if(PRESENCE_EXCLUDED_SOURCES[source])return;
+  var day=_dayKey();
+  if(state.points.lastPresenceDay===day)return; // already counted today
+  state.points.lastPresenceDay=day;
+  state.points.presenceDays=(state.points.presenceDays||0)+1;
+}
+// One-time seed for accounts that predate this counter. totalsByDay is trimmed
+// to a 90-day window and the older archive stores monthly TOTALS rather than
+// day counts, so a true lifetime figure is not reconstructable -- this is an
+// honest best-effort floor, not a real history. Days whose entire total is 1
+// point are skipped: under the pre-rebalance values that is the signature of a
+// login-only day, which no longer qualifies as showing up.
+function _seedPresenceDays(){
+  if(!state.points)return;
+  if(state.points.presenceDays!==undefined)return;
+  var byDay=state.points.totalsByDay||{};
+  var n=0;
+  Object.keys(byDay).forEach(function(k){ if((byDay[k]||0)>1)n++; });
+  state.points.presenceDays=n;
+}
+
 function getCurrentTier(pts){
   pts=pts||0;
   for(var i=TIER_THRESHOLDS.length-1;i>=0;i--){
@@ -7879,7 +7927,12 @@ function checkMonthReset(){
     state.points.lifetimeTotal=(state.points.lifetimeTotal||0)+(state.points.current||0);
     state.points.current=0;
     state.points.monthKey=nowKey;
-    state.points.lastTier='bronze';
+    // NO tier demotion here any more. This line used to set lastTier='bronze',
+    // so on the 1st of every month a Mythic user was knocked back to Bronze
+    // having done nothing wrong -- the streak break, fired by the calendar.
+    // Tier now derives from presenceDays, which never resets, so there is
+    // nothing to demote. The monthly point total below still rolls over; it
+    // just isn't what you're ranked by.
     // Trim totalsByDay to last 90 days -- but fold anything falling off the
     // window into a permanent per-month archive first, so the Lifetime view
     // keeps its monthly breakdown instead of losing it to a single running total.
@@ -7962,10 +8015,14 @@ function addPoints(source,sourceEl){
   if(amount<=0)return;
   if(!_claimDailyAward(source))return;
 
-  var prevTier=getCurrentTier(state.points.current);
+  // Tier now tracks presence DAYS, so the before/after comparison brackets
+  // _markPresenceToday -- a tier-up fires when you cross a day milestone
+  // (7th day, 30th...), not when a point total crosses a threshold.
+  var prevTier=getCurrentTier(state.points.presenceDays||0);
   state.points.current+=amount;
-  var newTier=getCurrentTier(state.points.current);
-  
+  _markPresenceToday(source);
+  var newTier=getCurrentTier(state.points.presenceDays||0);
+
   // Track daily
   var today=_dayKey();
   state.points.totalsByDay[today]=(state.points.totalsByDay[today]||0)+amount;
@@ -8020,12 +8077,16 @@ function renderPointsBadge(){
   var valEl=document.getElementById('ptValue');
   if(!badge||!valEl)return;
   
-  var tier=getCurrentTier(state.points.current);
+  var days=state.points.presenceDays||0;
+  var tier=getCurrentTier(days);
   var classes=['tier-bronze','tier-silver','tier-gold','tier-diamond','tier-mythic'];
   classes.forEach(function(c){badge.classList.remove(c);});
   badge.classList.add('tier-'+tier.name);
   if(iconEl)iconEl.textContent=tier.icon;
-  valEl.textContent=state.points.current;
+  // The headline is DAYS SHOWN UP -- monotonic, volume-independent. The point
+  // total still exists and is still shown, but in the tap-for-detail popup
+  // rather than as the thing you are ranked by.
+  valEl.textContent=days;
 }
 
 function togglePointsPopup(){
@@ -8050,8 +8111,10 @@ function renderPointsPopup(){
   var pop=document.getElementById('pointsPopup');
   if(!pop)return;
   var pts=state.points.current||0;
-  var tier=getCurrentTier(pts);
-  var next=getNextTier(pts);
+  // Tier + progress read DAYS; the point figures below are kept as detail.
+  var days=state.points.presenceDays||0;
+  var tier=getCurrentTier(days);
+  var next=getNextTier(days);
   var today=_dayKey();
   var todayPts=state.points.totalsByDay[today]||0;
   
@@ -8066,9 +8129,10 @@ function renderPointsPopup(){
   var progressLabel='';
   if(next){
     var range=next.min-tier.min;
-    var into=pts-tier.min;
+    var into=days-tier.min;
     progressPct=Math.min(100,Math.round((into/range)*100));
-    progressLabel=(next.min-pts)+' to '+next.label+' '+next.icon;
+    var left=next.min-days;
+    progressLabel=left+' more day'+(left!==1?'s':'')+' to '+next.label+' '+next.icon;
   }else{
     progressPct=100;
     progressLabel='Mythic -- top tier!';
@@ -8080,6 +8144,9 @@ function renderPointsPopup(){
     +'</div>'
     +'<div class="points-popup-progress"><div class="points-popup-progress-fill" style="width:'+progressPct+'%;background:'+tier.color+';"></div></div>'
     +'<div class="points-popup-next">'+progressLabel+'</div>'
+    +'</div>'
+    +'<div class="points-popup-section">'
+    +'<div class="points-popup-row"><span class="points-popup-label">Days shown up</span><span class="points-popup-value">'+days+'</span></div>'
     +'</div>'
     +'<div class="points-popup-section">'
     +'<div class="points-popup-row"><span class="points-popup-label">Today</span><span class="points-popup-value">'+todayPts+' Presence</span></div>'

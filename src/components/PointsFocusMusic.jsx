@@ -13,14 +13,16 @@ export default function PointsFocusMusic() {
           className="points-badge points-badge-lg"
           id="pointsBadge"
           onClick={() => window.togglePointsPopup()}
-          title="Presence points are awarded for showing up. Making an effort, staying focused and completing tasks improve productivity."
+          title="Days you showed up and put in effort — any real action counts the day, however small. It only ever goes up; missing a day costs you nothing. Tap for detail."
           style={{ cursor: 'pointer' }}
         >
           <span className="points-tier-icon" id="ptTierIcon">{'🥉'}</span>
           <span className="points-value" id="ptValue">0</span>
+          {/* Headline is DAYS SHOWN UP, not the point total -- see
+              TIER_THRESHOLDS in legacy.js for the reasoning. */}
           <span className="points-label" style={{ display: 'flex', flexDirection: 'column', lineHeight: 1.25, fontSize: 9, opacity: 0.7, letterSpacing: '0.5px', textTransform: 'uppercase', fontWeight: 600 }}>
-            <span>Presence</span>
-            <span>points</span>
+            <span>Days</span>
+            <span>shown up</span>
           </span>
         </div>
         <div className="points-popup" id="pointsPopup" style={{ display: 'none' }}></div>
