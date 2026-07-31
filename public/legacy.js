@@ -7631,10 +7631,36 @@ function dismissFabHint(){
   var el=document.getElementById('fabHint');
   if(el)el.style.display='none';
 }
+// R3 stage 4 (F11) bug class, found on device in build 60: Quick Capture was
+// the ONE full-screen surface that never got the immersive treatment --
+// Settings (openCustomize), the guided timer (startGuided), breathwork
+// (startBreathwork) and the journal (openJournal) all hide the floating
+// chrome, so the capture FAB and the Axis orb stayed pinned at z-900 with the
+// Axis orb landing on the panel's Save button. Same body class as the other
+// four; .cp-immersive does nothing except hide those two FABs.
+//
+// Unlike the other four this pairs with a GUARDED remove (_quitImmersiveChrome
+// below): Quick Capture is reachable by the "B" shortcut while one of those
+// other surfaces is already up, and an unconditional remove on close would
+// hand the chrome back mid-breathwork/mid-journal.
+function _otherImmersiveSurfaceOpen(){
+  if(typeof breathActive!=='undefined'&&breathActive)return true;
+  if(typeof guidedInterval!=='undefined'&&guidedInterval)return true;
+  var j=document.getElementById('journalOverlay');
+  if(j&&j.classList.contains('open'))return true;
+  var c=document.getElementById('customizeOverlay');
+  if(c&&c.classList.contains('show'))return true;
+  return false;
+}
+function _quitImmersiveChrome(){
+  if(!_otherImmersiveSurfaceOpen())document.body.classList.remove('cp-immersive');
+}
+
 function openQuickCapture(){
   var modal=document.getElementById('quickCaptureModal');
   if(!modal)return;
   modal.classList.add('open');
+  document.body.classList.add('cp-immersive');
   _blurDashboard();
   // R13: tapping the FAB at all counts as having found it -- no need to also
   // require dismissing the hint bubble separately.
@@ -7663,6 +7689,7 @@ function closeQuickCapture(){
   var modal=document.getElementById('quickCaptureModal');
   if(!modal)return;
   modal.classList.remove('open');
+  _quitImmersiveChrome();
   _unblurDashboard();
 }
 function quickCaptureKeydown(e){
