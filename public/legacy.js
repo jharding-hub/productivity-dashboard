@@ -319,6 +319,15 @@ function doLogout(){
 // bottom bar one thumb-width from Settings itself and eject straight to
 // Safari with zero confirmation -- easy to hit by mistake, high context loss.
 function openKidsMode(){
+  // R13.5: defense in depth -- every native entry point to this is hidden
+  // (LandingLogin.jsx, the Settings section above), but refuse here too in
+  // case anything else ever calls it directly. kids.html isn't built to run
+  // inside a chrome-less native WKWebView; window.open('_blank') itself
+  // behaves inconsistently there too, unlike a real browser tab.
+  if(document.body.classList.contains('capacitor-native')){
+    if(typeof toast==='function')toast('Kids Mode isn\'t available in the app -- open centerpost.app/kids.html in a browser instead.');
+    return;
+  }
   if(currentUser){
     try{
       localStorage.setItem('_kidsParentUid',currentUser.uid);
@@ -1154,6 +1163,11 @@ function openCustomize(){
   // sw.js's CACHE_VERSION) -- lets Joe tell from the app itself whether a
   // native build is running a stale www/ resync, no separate check needed.
   if(_cb)_cb.textContent='Build '+APP_BUILD+' · Web '+(typeof CENTERPOST_WEB_BUILD!=='undefined'?CENTERPOST_WEB_BUILD:'dev');
+  // R13.5: Kids Mode uncoupled from the native app entirely -- kids.html is a
+  // standalone PWA that was never built to run inside a chrome-less native
+  // WKWebView (loads with no way back out). Untouched on web.
+  var _kmSection=document.getElementById('kidsModeSettingsSection');
+  if(_kmSection)_kmSection.style.display=(document.body.classList.contains('capacitor-native'))?'none':'';
   _renderDevSwitcherInSettings();
   _renderAxisProfileForm();
   _renderSupportLevelSettings();

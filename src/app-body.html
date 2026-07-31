@@ -322,6 +322,14 @@
 <div class="section-label" style="margin-bottom:8px;">Points</div>
 <div id="pointsSettings"></div>
 <div style="border-bottom:1px solid var(--border);margin:16px 0;"></div>
+<!-- R13.5: uncoupled from native -- kids.html is a standalone PWA never
+     built to run inside a chrome-less native WKWebView (loads with no way
+     back out; this is what trapped Joe on-device). Whole section hidden on
+     native by openCustomize(), including its own trailing divider so
+     "Points" sits directly above "Account & data" when hidden. kids.html
+     and openKidsMode() are untouched -- still fully functional from the web
+     app's Settings, and directly by URL as a standalone PWA. -->
+<div id="kidsModeSettingsSection">
 <div class="section-label" style="margin-bottom:8px;">Kids Mode</div>
 <p class="cust-sub">A separate, kid-friendly arcade mode (4th tier). Opens in a new tab.</p>
 <div class="customize-actions">
@@ -330,6 +338,7 @@
 <button class="btn kids-launcher" onclick="openKidsMode()" style="background:linear-gradient(135deg,#ffcc00,#ff3399);border:1px solid #cc9900;color:#1a0033;font-weight:700;letter-spacing:0.5px;box-shadow:0 0 8px rgba(255,204,0,0.3);">&#127918; Kids Mode</button>
 </div>
 <div style="border-bottom:1px solid var(--border);margin:16px 0;"></div>
+</div>
 <div class="section-label" style="margin-bottom:8px;">Account &amp; data</div>
 <p class="cust-sub">Your data belongs to you. Download a full copy anytime, or permanently delete your account and everything in it.</p>
 <div class="customize-actions">

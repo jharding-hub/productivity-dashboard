@@ -16,7 +16,13 @@ export default function LandingLogin() {
               <div className="landing-cta-row">
                 <button className="landing-cta-primary" onClick={() => window.showSignupPanel()}>Get Started — Free <span aria-hidden="true">&rarr;</span></button>
                 <button className="landing-cta-tertiary" onClick={() => window.showSigninPanel()}>I have an account</button>
-                <a href="kids.html" className="landing-cta-secondary" style={{ textDecoration: 'none', display: 'inline-flex', alignItems: 'center' }}>&#127918; Try Kids Mode</a>
+                {/* R13.5: uncoupled from native -- kids.html is a standalone
+                    PWA never built to run inside a chrome-less native WKWebView
+                    (no way back out once it loads there). Web-only link;
+                    marketingBody is shared and reachable on native too via the
+                    "What is Centerpost?" toggle, so this has to check isNative
+                    even though it's visually part of the "web" marketing page. */}
+                {!isNative && <a href="kids.html" className="landing-cta-secondary" style={{ textDecoration: 'none', display: 'inline-flex', alignItems: 'center' }}>&#127918; Try Kids Mode</a>}
               </div>
               <div className="landing-meta">
                 <div className="landing-meta-item">Free during beta</div>
@@ -184,7 +190,7 @@ export default function LandingLogin() {
           <footer className="landing-footer">
             <div>&copy; 2026 Centerpost. Built for first responders, by a first responder.</div>
             <div className="landing-footer-links">
-              <a href="kids.html" className="landing-footer-link">Kids Mode</a>
+              {!isNative && <a href="kids.html" className="landing-footer-link">Kids Mode</a>}
               <a className="landing-footer-link" onClick={() => window.showSigninPanel()}>Sign In</a>
               <a className="landing-footer-link" onClick={() => window.showSignupPanel()}>Sign Up</a>
             </div>
@@ -208,7 +214,11 @@ export default function LandingLogin() {
               </div>
               <div className="landing-native-links">
                 <a className="landing-nav-link" onClick={() => document.getElementById('nativeMoreContent').classList.toggle('open')}>What is Centerpost?</a>
-                <a href="kids.html" className="landing-nav-link">Kids Mode</a>
+                {/* R13.5: this is almost certainly the exact link that trapped
+                    Joe -- always visible on native, no toggle needed to reach
+                    it, navigates the chrome-less WKWebView in place with no
+                    way back out. kids.html itself is untouched; it's still a
+                    fully working standalone PWA reachable directly by URL. */}
               </div>
               <div id="nativeMoreContent" className="landing-native-more">
                 {marketingBody}
