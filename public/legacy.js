@@ -398,12 +398,21 @@ function _wipeLocalAccountData(uid){
     localStorage.removeItem('prodDash_'+uid);
     localStorage.removeItem('cpCompletedTasks_'+uid);
     localStorage.removeItem('cpRemindersArchive_'+uid);
+    // R8 phase 2 pass: the encrypted journal mirror + biometric-unlock flag
+    // were missing from this wipe (the journal doc is encrypted at rest, but
+    // an account deletion should still leave nothing behind).
+    localStorage.removeItem('cpJournal_'+uid);
+    localStorage.removeItem('cpJournalBio_'+uid);
     localStorage.removeItem('cpNotifFired');
     localStorage.removeItem('devTierOverride');
     // Legacy pre-multi-account key. The migration that read it is gone, but a
     // long-lived browser can still be holding a full copy of the data.
     localStorage.removeItem('prodDash_v1');
   }catch(e){}
+  // R8 phase 2: also remove the journal key from the device Keychain (native;
+  // fire-and-forget -- the item is biometric-gated and useless without the
+  // account's data, but a deleted account should leave no key behind).
+  try{if(typeof _bioRequest==='function')_bioRequest('clear');}catch(e){}
 }
 
 async function _performAccountDeletion(){
@@ -8651,6 +8660,107 @@ var _setPinFirst='';
 var _changingPin=false; // true while setting a replacement PIN (re-encrypt)
 var _journalNeedsFirstPin=false; // R8 phase 1: true when openJournal() skipped the PIN gate for a brand-new, empty journal -- Save prompts for a PIN instead of Open
 
+// ── R8 phase 2: Face ID / Touch ID key custody (native only) ──────────
+// After a PIN unlock on native, the PIN-derived AES key can be stored in the
+// iOS Keychain behind biometrics (.biometryCurrentSet, this-device-only) so
+// reopening the journal is one glance instead of a PIN. The PIN remains the
+// fallback and the ONLY recovery path -- the Keychain copy is device-local,
+// gated by the Secure Enclave, and never touches Firestore/localStorage, so
+// the no-server-recovery property is unchanged. If the device's biometric
+// enrollment ever changes, iOS invalidates the stored item and we fall back
+// to the PIN.
+var _journalRawB64=null; // transient raw key bytes (b64) while unlocked -- native only, for Keychain enrollment; cleared in closeJournal/_journalBioAfterPinUnlock
+var _bioReqSeq=0;
+var _bioPending={};      // reqId -> {resolve,timer}
+function _journalBioAccount(){return currentUser?currentUser.uid:'local';}
+function _journalBioFlagKey(){return 'cpJournalBio_'+_journalBioAccount();}
+function _journalBioFlag(){try{return localStorage.getItem(_journalBioFlagKey())||'';}catch(e){return '';}}
+function _setJournalBioFlag(v){try{if(v)localStorage.setItem(_journalBioFlagKey(),v);else localStorage.removeItem(_journalBioFlagKey());}catch(e){}}
+// Native replies land here: window.__cpBioResult(reqId, ok, payload)
+window.__cpBioResult=function(reqId,ok,payload){
+  var p=_bioPending[reqId];if(!p)return;
+  clearTimeout(p.timer);delete _bioPending[reqId];
+  p.resolve({ok:!!ok,payload:payload});
+};
+// One round-trip to the native bridge. Resolves {ok,payload}; never rejects.
+// Timeout is generous (60s) because a Face ID sheet can sit open a while --
+// and on timeout nothing destructive happens, the PIN pad is still there.
+function _bioRequest(op,extra,timeoutMs){
+  return new Promise(function(resolve){
+    var h=(typeof _notifNative==='function')?_notifNative():null;
+    if(!h){resolve({ok:false,payload:'no-bridge'});return;}
+    var id=++_bioReqSeq;
+    var msg={action:'journalBio',op:op,reqId:id,account:_journalBioAccount()};
+    if(extra)for(var k in extra)msg[k]=extra[k];
+    _bioPending[id]={resolve:resolve,timer:setTimeout(function(){
+      delete _bioPending[id];resolve({ok:false,payload:'timeout'});
+    },timeoutMs||60000)};
+    try{h.postMessage(msg);}
+    catch(e){clearTimeout(_bioPending[id].timer);delete _bioPending[id];resolve({ok:false,payload:'post-failed'});}
+  });
+}
+// Called after every successful PIN-based unlock/create/rekey. Uses the
+// transient raw key captured at derivation time (no second PBKDF2 run).
+// Enrolled -> silently refresh the stored copy (covers PIN changes).
+// Not enrolled -> offer once; "No thanks" declines persistently, a backdrop
+// dismiss just asks again next unlock.
+async function _journalBioAfterPinUnlock(){
+  var raw=_journalRawB64;_journalRawB64=null;
+  if(!raw)return;
+  var flag=_journalBioFlag();
+  if(flag==='declined')return;
+  if(flag==='on'){await _bioRequest('store',{key:raw});return;}
+  var avail=await _bioRequest('available');
+  if(!avail.ok)return;
+  var label=avail.payload==='touch'?'Touch ID':'Face ID';
+  _confirm('Unlock your journal with '+label+' next time? Your PIN still works, and stays the only way back in if '+label+' is unavailable.',
+    async function(){
+      var r=await _bioRequest('store',{key:raw});
+      if(r.ok){_setJournalBioFlag('on');toast(label+' unlock is on');}
+      else toast('Could not turn on '+label);
+    },
+    {confirmText:'Enable',icon:'ti-face-id',altText:'No thanks',onAlt:function(){_setJournalBioFlag('declined');}});
+}
+// The biometric unlock path: Keychain (behind Face ID) releases the raw key,
+// we import it and PROVE it against the stored verifier before trusting it --
+// a PIN change on another device rotates salt+verifier, making this device's
+// stored key stale; the verifier check catches that and falls back to PIN.
+async function journalBioUnlock(){
+  if(_journalUnlocked||!_journalMeta)return;
+  var err=document.getElementById('journalPinError');
+  var r=await _bioRequest('retrieve');
+  if(_journalUnlocked)return; // user typed the PIN while the sheet was up
+  if(!r.ok){
+    // 'cancel' = user dismissed the sheet (PIN pad is right there, say nothing).
+    // Anything else (item invalidated by a biometric re-enrollment, item
+    // missing, auth failure) -> stop auto-prompting until a PIN unlock re-enrolls.
+    if(r.payload!=='cancel'&&r.payload!=='no-bridge'&&r.payload!=='timeout'){_setJournalBioFlag('');_journalBioGateSync();}
+    return;
+  }
+  try{
+    var key=await JournalCrypto.importRawKey(r.payload);
+    var ok=await JournalCrypto.checkVerifier(key,_journalMeta.verifier);
+    if(!ok){
+      _setJournalBioFlag('');
+      _bioRequest('clear');
+      _journalBioGateSync();
+      if(err)err.textContent='Your PIN changed — enter it once to re-enable biometric unlock.';
+      return;
+    }
+    _journalKey=key;
+    await _decryptAllEntries();
+    _pinBuffer='';
+    _enterUnlocked();
+  }catch(e){console.log('journal bio unlock error:',e);}
+}
+// Show/hide the "Use Face ID" button on the PIN gate and auto-prompt once.
+function _journalBioGateSync(){
+  var btn=document.getElementById('journalBioBtn');
+  var on=_journalBioFlag()==='on'&&(typeof _notifNative==='function')&&!!_notifNative();
+  if(btn)btn.style.display=on?'':'none';
+  return on;
+}
+
 // ── Journal document I/O (own doc: users/{uid}/data/journal, mirrored to localStorage) ──
 function _journalStorageKey(){return 'cpJournal_'+(currentUser?currentUser.uid:'local');}
 
@@ -8694,13 +8804,26 @@ async function _decryptAllEntries(){
   }
 }
 
+// R8 phase 2: one derivation that ALSO captures the raw key bytes when the
+// native bridge is present (for Keychain enrollment after unlock). On web the
+// raw copy is never produced -- plain deriveKey, identical to before.
+async function _journalDeriveKey(pin,saltB64,iterations){
+  var native=(typeof _notifNative==='function')&&!!_notifNative();
+  if(native&&JournalCrypto.deriveKeyWithRaw){
+    var kr=await JournalCrypto.deriveKeyWithRaw(pin,saltB64,iterations);
+    _journalRawB64=kr.rawB64;
+    return kr.key;
+  }
+  return JournalCrypto.deriveKey(pin,saltB64,iterations);
+}
+
 // First-time / legacy setup: derive a key, and NON-DESTRUCTIVELY copy any
 // existing plaintext entries into the encrypted doc. The old state.journal /
 // state.journalPin are left intact as a safety net (scrubbed in Phase 3).
 async function _journalSetupAndMigrate(pin){
   var salt=JournalCrypto.randomSaltB64();
   var iterations=JournalCrypto.PBKDF2_ITERATIONS;
-  var key=await JournalCrypto.deriveKey(pin,salt,iterations);
+  var key=await _journalDeriveKey(pin,salt,iterations);
   var verifier=await JournalCrypto.makeVerifier(key);
   _journalMeta={salt:salt,iterations:iterations,verifier:verifier};
   _journalKey=key;
@@ -8722,7 +8845,7 @@ async function _journalSetupAndMigrate(pin){
 async function _journalRekey(newPin){
   var salt=JournalCrypto.randomSaltB64();
   var iterations=JournalCrypto.PBKDF2_ITERATIONS;
-  var key=await JournalCrypto.deriveKey(newPin,salt,iterations);
+  var key=await _journalDeriveKey(newPin,salt,iterations);
   var verifier=await JournalCrypto.makeVerifier(key);
   var re=[];
   for(var i=0;i<_journalEntries.length;i++){
@@ -8755,6 +8878,9 @@ async function openJournal(){
   if(_journalMeta){
     _journalMode='unlock';
     _showPinGate('Journal is locked','Enter your PIN to open your journal');
+    // R8 phase 2: on native with biometric unlock enrolled, prompt Face ID
+    // immediately -- the PIN pad stays visible behind the sheet as fallback.
+    if(_journalBioGateSync())journalBioUnlock();
   }else if(state.journalPin){
     _journalMode='migrate';
     _showPinGate('Journal is locked','Enter your PIN to open your journal');
@@ -8779,6 +8905,7 @@ function closeJournal(){
   _unblurDashboard();
   _journalUnlocked=false;_journalKey=null;_journalPlain={};
   _pinBuffer='';_setPinBuffer='';_setPinStage=0;_setPinFirst='';_changingPin=false;_journalNeedsFirstPin=false;
+  _journalRawB64=null; // R8 phase 2: never let the raw key outlive the session
 }
 
 // ── View switching (only reachable once unlocked) ─────────────────────
@@ -8922,18 +9049,20 @@ async function journalPinSubmit(){
     catch(e){console.log('journal migrate error:',e);err.textContent='Something went wrong. Try again.';return;}
     _pinBuffer='';
     _enterUnlocked();
+    _journalBioAfterPinUnlock();
     return;
   }
   var key;
   try{
-    key=await JournalCrypto.deriveKey(pin,_journalMeta.salt,_journalMeta.iterations);
+    key=await _journalDeriveKey(pin,_journalMeta.salt,_journalMeta.iterations);
     var ok=await JournalCrypto.checkVerifier(key,_journalMeta.verifier);
-    if(!ok){_journalPinFail(err);return;}
-  }catch(e){console.log('journal unlock error:',e);_journalPinFail(err);return;}
+    if(!ok){_journalRawB64=null;_journalPinFail(err);return;}
+  }catch(e){console.log('journal unlock error:',e);_journalRawB64=null;_journalPinFail(err);return;}
   _journalKey=key;
   await _decryptAllEntries();
   _pinBuffer='';
   _enterUnlocked();
+  _journalBioAfterPinUnlock();
 }
 
 // ── Set / change PIN ─────────────────────────────────────────────────
@@ -8992,6 +9121,8 @@ async function setPinSubmit(){
   // fields itself, so this is just re-invoking the same call the user
   // originally made.
   if(_wasFirstEntryPin){_journalNeedsFirstPin=false;await saveJournalEntry();}
+  // R8 phase 2: covers create, rekey, AND the deferred-first-save path above.
+  _journalBioAfterPinUnlock();
 }
 
 function changeJournalPin(){

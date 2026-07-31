@@ -70,6 +70,48 @@
       });
   }
 
+  // R8 phase 2 (biometric key custody): same PBKDF2 derivation, but via
+  // deriveBits so the caller ALSO gets the raw 32 bytes -- needed exactly once
+  // per unlock on native, to hand the key to the iOS Keychain behind Face ID.
+  // One derivation, not two: the raw bits are imported as the (still
+  // non-extractable) working key, so this costs the same as deriveKey().
+  // The raw copy's custody rules are the caller's responsibility: on native it
+  // goes to the Keychain bridge and is dropped; on web it must be discarded.
+  function deriveKeyWithRaw(pin, saltBytes, iterations) {
+    return crypto.subtle
+      .importKey('raw', enc.encode(String(pin)), 'PBKDF2', false, ['deriveBits'])
+      .then(function (baseKey) {
+        return crypto.subtle.deriveBits(
+          {
+            name: 'PBKDF2',
+            salt: saltBytes,
+            iterations: iterations || PBKDF2_ITERATIONS,
+            hash: 'SHA-256',
+          },
+          baseKey,
+          256
+        );
+      })
+      .then(function (bits) {
+        return importRawKey(toB64(bits)).then(function (key) {
+          return { key: key, rawB64: toB64(bits) };
+        });
+      });
+  }
+
+  // Import raw AES key bytes (base64) as a non-extractable AES-GCM key --
+  // the biometric unlock path: Keychain releases the bytes, this turns them
+  // back into a working key, and the caller verifies via checkVerifier.
+  function importRawKey(rawB64) {
+    return crypto.subtle.importKey(
+      'raw',
+      fromB64(rawB64),
+      { name: 'AES-GCM', length: 256 },
+      false,
+      ['encrypt', 'decrypt']
+    );
+  }
+
   // ── encrypt / decrypt one string ──────────────────────────────────────
   function encryptText(key, plaintext) {
     var iv = crypto.getRandomValues(new Uint8Array(IV_BYTES));
@@ -121,6 +163,13 @@
     deriveKey: function (pin, saltB64, iterations) {
       return deriveKey(pin, fromB64(saltB64), iterations);
     },
+    // R8 phase 2: same derivation, but also returns the raw key bytes (b64)
+    // for native Keychain custody. → {key, rawB64}
+    deriveKeyWithRaw: function (pin, saltB64, iterations) {
+      return deriveKeyWithRaw(pin, fromB64(saltB64), iterations);
+    },
+    // R8 phase 2: raw Keychain bytes → non-extractable working key.
+    importRawKey: importRawKey,
     encryptText: encryptText,
     decryptText: decryptText,
     makeVerifier: makeVerifier,

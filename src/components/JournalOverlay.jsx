@@ -35,6 +35,17 @@ export default function JournalOverlay() {
             <button className="btn" onClick={() => window.closeJournal()} style={{ fontSize: 12, padding: '6px 14px' }}>Cancel</button>
             <button className="btn btn-accent" onClick={() => window.journalPinSubmit()} style={{ fontSize: 12, padding: '6px 18px' }}>Unlock</button>
           </div>
+          {/* R8 phase 2: shown only on native when biometric unlock is enrolled
+              (_journalBioGateSync). Face ID auto-prompts on open; this is the
+              manual retry after a cancel. */}
+          <button
+            className="btn"
+            id="journalBioBtn"
+            onClick={() => window.journalBioUnlock()}
+            style={{ display: 'none', fontSize: 12, padding: '6px 14px', margin: '8px auto 0' }}
+          >
+            <i className="ti ti-face-id" aria-hidden="true"></i> Use Face ID
+          </button>
         </div>
 
         {/* Set PIN form (first time or change) */}
