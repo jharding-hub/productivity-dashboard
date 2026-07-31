@@ -2125,6 +2125,25 @@ function purgeArchivedReminder(id){
     renderReminders();
   },{destructive:true,confirmText:'Delete Forever'});
 }
+// R7 archive stage 3: auto-sweep. Reminders dated more than 7 days past
+// archive themselves (reason 'sweep') on the existing day-rollover tick --
+// the 7-day grace keeps recently-missed items visible (and inside the
+// triage-able window) while stopping the array from growing forever.
+// Naturally idempotent: after one sweep nothing matches until the date
+// advances, and two devices sweeping concurrently converge (same ids ->
+// tombstone union + archive union keep one record; encoded as a sync-merge
+// test in stage 1). Runs only after initApp's Promise.all has loaded both
+// the blob and the archive doc, so it never sweeps into an unreconciled
+// archive.
+function _sweepPastReminders(){
+  var cutoff=_tlPlusDays(todayStr(),-7);
+  var stale=(state.reminders||[]).filter(function(r){return r.date&&r.date<cutoff;});
+  if(!stale.length)return;
+  stale.forEach(function(r){_archiveReminder(r,'sweep');});
+  save();_saveRemindersArchiveDoc();
+  if(typeof renderReminders==='function')renderReminders();
+  toast(stale.length+' past reminder'+(stale.length!==1?'s':'')+' archived');
+}
 var _remArchiveOpen=false;
 function _toggleRemArchiveSection(){_remArchiveOpen=!_remArchiveOpen;renderReminders();}
 // Collapsed folder at the bottom of the FULL reminders view -- same pattern
@@ -11578,6 +11597,7 @@ _bindPanelUsageTracking();
 // see TodayWidget.swift. This handles app-open, that handles app-closed.)
 function _dayRolloverTick(){
   try { checkDailyRoutineReset(); } catch(e){}
+  try { if(typeof _sweepPastReminders==='function')_sweepPastReminders(); } catch(e){}
   try { if(typeof _updateWidgetSnapshot==='function')_updateWidgetSnapshot(); } catch(e){}
 }
 _dayRolloverTick();
