@@ -4,6 +4,14 @@ export default function QuickCaptureModal() {
       <button className="qc-fab" id="quickCaptureFab" onClick={() => window.openQuickCapture()} title="Quick Capture (B)" aria-label="Quick Capture">
         <span className="qc-fab-icon">&#9998;</span>
       </button>
+      {/* R13/F23: "Home is a list of doors with no 'start here'" -- shown only
+          to a returning user (post-onboarding, see _maybeShowFabHint) who
+          still has zero tasks/notes/projects/reminders. Dismissible, and
+          tapping the FAB itself counts as dismissal too (openQuickCapture). */}
+      <div className="fab-hint" id="fabHint" style={{ display: 'none' }}>
+        <span>Tap here to capture your first task or thought</span>
+        <button className="fab-hint-close" onClick={() => window.dismissFabHint()} aria-label="Dismiss hint">&#10005;</button>
+      </div>
       <div className="modal-blur-overlay" id="quickCaptureModal" role="dialog" aria-modal="true" aria-label="Quick Capture">
         <div className="modal-blur-backdrop" onClick={() => window.closeQuickCapture()}></div>
         <div className="qc-panel">

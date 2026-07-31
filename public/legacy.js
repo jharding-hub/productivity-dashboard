@@ -3522,7 +3522,14 @@ function renderNotes(){
   else if(filter!=='all')notes=notes.filter(n=>noteProjIds(n).indexOf(filter)>=0);
   if(search)notes=notes.filter(n=>(n.label+' '+_stripHtml(n.body)).toLowerCase().includes(search));
   notes.sort((a,b)=>(b.created||'').localeCompare(a.created||''));
-  if(notes.length===0){el.innerHTML='<div class="empty-state">'+(state.notes.length===0?'No notes yet. Add your first one below.':'No matching notes.')+'</div>';document.getElementById('noteCount').textContent=state.notes.length;if(typeof _updateTileSummaryNotes==='function')_updateTileSummaryNotes();return;}
+  if(notes.length===0){
+    // R13/F23: was message-only, no next step -- same gap as Tasks/Timeline,
+    // Projects already had the message+button pattern this now matches.
+    el.innerHTML=state.notes.length===0
+      ?'<div class="empty-state"><p style="margin:0 0 8px;color:var(--text-dim);">No notes yet. Add your first one below.</p><button class="btn btn-accent btn-sm" onclick="document.getElementById(\'newNoteLabel\').focus()" style="margin:0 auto;display:block;">+ Add your first note</button></div>'
+      :'<div class="empty-state">No matching notes.</div>';
+    document.getElementById('noteCount').textContent=state.notes.length;if(typeof _updateTileSummaryNotes==='function')_updateTileSummaryNotes();return;
+  }
   el.innerHTML=notes.map(n=>{
     var pids=noteProjIds(n);
     var hasProjClass=pids.length?'has-proj':'';
@@ -5372,8 +5379,17 @@ function renderTaskList(){
   
   // Checkbox is checked -- show matching items or blank if none
   if(all.length===0){
-    el.innerHTML='';
-    if(pcEl){pcEl.style.flex='none';pcEl.style.minHeight='0';}
+    // R13/F23: this was a bare blank region -- no message, no next step.
+    // (F9's original capture-trust bug was a DIFFERENT cause of the same
+    // blank-looking panel, already fixed in R1; this is the genuinely-
+    // nothing-here case, which was never addressed.)
+    var tlNothingFiltered=tlSearch||filt!=='all';
+    el.innerHTML='<div class="empty-state"><p style="margin:0 0 8px;color:var(--text-dim);">'
+      +(tlNothingFiltered?'No matching tasks.':'No tasks yet. Add one below.')
+      +'</p>'
+      +(tlNothingFiltered?'':'<button class="btn btn-accent btn-sm" onclick="document.getElementById(\'tlNewName\').focus()" style="margin:0 auto;display:block;">+ Add your first task</button>')
+      +'</div>';
+    if(pcEl){pcEl.style.flex='';pcEl.style.minHeight='';}
   }else{
     if(pcEl){pcEl.style.flex='';pcEl.style.minHeight='';}
     el.innerHTML=(sort==='due')
@@ -7332,11 +7348,35 @@ function _renderQuickAddPreview(inputId,previewId,opts){
 // Brain Dump thought, matching the app's existing "capture now, triage
 // later" default (same field shapes as addStandaloneTask/handleDumpKey).
 // =======================================
+// R13/F23: "Home is a list of doors with no 'start here'" -- the review
+// found this true even with the onboarding tour in place (tour is skippable,
+// and a returning user who skipped it on day 1 never gets another nudge).
+// Gated on onboardingSeen===true specifically so this never competes with
+// the tour itself on a brand-new account (initApp only fires the tour when
+// that's still false) -- this is for the AFTER case.
+function _maybeShowFabHint(){
+  if(state.onboardingSeen!==true)return;
+  if(state.fabHintDismissed)return;
+  var empty=(state.tasks||[]).length===0&&(state.notes||[]).length===0
+    &&(state.projects||[]).length===0&&(state.reminders||[]).length===0;
+  if(!empty)return;
+  var el=document.getElementById('fabHint');
+  if(el)el.style.display='flex';
+}
+function dismissFabHint(){
+  if(state.fabHintDismissed)return;
+  state.fabHintDismissed=true;save();
+  var el=document.getElementById('fabHint');
+  if(el)el.style.display='none';
+}
 function openQuickCapture(){
   var modal=document.getElementById('quickCaptureModal');
   if(!modal)return;
   modal.classList.add('open');
   _blurDashboard();
+  // R13: tapping the FAB at all counts as having found it -- no need to also
+  // require dismissing the hint bubble separately.
+  if(typeof dismissFabHint==='function')dismissFabHint();
   var input=document.getElementById('quickCaptureInput');
   var preview=document.getElementById('quickCapturePreview');
   if(input)input.value='';
@@ -11638,6 +11678,7 @@ setTimeout(checkShareTarget, 400); // slight delay so panels render first
 if(state.onboardingSeen===false && typeof openOnboardingTour==='function'){
   setTimeout(openOnboardingTour,600);
 }
+if(typeof _maybeShowFabHint==='function')setTimeout(_maybeShowFabHint,600);
 }
 // Auth is handled by Firebase onAuthStateChanged listener in Script 1
 

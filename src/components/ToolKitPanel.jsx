@@ -81,13 +81,19 @@ export default function ToolKitPanel() {
           <i className="ti ti-barbell" aria-hidden="true"></i>
           <span>Workout</span>
         </button>
+        {/* R13/F23b: the review's Basic persona never taps these because the
+            names assume DBT literacy -- "if a feature requires knowing what
+            it's for before you can find out what it's for, it doesn't exist
+            for me." Subtitles here, not tooltips: touch devices can't hover. */}
         <button className="toolkit-btn toolkit-halt" onClick={() => window.openHaltModal()}>
           <i className="ti ti-alert-triangle" aria-hidden="true"></i>
           <span>HALT+</span>
+          <span className="toolkit-btn-sub">Body check when focus tanks</span>
         </button>
         <button className="toolkit-btn toolkit-urge" onClick={() => window.openUrgeModal()}>
           <i className="ti ti-hand-stop" aria-hidden="true"></i>
           <span>Urge Log</span>
+          <span className="toolkit-btn-sub">Pause before you act on impulse</span>
         </button>
         <button className="toolkit-btn toolkit-wellness" onClick={() => window.openWellnessModal()}>
           <i className="ti ti-heart" aria-hidden="true"></i>
