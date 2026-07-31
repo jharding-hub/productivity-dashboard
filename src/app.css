@@ -733,8 +733,16 @@ body[data-theme="storm-dark"] .day-progress-elapsed{
      (bottom:64px). The new tab bar adds env(safe-area-inset-bottom) on top
      of that same 52px, so both have to clear a taller floor on notched
      phones or they'd overlap it. Axis (.jarvis-fab) was missed when this
-     was first added for .qc-fab -- same bug class as F11. */
-  .qc-fab,.jarvis-fab{bottom:calc(52px + env(safe-area-inset-bottom) + 12px);}
+     was first added for .qc-fab -- same bug class as F11.
+     !important is load-bearing here, not decorative: this rule and the
+     UNCONDITIONAL base .qc-fab{bottom:64px} (app.css, later in the file)
+     have IDENTICAL specificity (0,1,0), so without it the base rule always
+     wins by source order regardless of viewport -- on desktop browsers
+     env(safe-area-inset-bottom) reports 0, making 52+0+12=64 numerically
+     identical to the base rule's 64px, so this bug was invisible to any
+     browser-based test and only showed up on a real notched device, where
+     the two values actually diverge. Confirmed on-device 2026-07-30. */
+  .qc-fab,.jarvis-fab{bottom:calc(52px + env(safe-area-inset-bottom) + 12px) !important;}
 }
 /* Push content above bottom bar */
 .app-wrap{padding-bottom:60px;}
