@@ -1,6 +1,31 @@
 export default function PointsFocusMusic() {
   return (
     <>
+      {/* F24: the Presence Points medal lives here now, in the header's
+          left slot (which the markup was already labelled for), NOT on the
+          Tool Kit panel where it sat above the grounding tools. Exactly ONE
+          copy of these ids may exist -- renderPointsBadge/togglePointsPopup/
+          applyPointsVisibility all target #pointsWrap/#pointsBadge/#ptValue
+          by id, and a duplicate would silently update only the first (this
+          codebase's recurring duplicate-DOM-id bug class). */}
+      <div className="points-wrap" id="pointsWrap">
+        <div
+          className="points-badge points-badge-lg"
+          id="pointsBadge"
+          onClick={() => window.togglePointsPopup()}
+          title="Presence points are awarded for showing up. Making an effort, staying focused and completing tasks improve productivity."
+          style={{ cursor: 'pointer' }}
+        >
+          <span className="points-tier-icon" id="ptTierIcon">{'🥉'}</span>
+          <span className="points-value" id="ptValue">0</span>
+          <span className="points-label" style={{ display: 'flex', flexDirection: 'column', lineHeight: 1.25, fontSize: 9, opacity: 0.7, letterSpacing: '0.5px', textTransform: 'uppercase', fontWeight: 600 }}>
+            <span>Presence</span>
+            <span>points</span>
+          </span>
+        </div>
+        <div className="points-popup" id="pointsPopup" style={{ display: 'none' }}></div>
+      </div>
+
       {/* Point popup container (floating +Presence animations) */}
       <div className="point-popup-container" id="pointPopupContainer"></div>
 

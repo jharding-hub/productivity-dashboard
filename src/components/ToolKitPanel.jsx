@@ -8,23 +8,15 @@ export default function ToolKitPanel() {
         </div>
         <div className="panel-badge">Quick Launch</div>
       </div>
-      <div className="points-wrap" id="pointsWrap">
-        <div
-          className="points-badge points-badge-lg"
-          id="pointsBadge"
-          onClick={() => window.togglePointsPopup()}
-          title="Presence points are awarded for showing up. Making an effort, staying focused and completing tasks improve productivity."
-          style={{ cursor: 'pointer' }}
-        >
-          <span className="points-tier-icon" id="ptTierIcon">{'🥉'}</span>
-          <span className="points-value" id="ptValue">0</span>
-          <span className="points-label" style={{ display: 'flex', flexDirection: 'column', lineHeight: 1.25, fontSize: 9, opacity: 0.7, letterSpacing: '0.5px', textTransform: 'uppercase', fontWeight: 600 }}>
-            <span>Presence</span>
-            <span>points</span>
-          </span>
-        </div>
-        <div className="points-popup" id="pointsPopup" style={{ display: 'none' }}></div>
-      </div>
+      {/* F24: the Presence Points medal used to sit HERE, pinned above the
+          grounding tools. All five review personas independently said it had
+          to go -- a rank badge is the first thing you meet on the surface you
+          open when you're struggling ("a scoreboard on the door of the room
+          people enter when they're losing"). Moved to the header's
+          points-focus-music slot, which already hosts the +Presence floaters
+          and is labelled for it. Points still accrue for regulation actions
+          -- awarding and DISPLAYING are separate decisions, and only the
+          display was the problem. */}
       <div className="toolkit-grid">
         <div className="toolkit-music-wrap">
           <button
