@@ -1,10 +1,10 @@
 export default function QuickCaptureModal() {
   return (
     <>
-      <button className="qc-fab" id="quickCaptureFab" onClick={() => window.openQuickCapture()} title="Quick Capture (B)">
+      <button className="qc-fab" id="quickCaptureFab" onClick={() => window.openQuickCapture()} title="Quick Capture (B)" aria-label="Quick Capture">
         <span className="qc-fab-icon">&#9998;</span>
       </button>
-      <div className="modal-blur-overlay" id="quickCaptureModal">
+      <div className="modal-blur-overlay" id="quickCaptureModal" role="dialog" aria-modal="true" aria-label="Quick Capture">
         <div className="modal-blur-backdrop" onClick={() => window.closeQuickCapture()}></div>
         <div className="qc-panel">
           <input
@@ -12,6 +12,7 @@ export default function QuickCaptureModal() {
             id="quickCaptureInput"
             className="qc-input"
             placeholder="Capture a thought or task..."
+            aria-label="Capture a thought or task"
             autoComplete="off"
             onKeyDown={e => window.quickCaptureKeydown(e.nativeEvent)}
             onInput={() => window._renderQuickAddPreview('quickCaptureInput', 'quickCapturePreview', { date: true, time: true, recurrence: true })}

@@ -12,13 +12,20 @@ export default function BreathworkOverlay() {
   return (
     <>
       {/* Full-screen guided breath overlay */}
-      <div className="breath-overlay" id="breathOverlay">
+      <div className="breath-overlay" id="breathOverlay" role="dialog" aria-modal="true" aria-labelledby="breathName">
         <div className="breath-backdrop"></div>
         <div className="breath-content">
           <div className="breath-technique-name" id="breathName"></div>
-          <div className="breath-phase" id="breathPhase">&mdash;</div>
-          <div className="breath-count" id="breathCount">&mdash;</div>
-          <div className="breath-instruction" id="breathInstruction"></div>
+          {/* F16/R9: the safety-critical fix in this whole pass -- phase/count/
+              instruction update every second during a live session and were
+              plain divs, so a blind user got zero automatic announcement of
+              "Inhale... 4... 3..." and had no way to follow the session at
+              all. aria-live="assertive" on phase/count so timing-critical cues
+              interrupt and announce immediately; "polite" on the instruction
+              text (fuller sentences, fine to queue rather than cut in). */}
+          <div className="breath-phase" id="breathPhase" aria-live="assertive">&mdash;</div>
+          <div className="breath-count" id="breathCount" aria-live="assertive">&mdash;</div>
+          <div className="breath-instruction" id="breathInstruction" aria-live="polite"></div>
           <div className="breath-cycle-info" id="breathCycleInfo"></div>
           <div className="breath-orb-wrap" id="breathOrbWrap">
             <div className="breath-orb-glow" id="breathOrbGlow"></div>
@@ -47,12 +54,12 @@ export default function BreathworkOverlay() {
       </div>
 
       {/* Breathwork picker modal */}
-      <div className="modal-blur-overlay" id="breathworkModal">
+      <div className="modal-blur-overlay" id="breathworkModal" role="dialog" aria-modal="true" aria-labelledby="breathworkModalTitle">
         <div className="modal-blur-backdrop" onClick={() => window.closeBreathworkModal()}></div>
         <div className="modal-blur-panel">
           <div className="modal-blur-header">
-            <div className="modal-blur-title">{'🟧'} Breathwork</div>
-            <button className="modal-blur-close" onClick={() => window.closeBreathworkModal()}>&#10005;</button>
+            <div className="modal-blur-title" id="breathworkModalTitle">{'🟧'} Breathwork</div>
+            <button className="modal-blur-close" onClick={() => window.closeBreathworkModal()} aria-label="Close">&#10005;</button>
           </div>
           <div className="modal-blur-body">
             {/* R3 stage 1: copy matches the new preselect-and-go behavior --
@@ -63,6 +70,7 @@ export default function BreathworkOverlay() {
             <select
               className="breathwork-select"
               id="breathSelect"
+              aria-label="Breathing technique"
               onChange={() => window.showBreathDesc()}
               style={{ marginBottom: 12 }}
             >

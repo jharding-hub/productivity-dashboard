@@ -6673,11 +6673,16 @@ function _renderHalt(){
   if(trend)html+='<div class="halt-trend">'+esc(trend)+'</div>';
   HALT_ITEMS.forEach(function(item){
     var isChecked=!!_haltChecked[item.key];
-    html+='<div class="halt-item"><div class="halt-item-header" onclick="haltToggle(\''+item.key+'\')">'
-      +'<div class="halt-item-icon">'+item.icon+'</div>'
+    // R9/F16: was a plain onclick div -- no way for a keyboard/VoiceOver user
+    // to tell this is interactive, expandable, or currently open. role/
+    // tabindex/aria-expanded make it a real accordion trigger; aria-expanded
+    // starts false since HALT+ always opens fully collapsed, and haltToggle()
+    // keeps it in sync (this function isn't re-run on toggle, only on check).
+    html+='<div class="halt-item"><div class="halt-item-header" role="button" tabindex="0" aria-expanded="false" aria-controls="halt-body-'+item.key+'" onclick="haltToggle(\''+item.key+'\')" onkeydown="_haltHeaderKeydown(event,\''+item.key+'\')">'
+      +'<div class="halt-item-icon" aria-hidden="true">'+item.icon+'</div>'
       +'<div class="halt-item-label">'+item.label+'</div>'
       +'<span class="halt-item-letter">'+item.letter+'</span>'
-      +'<div class="halt-item-check'+(isChecked?' checked':'')+'">'+( isChecked?'&#10003;':'')+'</div>'
+      +'<div class="halt-item-check'+(isChecked?' checked':'')+'" aria-hidden="true">'+( isChecked?'&#10003;':'')+'</div>'
       +'</div>'
       +'<div class="halt-item-body" id="halt-body-'+item.key+'">'
       +'<div class="halt-item-question">'+item.question+'</div>'
@@ -6692,7 +6697,18 @@ function _renderHalt(){
   body.innerHTML=html;
   _updateHaltSummary();
 }
-function haltToggle(key){var bd=document.getElementById('halt-body-'+key);if(bd)bd.classList.toggle('open');}
+function haltToggle(key){
+  var bd=document.getElementById('halt-body-'+key);
+  if(!bd)return;
+  var nowOpen=bd.classList.toggle('open');
+  var hdr=bd.previousElementSibling;
+  if(hdr&&hdr.classList.contains('halt-item-header'))hdr.setAttribute('aria-expanded',nowOpen?'true':'false');
+}
+// Enter/Space activate the header same as a click; Space is prevented from
+// also scrolling the page (the default behavior for a focused non-button div).
+function _haltHeaderKeydown(e,key){
+  if(e.key==='Enter'||e.key===' '){e.preventDefault();haltToggle(key);}
+}
 function haltCheck(e,key){e.stopPropagation();_haltChecked[key]=!_haltChecked[key];_renderHalt();var bd=document.getElementById('halt-body-'+key);if(bd)bd.classList.add('open');_updateHaltSummary();}
 function _updateHaltSummary(){
   var checked=Object.keys(_haltChecked).filter(function(k){return _haltChecked[k];}).length;
@@ -6878,15 +6894,15 @@ function _renderUrge(){
     html+='<div class="urge-intro">Notice an urge to act on impulse? Log it, then put a deliberate pause between the urge and the action. Most urges fade within minutes.</div>';
     html+='<div class="urge-type-grid">';
     URGE_TYPES.forEach(function(t){
-      html+='<button class="urge-type-btn'+(_urgeType===t.key?' selected':'')+'" onclick="urgeSelectType(\''+t.key+'\')">'
-        +'<span class="urge-type-icon">'+t.icon+'</span><span>'+t.label+'</span></button>';
+      html+='<button class="urge-type-btn'+(_urgeType===t.key?' selected':'')+'" aria-pressed="'+(_urgeType===t.key?'true':'false')+'" onclick="urgeSelectType(\''+t.key+'\')">'
+        +'<span class="urge-type-icon" aria-hidden="true">'+t.icon+'</span><span>'+t.label+'</span></button>';
     });
     html+='</div>';
     if(_urgeType==='other'){
-      html+='<input type="text" id="urgeNoteInput" class="urge-note-input" placeholder="What’s the urge? (optional)" value="'+esc(_urgeNote)+'">';
+      html+='<input type="text" id="urgeNoteInput" class="urge-note-input" aria-label="What’s the urge (optional)" placeholder="What’s the urge? (optional)" value="'+esc(_urgeNote)+'">';
     }
-    html+='<div class="urge-delay-label">Choose a delay:</div>';
-    html+='<div class="urge-delay-grid">';
+    html+='<div class="urge-delay-label" id="urgeDelayLabel">Choose a delay:</div>';
+    html+='<div class="urge-delay-grid" role="group" aria-labelledby="urgeDelayLabel">';
     URGE_DELAYS.forEach(function(mins){
       html+='<button class="urge-delay-btn"'+(_urgeType?'':' disabled')+' onclick="urgeStartDelay('+mins+')">'+mins+' min</button>';
     });
@@ -8574,6 +8590,9 @@ function _renderPinDots(containerId,count){
   var html='';
   for(var i=0;i<slots;i++){html+='<span class="pin-dot'+(i<count?' filled':'')+'"></span>';}
   c.innerHTML=html;
+  // R9: text equivalent of the dot fill-state for screen readers.
+  var status=document.getElementById(containerId+'Status');
+  if(status)status.textContent=count+' of '+slots+' digits entered';
 }
 
 function renderJournalEntries(){

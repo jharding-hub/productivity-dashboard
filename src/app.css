@@ -1,6 +1,11 @@
 :root{--bg:#1a1917;--surface:#242320;--surface-raised:#2e2d29;--surface-hover:#38362f;--border:#3d3b33;--border-focus:#6b6554;--text:#e8e2d6;--text-dim:#a09882;--text-faint:#6b6554;--accent:#d4a853;--accent-dim:#b08a3a;--accent-glow:rgba(212,168,83,0.15);--red:#c75f5f;--red-dim:rgba(199,95,95,0.15);--green:#6bab73;--green-dim:rgba(107,171,115,0.15);--blue:#5f8fc7;--blue-dim:rgba(95,143,199,0.15);--purple:#9b7ec7;--purple-dim:rgba(155,126,199,0.15);--orange:#c7925f;--orange-dim:rgba(199,146,95,0.15);--teal:#5fafb0;--teal-dim:rgba(95,175,176,0.15);--radius:10px;--radius-sm:6px;}
 
 
+/* R9: visually-hidden but screen-reader-readable content (PIN-dot progress
+   status, etc.) -- standard clip-based sr-only pattern, not display:none
+   (which VoiceOver also skips). */
+.sr-only{position:absolute;width:1px;height:1px;padding:0;margin:-1px;overflow:hidden;clip:rect(0,0,0,0);white-space:nowrap;border:0;}
+
 /* ═══ THEME CSS ═══ */
 body[data-theme="light"]{--bg:#f6f4f0;--surface:#ffffff;--surface-raised:#f0ede6;--surface-hover:#e8e4dc;--border:#d8d4ca;--border-focus:#b0aa9a;--text:#2a2822;--text-dim:#6a6558;--text-faint:#9a9488;--accent:#b08830;--accent-dim:#8a6a20;--accent-glow:rgba(176,136,48,0.12);}
 body[data-theme="light"] .header-center-title{color:#2a2822;text-shadow:0 1px 3px rgba(255,255,255,0.6);}

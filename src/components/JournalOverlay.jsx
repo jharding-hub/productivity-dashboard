@@ -2,29 +2,18 @@ function NumpadGrid({ handler }) {
   return (
     <div className="journal-numpad">
       {['1','2','3','4','5','6','7','8','9'].map(k => (
-        <button key={k} className="np-btn" onClick={() => window[handler](k)}>{k}</button>
+        <button key={k} className="np-btn" onClick={() => window[handler](k)} aria-label={k}>{k}</button>
       ))}
-      <button className="np-btn np-clear" onClick={() => window[handler]('C')}>C</button>
-      <button className="np-btn" onClick={() => window[handler]('0')}>0</button>
-      <button className="np-btn np-del" onClick={() => window[handler]('DEL')}>&#9003;</button>
+      <button className="np-btn np-clear" onClick={() => window[handler]('C')} aria-label="Clear">C</button>
+      <button className="np-btn" onClick={() => window[handler]('0')} aria-label="0">0</button>
+      <button className="np-btn np-del" onClick={() => window[handler]('DEL')} aria-label="Delete">&#9003;</button>
     </div>
-  );
-}
-
-function PinDots({ prefix }) {
-  return (
-    <>
-      <span className="pin-dot" id={`${prefix}0`}></span>
-      <span className="pin-dot" id={`${prefix}1`}></span>
-      <span className="pin-dot" id={`${prefix}2`}></span>
-      <span className="pin-dot" id={`${prefix}3`}></span>
-    </>
   );
 }
 
 export default function JournalOverlay() {
   return (
-    <div className="journal-overlay" id="journalOverlay">
+    <div className="journal-overlay" id="journalOverlay" role="dialog" aria-modal="true" aria-label="Journal">
       <div className="journal-backdrop" id="journalBackdrop" onClick={() => window.closeJournal()}></div>
       <div className="journal-panel" id="journalPanel">
 
@@ -33,9 +22,13 @@ export default function JournalOverlay() {
           <div className="journal-pin-icon">{'🔒'}</div>
           <div className="journal-pin-title">Journal is locked</div>
           <p className="journal-pin-sub">Enter your PIN to open your journal</p>
-          <div className="journal-pin-dots" id="journalPinDots">
-            <PinDots prefix="pd" />
-          </div>
+          <div className="journal-pin-dots" id="journalPinDots"></div>
+          {/* F16/R9: the dots _renderPinDots() fills journalPinDots with are
+              purely visual fill-state -- nothing there for a screen reader to
+              read. This sibling live region announces the same "N of 4"
+              progress in text; kept outside journalPinDots since that div's
+              innerHTML is fully replaced on every keypress. */}
+          <span className="sr-only" id="journalPinDotsStatus" aria-live="polite"></span>
           <div className="journal-pin-error" id="journalPinError"></div>
           <NumpadGrid handler="journalPinKey" />
           <div style={{ display: 'flex', gap: 8, justifyContent: 'center', marginTop: 8 }}>
@@ -52,9 +45,8 @@ export default function JournalOverlay() {
           <p className="journal-pin-warn" style={{ fontSize: 11, color: 'var(--red, #e53935)', maxWidth: 320, margin: '0 auto 6px', lineHeight: 1.5 }}>
             {'⚠️'} Your entries are encrypted with this PIN. If you forget it, they can’t be recovered — there’s no reset. Export your journal from the entries view to keep a backup.
           </p>
-          <div className="journal-pin-dots" id="setPinDots">
-            <PinDots prefix="spd" />
-          </div>
+          <div className="journal-pin-dots" id="setPinDots"></div>
+          <span className="sr-only" id="setPinDotsStatus" aria-live="polite"></span>
           <div className="journal-pin-error" id="setPinError"></div>
           <NumpadGrid handler="setPinKey" />
           <div style={{ display: 'flex', gap: 8, justifyContent: 'center', marginTop: 8 }}>
@@ -73,7 +65,7 @@ export default function JournalOverlay() {
             </div>
             <div className="journal-header-right">
               <button className="journal-view-btn" id="journalViewToggle" onClick={() => window.toggleJournalView()} title="View past entries">{'📄'} Entries</button>
-              <button className="journal-close-btn" onClick={() => window.closeJournal()} title="Close">&#10005;</button>
+              <button className="journal-close-btn" onClick={() => window.closeJournal()} title="Close" aria-label="Close">&#10005;</button>
             </div>
           </div>
 
@@ -134,6 +126,7 @@ export default function JournalOverlay() {
                 className="journal-search"
                 id="journalSearch"
                 placeholder="Search entries..."
+                aria-label="Search journal entries"
                 onInput={() => window.renderJournalEntries()}
               />
               <select
