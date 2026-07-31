@@ -42,8 +42,11 @@ export default function JournalOverlay() {
           <div className="journal-pin-icon">{'🔑'}</div>
           <div className="journal-pin-title" id="setPinTitle">Create a PIN</div>
           <p className="journal-pin-sub" id="setPinSub">Choose a 4+ digit PIN to protect your journal.</p>
-          <p className="journal-pin-warn" style={{ fontSize: 11, color: 'var(--red, #e53935)', maxWidth: 320, margin: '0 auto 6px', lineHeight: 1.5 }}>
-            {'⚠️'} Your entries are encrypted with this PIN. If you forget it, they can’t be recovered — there’s no reset. Export your journal from the entries view to keep a backup.
+          {/* R8 phase 1: reframed from a red "no reset" alarm block to one
+              calm line, per the design review's ask -- the fact still needs
+              to be said, it doesn't need to look like a warning label. */}
+          <p className="journal-pin-warn" style={{ fontSize: 11, color: 'var(--text-dim)', maxWidth: 320, margin: '0 auto 6px', lineHeight: 1.5 }}>
+            This PIN can’t be reset if you forget it. Export keeps a backup.
           </p>
           <div className="journal-pin-dots" id="setPinDots"></div>
           <span className="sr-only" id="setPinDotsStatus" aria-live="polite"></span>

@@ -8649,6 +8649,7 @@ var _setPinBuffer='';
 var _setPinStage=0; // 0=first entry, 1=confirm
 var _setPinFirst='';
 var _changingPin=false; // true while setting a replacement PIN (re-encrypt)
+var _journalNeedsFirstPin=false; // R8 phase 1: true when openJournal() skipped the PIN gate for a brand-new, empty journal -- Save prompts for a PIN instead of Open
 
 // ── Journal document I/O (own doc: users/{uid}/data/journal, mirrored to localStorage) ──
 function _journalStorageKey(){return 'cpJournal_'+(currentUser?currentUser.uid:'local');}
@@ -8737,7 +8738,7 @@ async function _journalRekey(newPin){
 // ── Open / close ──────────────────────────────────────────────────────
 async function openJournal(){
   _journalUnlocked=false;_journalKey=null;_journalPlain={};
-  _pinBuffer='';_setPinBuffer='';_setPinStage=0;_setPinFirst='';_changingPin=false;
+  _pinBuffer='';_setPinBuffer='';_setPinStage=0;_setPinFirst='';_changingPin=false;_journalNeedsFirstPin=false;
   document.getElementById('journalOverlay').classList.add('open');
   // R3 stage 4 (F11): journal is a full-screen surface too -- the FAB floated
   // over the PIN pad and the editor's character count. Same immersive rule.
@@ -8761,8 +8762,14 @@ async function openJournal(){
     _journalMode='create';
     _showSetPin('Create a PIN','Encrypt your '+state.journal.length+' existing '+(state.journal.length===1?'entry':'entries')+'. Choose a 4+ digit PIN.');
   }else{
+    // R8 phase 1 (write first, unlock easier): a genuinely brand-new journal
+    // -- no key, no legacy PIN, no legacy plaintext entries -- used to gate
+    // even OPENING behind a PIN screen before the user had written a word.
+    // Skip straight to the compose view instead; saveJournalEntry() prompts
+    // for a PIN at first SAVE, once there's actually something to protect.
     _journalMode='create';
-    _showSetPin('Create a PIN','Protect your journal with a 4+ digit PIN.');
+    _journalNeedsFirstPin=true;
+    _enterUnlocked();
   }
 }
 
@@ -8771,7 +8778,7 @@ function closeJournal(){
   document.body.classList.remove('cp-immersive');
   _unblurDashboard();
   _journalUnlocked=false;_journalKey=null;_journalPlain={};
-  _pinBuffer='';_setPinBuffer='';_setPinStage=0;_setPinFirst='';_changingPin=false;
+  _pinBuffer='';_setPinBuffer='';_setPinStage=0;_setPinFirst='';_changingPin=false;_journalNeedsFirstPin=false;
 }
 
 // ── View switching (only reachable once unlocked) ─────────────────────
@@ -8822,9 +8829,20 @@ function _populateJournalProjDropdowns(){
 }
 
 async function saveJournalEntry(){
-  if(!_journalKey){if(typeof toast==='function')toast('Unlock the journal first');return;}
   const text=document.getElementById('journalText').value.trim();
   if(!text){toast('Write something first');return;}
+  if(!_journalKey){
+    if(_journalNeedsFirstPin){
+      // R8 phase 1: this is the deferred first-PIN prompt, not a re-lock --
+      // journalMain/journalText never unmount (just display:none), so the
+      // text/project/mood the user already entered survives the switch to
+      // journalSetPin and setPinSubmit() re-calls this function once a real
+      // key exists, finishing the save with the exact same fields.
+      _showSetPin('Create a PIN to save','Encrypt and save this entry with a 4+ digit PIN.');
+      return;
+    }
+    toast('Unlock the journal first');return;
+  }
   const projId=document.getElementById('journalProjTag').value;
   const mood=document.getElementById('journalMoodTag').value;
   const proj=projId?state.projects.find(p=>p.id===projId):null;
@@ -8962,11 +8980,18 @@ async function setPinSubmit(){
   }
   const pin=_setPinFirst;
   _setPinBuffer='';_setPinStage=0;_setPinFirst='';
+  const _wasFirstEntryPin=_journalNeedsFirstPin;
   try{
     if(_changingPin){_changingPin=false;err.textContent='Re-encrypting…';await _journalRekey(pin);}
     else{err.textContent='Encrypting…';await _journalSetupAndMigrate(pin);}
   }catch(e){console.log('journal set-pin error:',e);err.textContent='Something went wrong. Try again.';return;}
   _enterUnlocked();
+  // R8 phase 1: this PIN was created to satisfy a deferred first-entry save
+  // (openJournal() skipped the gate) -- finish that save now that a real key
+  // exists. saveJournalEntry() re-reads the still-populated textarea/tag
+  // fields itself, so this is just re-invoking the same call the user
+  // originally made.
+  if(_wasFirstEntryPin){_journalNeedsFirstPin=false;await saveJournalEntry();}
 }
 
 function changeJournalPin(){
