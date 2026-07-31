@@ -769,7 +769,11 @@ body[data-theme="storm-dark"] .day-progress-elapsed{
   /* Row 1: progress bar takes full width, no title overlay on top */
   .header > .header-center{
     order:1 !important;
-    flex:1 1 100% !important;
+    /* flex-shrink 0: the timeline bar must OWN row 1. At `1 1 100%` it was
+       shrinkable, so once the presence badge was ordered after it the badge
+       got pulled up onto the bar's own line and overflowed the viewport
+       instead of wrapping below it. */
+    flex:0 0 100% !important;
     width:100% !important;
     padding:0 !important;
     margin:0 !important;
@@ -798,9 +802,29 @@ body[data-theme="storm-dark"] .day-progress-elapsed{
   }
   /* Row 2: timer on the right. The Presence badge no longer lives in the
      header (moved into the Tool Kit panel), so this row is just the timer. */
-  .header > .header-right{
+  /* The presence badge sits on row 2, to the LEFT of the Today/Everything
+     switch -- below the timeline bar, not above it. Its slot has no `order`
+     of its own in the DOM, so it defaulted to order:0 and jumped ahead of
+     the bar; giving it an explicit order puts it back in sequence. flex:1
+     lets it fill the space between the screen edge and the switch, and
+     .points-wrap (already justify-content:center) centres it in there. */
+  .header > #points-focus-music-root{
     order:2 !important;
+    /* flex-basis must be `auto` (content-sized), NOT 0. With basis 0 the slot
+       always "fits" in the zero space left after the full-width timeline bar,
+       so it never wraps -- it stayed on row 1 collapsed to width:0 and the
+       badge spilled out of its own parent, half off the right edge. At auto
+       the basis is the badge's real width, which doesn't fit, so it wraps to
+       row 2 and then grows to fill the space beside the Today/Everything
+       switch. */
     flex:1 1 auto !important;
+    display:flex !important;
+    align-items:center !important;
+    justify-content:center !important;
+  }
+  .header > .header-right{
+    order:3 !important;
+    flex:0 1 auto !important;
     display:flex !important;
     flex-direction:row !important;
     align-items:center !important;
@@ -1361,7 +1385,13 @@ body.unlocked .date-editable{border-bottom-color:var(--border);}
 .points-badge.tier-diamond:hover{color:#b9f2ff;}
 .points-badge.tier-mythic:hover{color:#ff9ec0;}
 
-.points-popup{position:absolute;top:calc(100% + 8px);left:50%;transform:translateX(-50%);background:var(--surface);border:1px solid var(--border);border-radius:var(--radius);padding:14px 16px;min-width:240px;box-shadow:0 8px 24px rgba(0,0,0,0.4);z-index:100;font-size:13px;}
+/* Opens DOWN and to the RIGHT from the badge's left edge. It used to be
+   centred on the badge (left:50% + translateX(-50%)), which pushed a 240px
+   popup off the left edge of the screen and clipped it -- on desktop too,
+   not just mobile: a badge at x=24 put the popup's left edge at -14px.
+   Anchoring at left:0 means it can only ever grow rightward into open
+   space, and the max-width keeps it inside the viewport on a narrow phone. */
+.points-popup{position:absolute;top:calc(100% + 8px);left:0;right:auto;transform:none;background:var(--surface);border:1px solid var(--border);border-radius:var(--radius);padding:14px 16px;min-width:240px;max-width:calc(100vw - 24px);box-shadow:0 8px 24px rgba(0,0,0,0.4);z-index:100;font-size:13px;}
 .points-popup-section{padding:6px 0;border-bottom:1px solid var(--border);}
 .points-popup-section:last-child{border-bottom:none;}
 .points-popup-row{display:flex;justify-content:space-between;align-items:center;margin:3px 0;}
@@ -1421,7 +1451,10 @@ body.unlocked .date-editable{border-bottom-color:var(--border);}
 @media(max-width:768px),(orientation:landscape) and (max-height:600px){
   .points-badge{padding:4px 8px;font-size:12px;}
   .points-tier-icon{font-size:14px;}
-  .points-popup{right:8px;}
+  /* Was `right:8px` while the base rule still set left:50% + a centring
+     transform -- the two fought each other and helped clip the popup. The
+     base rule now anchors left:0 and opens rightward, which is correct on
+     mobile too, so this override is gone. */
 }
 .task-timer-display{font-size:18px;font-weight:700;font-variant-numeric:tabular-nums;color:var(--text);width:90px;min-width:90px;text-align:center;display:inline-block;flex-shrink:0;font-family:'Courier New',monospace;letter-spacing:0.5px;}
 .task-timer-display.running{color:var(--green);}
