@@ -7470,20 +7470,58 @@ var TIER_THRESHOLDS=[
   {name:'mythic',label:'Mythic',icon:'⭐',min:1500,max:Infinity,color:'#ff9ec0'}
 ];
 
+// Rebalanced (F24 follow-up). The old table let productivity drown
+// regulation by roughly 8:1 -- the review's high-utilizer persona did the
+// arithmetic: a day of resisting an urge, breathing and journaling scored 19,
+// while mechanically closing 30 stale tasks scored 150. With the medal having
+// sat on the grounding surface, the app was structurally saying "grinding
+// beats regulating" on the exact screen meant for regulating.
+//
+// The imbalance is a VOLUME problem, not a value problem: you close 30 tasks
+// in a day, you do not do 30 breathwork sessions. So this fixes it from both
+// ends -- regulation actions (inherently once-or-twice-a-day) are worth more
+// each, productivity outliers are trimmed, and DAILY_AWARD_CAPS below stops
+// high-volume actions from farming an unbounded total.
 var POINT_VALUES={
   daily_login:1,
-  routine:1,
-  breathwork:2,
+  routine:2,
   timer:3,
-  urge:4,
-  subtask:3,
-  mood_energy:3,
-  wellness_note:4,
-  journal:5,
-  task:5,
-  recovery:8,
-  workout:15,
-  project:25
+  subtask:2,
+  task:4,
+  mood_energy:4,
+  breathwork:5,
+  urge:6,
+  wellness_note:6,
+  journal:8,
+  recovery:10,
+  workout:12,
+  project:15
+};
+
+// Max times each source can award points per local day. Absent = uncapped.
+//
+// urge:1 is the fix for the "urge inversion" the Skeptic persona identified:
+// scoring every logged urge meant the score rose with urge FREQUENCY, so a
+// week of white-knuckling read back as "doing great" at precisely the moment
+// the underlying signal was deterioration. Capping at one award per day means
+// the tool still records every urge (the log is unchanged and still complete
+// -- only the POINTS stop), while a bad day can no longer inflate the score.
+//
+// NOTE the other half of that critique does not apply to this codebase:
+// urgeOutcome() already awards identically for 'passed' and 'acted', with the
+// toast "no judgment, the pause still counted" -- relapse was never scored as
+// zero, so there was no stalled-number-as-verdict to fix.
+var DAILY_AWARD_CAPS={
+  urge:1,
+  recovery:1,
+  breathwork:2,
+  journal:2,
+  mood_energy:2,
+  wellness_note:2,
+  routine:4,
+  timer:4,
+  task:10,
+  subtask:10
 };
 
 // R8: runs the quick-add text through parseQuickAdd and decides what to
@@ -7892,12 +7930,38 @@ function awardDailyLogin(){
   }
 }
 
+// Claim one daily award slot for `source`. Returns false when the cap is
+// already spent, in which case addPoints awards nothing -- silently. The
+// caller's own logging/toast/UI is untouched: a capped urge is still fully
+// recorded by _logCheckIn and still gets its warm confirmation, it just
+// doesn't move the number. Never surface "you've hit the cap" -- that would
+// reintroduce exactly the judgment this is meant to remove.
+function _claimDailyAward(source){
+  var cap=DAILY_AWARD_CAPS[source];
+  if(cap===undefined)return true;
+  if(!state.points.awardsByDay)state.points.awardsByDay={};
+  var byDay=state.points.awardsByDay;
+  // Keep only the last few days -- this rides the synced dashboard blob.
+  var days=Object.keys(byDay);
+  if(days.length>3){
+    days.sort();
+    days.slice(0,days.length-3).forEach(function(k){delete byDay[k];});
+  }
+  var day=_dayKey();
+  var today=byDay[day]||(byDay[day]={});
+  var used=today[source]||0;
+  if(used>=cap)return false;
+  today[source]=used+1;
+  return true;
+}
+
 function addPoints(source,sourceEl){
   if(!state.points)state.points={current:0,monthKey:_monthKey(),lastTier:'bronze',totalsByDay:{},lastLoginDate:'',lifetimeTotal:0};
   checkMonthReset();
   var amount=POINT_VALUES[source]||0;
   if(amount<=0)return;
-  
+  if(!_claimDailyAward(source))return;
+
   var prevTier=getCurrentTier(state.points.current);
   state.points.current+=amount;
   var newTier=getCurrentTier(state.points.current);
