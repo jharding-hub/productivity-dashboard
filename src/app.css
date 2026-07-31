@@ -1789,7 +1789,15 @@ body.unlocked .date-editable{border-bottom-color:var(--border);}
 .breathwork-desc{font-size:11px;color:var(--text-dim);margin-bottom:10px;line-height:1.5;}
 .breathwork-start{width:100%;padding:10px;font-size:13px;font-weight:600;background:var(--teal-dim);border:1px solid var(--teal);color:var(--teal);border-radius:var(--radius-sm);cursor:pointer;font-family:inherit;transition:all 0.15s;}
 .breathwork-start:hover{background:var(--teal);color:var(--bg);}
-.breath-overlay{position:fixed;inset:0;z-index:500;visibility:hidden;opacity:0;display:flex;align-items:center;justify-content:center;flex-direction:column;transition:opacity 0.8s ease,visibility 0.8s ease;pointer-events:none;}
+/* z-1050 for the same reason as .journal-overlay above (see that comment):
+   the Tool Kit lives inside .panel-overlay (1000) on desktop, so at the old
+   z-500 a running breathing session rendered underneath the panel that
+   started it -- worst on the crisis path R3 exists to protect. Stays below
+   .modal-blur-overlay (1100) so _confirm() dialogs remain reachable. The
+   body.cp-immersive rule that hides the capture FAB / Axis orb during a
+   session (F11) is still correct and still applies -- this only fixes the
+   panel-overlay stacking, it doesn't make those FABs acceptable overhead. */
+.breath-overlay{position:fixed;inset:0;z-index:1050;visibility:hidden;opacity:0;display:flex;align-items:center;justify-content:center;flex-direction:column;transition:opacity 0.8s ease,visibility 0.8s ease;pointer-events:none;}
 .breath-overlay.active{visibility:visible;opacity:1;pointer-events:auto;}
 .breath-backdrop{position:absolute;inset:0;background:rgba(26,25,23,0.88);backdrop-filter:blur(16px);-webkit-backdrop-filter:blur(16px);transition:opacity 0.8s ease;}
 .breath-content{position:relative;z-index:1;text-align:center;padding:30px 20px;width:80vw;max-width:800px;}
@@ -2657,7 +2665,15 @@ body[data-theme="storm-dark"] .tl-hour-label{
 .journal-btn:hover{background:var(--accent);color:var(--bg);}
 
 /* ── JOURNAL OVERLAY ── */
-.journal-overlay{position:fixed;inset:0;z-index:800;display:flex;align-items:center;justify-content:center;visibility:hidden;opacity:0;transition:opacity 0.3s ease,visibility 0.3s ease;}
+/* z-1050 is deliberately between .panel-overlay (1000) and .modal-blur-overlay
+   (1100), and both bounds are load-bearing:
+   ABOVE 1000 -- on desktop the Tool Kit opens INSIDE .panel-overlay, so at the
+   old z-800 the journal (PIN gate included) rendered UNDERNEATH the Tool Kit
+   that launched it. Not reproducible on native, which uses showMobilePanel()
+   and never wraps the panel in .panel-overlay at all.
+   BELOW 1100 -- _confirm() dialogs are .modal-blur-overlay, and the journal
+   raises them (Change PIN, delete entry); they must stay on top of it. */
+.journal-overlay{position:fixed;inset:0;z-index:1050;display:flex;align-items:center;justify-content:center;visibility:hidden;opacity:0;transition:opacity 0.3s ease,visibility 0.3s ease;}
 .journal-overlay.open{visibility:visible;opacity:1;}
 .journal-backdrop{position:absolute;inset:0;background:rgba(10,9,8,0.55);backdrop-filter:blur(6px);-webkit-backdrop-filter:blur(6px);}
 .journal-panel{position:relative;z-index:1;background:var(--surface);border:1px solid var(--border);border-radius:var(--radius);width:min(860px,92vw);height:85vh;max-height:88vh;display:flex;flex-direction:column;overflow:hidden;box-shadow:0 24px 60px rgba(0,0,0,0.6);animation:journalSlideIn 0.3s cubic-bezier(0.22,1,0.36,1) both;}
