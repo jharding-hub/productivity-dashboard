@@ -9,7 +9,7 @@ export default function QuickCaptureModal() {
           still has zero tasks/notes/projects/reminders. Dismissible, and
           tapping the FAB itself counts as dismissal too (openQuickCapture). */}
       <div className="fab-hint" id="fabHint" style={{ display: 'none' }}>
-        <span>Tap here to capture your first task or thought</span>
+        <span>Tap to capture your first task or thought</span>
         <button className="fab-hint-close" onClick={() => window.dismissFabHint()} aria-label="Dismiss hint">&#10005;</button>
       </div>
       <div className="modal-blur-overlay" id="quickCaptureModal" role="dialog" aria-modal="true" aria-label="Quick Capture">

@@ -3648,7 +3648,7 @@ function renderNotes(){
     // R13/F23: was message-only, no next step -- same gap as Tasks/Timeline,
     // Projects already had the message+button pattern this now matches.
     el.innerHTML=state.notes.length===0
-      ?'<div class="empty-state"><p style="margin:0 0 8px;color:var(--text-dim);">No notes yet. Add your first one below.</p><button class="btn btn-accent btn-sm" onclick="document.getElementById(\'newNoteLabel\').focus()" style="margin:0 auto;display:block;">+ Add your first note</button></div>'
+      ?'<div class="empty-state"><p style="margin:0 0 8px;color:var(--text-dim);">No notes yet.</p><button class="btn btn-accent btn-sm" onclick="document.getElementById(\'newNoteLabel\').focus()" style="margin:0 auto;display:block;">+ Add your first note</button></div>'
       :'<div class="empty-state">No matching notes.</div>';
     document.getElementById('noteCount').textContent=state.notes.length;if(typeof _updateTileSummaryNotes==='function')_updateTileSummaryNotes();return;
   }
@@ -5519,7 +5519,7 @@ function renderTaskList(){
     // nothing-here case, which was never addressed.)
     var tlNothingFiltered=tlSearch||filt!=='all';
     el.innerHTML='<div class="empty-state"><p style="margin:0 0 8px;color:var(--text-dim);">'
-      +(tlNothingFiltered?'No matching tasks.':'No tasks yet. Add one below.')
+      +(tlNothingFiltered?'No matching tasks.':'No tasks yet.')
       +'</p>'
       +(tlNothingFiltered?'':'<button class="btn btn-accent btn-sm" onclick="document.getElementById(\'tlNewName\').focus()" style="margin:0 auto;display:block;">+ Add your first task</button>')
       +'</div>';
