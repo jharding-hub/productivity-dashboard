@@ -397,6 +397,7 @@ function _wipeLocalAccountData(uid){
   try{
     localStorage.removeItem('prodDash_'+uid);
     localStorage.removeItem('cpCompletedTasks_'+uid);
+    localStorage.removeItem('cpRemindersArchive_'+uid);
     localStorage.removeItem('cpNotifFired');
     localStorage.removeItem('devTierOverride');
     // Legacy pre-multi-account key. The migration that read it is gone, but a
@@ -677,7 +678,7 @@ try {
 
 // ── SCRIPT 3: APP LOGIC ─────────────────────────────────────────
 // STATE
-var state={projects:[],reminders:[],thoughts:[],notes:[],moodLog:[],tasks:[],completedTasks:[],completedTasksLifetime:undefined,completedProjectSubtasksLifetime:undefined,journal:[],journalPin:'',workoutLog:{},completedWorkouts:[],focusPlaylistId:null,points:{current:0,monthKey:'',lastTier:'bronze',totalsByDay:{},lastLoginDate:'',lifetimeTotal:0,monthlyTotals:{}},panelUseLog:{},usageMonthlyTotals:{},routines:{morning:[{id:'m1',name:'Hydrate \u2014 glass of water',done:false},{id:'m2',name:"Review today's calendar",done:false},{id:'m3',name:'Pick top 3 priorities',done:false},{id:'m4',name:'Quick workspace tidy',done:false}],evening:[{id:'e1',name:'Review what got done today',done:false},{id:'e2',name:"Brain dump tomorrow's thoughts",done:false},{id:'e3',name:"Set out tomorrow's essentials",done:false},{id:'e4',name:'Wind-down activity',done:false}],custom:[]},currentRoutineTab:'morning',energy:null,mood:null,panelOrder:['projects','reminders','time','tasklist','notes','brain','routines','wellness','decision','admin'],panelsLocked:true,lastRoutineReset:null,visiblePanels:{},knownPanels:[]};
+var state={projects:[],reminders:[],thoughts:[],notes:[],moodLog:[],tasks:[],completedTasks:[],completedTasksLifetime:undefined,completedProjectSubtasksLifetime:undefined,remindersArchive:[],remindersArchiveLifetime:undefined,journal:[],journalPin:'',workoutLog:{},completedWorkouts:[],focusPlaylistId:null,points:{current:0,monthKey:'',lastTier:'bronze',totalsByDay:{},lastLoginDate:'',lifetimeTotal:0,monthlyTotals:{}},panelUseLog:{},usageMonthlyTotals:{},routines:{morning:[{id:'m1',name:'Hydrate \u2014 glass of water',done:false},{id:'m2',name:"Review today's calendar",done:false},{id:'m3',name:'Pick top 3 priorities',done:false},{id:'m4',name:'Quick workspace tidy',done:false}],evening:[{id:'e1',name:'Review what got done today',done:false},{id:'e2',name:"Brain dump tomorrow's thoughts",done:false},{id:'e3',name:"Set out tomorrow's essentials",done:false},{id:'e4',name:'Wind-down activity',done:false}],custom:[]},currentRoutineTab:'morning',energy:null,mood:null,panelOrder:['projects','reminders','time','tasklist','notes','brain','routines','wellness','decision','admin'],panelsLocked:true,lastRoutineReset:null,visiblePanels:{},knownPanels:[]};
 
 // SYNC STATUS
 function setSyncStatus(status,label){const el=document.getElementById('syncStatus');if(!el)return;el.className='sync-status '+status;var icon={synced:'✓',syncing:'↻',error:'⚠',offline:'•'}[status]||'•';el.innerHTML='<span class="sync-icon">'+icon+'</span> '+label;}
@@ -741,7 +742,7 @@ function save(){
   // (_saveCheckinsDoc/_saveMoodLogDoc) -- excluded here so they stop riding
   // along in every dashboard-doc write. JSON.stringify drops keys whose
   // value is undefined, so this omits them without deep-cloning the rest.
-  const blob=JSON.stringify(Object.assign({},state,{checkins:undefined,moodLog:undefined,completedTasks:undefined,completedTasksLifetime:undefined,completedProjectSubtasksLifetime:undefined}));
+  const blob=JSON.stringify(Object.assign({},state,{checkins:undefined,moodLog:undefined,completedTasks:undefined,completedTasksLifetime:undefined,completedProjectSubtasksLifetime:undefined,remindersArchive:undefined,remindersArchiveLifetime:undefined}));
   try{localStorage.setItem('prodDash_'+uid,blob);}catch(e){}
   _checkStateSize(blob.length);
   if(typeof pushWatchSnapshot==='function')pushWatchSnapshot(); // mirror to Apple Watch
@@ -860,7 +861,7 @@ async function load(){
         // Push to new location. R5: exclude checkins/moodLog, same as save() --
         // they're adopted into their own docs by _loadCheckinsDoc/_loadMoodLogDoc
         // right after load() returns.
-        await db.collection('users').doc(currentUser.uid).collection('data').doc('dashboard').set({state:JSON.stringify(Object.assign({},state,{checkins:undefined,moodLog:undefined,completedTasks:undefined,completedTasksLifetime:undefined,completedProjectSubtasksLifetime:undefined})),updated:firebase.firestore.FieldValue.serverTimestamp()});
+        await db.collection('users').doc(currentUser.uid).collection('data').doc('dashboard').set({state:JSON.stringify(Object.assign({},state,{checkins:undefined,moodLog:undefined,completedTasks:undefined,completedTasksLifetime:undefined,completedProjectSubtasksLifetime:undefined,remindersArchive:undefined,remindersArchiveLifetime:undefined})),updated:firebase.firestore.FieldValue.serverTimestamp()});
         setSyncStatus('synced','Synced');
       }
     }catch(e){console.log('Firestore load error:',e);setSyncStatus('error','Offline');}
@@ -917,6 +918,7 @@ async function load(){
   // week of consistency can be shown in the Weekly Review.
   if(!state.routineHistory)state.routineHistory=[];
   if(!state.completedTasks)state.completedTasks=[];
+  if(!state.remindersArchive)state.remindersArchive=[];
   if(!state.completedWorkouts)state.completedWorkouts=[];
   // E-2: one-time migrate -- lifetime count seeded from the uncapped array
   if(state.workoutLifetimeCount===undefined)state.workoutLifetimeCount=state.completedWorkouts.length;
@@ -1007,6 +1009,9 @@ function startRealtimeSync(){
       delete cloud.completedTasks;
       delete cloud.completedTasksLifetime;
       delete cloud.completedProjectSubtasksLifetime;
+      // R7 archive: remindersArchive is an own-doc too (_loadRemindersArchiveDoc)
+      delete cloud.remindersArchive;
+      delete cloud.remindersArchiveLifetime;
       state={...state,...cloud};
       // Tombstone-aware reconciliation (mirrors load()): a stale snapshot must
       // not resurrect a locally-deleted/completed item, and concurrent adds on
@@ -6629,6 +6634,72 @@ async function _saveCompletedTasksDoc(){
 }
 
 // =======================================
+// R7 (Ship-3): REMINDERS ARCHIVE -- own doc, same recipe as completedTasks
+// above (own Firestore doc + localStorage mirror + load-time reconcile via
+// the pure sync-merge helpers + lifetime counter). Reminders previously had
+// only destructive exits (delete / clear-past both tombstone AND destroy the
+// record); at heavy-logger scale the array just grew forever. Archiving is
+// the completed-task lifecycle applied to reminders: tombstone the live id
+// (so reconcileSync drops it from the ACTIVE array everywhere -- 'reminders'
+// is in SYNC_ACTIVE_ARRAYS), move a record into this doc. The record reuses
+// the live id, which is exactly the completedTasks "survives its own
+// tombstone" pattern: this doc is filtered by _archiveTombstones ONLY.
+// Contract encoded in test/sync-merge.test.mjs ("R7 archive model" cases).
+// =======================================
+var REMINDERS_ARCHIVE_MAX=200;
+function _remindersArchiveStorageKey(){return 'cpRemindersArchive_'+(currentUser?currentUser.uid:'local');}
+// Move one live reminder into the archive. Pure state mutation -- callers
+// decide when to save()/persist/re-render (a sweep batches many of these).
+function _archiveReminder(r,reason){
+  if(!r||!r.id)return;
+  if(!state.remindersArchive)state.remindersArchive=[];
+  state.remindersArchive.unshift({id:r.id,text:r.text||'',date:r.date||'',time:r.time||'',archivedAt:new Date().toISOString(),reason:reason||'done'});
+  if(state.remindersArchive.length>REMINDERS_ARCHIVE_MAX)state.remindersArchive=state.remindersArchive.slice(0,REMINDERS_ARCHIVE_MAX);
+  state.remindersArchiveLifetime=(state.remindersArchiveLifetime||0)+1;
+  _tombstone(r.id);
+  state.reminders=state.reminders.filter(function(x){return x.id!==r.id;});
+}
+async function _loadRemindersArchiveDoc(){
+  var loaded=null;
+  if(firebaseReady&&db&&currentUser){
+    try{
+      var snap=await db.collection('users').doc(currentUser.uid).collection('data').doc('remindersArchive').get();
+      if(snap.exists)loaded=snap.data();
+    }catch(e){console.log('remindersArchive load (cloud) error:',e);}
+  }
+  if(!loaded){
+    try{var s=localStorage.getItem(_remindersArchiveStorageKey());if(s)loaded=JSON.parse(s);}catch(e){}
+  }
+  // Reconcile the archive array (union by id, drop user-cleared records),
+  // then the lifetime counter (max with the array length as floor -- same
+  // self-healing recipe as completedTasks, incl. the stale-SW fallback).
+  if(loaded&&Array.isArray(loaded.items)){
+    state.remindersArchive=_dropTombstoned(mergeById(state.remindersArchive,loaded.items),state._archiveTombstones||{});
+  }
+  var _rlc=(typeof reconcileLifetimeCounter==='function')
+    ?reconcileLifetimeCounter
+    :function(a,b,c){return Math.max(a||0,b||0,c||0);};
+  var _arr=state.remindersArchive||[];
+  state.remindersArchiveLifetime=_rlc(
+    state.remindersArchiveLifetime, loaded&&loaded.lifetime, _arr.length);
+  if((loaded&&Array.isArray(loaded.items))||_arr.length){
+    await _saveRemindersArchiveDoc();
+  }
+  try{localStorage.setItem(_remindersArchiveStorageKey(),JSON.stringify({v:1,items:state.remindersArchive||[],lifetime:state.remindersArchiveLifetime||0}));}catch(e){}
+}
+async function _saveRemindersArchiveDoc(){
+  if(_accountDeleted)return;
+  var doc={v:1,items:state.remindersArchive||[],lifetime:state.remindersArchiveLifetime||0};
+  try{localStorage.setItem(_remindersArchiveStorageKey(),JSON.stringify(doc));}catch(e){}
+  if(firebaseReady&&db&&currentUser){
+    try{
+      await db.collection('users').doc(currentUser.uid).collection('data').doc('remindersArchive')
+        .set({v:1,items:doc.items,lifetime:doc.lifetime,updated:firebase.firestore.FieldValue.serverTimestamp()});
+    }catch(e){console.log('remindersArchive save (cloud) error:',e);}
+  }
+}
+
+// =======================================
 // R14: INSIGHTS DATA EXPORT -- downloads check-ins, mood/energy, and daily
 // Presence totals as separate CSVs. Exports FULL history (not just the
 // currently selected week/month/lifetime tab), matching exportAllToICS's
@@ -11408,7 +11479,7 @@ await load();
 // which is lazy-loaded on open -- since HALT+/State-&-Regulation/mood chart
 // can render at any time). Must run after load() so pre-migration data
 // already merged into state.checkins/state.moodLog is available to adopt.
-await Promise.all([_loadCheckinsDoc(),_loadMoodLogDoc(),_loadCompletedTasksDoc()]);
+await Promise.all([_loadCheckinsDoc(),_loadMoodLogDoc(),_loadCompletedTasksDoc(),_loadRemindersArchiveDoc()]);
 initPanelVisibility();applyPanelOrder();applyPanelVisibility();applyPointsVisibility();updateLockUI();updateClock();updateTimeLeft();setInterval(updateClock,1000);setInterval(updateTimeLeft,30000);updateTimerDisplay();renderPointsBadge();awardDailyLogin();
 _bindPanelUsageTracking();
 // -- DAILY ROUTINE RESET -- robust against tabs left open overnight --

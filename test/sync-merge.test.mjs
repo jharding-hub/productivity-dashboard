@@ -261,3 +261,58 @@ test('mergeTombstones unions and keeps the earliest time', () => {
   assert.equal(m.a, '2026-07-17T12:00:00.000Z', 'earliest deletion time wins');
   assert.deepEqual(Object.keys(m).sort(), ['a','b','c']);
 });
+
+// ── R7 (Ship-3) archive model: REMINDERS ARCHIVE ────────────────────────────
+// Same own-doc recipe as completedTasks (see _loadRemindersArchiveDoc in
+// legacy.js): archiving tombstones the live id + moves a record into the
+// archive doc; the archive reconciles with mergeById + _archiveTombstones.
+// These cases encode the contract that load/save plumbing must uphold.
+
+test('archived reminder does not resurrect into active on a stale-client merge', () => {
+  // Device A archived r1 (tombstoned + moved to the archive doc). A stale
+  // device B write still holds r1 in its ACTIVE reminders array.
+  const local = { reminders: [rem('r2')], _tombstones: { r1: '2026-07-31T08:00:00.000Z' } };
+  const staleCloud = { reminders: [rem('r1'), rem('r2')], _tombstones: {} };
+  const out = reconcileSync(local, staleCloud);
+  assert.deepEqual(out.reminders.map(r => r.id), ['r2'], 'archived reminder stays out of active');
+  // ...while the archive doc keeps its record even though that same id is in
+  // the live-item tombstone map (records are filtered by _archiveTombstones
+  // only -- the completedTasks pattern).
+  const record = { id:'r1', text:'call dentist', archivedAt:'2026-07-31T08:00:00.000Z', reason:'done' };
+  const archive = _dropTombstoned(mergeById([record], []), {});
+  assert.equal(archive.length, 1, 'archive record survives its own live-item tombstone');
+});
+
+test('reminder archives from two devices union on load', () => {
+  const localA = [{ id:'r1', text:'a', archivedAt:'2026-07-31T08:00:00.000Z', reason:'done' }];
+  const cloudB = [{ id:'r2', text:'b', archivedAt:'2026-07-31T09:00:00.000Z', reason:'sweep' }];
+  const merged = _dropTombstoned(mergeById(localA, cloudB), {});
+  assert.deepEqual(merged.map(r => r.id).sort(), ['r1', 'r2'], 'both archives survive');
+});
+
+test('concurrent auto-sweeps of the same reminder converge to one record', () => {
+  // Both devices swept r1 on the same rollover, seconds apart: same id, so the
+  // union keeps ONE record, not a duplicate.
+  const devA = [{ id:'r1', text:'x', archivedAt:'2026-08-08T00:01:00.000Z', reason:'sweep' }];
+  const devB = [{ id:'r1', text:'x', archivedAt:'2026-08-08T00:02:00.000Z', reason:'sweep' }];
+  const merged = mergeById(devA, devB);
+  assert.equal(merged.length, 1, 'one archive record after concurrent sweeps');
+  // Active side: both devices tombstoned r1; earliest time wins, id stays gone.
+  const tomb = mergeTombstones({ r1:'2026-08-08T00:01:00.000Z' }, { r1:'2026-08-08T00:02:00.000Z' });
+  assert.equal(tomb.r1, '2026-08-08T00:01:00.000Z', 'earliest sweep time kept');
+  assert.deepEqual(_dropTombstoned([rem('r1')], tomb), [], 'r1 stays out of active');
+});
+
+test('a restored reminder lives under a fresh id and its old record stays cleared', () => {
+  // Restore MUST mint a fresh id: the old id is permanently in _tombstones
+  // (grow-only), so re-adding under it would be re-dropped by every future
+  // reconcile. Under a fresh id the restored copy survives.
+  const tomb = { r1: '2026-07-31T08:00:00.000Z' };
+  const active = _dropTombstoned(mergeById([rem('r1-restored')], [rem('r1-restored')]), tomb);
+  assert.deepEqual(active.map(r => r.id), ['r1-restored'], 'restored copy survives reconcile');
+  // The archive record itself was archive-tombstoned on restore, so it cannot
+  // come back from a stale archive doc either.
+  const archiveTomb = { r1: '2026-07-31T10:00:00.000Z' };
+  const staleArchive = _dropTombstoned(mergeById([], [{ id:'r1', text:'x' }]), archiveTomb);
+  assert.equal(staleArchive.length, 0, 'old archive record does not resurrect');
+});
