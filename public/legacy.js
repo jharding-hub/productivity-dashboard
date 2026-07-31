@@ -11926,6 +11926,7 @@ if(typeof _notifLoadFired==='function'){
     setInterval(_notifTick,45000);setTimeout(_notifTick,4000);
   }
 }
+
 document.addEventListener('visibilitychange',function(){
   if(!document.hidden){
     _dayRolloverTick();
@@ -14183,3 +14184,24 @@ setTimeout(function(){
   };
 })();
 
+
+// ── R9 pass 2: Dynamic Type ────────────────────────────────────────────
+// Native pushes the iOS text-size setting here (TypeScaleBridge → evalJS);
+// every font-size in app.css is calc(Npx * var(--type-scale,1)), so one
+// property move rescales all app text. Clamped defensively: 1 is the floor
+// (a dense 10-12px dashboard shrunk further is an accessibility LOSS, so
+// below-default iOS sizes map to default), 2 the ceiling (matches the
+// damped AX mapping on the native side -- see TypeScaleBridge.swift).
+// On web nothing ever calls this and the var stays 1: zero behavior change.
+window.__setTypeScale=function(v){
+  v=parseFloat(v);
+  if(!isFinite(v))return;
+  v=Math.max(1,Math.min(2,v));
+  document.documentElement.style.setProperty('--type-scale',String(v));
+};
+// Ask native for the current value on every boot -- the inline property does
+// not survive a page reload (SW update), so JS pulls rather than relying on
+// a push it might have missed. No-op on web (handler absent).
+if(_notifNative()){
+  try{_notifNative().postMessage({action:'requestTypeScale'});}catch(e){}
+}
