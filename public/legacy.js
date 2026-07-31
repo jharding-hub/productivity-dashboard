@@ -1149,7 +1149,11 @@ function openCustomize(){
   // breathwork/journal/guided-timer surfaces.
   document.body.classList.add('cp-immersive');
   var _cb=document.getElementById('custBuild');
-  if(_cb)_cb.textContent='Build '+APP_BUILD;
+  // R12 (F21): CENTERPOST_WEB_BUILD is the git short hash actually bundled
+  // into this build (stamped into config.js at build time, same value as
+  // sw.js's CACHE_VERSION) -- lets Joe tell from the app itself whether a
+  // native build is running a stale www/ resync, no separate check needed.
+  if(_cb)_cb.textContent='Build '+APP_BUILD+' · Web '+(typeof CENTERPOST_WEB_BUILD!=='undefined'?CENTERPOST_WEB_BUILD:'dev');
   _renderDevSwitcherInSettings();
   _renderAxisProfileForm();
   _renderSupportLevelSettings();

@@ -18,3 +18,9 @@ var GOOGLE_CLIENT_ID = '1065593793454-57q4unojejuafv4rihajmoas77ucr6q8.apps.goog
 var JARVIS_PROXY_URL = 'https://centerpost-jarvis.medicjth.workers.dev';
 
 var SENTRY_DSN = 'https://fa11403c0d7a9449b1749d199dc90395@o4511667943505920.ingest.us.sentry.io/4511668027129856';
+
+// R12: same git short hash sw.js's CACHE_VERSION gets stamped with at build
+// time (see scripts/stamp-sw.js), exposed here too so Settings can show
+// which web commit is actually bundled into a native build (F21 -- native
+// can silently ship a stale www/ resync with no way to tell from the UI).
+var CENTERPOST_WEB_BUILD = 'centerpost-__COMMIT__';
