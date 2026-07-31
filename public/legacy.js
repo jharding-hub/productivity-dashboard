@@ -2059,14 +2059,23 @@ function addReminder(){const t=document.getElementById('newRemText').value.trim(
 function deleteReminder(id){_confirm('Delete this reminder?',function(){_tombstone(id);state.reminders=state.reminders.filter(r=>r.id!==id);save();renderReminders();},{destructive:true,confirmText:'Delete'});}
 function clearPastReminders(){var _t=todayStr();(state.reminders||[]).forEach(function(r){if(r.date&&r.date<_t)_tombstone(r.id);});state.reminders=state.reminders.filter(r=>!r.date||r.date>=todayStr());save();renderReminders();toast('Past cleared');}
 function editReminderText(id,v){if(!v)return;const r=state.reminders.find(r=>r.id===id);if(r)r.text=v;save();}
+// R7 stage 2 / R10: shared chronological reminder sort -- date first, then
+// time within a date (an untimed reminder means "sometime that day", so it
+// sorts ahead of the day's scheduled ones rather than falling through to
+// insertion order), undated reminders last. Reused by renderReminders() and
+// _buildWatchSnapshot() so there's one meaning of "reminders in order", not
+// a duplicated comparator that could drift between the two.
+function _reminderSortCompare(a,b){
+  if(a.date&&b.date){
+    const d=a.date.localeCompare(b.date);if(d!==0)return d;
+    if(a.time&&!b.time)return 1;if(!a.time&&b.time)return -1;
+    if(a.time&&b.time)return a.time.localeCompare(b.time);return 0;
+  }
+  if(a.date&&!b.date)return -1;if(!a.date&&b.date)return 1;return 0;
+}
 function renderReminders(){
 if(_isEditingInPanel('reminderList')){_deferPanelRender('reminderList');return;}
-const el=document.getElementById('reminderList');const today=todayStr();const sorted=[...state.reminders].sort((a,b)=>{if(a.date&&b.date){const d=a.date.localeCompare(b.date);if(d!==0)return d;
-  // R7 stage 2: same date -- an untimed reminder means "sometime that day",
-  // so put it ahead of ones with a scheduled clock time rather than after
-  // (a plain localeCompare tie fell through to insertion order before).
-  if(a.time&&!b.time)return 1;if(!a.time&&b.time)return -1;
-  if(a.time&&b.time)return a.time.localeCompare(b.time);return 0;}if(a.date&&!b.date)return -1;if(!a.date&&b.date)return 1;return 0;});
+const el=document.getElementById('reminderList');const today=todayStr();const sorted=[...state.reminders].sort(_reminderSortCompare);
 // R7 stage 3: search, full-list view only -- same inOverlay guard as Tasks
 // (the #remSearch input is CSS-hidden in tile mode but its value persists,
 // so without the guard a leftover query would silently filter the tile too).
@@ -3670,10 +3679,20 @@ var _isMobile=function(){return window.innerWidth<=768 || (window.innerWidth>win
 // completion value of an applied action (see __watchApplyAction below).
 function _mapRoutine(r){return {id:r.id,name:r.name||'',done:!!r.done};}
 function _buildWatchSnapshot(){
-  var tasks=(state.tasks||[]).filter(function(t){return !t.done;}).slice(0,25).map(function(t){
-    return {id:t.id,title:t.name||'',done:false};
-  });
-  var reminders=(state.reminders||[]).slice(0,25).map(function(r){
+  // R10 (F22): this used to take the first 25 of each array in whatever
+  // order they happened to be stored in -- no sort at all, so overdue/today
+  // items could be pushed off the watch's tiny 25-item cap by anything
+  // later in the array. Sorting before the cap means the cap only ever
+  // trims the FURTHEST-out items, so "today's set" survives complete unless
+  // there are genuinely more than 25 things due today alone. Same due-date
+  // convention as renderTaskList()'s 'due' sort (undated last); reminders
+  // reuse the shared _reminderSortCompare (R7 stage 2).
+  var tasks=(state.tasks||[]).filter(function(t){return !t.done;})
+    .sort(function(a,b){var da=a.due||'9999',db=b.due||'9999';return da.localeCompare(db);})
+    .slice(0,25).map(function(t){
+      return {id:t.id,title:t.name||'',done:false};
+    });
+  var reminders=(state.reminders||[]).slice().sort(_reminderSortCompare).slice(0,25).map(function(r){
     var when=((r.date?fmtDate(r.date):'')+(r.time?(r.date?' ':'')+fmtTime(r.time):'')).trim();
     return {id:r.id,text:r.text||'',time:when,done:false};
   });
