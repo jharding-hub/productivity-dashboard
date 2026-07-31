@@ -2080,7 +2080,89 @@ function promptEditProject(pid){
 // REMINDERS
 function addReminder(){const t=document.getElementById('newRemText').value.trim();if(!t)return;const projVal=document.getElementById('newRemProject').value;const projIds=projVal?projVal.split(',').filter(Boolean):[];const q=_applyQuickAdd(t,{due:document.getElementById('newRemDate').value,time:document.getElementById('newRemTime').value},{date:true,time:true});state.reminders.push({id:'rem'+Date.now(),text:q.name,date:q.due,time:q.time,projectId:projIds[0]||'',projectIds:projIds});document.getElementById('newRemText').value='';document.getElementById('newRemDate').value='';document.getElementById('newRemTime').value='';document.getElementById('newRemProject').value='';renderProjMultiPickerChips(document.getElementById('newRemProjectPicker'));save();renderReminders();renderProjects();if(projIds.length>1)toast('Reminder added to '+projIds.length+' projects');}
 function deleteReminder(id){_confirm('Delete this reminder?',function(){_tombstone(id);state.reminders=state.reminders.filter(r=>r.id!==id);save();renderReminders();},{destructive:true,confirmText:'Delete'});}
-function clearPastReminders(){var _t=todayStr();(state.reminders||[]).forEach(function(r){if(r.date&&r.date<_t)_tombstone(r.id);});state.reminders=state.reminders.filter(r=>!r.date||r.date>=todayStr());save();renderReminders();toast('Past cleared');}
+// R7 archive stage 2: ✓ on a reminder row -- the completed-task lifecycle
+// applied to reminders. No confirm: unlike delete, this is non-destructive
+// and reversible from the Archived section below.
+function completeReminder(id){
+  var r=(state.reminders||[]).find(function(x){return x.id===id;});
+  if(!r)return;
+  _archiveReminder(r,'done');
+  save();_saveRemindersArchiveDoc();
+  renderReminders();
+  toast('✓ Archived');
+}
+// Repurposed (was dead code that DELETED past reminders destructively --
+// defined but wired to nothing). Now archives them instead, reversible.
+function clearPastReminders(){
+  var _t=todayStr();
+  var past=(state.reminders||[]).filter(function(r){return r.date&&r.date<_t;});
+  if(!past.length)return;
+  past.forEach(function(r){_archiveReminder(r,'sweep');});
+  save();_saveRemindersArchiveDoc();
+  renderReminders();
+  toast(past.length+' past reminder'+(past.length!==1?'s':'')+' archived');
+}
+// Restore MUST mint a fresh id: the archived id is permanently in _tombstones
+// (grow-only), so re-adding under it would be silently re-dropped by every
+// future reconcile on every device. Encoded as a sync-merge test case.
+function restoreArchivedReminder(id){
+  var rec=(state.remindersArchive||[]).find(function(x){return x.id===id;});
+  if(!rec)return;
+  state.reminders.push({id:'r'+Date.now()+Math.random().toString(36).slice(2,6),text:rec.text,date:rec.date||'',time:rec.time||''});
+  _archiveTombstone(rec.id);
+  state.remindersArchive=state.remindersArchive.filter(function(x){return x.id!==id;});
+  save();_saveRemindersArchiveDoc();
+  renderReminders();
+  toast('Reminder restored');
+}
+function purgeArchivedReminder(id){
+  var rec=(state.remindersArchive||[]).find(function(x){return x.id===id;});
+  if(!rec)return;
+  _confirm('Permanently delete "'+rec.text+'" from the archive? This cannot be undone.',function(){
+    _archiveTombstone(rec.id);
+    state.remindersArchive=state.remindersArchive.filter(function(x){return x.id!==id;});
+    save();_saveRemindersArchiveDoc();
+    renderReminders();
+  },{destructive:true,confirmText:'Delete Forever'});
+}
+var _remArchiveOpen=false;
+function _toggleRemArchiveSection(){_remArchiveOpen=!_remArchiveOpen;renderReminders();}
+// Collapsed folder at the bottom of the FULL reminders view -- same pattern
+// (and same CSS classes) as the Completed Projects folder. Also carries the
+// "Archive past (N)" bulk action when any active reminder is past-dated.
+function _renderRemindersArchiveSection(){
+  var arch=state.remindersArchive||[];
+  var _t=todayStr();
+  var pastCount=(state.reminders||[]).filter(function(r){return r.date&&r.date<_t;}).length;
+  if(arch.length===0&&pastCount===0)return '';
+  var html='<div class="completed-projects-section">';
+  if(pastCount>0){
+    html+='<div class="tl-empty-hint" style="padding:0 0 8px;color:var(--text-dim);font-size:12px;">'
+      +pastCount+' past reminder'+(pastCount!==1?'s':'')+' still active — '
+      +'<a href="#" onclick="clearPastReminders();return false;">Archive past</a></div>';
+  }
+  if(arch.length>0){
+    html+='<div class="completed-projects-toggle'+(_remArchiveOpen?' open':'')+'" onclick="_toggleRemArchiveSection()">'
+      +'<span class="cp-arrow">▶</span>'
+      +'<span>✓ Archived ('+arch.length+')</span>'
+      +'</div>';
+    html+='<div class="completed-projects-list'+(_remArchiveOpen?' open':'')+'">';
+    arch.forEach(function(rec){
+      var when=[];
+      if(rec.date)when.push(fmtDate(rec.date)+(rec.time?' '+fmtTime(rec.time):''));
+      when.push(rec.reason==='sweep'?'auto-archived':'completed');
+      html+='<div class="completed-project-card">'
+        +'<span class="cp-name">'+esc(rec.text)+'</span>'
+        +'<span class="cp-stats">'+when.join(' · ')+'</span>'
+        +'<span class="cp-action cp-restore" onclick="restoreArchivedReminder(\''+rec.id+'\')" title="Restore">↺</span>'
+        +'<span class="cp-action cp-purge" onclick="purgeArchivedReminder(\''+rec.id+'\')" title="Permanently delete">✕</span>'
+        +'</div>';
+    });
+    html+='</div>';
+  }
+  html+='</div>';
+  return html;
+}
 function editReminderText(id,v){if(!v)return;const r=state.reminders.find(r=>r.id===id);if(r)r.text=v;save();}
 // R7 stage 2 / R10: shared chronological reminder sort -- date first, then
 // time within a date (an untimed reminder means "sometime that day", so it
@@ -2107,11 +2189,11 @@ var remInOverlay=remPanel&&!remPanel.classList.contains('panel-tile');
 var remSearchEl=document.getElementById('remSearch');
 var remSearch=remInOverlay&&remSearchEl?remSearchEl.value.toLowerCase().trim():'';
 var visible=remSearch?sorted.filter(r=>(r.text||'').toLowerCase().indexOf(remSearch)>=0):sorted;
-if(visible.length===0){el.innerHTML='<div class="empty-state">'+(remSearch?'No matching reminders.':'No reminders.')+'</div>';document.getElementById('remCount').textContent=sorted.filter(r=>!r.date||r.date>=today).length;if(typeof _updateTileSummaryReminders==='function')_updateTileSummaryReminders();return;}
-el.innerHTML=remInOverlay?_remGroupedListHTML(visible,today,_remRenderLimit):visible.map(_remRowHTML).join('');
+if(visible.length===0){el.innerHTML='<div class="empty-state">'+(remSearch?'No matching reminders.':'No reminders.')+'</div>'+(remInOverlay?_renderRemindersArchiveSection():'');document.getElementById('remCount').textContent=sorted.filter(r=>!r.date||r.date>=today).length;if(typeof _updateTileSummaryReminders==='function')_updateTileSummaryReminders();return;}
+el.innerHTML=(remInOverlay?_remGroupedListHTML(visible,today,_remRenderLimit)+_renderRemindersArchiveSection():visible.map(_remRowHTML).join(''));
 document.getElementById('remCount').textContent=sorted.filter(r=>!r.date||r.date>=today).length;
 state.reminders.forEach(r=>{const e=document.getElementById('rt_'+r.id);if(e)makeEditable(e,v=>editReminderText(r.id,v));const rde=document.getElementById('rd_'+r.id);if(rde)makeDateClickable(rde,r.date,v=>editReminderDate(r.id,v));const rte=document.getElementById('rt2_'+r.id);if(rte)makeTimeClickable(rte,r.time,v=>editReminderTime(r.id,v));});refreshEditables();if(typeof _updateTileSummaryReminders==='function')_updateTileSummaryReminders();}
-function _remRowHTML(r){return '<div class="reminder-item"><span class="rem-icon">\u{1F535}</span><div class="rem-body"><div class="rem-text editable" id="rt_'+r.id+'">'+esc(r.text)+'</div><div class="rem-when">'+'<span class="date-editable" id="rd_'+r.id+'">'+(r.date?fmtDate(r.date):'+ set date')+'</span>'+(r.time?' at <span class="date-editable" id="rt2_'+r.id+'">'+fmtTime(r.time)+'</span>':' <span class="date-editable" id="rt2_'+r.id+'" style="color:var(--text-faint);">+ time</span>')+'</div></div><div style="display:flex;gap:2px;"><span class="st-btn st-cal" onclick="exportReminderICS(\''+r.id+'\')">\u{1F4C5}</span><span class="st-btn st-del" onclick="deleteReminder(\''+r.id+'\')">✕</span></div></div>';}
+function _remRowHTML(r){return '<div class="reminder-item"><span class="rem-icon">\u{1F535}</span><div class="rem-body"><div class="rem-text editable" id="rt_'+r.id+'">'+esc(r.text)+'</div><div class="rem-when">'+'<span class="date-editable" id="rd_'+r.id+'">'+(r.date?fmtDate(r.date):'+ set date')+'</span>'+(r.time?' at <span class="date-editable" id="rt2_'+r.id+'">'+fmtTime(r.time)+'</span>':' <span class="date-editable" id="rt2_'+r.id+'" style="color:var(--text-faint);">+ time</span>')+'</div></div><div style="display:flex;gap:2px;"><span class="st-btn st-done" onclick="completeReminder(\''+r.id+'\')" title="Done — move to archive" aria-label="Done — move to archive">✓</span><span class="st-btn st-cal" onclick="exportReminderICS(\''+r.id+'\')" title="Add to calendar" aria-label="Add to calendar">\u{1F4C5}</span><span class="st-btn st-del" onclick="deleteReminder(\''+r.id+'\')" title="Delete" aria-label="Delete">✕</span></div></div>';}
 // R7 stage 4: same grouping/jump-chip treatment as Tasks (_tlGroupedListHTML)
 // -- Reminders has no sort dropdown, it's always date+time order, so this
 // applies whenever the full list is showing rather than being gated on a

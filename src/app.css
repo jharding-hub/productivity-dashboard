@@ -1232,7 +1232,7 @@ body.unlocked .date-editable{border-bottom-color:var(--border);}
 .st-due.overdue{color:var(--red);font-weight:600;}
 .st-actions{display:flex;gap:2px;}
 .st-btn{color:var(--text-dim);cursor:pointer;font-size:13px;padding:4px;min-width:28px;min-height:28px;display:inline-flex;align-items:center;justify-content:center;}.st-btn:hover{color:var(--text);}
-.st-btn.st-cal:hover{color:var(--blue);}.st-btn.st-del:hover{color:var(--red);}
+.st-btn.st-cal:hover{color:var(--blue);}.st-btn.st-del:hover{color:var(--red);}.st-btn.st-done:hover{color:var(--green);}
 .subtask-add{display:flex;gap:6px;margin-top:8px;}
 .subtask-add input,.subtask-add select{flex:1;font-size:12px;padding:6px 8px;}
 
