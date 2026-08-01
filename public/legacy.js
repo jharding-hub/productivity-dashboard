@@ -11635,9 +11635,12 @@ function _galaxyEngine(cv){
     var ci=warm?Math.floor(Math.random()*8):8+Math.floor(Math.random()*2);
     P.push({
       r:r, e:Math.random()*0.5, w:Math.random()*Math.PI*2,
-      prec:(-0.0006 + Math.random()*0.0012),
+      // 0.7 factors: orbital + precession rates both slowed 30% (Joe's call,
+      // 2026-07-31) -- one shared factor so trajectories keep their shape,
+      // just traversed slower.
+      prec:(-0.0006 + Math.random()*0.0012)*0.7,
       th:Math.random()*Math.PI*2,
-      sp:(0.0007 + 0.9/(r+60)) * (0.7+Math.random()*0.6),
+      sp:(0.0007 + 0.9/(r+60)) * (0.7+Math.random()*0.6) * 0.7,
       c:COLORS[ci], sz:0.5 + Math.random()*1.5, br:0.30 + Math.random()*0.55
     });
   }
@@ -11664,9 +11667,14 @@ function _galaxyEngine(cv){
     var pulse=0.5+0.5*Math.sin(t*0.7);
     var coreR=maxR*0.26;
     var g=ctx.createRadialGradient(cx,cy,0,cx,cy,coreR);
-    g.addColorStop(0,'rgba(255,245,225,'+(0.42+pulse*0.12).toFixed(3)+')');
-    g.addColorStop(0.18,'rgba(255,205,150,0.22)');
-    g.addColorStop(0.5,'rgba(255,150,90,0.08)');
+    // Core alphas scaled by 0.7 across every stop AND the pulse amplitude
+    // (0.42/0.12/0.22/0.08 -> 0.294/0.084/0.154/0.056): sun brightness down
+    // a uniform 30% at all radii and all pulse phases (Joe's call,
+    // 2026-07-31). Scaling only the stops (not the pulse term too) would
+    // have dimmed the trough more than the peak.
+    g.addColorStop(0,'rgba(255,245,225,'+(0.294+pulse*0.084).toFixed(3)+')');
+    g.addColorStop(0.18,'rgba(255,205,150,0.154)');
+    g.addColorStop(0.5,'rgba(255,150,90,0.056)');
     g.addColorStop(1,'rgba(255,120,70,0)');
     ctx.fillStyle=g;
     ctx.beginPath(); ctx.arc(cx,cy,coreR,0,6.2832); ctx.fill();

@@ -13,7 +13,10 @@
 /* ═══ THEME CSS ═══ */
 body[data-theme="light"]{--bg:#f6f4f0;--surface:#ffffff;--surface-raised:#f0ede6;--surface-hover:#e8e4dc;--border:#d8d4ca;--border-focus:#b0aa9a;--text:#2a2822;--text-dim:#6a6558;--text-faint:#9a9488;--accent:#b08830;--accent-dim:#8a6a20;--accent-glow:rgba(176,136,48,0.12);}
 body[data-theme="light"] .header-center-title{color:#2a2822;text-shadow:0 1px 3px rgba(255,255,255,0.6);}
-body[data-theme="starry"]{--bg:#0a0e1a;--surface:#10152a;--surface-raised:#161c34;--surface-hover:#1c2440;--border:#1e2545;--border-focus:#3a3a6a;--text:#c8c0e8;--text-dim:#8a82b0;--text-faint:#5a5580;--accent:#7b68ee;--accent-dim:#5a48cc;--accent-glow:rgba(123,104,238,0.15);--red:#e06060;--green:#60c080;--blue:#5b9bd5;--teal:#5ba0c0;}
+/* Starry text/label palette moved violet -> darker blue (Joe's call,
+   2026-07-31): --text/--text-dim/--text-faint and the accent trio carry the
+   shift; backgrounds, borders, and data colors untouched. */
+body[data-theme="starry"]{--bg:#0a0e1a;--surface:#10152a;--surface-raised:#161c34;--surface-hover:#1c2440;--border:#1e2545;--border-focus:#3a3a6a;--text:#9db8e0;--text-dim:#6b86b4;--text-faint:#45608c;--accent:#4a7ed4;--accent-dim:#3358a8;--accent-glow:rgba(74,126,212,0.15);--red:#e06060;--green:#60c080;--blue:#5b9bd5;--teal:#5ba0c0;}
 body[data-theme="galaxy"]{--bg:#050a18;--surface:#0a1124;--surface-raised:#0f1832;--surface-hover:#152043;--border:#1c2a54;--border-focus:#34508c;--text:#cdd8f0;--text-dim:#8696c0;--text-faint:#566088;--accent:#4a90e8;--accent-dim:#2f6fd0;--accent-glow:rgba(74,144,232,0.15);--red:#e06080;--green:#60c0a0;--blue:#6b9be5;--teal:#5bc0d0;--purple:#a78bfa;--orange:#f0a060;}
 body[data-theme="galaxy"] .header-center-title{color:#cfe0ff;text-shadow:0 0 14px rgba(74,144,232,0.55);}
 body[data-theme="galaxy"] .jarvis-fab{background:radial-gradient(circle at 50% 50%,#102348 0%,#060e22 100%) !important;box-shadow:0 0 20px rgba(74,144,232,0.4) !important;}
