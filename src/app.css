@@ -272,14 +272,15 @@ body[data-theme="galaxy"] .panel{
   -webkit-backdrop-filter:blur(4px);
 }
 /* Black Hole layer: same layering contract as galaxy (fixed z-0 canvas host,
-   app-wrap lifted, panels translucent so the disk shows through). */
+   app-wrap lifted). Panels are OPAQUE here, unlike galaxy's translucency --
+   Joe's call after seeing it live: the disk streaking through behind panel
+   text read badly. The disk stays visible as the backdrop around/between
+   panels; content surfaces sit solid on top. */
 #blackholeLayer{position:fixed;inset:0;pointer-events:none;display:none;z-index:0;overflow:hidden;background:#050308;}
 body[data-theme="blackhole"] #blackholeLayer{display:block;}
 body[data-theme="blackhole"] .app-wrap{position:relative;z-index:1;}
 body[data-theme="blackhole"] .panel{
-  background:rgba(14,10,18,0.72) !important;
-  backdrop-filter:blur(4px);
-  -webkit-backdrop-filter:blur(4px);
+  background:var(--surface) !important;
 }
 .galaxy-swirl{
   position:absolute;
