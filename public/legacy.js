@@ -523,7 +523,7 @@ async function doSignup(){
   var passConfirm=passConfirmEl.value||'';
 
   // -- Client-side validation --
-  if(!inviteCode){errEl.textContent='Beta invite code is required.';return;}
+  if(!inviteCode){errEl.textContent='Invite code is required.';return;}
   if(!email||email.indexOf('@')===-1){errEl.textContent='Please enter a valid email address.';return;}
   if(pass.length<6){errEl.textContent='Password must be at least 6 characters.';return;}
   if(pass!==passConfirm){errEl.textContent='Passwords do not match.';return;}
@@ -4685,7 +4685,7 @@ async function renderInviteCodes(){
   try {
     var snap=await db.collection('inviteCodes').orderBy('createdAt','desc').get();
     if(snap.empty){
-      tbody.innerHTML='<tr><td colspan="5" style="text-align:center;color:var(--text-faint);padding:14px;">No codes yet. Create one above to start inviting beta users.</td></tr>';
+      tbody.innerHTML='<tr><td colspan="5" style="text-align:center;color:var(--text-faint);padding:14px;">No codes yet. Create one above to start inviting users.</td></tr>';
       return;
     }
     var rows=[];
@@ -4732,7 +4732,7 @@ async function _bootstrapInviteCodesIfEmpty(){
   try {
     var snap=await db.collection('inviteCodes').limit(1).get();
     if(snap.empty){
-      var starter='BETA-'+_generateRandomCode(5);
+      var starter='CP-'+_generateRandomCode(5);
       await db.collection('inviteCodes').doc(starter).set({
         code:starter,used:0,maxUses:10,
         note:'Auto-generated starter code (10 uses)',disabled:false,
@@ -5035,6 +5035,35 @@ function _healthLogMindful(startMs,endMs){
   try{h.postMessage({action:'logMindful',start:startMs,end:endMs});}catch(e){}
 }
 
+// ── Breathwork frequency safety net ───────────────────────────────────
+// Joe's design (persona panel 2 follow-up): a third session start inside a
+// rolling hour surfaces one calm 988 line on the session screen. It never
+// blocks -- the session starts regardless -- and dismissing suppresses it
+// for an hour. The start log is localStorage ONLY, per device, never synced:
+// a distress-usage pattern is not sync data.
+var BREATH_RESOURCE_THRESHOLD=3;
+var BREATH_RESOURCE_WINDOW_MS=60*60*1000;
+function _breathLogKey(){return 'cpBreathStarts_'+(currentUser?currentUser.uid:'local');}
+function _breathDismissKey(){return 'cpBreathResDismissed_'+(currentUser?currentUser.uid:'local');}
+function _breathTrackStart(){
+  var now=Date.now(),log=[];
+  try{log=JSON.parse(localStorage.getItem(_breathLogKey())||'[]');}catch(e){log=[];}
+  log=log.filter(function(t){return now-t<BREATH_RESOURCE_WINDOW_MS;});
+  log.push(now);
+  try{localStorage.setItem(_breathLogKey(),JSON.stringify(log));}catch(e){}
+  var note=document.getElementById('breathResourceNote');
+  if(!note)return;
+  var dismissed=0;
+  try{dismissed=parseInt(localStorage.getItem(_breathDismissKey())||'0',10)||0;}catch(e){}
+  var suppressed=now-dismissed<BREATH_RESOURCE_WINDOW_MS;
+  note.style.display=(log.length>=BREATH_RESOURCE_THRESHOLD&&!suppressed)?'flex':'none';
+}
+function dismissBreathResource(){
+  var note=document.getElementById('breathResourceNote');
+  if(note)note.style.display='none';
+  try{localStorage.setItem(_breathDismissKey(),String(Date.now()));}catch(e){}
+}
+
 function startBreathwork(){
   const id=document.getElementById('breathSelect').value;
   if(!id)return;
@@ -5045,6 +5074,7 @@ function startBreathwork(){
   document.body.classList.add('cp-immersive');
   const t=breathTechniques[id];
   breathActive=true;
+  _breathTrackStart();
   _trackEvent('tool_use','breathwork','Breathwork');
   initBreathVoice();
   // R15: wall-clock start (Date, not performance.now) so a completed session can
@@ -11480,9 +11510,13 @@ var THEMES=[
 // on one of these keeps working correctly; only renderThemeSelector() excludes
 // them from the selectable grid. Bring one back by removing its key here.
 var RETIRED_THEME_KEYS=['ocean','sunset','police','fire','autumn'];
-// Build stamp -- bump this on each deploy. Shown at the bottom of Settings so
-// you can confirm on any device exactly which build it's running.
-var APP_BUILD='2026.06.06b-beta';
+// App version shown at the bottom of Settings, next to the auto-stamped web
+// hash ("Build 1.0 · Web centerpost-<hash>"). Matches the native
+// MARKETING_VERSION; the per-deploy freshness signal is the web hash, which
+// stamps itself -- this string only changes on a deliberate version bump.
+// (Was a hand-bumped date string that had silently gone stale for weeks and
+// carried a "-beta" suffix; replaced in the pre-App-Store beta-language pass.)
+var APP_BUILD='1.0';
 // BETA: ignore tier gating for themes (every theme selectable). Set to false
 // to restore the per-tier theme locks after beta.
 var BETA_ALL_THEMES=true;

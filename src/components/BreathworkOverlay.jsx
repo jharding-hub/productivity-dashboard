@@ -15,6 +15,20 @@ export default function BreathworkOverlay() {
       <div className="breath-overlay" id="breathOverlay" role="dialog" aria-modal="true" aria-labelledby="breathName">
         <div className="breath-backdrop"></div>
         <div className="breath-content">
+          {/* Safety net (persona panel 2, Joe's design): 3+ session starts
+              inside a rolling hour surfaces this once — calm, dismissible,
+              never blocks; the session runs regardless. Shown/hidden by
+              _breathTrackStart()/dismissBreathResource() in legacy.js. The
+              counter lives in localStorage only, never synced — a distress
+              pattern is not sync data. */}
+          <div className="breath-resource-note" id="breathResourceNote" style={{ display: 'none' }} role="note">
+            <span className="brn-text">
+              You&rsquo;ve come back to this a few times this hour. If what&rsquo;s underneath feels
+              bigger than a breathing exercise, <a href="tel:988">988</a> (call or text) reaches a
+              real person, anytime. No pressure &mdash; your session continues below.
+            </span>
+            <button className="brn-close" onClick={() => window.dismissBreathResource()} aria-label="Dismiss">&#10005;</button>
+          </div>
           <div className="breath-technique-name" id="breathName"></div>
           {/* F16/R9: the safety-critical fix in this whole pass -- phase/count/
               instruction update every second during a live session and were

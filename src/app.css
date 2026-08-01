@@ -1856,6 +1856,12 @@ body.unlocked .date-editable{border-bottom-color:var(--border);}
 .breath-overlay.active{visibility:visible;opacity:1;pointer-events:auto;}
 .breath-backdrop{position:absolute;inset:0;background:rgba(26,25,23,0.88);backdrop-filter:blur(16px);-webkit-backdrop-filter:blur(16px);transition:opacity 0.8s ease;}
 .breath-content{position:relative;z-index:1;text-align:center;padding:30px 20px;width:80vw;max-width:800px;}
+/* Breathwork frequency safety net: deliberately quiet -- surface colors, no
+   red, reads as a note from the app, not an alarm about the user. */
+.breath-resource-note{display:flex;align-items:flex-start;gap:10px;max-width:440px;margin:0 auto 18px;padding:10px 12px;background:var(--surface-raised);border:1px solid var(--border);border-radius:var(--radius-sm);text-align:left;}
+.breath-resource-note .brn-text{flex:1;font-size:calc(12px * var(--type-scale,1));color:var(--text-dim);line-height:1.55;}
+.breath-resource-note .brn-text a{color:var(--accent);font-weight:600;text-decoration:none;}
+.breath-resource-note .brn-close{background:none;border:none;color:var(--text-faint);font-size:calc(13px * var(--type-scale,1));cursor:pointer;padding:2px 4px;line-height:1;flex-shrink:0;min-width:28px;min-height:28px;}
 /* BREATH ORB — GPU-composited, no layout reflow */
 .breath-orb-wrap{position:relative;display:flex;justify-content:center;align-items:center;margin:18px auto 12px;width:180px;height:180px;}
 .breath-orb{width:160px;height:160px;border-radius:50%;background:radial-gradient(circle at 38% 32%,rgba(90,160,255,0.95) 0%,rgba(25,65,190,0.88) 40%,rgba(8,16,52,0.97) 100%);transform:scale(0.35);will-change:transform;position:relative;z-index:1;flex-shrink:0;}

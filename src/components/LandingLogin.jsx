@@ -24,8 +24,11 @@ export default function LandingLogin() {
                     even though it's visually part of the "web" marketing page. */}
                 {!isNative && <a href="kids.html" className="landing-cta-secondary" style={{ textDecoration: 'none', display: 'inline-flex', alignItems: 'center' }}>&#127918; Try Kids Mode</a>}
               </div>
+              {/* Pre-App-Store pass: no "free during beta" promise here — tier
+                  design is still open, and a free claim that later grows a
+                  paywall is the exact trust break the persona panel flagged.
+                  Say nothing about price until there's a real answer. */}
               <div className="landing-meta">
-                <div className="landing-meta-item">Free during beta</div>
                 <div className="landing-meta-item">No ads. No tracking.</div>
                 <div className="landing-meta-item">Your data, your account.</div>
                 <div className="landing-meta-item">Works offline.</div>
@@ -179,9 +182,9 @@ export default function LandingLogin() {
           {/* FINAL CTA */}
           <section className="landing-final-cta">
             <h2>Ready to get organized?</h2>
-            <p>Free during beta. One account works on any device. Your data stays yours.</p>
+            <p>One account works on any device. Your data stays yours.</p>
             <div style={{ display: 'flex', gap: 12, justifyContent: 'center', flexWrap: 'wrap' }}>
-              <button className="landing-cta-primary" onClick={() => window.showSignupPanel()}>Create Free Account <span aria-hidden="true">&rarr;</span></button>
+              <button className="landing-cta-primary" onClick={() => window.showSignupPanel()}>Create Account <span aria-hidden="true">&rarr;</span></button>
               <button className="landing-cta-tertiary" onClick={() => window.showSigninPanel()}>I have an account</button>
             </div>
           </section>
@@ -226,11 +229,12 @@ export default function LandingLogin() {
             </div>
           ) : (
             <>
-              {/* BETA BANNER */}
-              <div className="landing-beta-banner">
-                <span className="beta-tag">BETA</span>
-                <span className="beta-text">Centerpost is in active beta testing — <strong>all features are free</strong> while the developer is testing and iterating. Sign up and help shape it.</span>
-              </div>
+              {/* Beta banner removed (pre-App-Store pass): an App Store build
+                  that calls itself a beta is a 2.1 metadata rejection, and the
+                  "all features are free" promise is exactly the claim the
+                  persona panel flagged as a future trust break. The
+                  .landing-beta-banner CSS stays for now; only the markup is
+                  gone. */}
 
               {/* NAV */}
               <nav className="landing-nav">
@@ -282,16 +286,16 @@ export default function LandingLogin() {
         <div className="signin-card">
           <button className="signin-close" onClick={() => window.hideSignupPanel()} aria-label="Close">&#10005;</button>
           <h2>&#128640; Create Account</h2>
-          <p className="login-sub">Free during beta — invite code required</p>
+          <p className="login-sub">Invite code required</p>
           <div id="signupForm">
-            <input type="text" id="signupInvite" placeholder="Beta invite code..." autoComplete="off" autoCapitalize="characters" style={{ textTransform: 'uppercase', letterSpacing: '1.5px', fontWeight: 600 }} onKeyDown={e => { if (e.key === 'Enter') document.getElementById('signupEmail').focus(); }} />
+            <input type="text" id="signupInvite" placeholder="Invite code..." autoComplete="off" autoCapitalize="characters" style={{ textTransform: 'uppercase', letterSpacing: '1.5px', fontWeight: 600 }} onKeyDown={e => { if (e.key === 'Enter') document.getElementById('signupEmail').focus(); }} />
             <input type="email" id="signupEmail" placeholder="Email address..." autoComplete="email" onKeyDown={e => { if (e.key === 'Enter') document.getElementById('signupPass').focus(); }} />
             <input type="password" id="signupPass" placeholder="Password (min 6 characters)..." autoComplete="new-password" onKeyDown={e => { if (e.key === 'Enter') document.getElementById('signupPassConfirm').focus(); }} />
             <input type="password" id="signupPassConfirm" placeholder="Confirm password..." autoComplete="new-password" onKeyDown={e => { if (e.key === 'Enter') window.doSignup(); }} />
             <button className="login-btn" onClick={() => window.doSignup()} id="signupBtn">Create Account</button>
             <div className="login-error" id="signupError"></div>
             <div className="login-success" id="signupSuccess"></div>
-            <p style={{ fontSize: 11, color: 'var(--text-faint)', marginTop: 12, lineHeight: 1.5 }}>Beta access is invite-only right now. Ask the developer (or a current beta user) for a code. By creating an account you agree to use Centerpost for personal productivity — the app is in beta, features may change, and you can export your data anytime.</p>
+            <p style={{ fontSize: 11, color: 'var(--text-faint)', marginTop: 12, lineHeight: 1.5 }}>Access is invite-only right now. Ask the developer (or a current member) for a code. By creating an account you agree to use Centerpost for personal productivity — features may change, and you can export your data anytime.</p>
             <div className="signin-switch">Already have an account? <a onClick={() => { window.hideSignupPanel(); window.showSigninPanel(); }}>Sign in</a></div>
           </div>
         </div>
