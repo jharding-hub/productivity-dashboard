@@ -263,7 +263,10 @@ body[data-theme="starry"] .panel{
 body[data-theme="galaxy"] #galaxyLayer{display:block;}
 body[data-theme="galaxy"] .app-wrap{position:relative;z-index:1;}
 body[data-theme="galaxy"] .panel{
-  background:rgba(10,16,34,0.72) !important;
+  /* 0.72 -> 0.94: panels 30% more opaque (Joe's call, 2026-08-01) so the
+     starfield reads as a backdrop AROUND panels rather than through the
+     text in them. Blur kept -- it still softens the little that shows. */
+  background:rgba(10,16,34,0.94) !important;
   backdrop-filter:blur(4px);
   -webkit-backdrop-filter:blur(4px);
 }
