@@ -11900,8 +11900,12 @@ function renderThemeSelector(){
     // R4 (F13): the badge rendered "Pro"/"Premium" even on themes BETA_ALL_THEMES
     // had already made clickable -- paid-tier signaling on a feature the user
     // can actually use for free reads as a paywall regardless of whether it's
-    // technically locked.
-    var tierLabel=(BETA_ALL_THEMES&&t.tier!=='free')?'Beta':(t.tier.charAt(0).toUpperCase()+t.tier.slice(1));
+    // technically locked. Was 'Beta' here for the same free-and-unlocked case,
+    // but "launch v1 free" (Joe's call, 2026-08-01) retires beta framing
+    // altogether -- no badge at all on a theme everyone can already use;
+    // showing a real tier name would just invent paywall signaling ahead of
+    // the (not yet designed) paid tier.
+    var tierLabel=(BETA_ALL_THEMES&&t.tier!=='free')?'':(t.tier.charAt(0).toUpperCase()+t.tier.slice(1));
     var tierClass='theme-tier-'+t.tier;
     if(!allowed){
       return '<button class="theme-btn theme-btn-locked" onclick="_tierUpgradeToast()" title="Upgrade to '+tierLabel+' to unlock">'+
@@ -11920,7 +11924,7 @@ function renderThemeSelector(){
         '<div class="theme-swatch-accent" style="background:'+t.accent+';"></div>'+
       '</div>'+
       '<div class="theme-btn-name">'+t.name+'</div>'+
-      '<span class="theme-tier-badge '+tierClass+'">'+tierLabel+'</span>'+
+      (tierLabel?'<span class="theme-tier-badge '+tierClass+'">'+tierLabel+'</span>':'')+
     '</button>';
   }).join('');
 }
