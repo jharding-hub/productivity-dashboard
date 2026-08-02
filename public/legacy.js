@@ -4574,7 +4574,12 @@ async function adminRevokeLegacy(uid){
 // Only visible to Premium, Legacy, and Owner tiers.
 function openMusicStreamingModal(){
   var cfg=getTierConfig();
-  if(!cfg.musicStreaming){_tierUpgradeToast('Premium');return;}
+  // BETA_ALL_FEATURES was missing here while applyTierGating() DOES honor it
+  // when deciding to show the button (see the musicBtn line there). Net
+  // effect on any non-Premium account: the button rendered, and tapping it
+  // fired an "Upgrade to Premium" toast -- a paywall on a build where the
+  // v1-free decision says no gates render at all. Same flag, same answer.
+  if(!BETA_ALL_FEATURES&&!cfg.musicStreaming){_tierUpgradeToast('Premium');return;}
   var overlay=document.getElementById('musicStreamOverlay');
   if(overlay)overlay.classList.remove('hidden');
 }

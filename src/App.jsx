@@ -8,6 +8,7 @@ import WorkoutModal from './components/WorkoutModal';
 import EnergyMoodModal from './components/EnergyMoodModal';
 import GroundingToolkit from './components/GroundingToolkit';
 import PointsFocusMusic from './components/PointsFocusMusic';
+import PointsMusicOverlays from './components/PointsMusicOverlays';
 import PointsInsightsOverlay from './components/PointsInsightsOverlay';
 import WeeklyReviewModal from './components/WeeklyReviewModal';
 import JournalOverlay from './components/JournalOverlay';
@@ -42,6 +43,7 @@ export default function App() {
       energyMood: document.getElementById('energy-mood-modal-root'),
       grounding: document.getElementById('grounding-toolkit-root'),
       pointsMusic: document.getElementById('points-focus-music-root'),
+      pointsMusicOverlays: document.getElementById('points-music-overlays-root'),
       pointsInsights: document.getElementById('points-insights-overlay-root'),
       weeklyReview: document.getElementById('weekly-review-modal-root'),
       journal: document.getElementById('journal-overlay-root'),
@@ -81,6 +83,7 @@ export default function App() {
       {mounts.energyMood && createPortal(<EnergyMoodModal />, mounts.energyMood)}
       {mounts.grounding && createPortal(<GroundingToolkit />, mounts.grounding)}
       {mounts.pointsMusic && createPortal(<PointsFocusMusic />, mounts.pointsMusic)}
+      {mounts.pointsMusicOverlays && createPortal(<PointsMusicOverlays />, mounts.pointsMusicOverlays)}
       {mounts.pointsInsights && createPortal(<PointsInsightsOverlay />, mounts.pointsInsights)}
       {mounts.weeklyReview && createPortal(<WeeklyReviewModal />, mounts.weeklyReview)}
       {mounts.journal && createPortal(<JournalOverlay />, mounts.journal)}

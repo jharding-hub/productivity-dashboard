@@ -28,60 +28,12 @@ export default function PointsFocusMusic() {
         <div className="points-popup" id="pointsPopup" style={{ display: 'none' }}></div>
       </div>
 
-      {/* Point popup container (floating +Presence animations) */}
-      <div className="point-popup-container" id="pointPopupContainer"></div>
-
-      {/* Hidden YouTube player container for focus music */}
-      <div
-        id="ytPlayerHost"
-        style={{
-          position: 'fixed',
-          bottom: 0,
-          right: 0,
-          width: 1,
-          height: 1,
-          opacity: 0.01,
-          pointerEvents: 'none',
-          zIndex: -1,
-          overflow: 'hidden',
-        }}
-      ></div>
-
-      {/* Music Streaming Modal */}
-      <div
-        className="music-stream-overlay hidden"
-        id="musicStreamOverlay"
-        onClick={e => { if (e.target === e.currentTarget) window.closeMusicStreamingModal(); }}
-      >
-        <div className="music-stream-modal">
-          <div className="music-stream-title">{'🎵'} Music Streaming</div>
-          <div className="music-stream-sub">
-            Open your preferred platform in a new tab. Your music plays there — Centerpost stays
-            open alongside it for distraction-free focus sessions.
-          </div>
-          <div className="music-platform-grid">
-            <button className="music-platform-btn spotify" onClick={() => window.launchMusicPlatform('spotify')}>
-              <span className="music-platform-icon">{'🎧'}</span>
-              <span>Spotify</span>
-            </button>
-            <button className="music-platform-btn apple" onClick={() => window.launchMusicPlatform('apple')}>
-              <span className="music-platform-icon">{'🎵'}</span>
-              <span>Apple Music</span>
-            </button>
-            <button className="music-platform-btn amazon" onClick={() => window.launchMusicPlatform('amazon')}>
-              <span className="music-platform-icon">{'🎼'}</span>
-              <span>Amazon Music</span>
-            </button>
-          </div>
-          <p className="music-platform-note">
-            Your subscription, your library. We redirect you to the platform — nothing is streamed
-            through Centerpost.
-          </p>
-          <button className="music-stream-close" onClick={() => window.closeMusicStreamingModal()}>
-            Cancel
-          </button>
-        </div>
-      </div>
+      {/* The floating +Presence container, the YouTube host, and the Music
+          Streaming modal all moved OUT of this component into
+          PointsMusicOverlays (mounted at .app-wrap level). They were trapped
+          in .header's stacking context (sticky + z-index:50), so their own
+          z-index never applied against panels/overlays. Only the badge above
+          belongs in the header. */}
     </>
   );
 }
