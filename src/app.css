@@ -18,10 +18,6 @@ body[data-theme="light"] .header-center-title{color:#2a2822;text-shadow:0 1px 3p
    shift; backgrounds, borders, and data colors untouched. */
 body[data-theme="starry"]{--bg:#0a0e1a;--surface:#10152a;--surface-raised:#161c34;--surface-hover:#1c2440;--border:#1e2545;--border-focus:#3a3a6a;--text:#9db8e0;--text-dim:#6b86b4;--text-faint:#45608c;--accent:#4a7ed4;--accent-dim:#3358a8;--accent-glow:rgba(74,126,212,0.15);--red:#e06060;--green:#60c080;--blue:#5b9bd5;--teal:#5ba0c0;}
 body[data-theme="galaxy"]{--bg:#050a18;--surface:#0a1124;--surface-raised:#0f1832;--surface-hover:#152043;--border:#1c2a54;--border-focus:#34508c;--text:#cdd8f0;--text-dim:#8696c0;--text-faint:#566088;--accent:#4a90e8;--accent-dim:#2f6fd0;--accent-glow:rgba(74,144,232,0.15);--red:#e06080;--green:#60c0a0;--blue:#6b9be5;--teal:#5bc0d0;--purple:#a78bfa;--orange:#f0a060;}
-/* Black Hole: warm near-black + amber accents, palette pulled from the
-   accretion-disk render (heat() whites/oranges) so chrome and canvas agree. */
-body[data-theme="blackhole"]{--bg:#050308;--surface:#0e0a12;--surface-raised:#161020;--surface-hover:#1e1628;--border:#2a2030;--border-focus:#584838;--text:#ead9c8;--text-dim:#a89078;--text-faint:#6a5a4c;--accent:#e8a050;--accent-dim:#c07830;--accent-glow:rgba(232,160,80,0.15);--red:#e06060;--green:#60c080;--blue:#6b9be5;--teal:#5bc0d0;--purple:#a78bfa;--orange:#f0a060;}
-body[data-theme="blackhole"] .header-center-title{color:#f5e6d0;text-shadow:0 0 14px rgba(232,160,80,0.5);}
 body[data-theme="galaxy"] .header-center-title{color:#cfe0ff;text-shadow:0 0 14px rgba(74,144,232,0.55);}
 body[data-theme="galaxy"] .jarvis-fab{background:radial-gradient(circle at 50% 50%,#102348 0%,#060e22 100%) !important;box-shadow:0 0 20px rgba(74,144,232,0.4) !important;}
 body[data-theme="starry"] .day-progress-bar{background:linear-gradient(to right,#8a5a6a 0%,#5a3060 8%,#2a1848 16%,#141030 28%,#0a0818 42%,#0a0818 58%,#141030 72%,#2a1848 84%,#5a3060 92%,#6a5a8a 100%);}
@@ -268,16 +264,6 @@ body[data-theme="galaxy"] #galaxyLayer{display:block;}
 body[data-theme="galaxy"] .app-wrap{position:relative;z-index:1;}
 body[data-theme="galaxy"] .panel{
   background:rgba(10,16,34,0.72) !important;
-  backdrop-filter:blur(4px);
-  -webkit-backdrop-filter:blur(4px);
-}
-/* Black Hole layer: same layering contract as galaxy (fixed z-0 canvas host,
-   app-wrap lifted, panels translucent so the disk shows through). */
-#blackholeLayer{position:fixed;inset:0;pointer-events:none;display:none;z-index:0;overflow:hidden;background:#050308;}
-body[data-theme="blackhole"] #blackholeLayer{display:block;}
-body[data-theme="blackhole"] .app-wrap{position:relative;z-index:1;}
-body[data-theme="blackhole"] .panel{
-  background:rgba(14,10,18,0.72) !important;
   backdrop-filter:blur(4px);
   -webkit-backdrop-filter:blur(4px);
 }
@@ -3135,7 +3121,7 @@ input:focus-visible,select:focus-visible,textarea:focus-visible{outline:2px soli
 .gcal-status-chip .gcal-label{font-size:calc(11px * var(--type-scale,1));font-weight:500;}
 .admin-route-overlay{position:fixed!important;inset:0!important;z-index:900!important;background:var(--bg)!important;overflow-y:auto!important;overflow-x:hidden!important;padding:20px!important;display:block!important;width:100%!important;max-width:100%!important;border:none!important;border-radius:0!important;box-shadow:none!important;animation:none!important;opacity:1!important;isolation:isolate!important;}
 .admin-route-overlay::before{content:'';position:fixed;inset:0;z-index:-1;background:var(--bg);}
-body.admin-overlay-open #starryLayer,body.admin-overlay-open #galaxyLayer,body.admin-overlay-open #blackholeLayer,body.admin-overlay-open #firefliesLayer,body.admin-overlay-open #stormLayer,body.admin-overlay-open #lightningFlash,body.admin-overlay-open #emsStrobe,body.admin-overlay-open #emsFire{display:none!important;}
+body.admin-overlay-open #starryLayer,body.admin-overlay-open #galaxyLayer,body.admin-overlay-open #firefliesLayer,body.admin-overlay-open #stormLayer,body.admin-overlay-open #lightningFlash,body.admin-overlay-open #emsStrobe,body.admin-overlay-open #emsFire{display:none!important;}
 .admin-route-overlay .panel-header{max-width:1200px;margin:0 auto 12px;position:relative;}
 .admin-route-overlay .panel-content{max-width:1200px;margin:0 auto;}
 .admin-route-overlay .admin-add-form{max-width:1200px;margin:12px auto 0;}

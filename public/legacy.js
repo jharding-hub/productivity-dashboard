@@ -11503,8 +11503,7 @@ var THEMES=[
   {key:'fire',name:'Fire Dark',tier:'premium',bg:'#120808',surface:'#1a0e0e',accent:'#e53935'},
   {key:'autumn',name:'Autumn Ember',tier:'premium',bg:'#f0ebe0',surface:'#faf5ec',accent:'#c06030'},
   {key:'storm-dark',name:'Storm Dark',tier:'premium',bg:'#0c0f14',surface:'#111520',accent:'#7ab8e8'},
-  {key:'galaxy',name:'Galaxy',tier:'premium',bg:'#050a18',surface:'#0a1124',accent:'#4a90e8'},
-  {key:'blackhole',name:'Black Hole',tier:'premium',bg:'#050308',surface:'#0e0a12',accent:'#e8a050'}
+  {key:'galaxy',name:'Galaxy',tier:'premium',bg:'#050a18',surface:'#0a1124',accent:'#4a90e8'}
 ];
 // Retired from the picker (Joe's call) but deliberately left in THEMES itself --
 // applyTheme()/_applySavedTheme() still resolve these by key, so anyone already
@@ -11579,11 +11578,6 @@ function _emsUpdateOverlays(key){
     _galaxyStart();
   } else {
     _galaxyStop();
-  }
-  if(key==='blackhole'){
-    _blackholeStart();
-  } else {
-    _blackholeStop();
   }
 }
 
@@ -11699,168 +11693,6 @@ function _galaxyEngine(cv){
     running=false;
   } else {
     for(var j=0;j<40;j++){ step(true); } // prime so it opens already-rich
-    frame();
-  }
-
-  function vis(){
-    if(reduce)return;
-    if(document.hidden){ running=false; if(raf)cancelAnimationFrame(raf); }
-    else if(!running){ running=true; frame(); }
-  }
-  document.addEventListener('visibilitychange', vis);
-
-  return { stop:function(){
-    running=false;
-    if(raf)cancelAnimationFrame(raf);
-    window.removeEventListener('resize', size);
-    document.removeEventListener('visibilitychange', vis);
-    try{ ctx.clearRect(0,0,W,H); }catch(e){}
-    if(cv&&cv.parentNode){ cv.parentNode.removeChild(cv); }
-  }};
-}
-
-// -- Black Hole: NASA-style warped accretion disk (canvas) --------------
-// Same architecture as _galaxyEngine. Thin edge-on disk in front, the far
-// side gravitationally lensed into an arch above the shadow and a loop
-// below it, photon ring, Doppler-brightened approaching side. Prototyped
-// standalone 2026-08-01 and approved by Joe (including a -30% cut to the
-// brightest parts: Doppler peak cap, white-push, ring alphas).
-var _blackholeAnim=null;
-function _blackholeStart(){
-  var layer=document.getElementById('blackholeLayer');
-  if(!layer)return;
-  if(_blackholeAnim){ return; }
-  var cv=document.getElementById('blackholeCanvas');
-  if(!cv){
-    cv=document.createElement('canvas');
-    cv.id='blackholeCanvas';
-    cv.style.cssText='position:absolute;inset:0;width:100%;height:100%;display:block;';
-    layer.appendChild(cv);
-  }
-  _blackholeAnim=_blackholeEngine(cv);
-}
-function _blackholeStop(){
-  if(_blackholeAnim){ _blackholeAnim.stop(); _blackholeAnim=null; }
-}
-function _blackholeEngine(cv){
-  var ctx=cv.getContext('2d');
-  var raf=null, running=true, W,H,cx,cy,R;
-  var dpr=Math.min(window.devicePixelRatio||1, 1.5);
-  var reduce=window.matchMedia&&window.matchMedia('(prefers-reduced-motion:reduce)').matches;
-
-  function size(){
-    W=window.innerWidth; H=window.innerHeight;
-    cv.width=Math.max(1,W*dpr); cv.height=Math.max(1,H*dpr);
-    ctx.setTransform(dpr,0,0,dpr,0,0);
-    cx=W*0.5; cy=H*0.47;
-    // fit the full disk span (5.6R each side) in ANY aspect
-    R=Math.min(H*0.115, W*0.085);
-  }
-  size();
-  window.addEventListener('resize', size);
-
-  // particle count scales with area (same approach as the galaxy engine)
-  var N=Math.max(1200, Math.min(3400, Math.floor((W*H)/280)));
-  var P=[];
-  for(var i=0;i<N;i++){
-    var u=Math.pow(Math.random(),0.75);
-    P.push({
-      ru:1.45+u*4.15,                        // radius in horizon units
-      th:Math.random()*Math.PI*2,
-      sp:(0.014/Math.pow(1.45+u*4.15,1.5)),  // Keplerian-ish falloff
-      sz:0.5+Math.random()*1.3,
-      br:0.35+Math.random()*0.55,
-      hot:Math.random()
-    });
-  }
-
-  // inner = white-hot, outer = deep orange/red
-  function heat(t){
-    var r=255, g=Math.round(235-165*t), b=Math.round(210-200*t);
-    if(t>0.75){ r=Math.round(255-120*(t-0.75)/0.25); g=Math.round(112-60*(t-0.75)/0.25); b=10; }
-    return [r,Math.max(g,52),Math.max(b,6)];
-  }
-  var FLAT=0.09;   // edge-on flattening of the direct band
-
-  function streak(x,y,dx,dy,sz,r,g,b,a){
-    ctx.strokeStyle='rgba('+(r|0)+','+(g|0)+','+(b|0)+','+a.toFixed(3)+')';
-    ctx.lineWidth=Math.max(0.5,sz*1.6*(R/100));
-    ctx.lineCap='round';
-    ctx.beginPath(); ctx.moveTo(x-dx,y-dy); ctx.lineTo(x+dx,y+dy); ctx.stroke();
-  }
-
-  function step(){
-    ctx.globalCompositeOperation='source-over';
-    ctx.fillStyle='rgba(5,3,8,0.10)';
-    ctx.fillRect(0,0,W,H);
-    ctx.globalCompositeOperation='lighter';
-    for(var i=0;i<P.length;i++){
-      var p=P[i];
-      p.th+=p.sp;
-      var r=p.ru*R;
-      var cosT=Math.cos(p.th), sinT=Math.sin(p.th);
-      var t=(p.ru-1.45)/4.15;
-      var c=heat(t*0.85+p.hot*0.15);
-      // Doppler beaming, peak CAPPED at 1.12 (the -30% brightest-parts cut)
-      var dop=1+0.75*(-cosT)*(1.2-t);
-      dop=Math.max(0.35,dop);
-      var a=p.br*Math.min(1.12,dop)*0.27;
-      var whit=Math.max(0,dop-1)*0.38;
-      var cr=Math.min(255,c[0]+(255-c[0])*whit),
-          cg=Math.min(255,c[1]+(255-c[1])*whit),
-          cb=Math.min(255,c[2]+(255-c[2])*whit);
-      var x=cx+cosT*r;
-      var SC=R/100;
-      var vx=-sinT, len=(7+20*(1-t))*(0.7+p.hot*0.6)*SC;
-      if(sinT>0){
-        // near side: thin direct band in front of the shadow
-        var y=cy+sinT*r*FLAT;
-        streak(x,y, vx*len, cosT*len*FLAT, p.sz, cr,cg,cb, a);
-      }else{
-        var s=-sinT;
-        // far side, upper image: arched over the shadow
-        var archR=R*1.05 + (r-R*1.45)*0.52;
-        var yU=cy - s*archR*(0.62+0.38*(1-t*0.4));
-        streak(x, yU, vx*len*0.9, -cosT*len*0.25, p.sz*0.9, cr,cg,cb, a*0.9);
-        // far side, lower image: loop under the shadow
-        var loopR=R*1.05 + (r-R*1.45)*0.10;
-        var yL=cy + s*loopR*1.05;
-        var xl=cx+(x-cx)*0.55;
-        streak(xl, yL, vx*len*0.45, cosT*len*0.12, p.sz*0.7, cr,cg,cb, a*0.85);
-      }
-    }
-    // event-horizon shadow
-    ctx.globalCompositeOperation='source-over';
-    ctx.fillStyle='#000';
-    ctx.beginPath(); ctx.arc(cx,cy,R,0,6.2832); ctx.fill();
-    // photon ring (alphas carry the -30% cut)
-    ctx.globalCompositeOperation='lighter';
-    var pr=R*1.06;
-    ctx.strokeStyle='rgba(255,214,160,0.385)';
-    ctx.lineWidth=2.2;
-    ctx.beginPath(); ctx.arc(cx,cy,pr,0,6.2832); ctx.stroke();
-    ctx.strokeStyle='rgba(255,240,220,0.21)';
-    ctx.lineWidth=1;
-    ctx.beginPath(); ctx.arc(cx,cy,pr,0,6.2832); ctx.stroke();
-    var g=ctx.createRadialGradient(cx,cy,pr,cx,cy,pr+R*0.5);
-    g.addColorStop(0,'rgba(255,180,110,0.07)');
-    g.addColorStop(1,'rgba(255,120,60,0)');
-    ctx.fillStyle=g;
-    ctx.beginPath(); ctx.arc(cx,cy,pr+R*0.5,0,6.2832); ctx.fill();
-    ctx.globalCompositeOperation='source-over';
-  }
-
-  function frame(){
-    if(!running)return;
-    step();
-    raf=requestAnimationFrame(frame);
-  }
-
-  if(reduce){
-    for(var k=0;k<160;k++){ step(); }
-    running=false;
-  } else {
-    for(var j=0;j<60;j++){ step(); } // prime so it opens already-formed
     frame();
   }
 
