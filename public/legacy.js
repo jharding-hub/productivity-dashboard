@@ -1208,7 +1208,11 @@ function openCustomize(){
 
 function closeCustomize(){
   document.getElementById('customizeOverlay').classList.remove('show');
-  document.body.classList.remove('cp-immersive');
+  // Guarded: these surfaces stack (Settings is reachable from the mobile tab
+  // bar while the journal is open), and an unconditional remove handed the
+  // floating chrome back to whatever was still underneath -- which is how the
+  // FAB/orb reappeared over the journal's Save row after F11 had "fixed" it.
+  _quitImmersiveChrome();
 }
 
 function togglePanelVisibility(id,visible){
@@ -3250,7 +3254,7 @@ var guidedInterval=null;
 // stopGuided() is called both by the Stop button and by the completion branch
 // below, so the class is always torn down.
 function startGuided(id){const t=wellnessTechniques.find(t=>t.id===id);if(!t||!t.guided)return;document.body.classList.add('cp-immersive');const disp=document.getElementById('guidedDisplay');disp.classList.add('active');disp.scrollIntoView({behavior:'smooth',block:'nearest'});const{phases,dur,cycles}=t.gd;let cycle=0,pi=0,count=dur[0];function tick(){document.getElementById('guidedPhase').textContent=phases[pi];document.getElementById('guidedCount').textContent=count;document.getElementById('guidedInstruction').textContent='Cycle '+(cycle+1)+' of '+cycles;count--;if(count<0){pi++;if(pi>=phases.length){pi=0;cycle++;if(cycle>=cycles){stopGuided();document.getElementById('guidedPhase').textContent='\u2713 Complete';document.getElementById('guidedCount').textContent='';document.getElementById('guidedInstruction').textContent='Well done. Take a moment.';if(typeof _logCheckIn==='function')_logCheckIn('grounding',{techniqueId:id,techniqueName:t.name});return;}}count=dur[pi];}}tick();guidedInterval=setInterval(tick,1000);}
-function stopGuided(){clearInterval(guidedInterval);guidedInterval=null;document.body.classList.remove('cp-immersive');document.getElementById('guidedDisplay').classList.remove('active');}
+function stopGuided(){clearInterval(guidedInterval);guidedInterval=null;_quitImmersiveChrome();document.getElementById('guidedDisplay').classList.remove('active');}
 
 // NOTES
 // ── Rich-text (WYSIWYG) note editor support ───────────────────────────────
@@ -5360,7 +5364,7 @@ function startBreathwork(){
 
 function stopBreathwork(){
   breathActive=false;
-  document.body.classList.remove('cp-immersive');
+  _quitImmersiveChrome(); // guarded -- see closeCustomize
   clearInterval(breathInterval);breathInterval=null;
   _breathHaptic('release'); // R15: tear down the native haptic engine
   if(_breathCurrentAudio){_breathCurrentAudio.pause();_breathCurrentAudio=null;}
@@ -7863,6 +7867,8 @@ function _otherImmersiveSurfaceOpen(){
   if(j&&j.classList.contains('open'))return true;
   var c=document.getElementById('customizeOverlay');
   if(c&&c.classList.contains('show'))return true;
+  var w=document.getElementById('workoutModal');
+  if(w&&w.classList.contains('open'))return true;
   return false;
 }
 function _quitImmersiveChrome(){
@@ -9148,7 +9154,7 @@ async function openJournal(){
 
 function closeJournal(){
   document.getElementById('journalOverlay').classList.remove('open');
-  document.body.classList.remove('cp-immersive');
+  _quitImmersiveChrome(); // guarded -- see closeCustomize
   _unblurDashboard();
   _journalUnlocked=false;_journalKey=null;_journalPlain={};
   _pinBuffer='';_setPinBuffer='';_setPinStage=0;_setPinFirst='';_changingPin=false;_journalNeedsFirstPin=false;
@@ -9445,12 +9451,18 @@ function exportJournalDecrypted(){
 // =======================================
 function openWorkoutModal(){
   document.getElementById('workoutModal').classList.add('open');
+  // The workout modal was the last full-screen surface still leaving the
+  // floating chrome up: the Axis orb landed on its Save control and the
+  // capture FAB on the set/rep inputs. Same immersive rule as journal /
+  // breathwork / Settings / guided.
+  document.body.classList.add('cp-immersive');
   _blurDashboard();
   renderWorkout();
   updateCompletedWorkoutsCounter();
 }
 function closeWorkoutModal(){
   document.getElementById('workoutModal').classList.remove('open');
+  _quitImmersiveChrome();
   _unblurDashboard();
 }
 

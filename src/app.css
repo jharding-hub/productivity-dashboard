@@ -3026,7 +3026,15 @@ body[data-theme="storm-dark"] .tl-hour-label{
 }
 .wo-day-rationale strong{color:#082b6a;}
 /* Workout modal body — light/bright for gym visibility */
-#workoutModal .modal-blur-body{background:#f4f2ee;padding:14px 16px;}
+#workoutModal .modal-blur-body{background:#f4f2ee;padding:16px 20px;}
+/* The mobile tab bar is fixed at z-index above the modal body, so the last
+   rows of a scrolled workout (the log inputs and Save) sat underneath it and
+   read as clipped. Pad the scroll container past the bar + the home-indicator
+   inset. NOTE: env(safe-area-inset-bottom) resolves to 0 in a desktop
+   browser, so this only shows its true height on device. */
+@media(max-width:768px),(orientation:landscape) and (max-height:600px){
+  #workoutModal .modal-blur-body{padding-bottom:calc(52px + env(safe-area-inset-bottom) + 28px);}
+}
 #workoutModal .modal-blur-header{background:#eeebe3;border-color:#c8bfa8;}
 #workoutModal .modal-blur-title{color:#1a1510;}
 /* Exercise info modal */

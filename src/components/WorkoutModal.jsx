@@ -35,7 +35,11 @@ export default function WorkoutModal() {
             </button>
           </div>
         </div>
-        <div className="modal-blur-body" id="woContent" style={{ padding: '16px 20px' }}></div>
+        {/* Padding moved to #workoutModal .modal-blur-body in app.css: an
+            inline style beats every stylesheet rule, so the mobile
+            bottom-padding that clears the fixed tab bar could never apply
+            while it lived here. */}
+        <div className="modal-blur-body" id="woContent"></div>
       </div>
     </div>
   );
