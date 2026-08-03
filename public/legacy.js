@@ -1244,6 +1244,14 @@ function setStopMotion(on){
   state.stopMotion=!!on;
   save();
   applyStopMotion();
+  // The galaxy canvas decides static-vs-animated when its engine is built,
+  // so rebuild the current theme's layers to make the toggle take effect
+  // immediately instead of only after a reload.
+  var cur=(state.settings&&state.settings.theme)||'dark';
+  if(typeof _emsUpdateOverlays==='function'){
+    if(cur==='galaxy'){_galaxyStop();}
+    _emsUpdateOverlays(cur);
+  }
 }
 function applyStopMotion(){
   document.body.classList.toggle('cp-stop-motion',!!state.stopMotion);
@@ -11822,7 +11830,9 @@ function _galaxyEngine(cv){
   var ctx=cv.getContext('2d');
   var raf=null, running=true, W,H,cx,cy;
   var dpr=Math.min(window.devicePixelRatio||1, 1.5);
-  var reduce=window.matchMedia&&window.matchMedia('(prefers-reduced-motion:reduce)').matches;
+  // Stop motion rides the same static-field path as prefers-reduced-motion:
+  // this is a canvas + rAF loop, so the CSS toggle can't touch it.
+  var reduce=(typeof state!=='undefined'&&state.stopMotion)||(window.matchMedia&&window.matchMedia('(prefers-reduced-motion:reduce)').matches);
 
   function size(){
     W=window.innerWidth; H=window.innerHeight;

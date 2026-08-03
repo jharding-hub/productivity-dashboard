@@ -723,18 +723,34 @@ body[data-theme="storm-dark"] .day-progress-elapsed{
 .status-bar-spacer{flex:1;}
 /* STOP MOTION (Settings toggle, 2026-08-03). Separate from the OS-level
    prefers-reduced-motion rules elsewhere in this file: this is an in-app
-   override for someone who wants the animated themes still without changing
-   a system setting. Kills keyframe animation and transitions everywhere,
-   which covers the galaxy/starry/storm/firefly layers (all CSS-driven) and
-   the UI's own transitions. !important because many theme rules set
-   animation inline-adjacent with their own weight. */
-body.cp-stop-motion *,
-body.cp-stop-motion *::before,
-body.cp-stop-motion *::after{animation:none !important;transition:none !important;}
-/* The capture flash relies on a background-colour animation to prove a save
-   landed -- with animation off it would never paint, so give it a static
-   equivalent rather than losing the confirmation entirely. */
-body.cp-stop-motion .cp-just-captured{background-color:var(--accent-glow) !important;box-shadow:inset 0 0 0 2px var(--accent) !important;}
+   override for someone who wants the app still without changing a system
+   setting.
+
+   SCOPED DELIBERATELY TO DECORATIVE LAYERS ONLY. The first version of this
+   used `body.cp-stop-motion *{animation:none!important}` and broke the
+   dashboard on Joe's real account (build 70 / web) -- a blanket rule strips
+   `animation-fill-mode` from every element that animates INTO its visible
+   state (`.panel` is `animation:fadeUp .4s ease both`), so anything relying
+   on an animation's end state can revert to its pre-animation appearance.
+   Never re-broaden this to `*`. Everything listed here is background
+   decoration: killing its animation cannot hide content.
+
+   Galaxy is NOT here -- it's a <canvas> driven by requestAnimationFrame,
+   which CSS cannot stop at all (that's why the stars kept moving while the
+   Axis orb froze). It's handled in _galaxyEngine, which already has a
+   static-field path for prefers-reduced-motion. */
+body.cp-stop-motion .star,
+body.cp-stop-motion .firefly,
+body.cp-stop-motion .gstar,
+body.cp-stop-motion #starryLayer::before,
+body.cp-stop-motion #starryLayer::after,
+body.cp-stop-motion #stormLayer::before,
+body.cp-stop-motion #stormLayer::after,
+body.cp-stop-motion #lightningFlash,
+body.cp-stop-motion #emsStrobe,
+body.cp-stop-motion #emsFire,
+body.cp-stop-motion .fireworks-overlay,
+body.cp-stop-motion .jarvis-fab{animation:none !important;}
 /* R2 stage B: mobile-only 4-slot tab bar (Home/Today/Tool Kit/Settings),
    thumb-reachable replacement for the status bar's role as primary mobile
    nav. Hidden by default; the mobile media query below shows this and hides
