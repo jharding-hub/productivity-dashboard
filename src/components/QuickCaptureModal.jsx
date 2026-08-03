@@ -12,7 +12,10 @@ export default function QuickCaptureModal() {
         <span>Tap to capture your first task or thought</span>
         <button className="fab-hint-close" onClick={() => window.dismissFabHint()} aria-label="Dismiss hint">&#10005;</button>
       </div>
-      <div className="modal-blur-overlay" id="quickCaptureModal" role="dialog" aria-modal="true" aria-label="Quick Capture">
+      {/* Starts aria-hidden: the modal is always in the DOM and only revealed
+          by the .open class, so without this VoiceOver sees a permanently
+          "open" dialog. open/closeQuickCapture toggle the attribute. */}
+      <div className="modal-blur-overlay" id="quickCaptureModal" role="dialog" aria-modal="true" aria-label="Quick Capture" aria-hidden="true">
         <div className="modal-blur-backdrop" onClick={() => window.closeQuickCapture()}></div>
         <div className="qc-panel">
           <input

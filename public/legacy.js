@@ -4237,7 +4237,28 @@ function _safePriority(p){return p==='low'||p==='high'?p:'med';}
 function _safeDateStr(d){return /^\d{4}-\d{2}-\d{2}$/.test(d||'')?d:'';}
 function _safeTimeStr(t){return /^\d{1,2}:\d{2}$/.test(t||'')?t:'';}
 function slugify(s){return s.toLowerCase().replace(/[^a-z0-9]+/g,'-').replace(/(^-|-$)/g,'');}
-function toast(msg){const el=document.getElementById('toast');el.textContent=msg;el.classList.add('show');setTimeout(()=>el.classList.remove('show'),2500);}
+function toast(msg){const el=document.getElementById('toast');el.textContent=msg;el.classList.add('show');setTimeout(()=>el.classList.remove('show'),2500);_announce(msg);}
+// Speak a toast through the dedicated sr-only live region rather than the
+// toast div itself. Strips leading decorative glyphs (checkmark, lightning,
+// emoji) -- VoiceOver spells those out, which is what turned a capture
+// confirmation into "check mark task added...". Words only.
+function _announce(msg){
+  var el=document.getElementById('a11yAnnounce');
+  if(!el||!msg)return;
+  // Strip pictographic/symbol ranges by codepoint escape only -- writing the
+  // glyphs literally into a character class mangles on save and can eat real
+  // letters. Covers dingbats/checkmarks, misc symbols, variation selectors,
+  // and the astral emoji planes via surrogate pairs.
+  var clean=String(msg)
+    .replace(/[\u2190-\u27BF\u2B00-\u2BFF\uFE0E\uFE0F]/g,'')
+    .replace(/[\uD800-\uDBFF][\uDC00-\uDFFF]/g,'')
+    .replace(/\s+/g,' ').trim();
+  if(!clean)return;
+  // Re-announce an identical message by clearing first -- an unchanged
+  // textContent is not a live-region update and would stay silent.
+  el.textContent='';
+  setTimeout(function(){el.textContent=clean;},50);
+}
 document.addEventListener('keydown',e=>{if(e.target.tagName==='INPUT'||e.target.tagName==='TEXTAREA'||e.target.tagName==='SELECT'||e.target.isContentEditable)return;if(e.key==='b'||e.key==='B'){openQuickCapture();e.preventDefault();}if(e.key==='s'||e.key==='S'){startTimer();e.preventDefault();}if(e.key==='p'||e.key==='P'){pauseTimer();e.preventDefault();}});
 
 // =======================================
@@ -7809,6 +7830,12 @@ function openQuickCapture(){
   var modal=document.getElementById('quickCaptureModal');
   if(!modal)return;
   modal.classList.add('open');
+  // The modal is permanently in the DOM and only toggled by CSS, but it
+  // carries role="dialog" aria-modal="true" -- left exposed while closed,
+  // VoiceOver keeps treating it as an open dialog and, on dismiss, loses its
+  // anchor and starts reading the freshly re-rendered dashboard behind it
+  // (heard on device as garbled speech after a capture). Toggle it explicitly.
+  modal.removeAttribute('aria-hidden');
   document.body.classList.add('cp-immersive');
   _blurDashboard();
   // R13: tapping the FAB at all counts as having found it -- no need to also
@@ -7838,6 +7865,7 @@ function closeQuickCapture(){
   var modal=document.getElementById('quickCaptureModal');
   if(!modal)return;
   modal.classList.remove('open');
+  modal.setAttribute('aria-hidden','true'); // see openQuickCapture
   _quitImmersiveChrome();
   _unblurDashboard();
 }

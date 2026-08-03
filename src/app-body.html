@@ -20,6 +20,12 @@
       <button class="tab-btn vms-btn" data-mode="today" onclick="setViewMode('today')">Today</button>
       <button class="tab-btn vms-btn" data-mode="everything" onclick="setViewMode('everything')">Everything</button>
     </div>
+    <!-- Search/omnisearch entry point. Lives in the header because the header
+         is the one chrome BOTH mobile modes show, and the status bar that
+         carries the desktop "Menu" button is display:none under 768px -- so
+         without this, Cmd+K's palette (and the cross-type search inside it)
+         was literally unreachable on phone, where there's no keyboard either. -->
+    <button class="header-search-btn" onclick="openCommandPalette()" title="Search everything (Ctrl/Cmd+K)" aria-label="Search everything"><i class="ti ti-search" aria-hidden="true"></i></button>
     <div class="mobile-only-title"><span class="mt-name">Centerpost</span><span class="mt-sub">Productivity</span></div>
     <div class="header-timer-outer">
       <span class="header-timer-label-tag">Focus</span>
@@ -519,7 +525,12 @@
 <!-- TIMER MODAL -->
 <!-- JOURNAL OVERLAY -->
 <div id="journal-overlay-root"></div>
-<div class="toast" id="toast" role="status" aria-live="polite" aria-atomic="true"></div>
+<div class="toast" id="toast"></div>
+<!-- Screen-reader announcer, separate from the visual toast on purpose: the
+     toast text carries decorative glyphs (checkmarks, emoji) that VoiceOver
+     spells out ("check mark task added..."). toast() pushes a cleaned copy
+     here instead, so the spoken confirmation is just the words. -->
+<div class="sr-only" id="a11yAnnounce" role="status" aria-live="polite" aria-atomic="true"></div>
 </div><!-- end app-wrap -->
 <div class="status-bar" id="statusBar"><div id="status-bar-root"></div></div>
 

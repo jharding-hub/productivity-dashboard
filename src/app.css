@@ -721,6 +721,11 @@ body[data-theme="storm-dark"] .day-progress-elapsed{
 .status-bar .customize-btn{font-size:calc(12px * var(--type-scale,1));padding:5px 12px;}
 .status-bar .lock-btn{font-size:calc(12px * var(--type-scale,1));padding:5px 12px;}
 .status-bar-spacer{flex:1;}
+/* Header search button -- the only omnisearch entry point on phone, where
+   .status-bar (and its "Menu" button) is display:none and there's no keyboard
+   for Cmd+K. 40px min target keeps it thumb-safe. */
+.header-search-btn{background:none;border:1px solid var(--border);color:var(--text-dim);border-radius:var(--radius-sm);cursor:pointer;font-family:inherit;min-width:40px;min-height:40px;display:inline-flex;align-items:center;justify-content:center;font-size:calc(16px * var(--type-scale,1));transition:all 0.15s;flex-shrink:0;}
+.header-search-btn:hover{border-color:var(--accent-dim);color:var(--accent);}
 /* R2 stage B: mobile-only 4-slot tab bar (Home/Today/Tool Kit/Settings),
    thumb-reachable replacement for the status bar's role as primary mobile
    nav. Hidden by default; the mobile media query below shows this and hides
