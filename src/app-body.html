@@ -20,12 +20,8 @@
       <button class="tab-btn vms-btn" data-mode="today" onclick="setViewMode('today')">Today</button>
       <button class="tab-btn vms-btn" data-mode="everything" onclick="setViewMode('everything')">Everything</button>
     </div>
-    <!-- Search/omnisearch entry point. Lives in the header because the header
-         is the one chrome BOTH mobile modes show, and the status bar that
-         carries the desktop "Menu" button is display:none under 768px -- so
-         without this, Cmd+K's palette (and the cross-type search inside it)
-         was literally unreachable on phone, where there's no keyboard either. -->
-    <button class="header-search-btn" onclick="openCommandPalette()" title="Search everything (Ctrl/Cmd+K)" aria-label="Search everything"><i class="ti ti-search" aria-hidden="true"></i></button>
+    <!-- Search moved to the mobile tab bar (Joe, 2026-08-03) -- it's a primary
+         action and belongs in the thumb-reachable nav, not the top chrome. -->
     <div class="mobile-only-title"><span class="mt-name">Centerpost</span><span class="mt-sub">Productivity</span></div>
     <div class="header-timer-outer">
       <span class="header-timer-label-tag">Focus</span>
@@ -305,7 +301,6 @@
 <div id="panelToggles"></div>
 <div class="customize-actions">
 <button class="btn" onclick="resetPanelVisibility()">Show All</button>
-<button class="btn btn-accent" onclick="closeCustomize()">Done</button>
 </div>
 <div style="border-bottom:1px solid var(--border);margin:16px 0;"></div>
 <div class="section-label" style="margin-bottom:8px;">Support Level</div>
@@ -377,6 +372,12 @@
 </div>
 <div id="devTierSettingsWrap" style="display:none;"></div>
 <div class="cust-build" id="custBuild"></div>
+<!-- Done lives at the very bottom (Joe, 2026-08-03): it used to sit just under
+     the panel toggles, a third of the way down a long sheet, so scrolling past
+     it read as "no way out" from the sections below. -->
+<div class="customize-actions customize-done-row">
+<button class="btn btn-accent" onclick="closeCustomize()">Done</button>
+</div>
 </div>
 </div>
 <!-- Breathwork overlay + modal (rendered by BreathworkOverlay component) -->
@@ -546,6 +547,7 @@
 <div class="mobile-tab-bar" id="mobileTabBar">
   <button class="mtb-btn vms-btn" data-mode="everything" onclick="setViewMode('everything')"><i class="ti ti-home-2" aria-hidden="true"></i><span>Home</span></button>
   <button class="mtb-btn vms-btn" data-mode="today" onclick="setViewMode('today')"><i class="ti ti-calendar-event" aria-hidden="true"></i><span>Today</span></button>
+  <button class="mtb-btn" onclick="openCommandPalette()" aria-label="Search everything"><i class="ti ti-search" aria-hidden="true"></i><span>Search</span></button>
   <button class="mtb-btn" onclick="showMobilePanel('time')"><i class="ti ti-tool" aria-hidden="true"></i><span>Tool Kit</span></button>
   <button class="mtb-btn" onclick="openCustomize()"><i class="ti ti-settings" aria-hidden="true"></i><span>Settings</span></button>
 </div>

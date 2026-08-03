@@ -1234,6 +1234,20 @@ function setSupportLevel(v){
   updateWellnessVisibility();
   _renderSupportLevelSettings();
 }
+// Stop motion: a user-facing override for the animated themes (galaxy stars,
+// starry, fireflies, storm) and UI transitions. Deliberately separate from
+// prefers-reduced-motion -- that's an OS-level signal the CSS already honors;
+// this is for someone who wants the app still without changing a system
+// setting. applyStopMotion() is the single choke point so init and the
+// toggle can't drift apart.
+function setStopMotion(on){
+  state.stopMotion=!!on;
+  save();
+  applyStopMotion();
+}
+function applyStopMotion(){
+  document.body.classList.toggle('cp-stop-motion',!!state.stopMotion);
+}
 function _renderSupportLevelSettings(){
   var el=document.getElementById('supportLevelSettings');
   if(!el)return;
@@ -2481,10 +2495,17 @@ function _renderNotifSettings(){
   else if(perm==='denied'){desc='Blocked in your browser settings — enable Centerpost there first.';}
   else{desc='Gentle nudges for due reminders and routines. Only while the app is open (on desktop).';}
   var html='';
+  // Stop motion is a display setting, not a notification one -- it sits here
+  // because that's where Joe wanted it (directly under the badge switch), but
+  // it is rendered in BOTH branches below so it never disappears just because
+  // notifications happen to be off.
+  var stopMotionRow='<div class="panel-toggle"><span class="pt-icon">🛑</span><div class="pt-info"><div class="pt-name">Stop motion</div><div class="pt-desc">Freeze animated themes and transitions. Helpful if movement is distracting or makes you queasy.</div></div><label class="toggle-switch"><input type="checkbox" '+(state.stopMotion?'checked':'')+' onchange="setStopMotion(this.checked)"><span class="toggle-slider"></span></label></div>';
   html+='<div class="panel-toggle"><span class="pt-icon">🔔</span><div class="pt-info"><div class="pt-name">Enable notifications</div><div class="pt-desc">'+desc+'</div></div><label class="toggle-switch"><input type="checkbox" '+(enabled?'checked':'')+' '+((!supported||perm==='denied')?'disabled':'')+' onchange="toggleNotifEnabled(this.checked)"><span class="toggle-slider"></span></label></div>';
+  if(!enabled)html+=stopMotionRow;
   if(enabled){
     html+='<div class="notif-row"><label>Quiet hours</label><span class="notif-time-pair"><input type="time" value="'+(p.quietStart||'21:00')+'" onchange="setNotifPref(\'quietStart\',this.value)"> to <input type="time" value="'+(p.quietEnd||'08:00')+'" onchange="setNotifPref(\'quietEnd\',this.value)"></span></div>';
     html+='<div class="panel-toggle"><span class="pt-icon">🔴</span><div class="pt-info"><div class="pt-name">App badge count</div><div class="pt-desc">Show a number on the app icon. Off by default.</div></div><label class="toggle-switch"><input type="checkbox" '+(p.badges?'checked':'')+' onchange="setNotifPref(\'badges\',this.checked)"><span class="toggle-slider"></span></label></div>';
+    html+=stopMotionRow; // directly under the badge switch, as asked
     var rm=p.routineMorning||{on:false,time:'08:00'};
     var re=p.routineEvening||{on:false,time:'20:00'};
     html+='<div class="notif-row"><label class="notif-check"><input type="checkbox" '+(rm.on?'checked':'')+' onchange="setNotifRoutine(\'routineMorning\',\'on\',this.checked)"> Morning routine nudge</label><input type="time" value="'+(rm.time||'08:00')+'" onchange="setNotifRoutine(\'routineMorning\',\'time\',this.value)"></div>';
@@ -11972,6 +11993,7 @@ function _spawnFireflies(){
   // Occasionally add/remove a firefly to keep it feeling alive
   _fireflyInterval=setInterval(function(){
     if(!_starryActive)return;
+    if(state.stopMotion)return; // CSS can't stop a JS respawn; skip the churn
     var layer2=document.getElementById('firefliesLayer');
     if(!layer2)return;
     var old=layer2.querySelectorAll('.firefly');
@@ -12133,6 +12155,7 @@ function _applySavedTheme(){
     metas.forEach(function(m){m.setAttribute('content',theme.bg);});
   }
   _emsUpdateOverlays(saved);
+  applyStopMotion(); // restore the saved stop-motion state alongside the theme
 }
 
 

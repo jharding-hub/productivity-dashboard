@@ -721,11 +721,20 @@ body[data-theme="storm-dark"] .day-progress-elapsed{
 .status-bar .customize-btn{font-size:calc(12px * var(--type-scale,1));padding:5px 12px;}
 .status-bar .lock-btn{font-size:calc(12px * var(--type-scale,1));padding:5px 12px;}
 .status-bar-spacer{flex:1;}
-/* Header search button -- the only omnisearch entry point on phone, where
-   .status-bar (and its "Menu" button) is display:none and there's no keyboard
-   for Cmd+K. 40px min target keeps it thumb-safe. */
-.header-search-btn{background:none;border:1px solid var(--border);color:var(--text-dim);border-radius:var(--radius-sm);cursor:pointer;font-family:inherit;min-width:40px;min-height:40px;display:inline-flex;align-items:center;justify-content:center;font-size:calc(16px * var(--type-scale,1));transition:all 0.15s;flex-shrink:0;}
-.header-search-btn:hover{border-color:var(--accent-dim);color:var(--accent);}
+/* STOP MOTION (Settings toggle, 2026-08-03). Separate from the OS-level
+   prefers-reduced-motion rules elsewhere in this file: this is an in-app
+   override for someone who wants the animated themes still without changing
+   a system setting. Kills keyframe animation and transitions everywhere,
+   which covers the galaxy/starry/storm/firefly layers (all CSS-driven) and
+   the UI's own transitions. !important because many theme rules set
+   animation inline-adjacent with their own weight. */
+body.cp-stop-motion *,
+body.cp-stop-motion *::before,
+body.cp-stop-motion *::after{animation:none !important;transition:none !important;}
+/* The capture flash relies on a background-colour animation to prove a save
+   landed -- with animation off it would never paint, so give it a static
+   equivalent rather than losing the confirmation entirely. */
+body.cp-stop-motion .cp-just-captured{background-color:var(--accent-glow) !important;box-shadow:inset 0 0 0 2px var(--accent) !important;}
 /* R2 stage B: mobile-only 4-slot tab bar (Home/Today/Tool Kit/Settings),
    thumb-reachable replacement for the status bar's role as primary mobile
    nav. Hidden by default; the mobile media query below shows this and hides
