@@ -4261,6 +4261,94 @@ var COMMAND_REGISTRY=[
   {id:'weekly-review',label:'Weekly Review',keywords:'recap summary week report review sunday',run:function(){openWeeklyReview();}},
   {id:'insights',label:'Insights',keywords:'points mood trends report insights correlations',run:function(){openPointsInsights();}}
 ];
+// ============================================================
+// CROSS-TYPE OMNISEARCH (persona-panel-3, 2026-08-02: the #1 build ask,
+// raised independently by 9/15 personas). Extends the existing Cmd/Ctrl+K
+// palette -- which already had keyboard nav, open/close, and a static
+// COMMAND_REGISTRY -- with live results federated across Tasks,
+// Reminders, Notes, Brain Dump, and Journal. Journal is included ONLY
+// while _journalUnlocked (searches the already-decrypted _journalPlain
+// cache renderJournalEntries uses); locked journal is silently omitted,
+// never nagged about -- this never decrypts anything on its own.
+// Reveal (jump-to-result) reuses _flashNewCapture verbatim -- see its
+// comment on the duplicate-DOM-id bug class this deliberately avoids by
+// always scoping to one container's subtree, never a bare getElementById.
+// ============================================================
+var OMNISEARCH_MAX_PER_TYPE=6;
+var OMNISEARCH_MIN_CHARS=2;
+
+function _omniSearchResults(q){
+  q=(q||'').toLowerCase().trim();
+  if(q.length<OMNISEARCH_MIN_CHARS)return [];
+  var out=[];
+  function pushResult(type,icon,label,sublabel,run){
+    out.push({omni:true,label:'['+icon+' '+type+'] '+label+(sublabel?' — '+sublabel:''),run:run});
+  }
+  (state.tasks||[]).filter(function(t){return (t.name||'').toLowerCase().indexOf(q)>=0;})
+    .slice(0,OMNISEARCH_MAX_PER_TYPE)
+    .forEach(function(t){pushResult('Task','✅',t.name,t.due?fmtDate(t.due):'',function(){_revealTask(t.id);});});
+  (state.reminders||[]).filter(function(r){return (r.text||'').toLowerCase().indexOf(q)>=0;})
+    .slice(0,OMNISEARCH_MAX_PER_TYPE)
+    .forEach(function(r){pushResult('Reminder','\u{1F535}',r.text,r.date?fmtDate(r.date):'',function(){_revealReminder(r.id);});});
+  (state.notes||[]).filter(function(n){return ((n.label||'')+' '+_stripHtml(n.body||'')).toLowerCase().indexOf(q)>=0;})
+    .slice(0,OMNISEARCH_MAX_PER_TYPE)
+    .forEach(function(n){pushResult('Note','\u{1F4DD}',n.label||'Untitled',n.date||'',function(){_revealNote(n.id);});});
+  (state.thoughts||[]).filter(function(t){return (t.text||'').toLowerCase().indexOf(q)>=0;})
+    .slice(0,OMNISEARCH_MAX_PER_TYPE)
+    .forEach(function(t){pushResult('Brain Dump','\u{1F9E0}',t.text,'',function(){_revealThought(t.id);});});
+  if(_journalUnlocked&&typeof _journalEntries!=='undefined'){
+    _journalEntries.filter(function(e){return (_journalPlain[e.id]||'').toLowerCase().indexOf(q)>=0;})
+      .slice(0,OMNISEARCH_MAX_PER_TYPE)
+      .forEach(function(e){
+        var txt=_journalPlain[e.id]||'';
+        pushResult('Journal','\u{1F512}',txt.slice(0,60)+(txt.length>60?'…':''),'',function(){_revealJournalEntry(e.id);});
+      });
+  }
+  return out;
+}
+
+// Each _revealX opens the owning panel/overlay, clears any leftover
+// panel-local filter/search/pagination state that could hide the match
+// (a stale filter is otherwise a silent "the search found it but the
+// panel is still hiding it" failure), re-renders, then flashes the row.
+function _revealTask(id){
+  openPanelOverlay('tasklist');
+  var upcomingEl=document.getElementById('taskUpcomingOnly');if(upcomingEl)upcomingEl.checked=true;
+  var filt=document.getElementById('tlFilterProj');if(filt)filt.value='all';
+  var srch=document.getElementById('tlSearch');if(srch)srch.value='';
+  _tlRenderLimit=999999;
+  renderTaskList();
+  setTimeout(function(){_flashNewCapture('taskListItems','tlname_',id,'tl-item');},60);
+}
+function _revealReminder(id){
+  openPanelOverlay('reminders');
+  var srch=document.getElementById('remSearch');if(srch)srch.value='';
+  _remRenderLimit=999999;
+  renderReminders();
+  setTimeout(function(){_flashNewCapture('reminderList','rt_',id,'reminder-item');},60);
+}
+function _revealNote(id){
+  openPanelOverlay('notes');
+  var filt=document.getElementById('noteFilterProj');if(filt)filt.value='all';
+  var srch=document.getElementById('noteSearch');if(srch)srch.value='';
+  renderNotes();
+  setTimeout(function(){_flashNewCapture('notesList','nl_',id,'note-card');},60);
+}
+function _revealThought(id){
+  openPanelOverlay('brain');
+  renderThoughts();
+  setTimeout(function(){_flashNewCapture('thoughtChips','tt_',id,'thought-chip');},60);
+}
+function _revealJournalEntry(id){
+  openJournal();
+  setTimeout(function(){
+    var srch=document.getElementById('journalSearch');if(srch)srch.value='';
+    var filt=document.getElementById('journalFilterProj');if(filt)filt.value='all';
+    if(typeof renderJournalEntries==='function')renderJournalEntries();
+    _flashNewCapture('journalEntriesList','je_',id,'journal-entry-card');
+  },120);
+}
+
 var _cmdPaletteSelected=0;
 var _cmdPaletteFiltered=COMMAND_REGISTRY;
 function openCommandPalette(){
@@ -4279,9 +4367,12 @@ function closeCommandPalette(){
 function _cmdPaletteFilter(){
   var input=document.getElementById('cmdPaletteInput');
   var q=(input?input.value:'').trim().toLowerCase();
-  _cmdPaletteFiltered=!q?COMMAND_REGISTRY:COMMAND_REGISTRY.filter(function(c){
+  var cmds=!q?COMMAND_REGISTRY:COMMAND_REGISTRY.filter(function(c){
     return c.label.toLowerCase().indexOf(q)>=0||c.keywords.toLowerCase().indexOf(q)>=0;
   });
+  // Live data results rank above static commands -- a query almost always
+  // means "find the thing I captured," not "run a command."
+  _cmdPaletteFiltered=_omniSearchResults(q).concat(cmds);
   _cmdPaletteSelected=0;
   _cmdPaletteRender();
 }
@@ -9248,7 +9339,7 @@ function renderJournalEntries(){
     const d=new Date(e.date);
     const dStr=d.toLocaleDateString('en-US',{weekday:'short',month:'short',day:'numeric',year:'numeric'})+' — '+d.toLocaleTimeString('en-US',{hour:'numeric',minute:'2-digit'});
     const tags=(e.projName?'<span class="jec-tag">&#128194; '+esc(e.projName)+'</span>':'')+(e.mood?'<span class="jec-tag mood-tag">'+(MOOD_LABELS[e.mood]||esc(e.mood))+'</span>':'');
-    return '<div class="journal-entry-card"><div class="jec-header"><div class="jec-meta"><div class="jec-date">'+dStr+'</div>'+(tags?'<div class="jec-tags">'+tags+'</div>':'')+'</div><div class="jec-actions"><button class="jec-del" onclick="deleteJournalEntry(\''+e.id+'\')" title="Delete entry">&#128465;</button></div></div><div class="jec-body">'+esc(_journalPlain[e.id]||'')+'</div></div>';
+    return '<div class="journal-entry-card" id="je_'+e.id+'"><div class="jec-header"><div class="jec-meta"><div class="jec-date">'+dStr+'</div>'+(tags?'<div class="jec-tags">'+tags+'</div>':'')+'</div><div class="jec-actions"><button class="jec-del" onclick="deleteJournalEntry(\''+e.id+'\')" title="Delete entry">&#128465;</button></div></div><div class="jec-body">'+esc(_journalPlain[e.id]||'')+'</div></div>';
   }).join('');
 }
 
