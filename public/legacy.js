@@ -134,6 +134,20 @@ function getTierConfig(){
   return TIER_CONFIG[getActiveTier()]||TIER_CONFIG.free;
 }
 
+// Persona-panel-3 (2026-08-02) finding: BETA_ALL_FEATURES is a single
+// blanket switch -- the day it flips off, TIER_CONFIG.free re-locks Brain
+// Dump exactly as designed, with nobody having deliberately redesigned the
+// free tier first. That's the "borrowed trust" risk multiple personas
+// flagged independently. Wellness/regulation (breath, HALT+, mood, the
+// Grounding Toolkit) was already exempt -- see the 'wellness' case below and
+// TIER_CONFIG.free.toolkitAllowed, both pre-existing (R3). This adds the
+// same structural guarantee for capture: Brain Dump can never be tier-locked
+// by the master flag alone, regardless of what TIER_CONFIG.free says later.
+// This does NOT redesign the free tier or touch TIER_CONFIG -- that
+// decision stays with Joe. It only means flipping one flag can't silently
+// reproduce the exact trust break the panel found.
+var ALWAYS_FREE_PANELS=['brain'];
+
 function applyTierGating(){
   var cfg=getTierConfig();
 
@@ -141,7 +155,7 @@ function applyTierGating(){
   document.querySelectorAll('.panel[data-panel]').forEach(function(panel){
     var key=panel.getAttribute('data-panel');
     if(key==='wellness'||key==='admin')return; // managed elsewhere
-    var allowed=BETA_ALL_FEATURES||cfg.panels.indexOf(key)>=0;
+    var allowed=BETA_ALL_FEATURES||ALWAYS_FREE_PANELS.indexOf(key)>=0||cfg.panels.indexOf(key)>=0;
     if(!allowed){
       panel.classList.add('tier-locked-panel');
       panel.classList.remove('hidden-panel');
