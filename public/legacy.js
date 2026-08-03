@@ -4295,30 +4295,57 @@ var COMMAND_REGISTRY=[
 // comment on the duplicate-DOM-id bug class this deliberately avoids by
 // always scoping to one container's subtree, never a bare getElementById.
 // ============================================================
-var OMNISEARCH_MAX_PER_TYPE=6;
+var OMNISEARCH_MAX_PER_TYPE=25;
 var OMNISEARCH_MIN_CHARS=2;
+
+// All terms must appear somewhere in the haystack, in any order, as
+// substrings -- so a partial word ("kitch") hits, and "island kitchen"
+// finds "Kitchen island" even though the words are reversed.
+function _omniMatch(haystack,terms){
+  var h=(haystack||'').toLowerCase();
+  for(var i=0;i<terms.length;i++){if(h.indexOf(terms[i])<0)return false;}
+  return true;
+}
 
 function _omniSearchResults(q){
   q=(q||'').toLowerCase().trim();
   if(q.length<OMNISEARCH_MIN_CHARS)return [];
+  var terms=q.split(/\s+/).filter(Boolean);
+  if(!terms.length)return [];
   var out=[];
   function pushResult(type,icon,label,sublabel,run){
     out.push({omni:true,label:'['+icon+' '+type+'] '+label+(sublabel?' — '+sublabel:''),run:run});
   }
-  (state.tasks||[]).filter(function(t){return (t.name||'').toLowerCase().indexOf(q)>=0;})
+  // getAllTasks(), NOT state.tasks: the task list renders standalone tasks
+  // AND every project's subtasks, so searching the raw array silently missed
+  // every subtask -- "Kitchen island" under a project returned nothing while
+  // a standalone "Ambulance certification" matched fine. Same source as the
+  // panel means search and list can never disagree about what exists.
+  getAllTasks().filter(function(t){return _omniMatch(t.name,terms);})
     .slice(0,OMNISEARCH_MAX_PER_TYPE)
-    .forEach(function(t){pushResult('Task','✅',t.name,t.due?fmtDate(t.due):'',function(){_revealTask(t.id);});});
-  (state.reminders||[]).filter(function(r){return (r.text||'').toLowerCase().indexOf(q)>=0;})
+    .forEach(function(t){
+      var bits=[];
+      if(t.projectName)bits.push(t.projectName);
+      if(t.due)bits.push(fmtDate(t.due));
+      if(t.done)bits.push('done');
+      pushResult('Task','✅',t.name,bits.join(' · '),function(){_revealTask(t.id);});
+    });
+  (state.projects||[]).filter(function(p){return _omniMatch(p.name,terms);})
+    .slice(0,OMNISEARCH_MAX_PER_TYPE)
+    .forEach(function(p){
+      pushResult('Project','\u{1F4C1}',p.name,((p.subtasks||[]).length)+' subtask'+((p.subtasks||[]).length!==1?'s':''),function(){_revealProject(p.id);});
+    });
+  (state.reminders||[]).filter(function(r){return _omniMatch(r.text,terms);})
     .slice(0,OMNISEARCH_MAX_PER_TYPE)
     .forEach(function(r){pushResult('Reminder','\u{1F535}',r.text,r.date?fmtDate(r.date):'',function(){_revealReminder(r.id);});});
-  (state.notes||[]).filter(function(n){return ((n.label||'')+' '+_stripHtml(n.body||'')).toLowerCase().indexOf(q)>=0;})
+  (state.notes||[]).filter(function(n){return _omniMatch((n.label||'')+' '+_stripHtml(n.body||''),terms);})
     .slice(0,OMNISEARCH_MAX_PER_TYPE)
     .forEach(function(n){pushResult('Note','\u{1F4DD}',n.label||'Untitled',n.date||'',function(){_revealNote(n.id);});});
-  (state.thoughts||[]).filter(function(t){return (t.text||'').toLowerCase().indexOf(q)>=0;})
+  (state.thoughts||[]).filter(function(t){return _omniMatch(t.text,terms);})
     .slice(0,OMNISEARCH_MAX_PER_TYPE)
     .forEach(function(t){pushResult('Brain Dump','\u{1F9E0}',t.text,'',function(){_revealThought(t.id);});});
   if(_journalUnlocked&&typeof _journalEntries!=='undefined'){
-    _journalEntries.filter(function(e){return (_journalPlain[e.id]||'').toLowerCase().indexOf(q)>=0;})
+    _journalEntries.filter(function(e){return _omniMatch(_journalPlain[e.id]||'',terms);})
       .slice(0,OMNISEARCH_MAX_PER_TYPE)
       .forEach(function(e){
         var txt=_journalPlain[e.id]||'';
@@ -4340,6 +4367,13 @@ function _revealTask(id){
   _tlRenderLimit=999999;
   renderTaskList();
   setTimeout(function(){_flashNewCapture('taskListItems','tlname_',id,'tl-item');},60);
+}
+function _revealProject(id){
+  openPanelOverlay('projects');
+  var p=(state.projects||[]).find(function(x){return x.id===id;});
+  if(p)p.expanded=true; // open the card so its subtasks are visible on arrival
+  renderProjects();
+  setTimeout(function(){_flashNewCapture('projectList','pn_',id,'project-card');},60);
 }
 function _revealReminder(id){
   openPanelOverlay('reminders');
@@ -4388,19 +4422,28 @@ function closeCommandPalette(){
 function _cmdPaletteFilter(){
   var input=document.getElementById('cmdPaletteInput');
   var q=(input?input.value:'').trim().toLowerCase();
-  var cmds=!q?COMMAND_REGISTRY:COMMAND_REGISTRY.filter(function(c){
-    return c.label.toLowerCase().indexOf(q)>=0||c.keywords.toLowerCase().indexOf(q)>=0;
-  });
-  // Live data results rank above static commands -- a query almost always
-  // means "find the thing I captured," not "run a command."
-  _cmdPaletteFiltered=_omniSearchResults(q).concat(cmds);
+  // Typing here means "find my stuff", not "run a command" -- every command
+  // in the registry just opens a panel already reachable from the surface.
+  // So content wins outright: commands only appear on an empty query (the
+  // palette's menu role) or when the query matched no content at all, which
+  // keeps "settings"/"export" reachable without burying real results.
+  var hits=_omniSearchResults(q);
+  if(!q){
+    _cmdPaletteFiltered=COMMAND_REGISTRY;
+  }else if(hits.length){
+    _cmdPaletteFiltered=hits;
+  }else{
+    _cmdPaletteFiltered=COMMAND_REGISTRY.filter(function(c){
+      return c.label.toLowerCase().indexOf(q)>=0||c.keywords.toLowerCase().indexOf(q)>=0;
+    });
+  }
   _cmdPaletteSelected=0;
   _cmdPaletteRender();
 }
 function _cmdPaletteRender(){
   var list=document.getElementById('cmdPaletteList');if(!list)return;
   if(_cmdPaletteFiltered.length===0){
-    list.innerHTML='<div style="padding:12px;color:var(--text-faint);font-size:13px;">No matching commands</div>';
+    list.innerHTML='<div style="padding:12px;color:var(--text-faint);font-size:13px;">Nothing found in tasks, projects, reminders, notes, or Brain Dump.</div>';
     return;
   }
   list.innerHTML=_cmdPaletteFiltered.map(function(c,i){
