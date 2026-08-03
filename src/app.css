@@ -2670,7 +2670,15 @@ body[data-theme="storm-dark"] .tl-hour-label{
 .customize-btn{background:none;border:1px solid var(--border);color:var(--text-dim);padding:6px 10px;border-radius:var(--radius-sm);cursor:pointer;font-size:calc(12px * var(--type-scale,1));font-family:inherit;transition:all 0.15s;min-height:40px;}
 .kids-launcher:hover{background:linear-gradient(135deg,#ffe060,#ff66bb) !important;border-color:#ffcc00 !important;color:#1a0033 !important;}
 .customize-btn:hover{border-color:var(--accent-dim);color:var(--accent);}
-.customize-overlay{position:fixed;inset:0;background:rgba(0,0,0,0.6);z-index:300;display:none;align-items:center;justify-content:center;padding:20px;}
+/* z-index 1400: Settings is reachable from the mobile tab bar while a
+   full-screen surface is already up, so it has to clear all of them --
+   panel overlay (1000), journal (1050), modal-blur/workout/quick-capture
+   (1100), modal-overlay (1200) and workTodayModal (1300). At its old 300 it
+   opened BEHIND every one of those: the sheet was genuinely open and taking
+   taps, just invisible until the surface above it closed. Kept under
+   proj-multi-dropdown (1500) and the gcal modal (2000); nothing inside
+   Settings opens the 1200 modal layer (account delete uses native confirm). */
+.customize-overlay{position:fixed;inset:0;background:rgba(0,0,0,0.6);z-index:1400;display:none;align-items:center;justify-content:center;padding:20px;}
 .customize-overlay.show{display:flex;}
 .customize-box{background:var(--surface);border:1px solid var(--border);border-radius:var(--radius);padding:28px;max-width:440px;width:100%;max-height:80vh;max-height:80dvh;overflow-y:auto;}
 /* iOS-safe Settings modal: scroll the whole overlay (top-aligned) so the
