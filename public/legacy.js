@@ -5051,7 +5051,7 @@ var breathTechniques={
     desc:'Equal inhale, hold, exhale, hold. Activates parasympathetic nervous system and reduces cortisol.',
     phases:['Inhale','Hold','Exhale','Hold'],
     durations:[4,4,4,4],
-    cycles:4,
+    cycles:8,
     cues:['Breathe in slowly through your nose','Keep your lungs full, stay relaxed','Release slowly through your mouth','Stay empty, stay calm']
   },
   '478':{
@@ -5060,7 +5060,7 @@ var breathTechniques={
     desc:'Extended exhale (2x inhale) shifts autonomic balance toward parasympathetic dominance. Powerful for anxiety.',
     phases:['Inhale','Hold','Exhale'],
     durations:[4,7,8],
-    cycles:4,
+    cycles:8,
     cues:['Quietly through your nose','Gently hold, body relaxed','Slowly and completely through your mouth']
   },
   sigh:{
@@ -5077,7 +5077,7 @@ var breathTechniques={
     source:'Kabat-Zinn MBSR; Demarzo et al., 2017 meta-analysis',
     desc:'Redirects attention from rumination to body awareness. Even brief scans reduce cortisol and cognitive fusion.',
     phases:['Settle In','Feet & Legs','Torso & Hands','Arms & Shoulders','Neck & Face','Integrate'],
-    durations:[8,15,15,15,15,12],
+    durations:[12,22,22,22,22,20],
     cycles:1,
     cues:['Close your eyes. Three slow breaths.','Notice your feet on the ground. Scan up through calves, knees, thighs.','Feel your belly rise and fall. Notice your hands resting.','Scan forearms, upper arms. Let shoulders drop.','Relax your jaw. Soften your forehead. Unclench.','Breathe into any remaining tension. Open your eyes slowly.']
   },
@@ -5087,7 +5087,7 @@ var breathTechniques={
     desc:'Breathing at ~5.5 breaths/min maximizes heart rate variability. The gold standard for vagal tone training.',
     phases:['Inhale','Exhale'],
     durations:[5,6],
-    cycles:6,
+    cycles:11,
     cues:['Slowly fill your lungs through your nose','Gently release, letting your body soften']
   },
   alternate:{
@@ -5096,7 +5096,7 @@ var breathTechniques={
     desc:'Balances sympathetic and parasympathetic activity. Reduces blood pressure and improves attention.',
     phases:['Right Nostril In','Hold','Left Nostril Out','Left Nostril In','Hold','Right Nostril Out'],
     durations:[4,2,4,4,2,4],
-    cycles:3,
+    cycles:6,
     cues:['Close left nostril, inhale right','Close both, hold gently','Close right nostril, exhale left','Keep right closed, inhale left','Close both, hold gently','Close left nostril, exhale right']
   },
   '22exhale':{
@@ -5105,7 +5105,7 @@ var breathTechniques={
     desc:'Exhale twice as long as inhale. Reliably increases parasympathetic activity and reduces anxiety.',
     phases:['Inhale','Exhale'],
     durations:[4,8],
-    cycles:5,
+    cycles:10,
     cues:['Breathe in smoothly through your nose','Long, slow release through your mouth']
   }
 };
@@ -8943,8 +8943,31 @@ function openBreathworkModal(){
   // stays for switching; a selection the user already made this session is
   // respected, not overwritten.
   var sel=document.getElementById('breathSelect');
+  _breathStampDurations();
   if(sel&&!sel.value)sel.value='sigh';
   showBreathDesc();
+}
+// Write each technique's REAL length into its dropdown option, computed from
+// breathTechniques itself. The durations used to be hardcoded strings in
+// BreathworkOverlay.jsx while the timings lived here, and they drifted badly
+// -- box breathing advertised "2 min" and ran 1:04, and every technique
+// except the sigh overstated itself. Deriving the label means changing a
+// cycle count updates the menu automatically and the two can't disagree
+// again. Runs on open (not at React mount) because App.jsx injects this file
+// after mounting, so breathTechniques doesn't exist yet at render time.
+// data-base keeps it idempotent when the modal is reopened.
+function _breathStampDurations(){
+  var sel=document.getElementById('breathSelect');
+  if(!sel)return;
+  Array.prototype.forEach.call(sel.options,function(opt){
+    var base=opt.getAttribute('data-base');
+    if(!base)return; // the "Choose a technique..." placeholder
+    var t=breathTechniques[opt.value];
+    if(!t||!t.durations||!t.cycles){opt.textContent=base;return;}
+    var total=t.durations.reduce(function(a,b){return a+b;},0)*t.cycles;
+    var m=Math.floor(total/60),s=total%60;
+    opt.textContent=base+' — '+m+':'+(s<10?'0':'')+s;
+  });
 }
 function closeBreathworkModal(){
   document.getElementById('breathworkModal').classList.remove('open');

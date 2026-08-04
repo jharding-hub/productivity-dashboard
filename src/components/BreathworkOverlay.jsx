@@ -1,12 +1,24 @@
+// Durations are DERIVED from breathTechniques in legacy.js, never written out
+// by hand. They used to be hardcoded here ("Box Breathing — 2 min") while the
+// real phase/cycle timings lived in legacy.js, and the two silently drifted:
+// every label overstated its session, box breathing claiming 2 min while
+// actually running 1:04. One source of truth means that can't recur -- change
+// a cycle count and the menu follows.
 const TECHNIQUES = [
-  { value: 'box', label: '🧘 Box Breathing (4-4-4-4) — 2 min' },
-  { value: '478', label: '🌊 4-7-8 Breathing — 2.5 min' },
-  { value: 'sigh', label: '💨 Physiological Sigh — 1 min' },
-  { value: 'scan', label: '🧘 2-Minute Body Scan' },
-  { value: 'resonance', label: '🎤 Resonance Breathing (5.5-5.5) — 2 min' },
-  { value: 'alternate', label: '👃 Alternate Nostril (Nadi Shodhana) — 2 min' },
-  { value: '22exhale', label: '🌊 2:1 Extended Exhale (4-8) — 2 min' },
+  { value: 'box', label: '🧘 Box Breathing (4-4-4-4)' },
+  { value: '478', label: '🌊 4-7-8 Breathing' },
+  { value: 'sigh', label: '💨 Physiological Sigh' },
+  { value: 'scan', label: '🧘 Body Scan' },
+  { value: 'resonance', label: '🎤 Resonance Breathing (5.5-5.5)' },
+  { value: 'alternate', label: '👃 Alternate Nostril (Nadi Shodhana)' },
+  { value: '22exhale', label: '🌊 2:1 Extended Exhale (4-8)' },
 ];
+
+// The duration is appended at runtime by _breathStampDurations() in
+// legacy.js, which owns breathTechniques. It can't be computed here: App.jsx
+// injects legacy.js AFTER React mounts, so window.breathTechniques does not
+// exist yet at render time and every label would be left bare. data-base
+// holds the name so the stamp is idempotent across repeated opens.
 
 export default function BreathworkOverlay() {
   return (
@@ -90,7 +102,7 @@ export default function BreathworkOverlay() {
             >
               <option value="">Choose a technique...</option>
               {TECHNIQUES.map(({ value, label }) => (
-                <option key={value} value={value}>{label}</option>
+                <option key={value} value={value} data-base={label}>{label}</option>
               ))}
             </select>
             <div className="breathwork-desc" id="breathDesc" style={{ fontSize: 12, color: 'var(--text-dim)', marginBottom: 16, lineHeight: 1.6 }}></div>
