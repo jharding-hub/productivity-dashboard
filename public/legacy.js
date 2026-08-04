@@ -864,23 +864,27 @@ async function load(){
         }
         setSyncStatus('synced','Synced');
       }else{
-        // First time or migration -- also check old shared location
-        var _migratedFromShared=false;
-        try{
-          const oldDoc=await db.collection('dashboards').doc('957d52c2f223567f9e37f9121bb24f81ba916e3d1549fdfbc18c08cf7fe43c9f').get();
-          if(oldDoc.exists&&oldDoc.data().state){
-            const oldData=JSON.parse(oldDoc.data().state);
-            if(oldData.projects||oldData.reminders){state={...state,...oldData};console.log('Migrated from old shared Firestore');_migratedFromShared=true;}
-          }
-        }catch(me){console.log('Migration check:',me);}
-        // R11: only a genuinely first-ever account (nothing adopted from the
-        // old shared doc either) gets the onboarding tour -- a legacy account
-        // migrating formats is not a new user.
-        if(!_migratedFromShared)state.onboardingSeen=false;
-        // R2b: a genuinely new account lands on the Today view. A migrated
-        // (existing) account is left undefined here and defaults to
-        // 'everything' below, so nothing changes for it.
-        if(!_migratedFromShared)state.viewMode='today';
+        // CROSS-ACCOUNT LEAK, round 2 (Joe, 2026-08-03 -- a fresh dev account
+        // again inherited the primary account's data).
+        //
+        // What used to be here: any account whose own dashboard doc didn't
+        // exist yet would read the HARDCODED shared doc
+        // `dashboards/957d52c2...` (a relic of the pre-Firebase-Auth,
+        // single-shared-password era) and, if it held projects or reminders,
+        // merge it into the new account's state and persist it. That made
+        // every brand-new account adopt the original owner's data -- not a
+        // browser-cache carryover like the a3f6c42 localStorage leak, a
+        // server-side one that reproduces in incognito and on a clean device.
+        //
+        // The migration it existed for is long done, so it could only ever
+        // fire for accounts that should be starting empty. Removed entirely;
+        // every account with no dashboard doc is now treated as genuinely new
+        // (tour on, Today view), which is what it actually is.
+        //
+        // The stale `dashboards/957d52c2...` document itself is left alone --
+        // deleting live data is Joe's call, not a side effect of this fix.
+        state.onboardingSeen=false;
+        state.viewMode='today';
         // Push to new location. R5: exclude checkins/moodLog, same as save() --
         // they're adopted into their own docs by _loadCheckinsDoc/_loadMoodLogDoc
         // right after load() returns.
