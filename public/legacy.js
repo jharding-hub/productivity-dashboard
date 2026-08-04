@@ -670,6 +670,11 @@ function initAuthListener(){
       if(typeof initApp==='function') await initApp();
     }else{
       currentUser=null;isAdmin=false;userProfile=null;
+      // Don't leave the signed-out account's dashboard sitting in memory --
+      // load() also guards on uid change, but clearing here means the data is
+      // gone the moment you sign out rather than lingering until someone
+      // signs in again. Belt and braces on a leak that has now bitten twice.
+      _resetStateForNewUser();_lastLoadedUid=null;
       hideApp();
       // R6: native has no marketing page to tap "Sign In" from anymore, so
       // open the card automatically instead of leaving a bare brand screen.
@@ -702,6 +707,29 @@ try {
 // ── SCRIPT 3: APP LOGIC ─────────────────────────────────────────
 // STATE
 var state={projects:[],reminders:[],thoughts:[],notes:[],moodLog:[],tasks:[],completedTasks:[],completedTasksLifetime:undefined,completedProjectSubtasksLifetime:undefined,remindersArchive:[],remindersArchiveLifetime:undefined,journal:[],journalPin:'',workoutLog:{},completedWorkouts:[],focusPlaylistId:null,points:{current:0,monthKey:'',lastTier:'bronze',totalsByDay:{},lastLoginDate:'',lifetimeTotal:0,monthlyTotals:{}},panelUseLog:{},usageMonthlyTotals:{},routines:{morning:[{id:'m1',name:'Hydrate \u2014 glass of water',done:false},{id:'m2',name:"Review today's calendar",done:false},{id:'m3',name:'Pick top 3 priorities',done:false},{id:'m4',name:'Quick workspace tidy',done:false}],evening:[{id:'e1',name:'Review what got done today',done:false},{id:'e2',name:"Brain dump tomorrow's thoughts",done:false},{id:'e3',name:"Set out tomorrow's essentials",done:false},{id:'e4',name:'Wind-down activity',done:false}],custom:[]},currentRoutineTab:'morning',energy:null,mood:null,panelOrder:['projects','reminders','time','tasklist','notes','brain','routines','wellness','decision','admin'],panelsLocked:true,lastRoutineReset:null,visiblePanels:{},knownPanels:[]};
+
+// CROSS-ACCOUNT LEAK, round 3 (Joe, 2026-08-03). `state` is module-level and
+// was NEVER reset when the signed-in account changed: onAuthStateChanged's
+// sign-out branch clears currentUser/isAdmin/userProfile but not state, and
+// load() MERGES into whatever is already there (`state={...state,...p}`).
+// So deleting an account and signing up again in the same page session left
+// the old account's data in memory, and load()'s no-cloud-doc branch wrote
+// that whole object straight into the NEW account's Firestore doc.
+//
+// This is why the invite code looked responsible: reusing a code meant
+// signing up immediately in the same session (leak), while generating a fresh
+// code meant signing in as owner and navigating the admin panel first, which
+// reloaded the page and cleared memory (no leak). The code was a coincidence;
+// the real variable was whether memory had been cleared in between.
+//
+// Reset is keyed on the uid CHANGING, so it also covers plain account
+// switching and sign-out -> sign-in, with or without a reload, and never
+// discards in-flight edits for the account that's already loaded.
+var _pristineState=JSON.parse(JSON.stringify(state));
+var _lastLoadedUid=null;
+function _resetStateForNewUser(){
+  state=JSON.parse(JSON.stringify(_pristineState));
+}
 
 // SYNC STATUS
 function setSyncStatus(status,label){const el=document.getElementById('syncStatus');if(!el)return;el.className='sync-status '+status;var icon={synced:'✓',syncing:'↻',error:'⚠',offline:'•'}[status]||'•';el.innerHTML='<span class="sync-icon">'+icon+'</span> '+label;}
@@ -822,6 +850,11 @@ function save(){
 // LOAD -- tries Firestore first, then localStorage (per-user)
 async function load(){
   const uid=currentUser?currentUser.uid:'local';
+  // Wipe the previous account's in-memory data before loading a different
+  // one -- see _resetStateForNewUser. Without this the localStorage merge and
+  // the no-cloud-doc write below both start from the OLD account's state.
+  if(_lastLoadedUid!==null&&_lastLoadedUid!==uid)_resetStateForNewUser();
+  _lastLoadedUid=uid;
   _loadAxisProfile(); // independent of dashboard state; fire-and-forget, ready well before chat is opened
   // Always load localStorage as baseline
   try{const s=localStorage.getItem('prodDash_'+uid);if(s){const p=JSON.parse(s);state={...state,...p};}}catch(e){}
