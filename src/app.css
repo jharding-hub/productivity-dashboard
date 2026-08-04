@@ -735,21 +735,39 @@ body[data-theme="storm-dark"] .day-progress-elapsed{
    Never re-broaden this to `*`. Everything listed here is background
    decoration: killing its animation cannot hide content.
 
-   Galaxy is NOT here -- it's a <canvas> driven by requestAnimationFrame,
-   which CSS cannot stop at all (that's why the stars kept moving while the
-   Axis orb froze). It's handled in _galaxyEngine, which already has a
-   static-field path for prefers-reduced-motion. */
-body.cp-stop-motion .star,
-body.cp-stop-motion .firefly,
-body.cp-stop-motion .gstar,
+   The galaxy CANVAS is not stoppable here -- it's driven by
+   requestAnimationFrame, which CSS cannot touch at all (that's why the stars
+   kept moving while the Axis orb froze). It's handled in _galaxyEngine, which
+   already has a static-field path for prefers-reduced-motion.
+
+   Scoped by CONTAINER, not by class name. The first pass listed individual
+   classes (.star/.firefly/.gstar) and missed .rain-streak (storm) and .ember
+   (fire) -- Joe hit exactly that: galaxy froze, storm kept raining. These
+   layer elements hold nothing but decoration, so a wildcard INSIDE them is
+   safe and picks up anything spawned later without another round of this.
+
+   Deliberately NOT included: .tier-up-banner and .fireworks-overlay. Those
+   use `animation: ... forwards` to fade themselves OUT, so disabling their
+   animation would leave a celebration banner stuck on screen permanently --
+   the same fill-mode trap that hid the panels. Anything that animates itself
+   away must keep its animation. */
+body.cp-stop-motion #starryLayer,
+body.cp-stop-motion #starryLayer *,
 body.cp-stop-motion #starryLayer::before,
 body.cp-stop-motion #starryLayer::after,
+body.cp-stop-motion #galaxyLayer,
+body.cp-stop-motion #galaxyLayer *,
+body.cp-stop-motion #firefliesLayer,
+body.cp-stop-motion #firefliesLayer *,
+body.cp-stop-motion #stormLayer,
+body.cp-stop-motion #stormLayer *,
 body.cp-stop-motion #stormLayer::before,
 body.cp-stop-motion #stormLayer::after,
 body.cp-stop-motion #lightningFlash,
 body.cp-stop-motion #emsStrobe,
+body.cp-stop-motion #emsStrobe *,
 body.cp-stop-motion #emsFire,
-body.cp-stop-motion .fireworks-overlay,
+body.cp-stop-motion #emsFire *,
 body.cp-stop-motion .jarvis-fab{animation:none !important;}
 /* R2 stage B: mobile-only 4-slot tab bar (Home/Today/Tool Kit/Settings),
    thumb-reachable replacement for the status bar's role as primary mobile

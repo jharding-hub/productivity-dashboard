@@ -12091,6 +12091,11 @@ function _spawnOneRainStreak(layer){
 }
 function _emsStartEmbers(){
   _emsStopEmbers();
+  // `container` lost its declaration in the d7519d4 hygiene refactor (the
+  // sibling _emsStopEmbers still has it), so this threw ReferenceError on
+  // every switch to the fire theme -- which aborted _emsUpdateOverlays before
+  // it reached the starry/storm/galaxy start-stop branches below it.
+  var container=document.getElementById('emsFire');
   if(!container)return;
   _emsEmberInterval=setInterval(function(){
     if(document.body.getAttribute('data-theme')!=='fire'){_emsStopEmbers();return;}
