@@ -5074,7 +5074,10 @@ var breathTechniques={
     // lead-in on anything longer. "Short sharp sniff on top" clipped badly,
     // and even "Short sniff" still got cut (Joe, on device), so it's down to
     // the one word that names the action.
-    cues:['Deep breath through your nose','Sniff','Exhale slowly and completely through your mouth']
+    cues:['Deep breath through your nose','Sniff','Exhale slowly and completely through your mouth'],
+    // Hold the exhale cue back 1s so it doesn't tread on the 1s sniff phase's
+    // audio (Joe, build 77). Per-phase, seconds; omit or 0 = speak on entry.
+    cueDelays:[0,0,1]
   },
   scan:{
     name:'2-Minute Body Scan',
@@ -5126,6 +5129,7 @@ function showBreathDesc(){
 
 var breathInterval=null;
 var breathActive=false;
+var _breathCueTimeout=null; // pending delayed cue (technique.cueDelays)
 var _breathSessionStartMs=0; // R15: wall-clock session start for Apple Health logging
 var CIRC=628.3; // 2 * PI * 100
 var breathVoice=null;
@@ -5394,6 +5398,7 @@ function startBreathwork(){
 
   function onBreathComplete(){
     clearInterval(breathInterval);breathInterval=null;
+    clearTimeout(_breathCueTimeout);_breathCueTimeout=null; // a queued cue must not talk over "Well done"
     document.getElementById('breathPhase').textContent='\u2713 Complete';
     document.getElementById('breathCount').textContent='';
     document.getElementById('breathInstruction').textContent='Well done. Take a moment before returning.';
@@ -5441,7 +5446,22 @@ function startBreathwork(){
     if(phaseKey!==lastPhaseKey){
       lastPhaseKey=phaseKey;
       if(isScan)updateBodyScan(t.phases[pi]);
-      speak(t.cues[pi]);
+      // Optional per-phase speech delay (technique.cueDelays, seconds).
+      // The sigh's exhale was landing on top of the 1s sniff phase's audio --
+      // the cue is meant to lead the movement, not arrive before the user has
+      // finished the previous one. Always clear the pending timer first: if a
+      // phase ends before its delay elapses, the queued cue would otherwise
+      // fire during the NEXT phase and describe the wrong movement.
+      clearTimeout(_breathCueTimeout);_breathCueTimeout=null;
+      var _cueDelay=(t.cueDelays&&t.cueDelays[pi])||0;
+      if(_cueDelay>0){
+        var _cueText=t.cues[pi];
+        _breathCueTimeout=setTimeout(function(){
+          if(breathActive)speak(_cueText);
+        },_cueDelay*1000);
+      }else{
+        speak(t.cues[pi]);
+      }
       // R15: haptic swell synced to the phase the user is entering.
       _breathHaptic(_breathClassifyPhase(id,t.phases[pi]),t.durations[pi]);
     }
@@ -5455,6 +5475,7 @@ function stopBreathwork(){
   breathActive=false;
   _quitImmersiveChrome(); // guarded -- see closeCustomize
   clearInterval(breathInterval);breathInterval=null;
+  clearTimeout(_breathCueTimeout);_breathCueTimeout=null; // don't let a delayed cue speak after the session ends
   _breathHaptic('release'); // R15: tear down the native haptic engine
   if(_breathCurrentAudio){_breathCurrentAudio.pause();_breathCurrentAudio=null;}
   try{speechSynthesis.cancel();}catch(e){}
