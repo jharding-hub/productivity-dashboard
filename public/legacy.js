@@ -5070,10 +5070,11 @@ var breathTechniques={
     phases:['Deep Inhale','Quick Sniff In','Long Exhale'],
     durations:[3,1,6],
     cycles:6,
-    // "Short sniff" deliberately terse: this phase is 1s and the previous
-    // wording ("Short sharp sniff on top") was still playing when the phase
-    // ended, so it clipped mid-word.
-    cues:['Deep breath through your nose','Short sniff','Slow and long through your mouth']
+    // A single word on purpose. This phase is 1s -- shorter than the TTS
+    // lead-in on anything longer. "Short sharp sniff on top" clipped badly,
+    // and even "Short sniff" still got cut (Joe, on device), so it's down to
+    // the one word that names the action.
+    cues:['Deep breath through your nose','Sniff','Exhale slowly and completely through your mouth']
   },
   scan:{
     name:'2-Minute Body Scan',
@@ -5082,7 +5083,7 @@ var breathTechniques={
     phases:['Settle In','Feet & Legs','Torso & Hands','Arms & Shoulders','Neck & Face','Integrate'],
     durations:[12,22,22,22,22,20],
     cycles:1,
-    cues:['Close your eyes. Three slow breaths.','Notice your feet on the ground. Scan up through calves, knees, thighs.','Feel your belly rise and fall. Notice your hands resting.','Scan forearms, upper arms. Let shoulders drop.','Unclench and relax your jaw. Soften your forehead','Breathe into any remaining tension. Open your eyes slowly.']
+    cues:['Close your eyes. Three slow breaths.','Notice your feet on the ground. Scan up through calves, knees, thighs.','Feel your belly rise and fall. Notice your hands resting.','Scan forearms, upper arms. Let your shoulders drop.','Unclench and relax your jaw. Soften your forehead','Breathe into any remaining tension. Open your eyes slowly.']
   },
   resonance:{
     name:'Resonance Breathing (5.5-5.5)',
