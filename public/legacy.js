@@ -5061,7 +5061,7 @@ var breathTechniques={
     phases:['Inhale','Hold','Exhale'],
     durations:[4,7,8],
     cycles:8,
-    cues:['Quietly through your nose','Gently hold, body relaxed','Slowly and completely through your mouth']
+    cues:['Inhale quietly through your nose','Gently hold, body relaxed','Exhale slowly and completely through your mouth']
   },
   sigh:{
     name:'Physiological Sigh',
@@ -5070,7 +5070,10 @@ var breathTechniques={
     phases:['Deep Inhale','Quick Sniff In','Long Exhale'],
     durations:[3,1,6],
     cycles:6,
-    cues:['Deep breath through your nose','Short sharp sniff on top','Slow and long through your mouth']
+    // "Short sniff" deliberately terse: this phase is 1s and the previous
+    // wording ("Short sharp sniff on top") was still playing when the phase
+    // ended, so it clipped mid-word.
+    cues:['Deep breath through your nose','Short sniff','Slow and long through your mouth']
   },
   scan:{
     name:'2-Minute Body Scan',
@@ -5079,7 +5082,7 @@ var breathTechniques={
     phases:['Settle In','Feet & Legs','Torso & Hands','Arms & Shoulders','Neck & Face','Integrate'],
     durations:[12,22,22,22,22,20],
     cycles:1,
-    cues:['Close your eyes. Three slow breaths.','Notice your feet on the ground. Scan up through calves, knees, thighs.','Feel your belly rise and fall. Notice your hands resting.','Scan forearms, upper arms. Let shoulders drop.','Relax your jaw. Soften your forehead. Unclench.','Breathe into any remaining tension. Open your eyes slowly.']
+    cues:['Close your eyes. Three slow breaths.','Notice your feet on the ground. Scan up through calves, knees, thighs.','Feel your belly rise and fall. Notice your hands resting.','Scan forearms, upper arms. Let shoulders drop.','Unclench and relax your jaw. Soften your forehead','Breathe into any remaining tension. Open your eyes slowly.']
   },
   resonance:{
     name:'Resonance Breathing (5.5-5.5)',
