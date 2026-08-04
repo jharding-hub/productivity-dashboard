@@ -5010,12 +5010,31 @@ async function adminMakeAdmin(uid){
     try{await db.collection('users').doc(uid).update({admin:true});toast('Admin granted');renderAdminPanel();}catch(e){toast('Error: '+e.message);}
   },{confirmText:'Make Admin',icon:'ti-shield'});
 }
+// Routed through the Worker's owner-only /admin/delete-user rather than
+// deleting from the client. The old client-side version wrote to
+// users/{uid}/data/dashboard for a uid that wasn't the caller's, which
+// firestore.rules forbids -- it failed with "Missing or insufficient
+// permissions" every time. The Worker uses the service account, so it also
+// removes what the client never could: the journal/checkins/moodLog/archive
+// docs and the Firebase Auth record (without which a "deleted" user simply
+// signs back in and their profile doc is recreated).
 async function adminDeleteUser(uid,email){
   if(!isAdmin)return;
-  _confirm('Delete user '+email+'? Their data will also be deleted.',async function(){
+  _confirm('Delete user '+email+'? Their account, all of their data, and their sign-in are erased permanently.',async function(){
     try{
-      await db.collection('users').doc(uid).collection('data').doc('dashboard').delete();
-      await db.collection('users').doc(uid).delete();
+      if(!currentUser){toast('Sign in first');return;}
+      var idToken=await currentUser.getIdToken(true);
+      var resp=await fetch(JARVIS_PROXY_URL+'/admin/delete-user',{
+        method:'POST',
+        headers:{'Authorization':'Bearer '+idToken,'Content-Type':'application/json'},
+        body:JSON.stringify({uid:uid})
+      });
+      var payload=null;
+      try{payload=await resp.json();}catch(e){}
+      if(!resp.ok){
+        toast((payload&&payload.error)?payload.error:'Delete failed (HTTP '+resp.status+'). Nothing was changed.');
+        return;
+      }
       toast('User '+email+' deleted');
       renderAdminPanel();
     }catch(e){toast('Error: '+e.message);}
