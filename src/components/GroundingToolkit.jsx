@@ -4,7 +4,7 @@ export default function GroundingToolkit() {
       <div className="panel-header">
         <div className="panel-title">
           <span className="drag-handle">&#10495;</span>
-          <i className="ti ti-heart-rate icon" aria-hidden="true"></i> Grounding Toolkit
+          <i className="ti ti-heart-rate icon" aria-hidden="true"></i> Grounding Session
         </div>
         <div className="panel-badge" id="wellnessTrigger">--</div>
       </div>

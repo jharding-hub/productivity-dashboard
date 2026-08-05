@@ -1224,6 +1224,10 @@ body.capacitor-native a[target="_blank"]{-webkit-touch-callout:none;}
 .panel.user-hidden{display:none!important;}
 .panel-header{display:flex;align-items:center;justify-content:space-between;margin-bottom:14px;}
 .panel-title{font-family:'Fraunces',serif;font-size:calc(16px * var(--type-scale,1));font-weight:600;color:var(--text);display:flex;align-items:center;gap:7px;}
+/* R13 subtitle pass, part 2 (Joe, 2026-08-04): the same one-line "what is
+   this for" treatment the Tool Kit grid's HALT+/Urge Log buttons got
+   (.toolkit-btn-sub), generalized for a panel header rather than a button. */
+.panel-subtitle{font-size:calc(11px * var(--type-scale,1));font-weight:400;color:var(--text-faint);margin-top:-4px;margin-bottom:6px;}
 .panel-title .icon{font-size:calc(17px * var(--type-scale,1));}
 /* Tabler icon sizing — panel headers */
 .panel-title i.ti{font-size:calc(16px * var(--type-scale,1));color:var(--text-dim);flex-shrink:0;font-style:normal;line-height:1;}
@@ -1463,6 +1467,7 @@ body.unlocked .date-editable{border-bottom-color:var(--border);}
 .points-popup-row{display:flex;justify-content:space-between;align-items:center;margin:3px 0;}
 .points-popup-label{color:var(--text-dim);font-size:calc(12px * var(--type-scale,1));}
 .points-popup-value{color:var(--text);font-weight:600;font-variant-numeric:tabular-nums;}
+.points-popup-explainer{font-size:calc(11px * var(--type-scale,1));color:var(--text-faint);line-height:1.4;margin-bottom:8px;}
 .points-popup-tier-row{display:flex;align-items:center;gap:8px;font-size:calc(14px * var(--type-scale,1));font-weight:600;margin-bottom:6px;}
 .points-popup-progress{height:6px;background:var(--surface-raised);border-radius:3px;overflow:hidden;margin-top:4px;}
 .points-popup-progress-fill{height:100%;background:var(--accent);transition:width 0.4s ease;}

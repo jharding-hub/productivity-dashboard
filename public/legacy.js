@@ -139,7 +139,7 @@ function getTierConfig(){
 // Dump exactly as designed, with nobody having deliberately redesigned the
 // free tier first. That's the "borrowed trust" risk multiple personas
 // flagged independently. Wellness/regulation (breath, HALT+, mood, the
-// Grounding Toolkit) was already exempt -- see the 'wellness' case below and
+// Grounding Session) was already exempt -- see the 'wellness' case below and
 // TIER_CONFIG.free.toolkitAllowed, both pre-existing (R3). This adds the
 // same structural guarantee for capture: Brain Dump can never be tier-locked
 // by the master flag alone, regardless of what TIER_CONFIG.free says later.
@@ -951,7 +951,7 @@ async function load(){
   if(!state.workoutLog)state.workoutLog={};
   if(!state.checkins)state.checkins=[];
   // R12: default 'full' preserves today's behavior for existing users --
-  // the Grounding Toolkit keeps auto-showing on low mood/energy unless they
+  // the Grounding Session keeps auto-showing on low mood/energy unless they
   // opt into 'lean'.
   if(state.supportLevel!=='full'&&state.supportLevel!=='lean')state.supportLevel='full';
   // R11: undefined means an existing/pre-onboarding-feature account -- treat
@@ -1139,7 +1139,7 @@ var ALL_PANELS=[
   {id:'notes',icon:'\u{1F4DD}',name:'Notes',desc:'Labeled notes with project tags'},
   {id:'brain',icon:'\u{1F9E0}',name:'Brain Dump',desc:'Capture fleeting thoughts'},
   {id:'routines',icon:'\u{1F501}',name:'Routines',desc:'Morning, evening, and custom checklists'},
-  {id:'wellness',icon:'\u{1F9FA}',name:'Grounding Toolkit',desc:'Breathing and grounding techniques (auto-shows when needed)'},
+  {id:'wellness',icon:'\u{1F9FA}',name:'Grounding Session',desc:'Breathing and grounding techniques (auto-shows when needed)'},
   {id:'decision',icon:'\u{1F9ED}',name:'Stuck? Start Here',desc:'Decision aid prompts'}
 ];
 function getPanelIds(){return ALL_PANELS.map(p=>p.id);}
@@ -1258,7 +1258,7 @@ function togglePanelVisibility(id,visible){
   applyPanelVisibility();
 }
 
-// R12: Support Level -- 'full' (default) keeps the Grounding Toolkit
+// R12: Support Level -- 'full' (default) keeps the Grounding Session
 // auto-showing on low mood/energy as it always has; 'lean' suppresses that
 // auto-popup. Nothing else changes -- HALT+/Breathwork/Wellness stay exactly
 // as reachable in the Tool Kit either way. Separate from the older, unrelated
@@ -1300,7 +1300,7 @@ function _renderSupportLevelSettings(){
   el.innerHTML=
     '<div class="support-level-row">'
     +'<button class="support-level-btn'+(cur==='full'?' active':'')+'" onclick="setSupportLevel(\'full\')">'
-    +'<strong>Full</strong><span>Grounding Toolkit surfaces on its own when mood or energy is low</span></button>'
+    +'<strong>Full</strong><span>Grounding Session surfaces on its own when mood or energy is low</span></button>'
     +'<button class="support-level-btn'+(cur==='lean'?' active':'')+'" onclick="setSupportLevel(\'lean\')">'
     +'<strong>Lean</strong><span>Nothing pops up uninvited &mdash; open it yourself when you want it</span></button>'
     +'</div>';
@@ -3228,14 +3228,14 @@ document.getElementById('thoughtChips').innerHTML=state.thoughts.map(t=>'<div cl
 // ENERGY & MOOD
 function setEnergy(el,v){state.energy=v;document.querySelectorAll('#energyPills .em-pill').forEach(c=>c.classList.remove('selected'));el.classList.add('selected');logMoodEntry();save();showStateAdvice();updateWellnessVisibility();var today=_dayKey();if(state.points&&state.points.lastEnergyDate!==today){state.points.lastEnergyDate=today;save();addPoints('mood_energy',el);}}
 function setMood(el,v){state.mood=v;document.querySelectorAll('#moodPills .em-pill').forEach(c=>c.classList.remove('selected'));el.classList.add('selected');logMoodEntry();save();showStateAdvice();updateWellnessVisibility();var today=_dayKey();if(state.points&&state.points.lastMoodDate!==today){state.points.lastMoodDate=today;save();addPoints('mood_energy',el);}}
-var adviceMap={'high-focused':{t:'\u{1F525} Peak state \u2014 tackle your hardest task now.',cls:'state-advice-positive'},'high-scattered':{t:'\u26A1 Energy but no focus. Start a Pomodoro.',cls:'state-advice'},'high-anxious':{t:'\u{1F4A8} Burn off anxious energy with something physical.',cls:'state-advice'},'high-calm':{t:'\u2728 Great for creative work or complex problems.',cls:'state-advice-positive'},'good-focused':{t:'\u{1F44D} Solid state. Pick a medium-priority task.',c:'var(--green)'},'good-scattered':{t:'\u{1F4CB} List 3 things, do just the first one.',cls:'state-advice'},'good-anxious':{t:'\u{1F4DD} Channel worry into a task with a clear endpoint.',c:'var(--blue)'},'good-calm':{t:'\u{1F33F} Good baseline. Handle routine tasks or admin.',c:'var(--green)'},'low-focused':{t:'\u{1F3AF} Low but present? Detail work \u2014 editing, reviewing.',c:'var(--blue)'},'low-scattered':{t:'\u{1FAE7} Not deep work time. 5-min break, then one tiny task.',cls:'state-advice-alert'},'low-anxious':{t:'\u{1F9CA} Pause. Check the Grounding Toolkit \u2192',c:'var(--purple)'},'low-calm':{t:'\u2601\uFE0F Rest state. Gentle tasks or a proper break.',c:'var(--blue)'},'crashed-focused':{t:'\u26A0\uFE0F Running on fumes. Only truly urgent items.',cls:'state-advice-alert'},'crashed-scattered':{t:'\u{1F6D1} Brain needs a reset. Check the Grounding Toolkit \u2192',cls:'state-advice-alert'},'crashed-anxious':{t:'\u{1FAC2} Hardest state. Grounding Toolkit first, then reassess.',c:'var(--red)'},'crashed-calm':{t:'\u{1F319} Depleted but peaceful. Gentle admin or rest.',cls:'state-advice'}};
-// R3 stage 2: when the advice text itself points at the Grounding Toolkit
-// ("Check the Grounding Toolkit →"), that pointer must BE the door -- it was
+var adviceMap={'high-focused':{t:'\u{1F525} Peak state \u2014 tackle your hardest task now.',cls:'state-advice-positive'},'high-scattered':{t:'\u26A1 Energy but no focus. Start a Pomodoro.',cls:'state-advice'},'high-anxious':{t:'\u{1F4A8} Burn off anxious energy with something physical.',cls:'state-advice'},'high-calm':{t:'\u2728 Great for creative work or complex problems.',cls:'state-advice-positive'},'good-focused':{t:'\u{1F44D} Solid state. Pick a medium-priority task.',c:'var(--green)'},'good-scattered':{t:'\u{1F4CB} List 3 things, do just the first one.',cls:'state-advice'},'good-anxious':{t:'\u{1F4DD} Channel worry into a task with a clear endpoint.',c:'var(--blue)'},'good-calm':{t:'\u{1F33F} Good baseline. Handle routine tasks or admin.',c:'var(--green)'},'low-focused':{t:'\u{1F3AF} Low but present? Detail work \u2014 editing, reviewing.',c:'var(--blue)'},'low-scattered':{t:'\u{1FAE7} Not deep work time. 5-min break, then one tiny task.',cls:'state-advice-alert'},'low-anxious':{t:'\u{1F9CA} Pause. Check the Grounding Session \u2192',c:'var(--purple)'},'low-calm':{t:'\u2601\uFE0F Rest state. Gentle tasks or a proper break.',c:'var(--blue)'},'crashed-focused':{t:'\u26A0\uFE0F Running on fumes. Only truly urgent items.',cls:'state-advice-alert'},'crashed-scattered':{t:'\u{1F6D1} Brain needs a reset. Check the Grounding Session \u2192',cls:'state-advice-alert'},'crashed-anxious':{t:'\u{1FAC2} Hardest state. Grounding Session first, then reassess.',c:'var(--red)'},'crashed-calm':{t:'\u{1F319} Depleted but peaceful. Gentle admin or rest.',cls:'state-advice'}};
+// R3 stage 2: when the advice text itself points at the Grounding Session
+// ("Check the Grounding Session →"), that pointer must BE the door -- it was
 // inert text, and on mobile the wellness panel had no other entry point at
 // all (no MOBILE_PANELS row, no direct-jump caller): the app named its own
 // remedy in its worst states and then dead-ended. Detected by text match so
 // any future adviceMap copy that mentions the toolkit is automatically live.
-function showStateAdvice(){const el=document.getElementById('stateAdvice');if(!state.energy||!state.mood){el.innerHTML='';return;}const k=state.energy+'-'+state.mood;const a=adviceMap[k];if(!a)return;var gt=/Grounding Toolkit/.test(a.t);el.innerHTML='<div class="decision-prompt state-advice '+(a.cls||'')+'"'+(gt?' role="button" tabindex="0" aria-label="Open the Grounding Toolkit" style="cursor:pointer;" onclick="openGroundingToolkit()" onkeydown="if(event.key===\'Enter\'||event.key===\' \'){event.preventDefault();openGroundingToolkit();}"':'')+'>'+a.t+(gt?' <span style="text-decoration:underline;">Open</span>':'')+'</div>';}
+function showStateAdvice(){const el=document.getElementById('stateAdvice');if(!state.energy||!state.mood){el.innerHTML='';return;}const k=state.energy+'-'+state.mood;const a=adviceMap[k];if(!a)return;var gt=/Grounding Session/.test(a.t);el.innerHTML='<div class="decision-prompt state-advice '+(a.cls||'')+'"'+(gt?' role="button" tabindex="0" aria-label="Open the Grounding Session" style="cursor:pointer;" onclick="openGroundingToolkit()" onkeydown="if(event.key===\'Enter\'||event.key===\' \'){event.preventDefault();openGroundingToolkit();}"':'')+'>'+a.t+(gt?' <span style="text-decoration:underline;">Open</span>':'')+'</div>';}
 
 // The one door that always opens. An explicit tap is an invitation, so this
 // intentionally overrides the 'lean' Support Level -- R12's contract is that
@@ -8198,7 +8198,7 @@ function renderOnboardingStep(){
       bodyEl.innerHTML=
         '<div class="support-level-row">'
         +'<button class="support-level-btn'+(cur==='full'?' active':'')+'" onclick="setSupportLevel(\'full\');renderOnboardingStep();">'
-        +'<strong>Full</strong><span>Grounding Toolkit surfaces on its own when mood or energy is low</span></button>'
+        +'<strong>Full</strong><span>Grounding Session surfaces on its own when mood or energy is low</span></button>'
         +'<button class="support-level-btn'+(cur==='lean'?' active':'')+'" onclick="setSupportLevel(\'lean\');renderOnboardingStep();">'
         +'<strong>Lean</strong><span>Nothing pops up uninvited — open it yourself when you want it</span></button>'
         +'</div>';
@@ -8510,7 +8510,13 @@ function renderPointsPopup(){
     progressLabel='Mythic -- top tier!';
   }
   
+  // R13 subtitle pass, part 2 (Joe, 2026-08-04): the full explanation of what
+  // Presence is has only ever lived in the badge's `title` attribute, which
+  // is desktop-hover-only -- a touch user tapping the badge got straight to
+  // numbers with no "what am I looking at" line anywhere reachable. This is
+  // that same sentence, placed where a tap can actually see it.
   var html='<div class="points-popup-section">'
+    +'<div class="points-popup-explainer">Days you showed up and put in effort. It only ever goes up &mdash; missing a day costs you nothing.</div>'
     +'<div class="points-popup-tier-row" style="color:'+tier.color+';">'
     +'<span style="font-size:20px;">'+tier.icon+'</span> '+tier.label
     +'</div>'

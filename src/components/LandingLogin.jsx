@@ -154,7 +154,7 @@ export default function LandingLogin() {
                 </div>
                 <div className="feature-card">
                   <div className="feature-icon">&#127757;</div>
-                  <div className="feature-name">Grounding Toolkit</div>
+                  <div className="feature-name">Grounding Session</div>
                   <div className="feature-desc">5-4-3-2-1 sensory grounding, box breathing, 4-7-8, physiological sigh, alternate nostril. Evidence-based regulation when you need it.</div>
                 </div>
                 <div className="feature-card">
