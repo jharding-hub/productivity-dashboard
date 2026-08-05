@@ -11,13 +11,13 @@
 :root{
 --text-primary:#1a1a1a;--text-secondary:#5f5e5a;--text-muted:#8a8880;--border:#e4e2da;
 --surface-0:#faf9f6;--surface-1:#f1efe8;--surface-2:#ffffff;--radius:8px;
---err:#b3261e;
+--err:#b3261e;--ok:#0F6E56;
 }
 @media (prefers-color-scheme: dark){
 :root{
 --text-primary:#f1efe8;--text-secondary:#c2c0b6;--text-muted:#8a8880;--border:#3a3937;
 --surface-0:#1c1c1a;--surface-1:#26251f;--surface-2:#2c2b26;
---err:#f0997b;
+--err:#f0997b;--ok:#5DCAA5;
 }
 }
 *{box-sizing:border-box}
@@ -56,6 +56,9 @@ body{margin:0;background:var(--surface-0);color:var(--text-primary);font-family:
 .detail-list{margin:4px 0 0;padding-left:18px;font-size:13px;line-height:1.6;color:var(--text-secondary)}
 .item-footer{margin-top:10px;display:flex;gap:8px;flex-wrap:wrap}
 .item-chip{font-size:11px;color:var(--text-muted);background:var(--surface-1);border:1px solid var(--border);border-radius:6px;padding:3px 8px}
+.item.completed{opacity:.55}
+.item-completed-badge{display:block;font-size:11px;color:var(--ok);margin-top:2px}
+.completed-divider{font-size:11px;font-weight:500;color:var(--text-muted);margin:14px 0 8px;text-transform:uppercase;letter-spacing:.03em}
 </style>
 </head>
 <body>
@@ -138,25 +141,28 @@ showSignIn();
 });
 }
 var panelData=[
-{id:'r10-complication',panel:'work',title:'R10 — watch face Timer complication: confirm on-device',source:'Senior design review 2026-07-28 · R10, built 2026-07-31',description:'The WidgetKit complication for the Focus Timer is built and compiles clean (BUILD SUCCEEDED, correctly embedded in both bundle locations), but has never actually run on a real watch face.',steps:['Run centerpost-sync, then Xcode Archive, then TestFlight','Open Signing & Capabilities for the new CenterpostWatchComplication target (and re-check the watch app’s) — new App Groups don’t always self-provision','Add the complication to a real watch face from the Watch app, or by long-pressing the face','Start a Focus Timer and confirm the complication counts down live','Let it finish or reset it, confirm it reverts to Idle'],model:'Sonnet 5',effort:'Low — verification only, code already exists',status:'open',completedAt:null},
+{id:'r10-complication',panel:'work',title:'R10 — watch face Timer complication: confirm on-device',source:'Senior design review 2026-07-28 · R10, built 2026-07-31',description:'The WidgetKit complication for the Focus Timer is built and compiles clean (BUILD SUCCEEDED, correctly embedded in both bundle locations), but has never actually run on a real watch face.',steps:['Run centerpost-sync, then Xcode Archive, then TestFlight','Open Signing & Capabilities for the new CenterpostWatchComplication target (and re-check the watch app’s) — new App Groups don’t always self-provision','Add the complication to a real watch face from the Watch app, or by long-pressing the face','Start a Focus Timer and confirm the complication counts down live','Let it finish or reset it, confirm it reverts to Idle'],model:'Sonnet 5',effort:'Low — verification only, code already exists',status:'completed',completedAt:'2026-08-04'},
 {id:'r7-archive-sweep',panel:'work',title:'R7 Ship-3 — confirm reminder archive auto-sweep on a real device',source:'Senior design review 2026-07-28 · R7 Ship-3, shipped native build 57',description:'Reminders older than 7 days should auto-archive on the daily rollover tick. Verified against boundary-exact test data and the sync-merge suite, but never actually triggered on a real device — no reminder old enough existed at the time.',steps:['Find or create a reminder with a due date more than 7 days in the past','Let the app sit through a day rollover, or fake the device date forward a day','Confirm it lands in the collapsed "Archived" folder, not still in the live list'],model:'Sonnet 5',effort:'Low — on-device check only, no new code',status:'open',completedAt:null},
 {id:'988-threshold',panel:'decisions',title:'Is the 988 crisis-line trigger (3 resets/hour) right for shift workers?',source:'Persona panel 3, 2026-08-02 — surfaced, not decided',description:'The breathwork-frequency safety net shows one dismissible 988 line after 3 resets in a rolling hour. The ER-nurse persona flagged that 3 resets/hr can be normal for someone mid-shift — the net could fire on people who aren’t in crisis.',steps:['Decide: leave the threshold as-is, raise it, or make it context-aware','Tell me the call whenever — this isn’t blocking anything'],status:'open',completedAt:null},
 {id:'r13-copy-pass',panel:'recommendations',title:'Copywriting pass on R13’s first-draft subtitle/hint text',source:'Senior design review 2026-07-28 · R13, shipped 2026-07-30',description:'R13 added plain-language subtitles to HALT+/Urge Log and empty-state hints. The report flagged the wording as a first draft, not final copy.',steps:['Pull the current strings — HALT+/Urge Log subtitles, Tasks/Notes empty-state text','Tighten the wording together','Ship as a small web-only text change'],model:'Sonnet 5',effort:'Low — text-only, no logic touched',status:'open',completedAt:null}
 ];
 var PANEL_LIST_IDS={recommendations:'list-recommendations',decisions:'list-decisions',work:'list-work'};
 function itemRowHTML(item){
+var isDone=item.status==='completed';
 var footer='';
 if(item.model||item.effort){
 footer='<div class="item-footer">'+(item.model?'<span class="item-chip">Model: '+item.model+'</span>':'')+(item.effort?'<span class="item-chip">Effort: '+item.effort+'</span>':'')+'</div>';
 }
 var stepsHtml='';
 for(var i=0;i<item.steps.length;i++){stepsHtml+='<li>'+item.steps[i]+'</li>';}
-return '<details class="item" id="item-'+item.id+'">'+
+var badge=isDone?'<span class="item-completed-badge">✓ Completed '+item.completedAt+'</span>':'';
+return '<details class="item'+(isDone?' completed':'')+'" id="item-'+item.id+'">'+
 '<summary class="item-summary">'+
 '<span class="item-chevron" aria-hidden="true"></span>'+
 '<span class="item-title-wrap">'+
 '<span class="item-title">'+item.title+'</span>'+
 '<span class="item-source">'+item.source+'</span>'+
+badge+
 '</span>'+
 '</summary>'+
 '<div class="item-body">'+
@@ -174,7 +180,14 @@ if(items.length===0){
 container.innerHTML='<p class="panel-empty">Nothing here yet.</p>';
 return;
 }
-container.innerHTML=items.map(itemRowHTML).join('');
+var open=items.filter(function(it){return it.status!=='completed';});
+var done=items.filter(function(it){return it.status==='completed';});
+done.sort(function(a,b){return (b.completedAt||'').localeCompare(a.completedAt||'');});
+var html=open.map(itemRowHTML).join('');
+if(done.length){
+html+='<p class="completed-divider">Completed</p>'+done.map(itemRowHTML).join('');
+}
+container.innerHTML=html;
 }
 function renderAllPanels(){
 renderPanel('recommendations');
