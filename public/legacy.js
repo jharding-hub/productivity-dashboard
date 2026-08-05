@@ -313,6 +313,222 @@ async function doLogin(){
   }
 }
 
+// ═══════════════════════════════════════════════════════════════════
+// TOUCH ID SIGN-IN (Option A, stages 4-5) -- web/Mac only. Distinct from the
+// native journal's Face ID/Touch ID (_bioRequest, ~line 9080), which uses the
+// iOS Keychain via the Capacitor bridge and only unlocks the journal after
+// you're already signed in. This is a different mechanism (WebAuthn) that
+// signs you into Firebase itself, on desktop web.
+//
+// public/legacy.js is a plain script -- no npm bundling, so the
+// @simplewebauthn/browser convenience wrapper isn't available here. These
+// are the same conversions it would do, hand-written: the server sends
+// options as base64url strings (JSON-safe), navigator.credentials wants
+// ArrayBuffers, and the response has to go back to base64url for the server.
+// ═══════════════════════════════════════════════════════════════════
+
+function _waBufToB64url(buf){
+  var bytes=new Uint8Array(buf),bin='';
+  for(var i=0;i<bytes.length;i++)bin+=String.fromCharCode(bytes[i]);
+  return btoa(bin).replace(/\+/g,'-').replace(/\//g,'_').replace(/=+$/,'');
+}
+function _waB64urlToBuf(str){
+  var b64=str.replace(/-/g,'+').replace(/_/g,'/');
+  var bin=atob(b64),bytes=new Uint8Array(bin.length);
+  for(var i=0;i<bin.length;i++)bytes[i]=bin.charCodeAt(i);
+  return bytes.buffer;
+}
+// Local-only UX hint, same pattern as the journal's _journalBioFlagKey --
+// NOT a security check (the server verifies the real credential either way).
+// Just decides whether to bother showing the button on the sign-in screen.
+function _waEnrolledFlagKey(){return 'cpWebAuthnEnrolled';}
+function _waMarkEnrolled(v){try{if(v)localStorage.setItem(_waEnrolledFlagKey(),'1');else localStorage.removeItem(_waEnrolledFlagKey());}catch(e){}}
+function _waLocallyEnrolled(){try{return localStorage.getItem(_waEnrolledFlagKey())==='1';}catch(e){return false;}}
+
+async function _waPlatformAvailable(){
+  try{
+    if(!window.PublicKeyCredential)return false;
+    if(!PublicKeyCredential.isUserVerifyingPlatformAuthenticatorAvailable)return false;
+    return await PublicKeyCredential.isUserVerifyingPlatformAuthenticatorAvailable();
+  }catch(e){return false;}
+}
+
+function _waOptionsToCreateInit(options){
+  var pk=Object.assign({},options);
+  pk.challenge=_waB64urlToBuf(options.challenge);
+  pk.user=Object.assign({},options.user,{id:_waB64urlToBuf(options.user.id)});
+  if(options.excludeCredentials){
+    pk.excludeCredentials=options.excludeCredentials.map(function(c){
+      return Object.assign({},c,{id:_waB64urlToBuf(c.id)});
+    });
+  }
+  return {publicKey:pk};
+}
+function _waOptionsToGetInit(options){
+  var pk=Object.assign({},options);
+  pk.challenge=_waB64urlToBuf(options.challenge);
+  if(options.allowCredentials){
+    pk.allowCredentials=options.allowCredentials.map(function(c){
+      return Object.assign({},c,{id:_waB64urlToBuf(c.id)});
+    });
+  }
+  return {publicKey:pk};
+}
+function _waCredentialToRegistrationJSON(cred){
+  var r=cred.response;
+  return {
+    id:cred.id,rawId:_waBufToB64url(cred.rawId),type:cred.type,
+    response:{
+      attestationObject:_waBufToB64url(r.attestationObject),
+      clientDataJSON:_waBufToB64url(r.clientDataJSON),
+      transports:(r.getTransports?r.getTransports():[])
+    },
+    clientExtensionResults:cred.getClientExtensionResults?cred.getClientExtensionResults():{}
+  };
+}
+function _waCredentialToAuthenticationJSON(cred){
+  var r=cred.response;
+  return {
+    id:cred.id,rawId:_waBufToB64url(cred.rawId),type:cred.type,
+    response:{
+      authenticatorData:_waBufToB64url(r.authenticatorData),
+      clientDataJSON:_waBufToB64url(r.clientDataJSON),
+      signature:_waBufToB64url(r.signature),
+      userHandle:r.userHandle?_waBufToB64url(r.userHandle):undefined
+    },
+    clientExtensionResults:cred.getClientExtensionResults?cred.getClientExtensionResults():{}
+  };
+}
+
+// ── Enrollment (Settings, stage 4) ──────────────────────────────────
+async function enrollTouchID(){
+  var statusEl=document.getElementById('waEnrollStatus');
+  if(!currentUser){if(statusEl)statusEl.textContent='Sign in first.';return;}
+  if(!(await _waPlatformAvailable())){
+    if(statusEl)statusEl.textContent='Touch ID isn’t available in this browser.';
+    return;
+  }
+  if(statusEl)statusEl.textContent='Follow the Touch ID prompt…';
+  try{
+    var idToken=await currentUser.getIdToken();
+    var optRes=await fetch(JARVIS_PROXY_URL+'/webauthn/register-options',{
+      method:'POST',headers:{'Authorization':'Bearer '+idToken,'Content-Type':'application/json'},
+      body:JSON.stringify({email:currentUser.email||''})
+    });
+    var optPayload=await optRes.json().catch(function(){return null;});
+    if(!optRes.ok)throw new Error((optPayload&&optPayload.error)||'Could not start enrollment');
+
+    var cred=await navigator.credentials.create(_waOptionsToCreateInit(optPayload));
+    if(!cred)throw new Error('Touch ID was cancelled');
+
+    var label=(navigator.platform&&/Mac/.test(navigator.platform))?'Mac':'This device';
+    var verRes=await fetch(JARVIS_PROXY_URL+'/webauthn/register-verify',{
+      method:'POST',headers:{'Authorization':'Bearer '+idToken,'Content-Type':'application/json'},
+      body:JSON.stringify({response:_waCredentialToRegistrationJSON(cred),label:label})
+    });
+    var verPayload=await verRes.json().catch(function(){return null;});
+    if(!verRes.ok)throw new Error((verPayload&&verPayload.error)||'Enrollment could not be verified');
+
+    _waMarkEnrolled(true);
+    if(statusEl)statusEl.textContent='Touch ID enabled on this Mac.';
+    if(typeof loadTouchIDDevices==='function')loadTouchIDDevices();
+    if(typeof toast==='function')toast('✓ Touch ID sign-in enabled');
+  }catch(e){
+    // NotAllowedError covers both "user cancelled" and "user declined" --
+    // WebAuthn deliberately doesn't distinguish them from the API, so
+    // neither do we.
+    var msg=(e.name==='NotAllowedError')?'Touch ID was cancelled.':(e.message||'Enrollment failed');
+    if(statusEl)statusEl.textContent=msg;
+  }
+}
+
+// ── Device management (Settings, stage 4) ───────────────────────────
+async function loadTouchIDDevices(){
+  var listEl=document.getElementById('waDeviceList');
+  if(!listEl||!currentUser)return;
+  if(document.body.classList.contains('capacitor-native'))return; // web/Mac only -- see waSettingsSection
+  try{
+    var idToken=await currentUser.getIdToken();
+    var res=await fetch(JARVIS_PROXY_URL+'/webauthn/list-devices',{
+      method:'POST',headers:{'Authorization':'Bearer '+idToken,'Content-Type':'application/json'},
+      body:'{}'
+    });
+    var payload=await res.json().catch(function(){return null;});
+    if(!res.ok||!payload||!payload.devices){listEl.innerHTML='';return;}
+    if(payload.devices.length===0){
+      listEl.innerHTML='<div class="cust-sub" style="margin-top:6px;">No devices enrolled yet.</div>';
+      return;
+    }
+    listEl.innerHTML=payload.devices.map(function(d){
+      return '<div class="panel-toggle" style="align-items:center;">'
+        +'<span class="pt-icon">\u{1F510}</span>'
+        +'<div class="pt-info"><div class="pt-name">'+esc(d.label)+'</div>'
+        +'<div class="pt-desc">Last used '+(d.lastUsedAt?fmtDate(d.lastUsedAt.slice(0,10)):'never')+'</div></div>'
+        +'<button class="btn btn-danger btn-sm" onclick="removeTouchIDDevice(\''+d.credentialID+'\')">Remove</button>'
+        +'</div>';
+    }).join('');
+  }catch(e){listEl.innerHTML='';}
+}
+async function removeTouchIDDevice(credentialID){
+  if(!currentUser)return;
+  _confirm('Remove this device? You’ll need your password to sign in on it again.',async function(){
+    try{
+      var idToken=await currentUser.getIdToken();
+      var res=await fetch(JARVIS_PROXY_URL+'/webauthn/remove-device',{
+        method:'POST',headers:{'Authorization':'Bearer '+idToken,'Content-Type':'application/json'},
+        body:JSON.stringify({credentialID:credentialID})
+      });
+      if(!res.ok){var p=await res.json().catch(function(){return null;});toast((p&&p.error)||'Could not remove device');return;}
+      loadTouchIDDevices();
+      toast('Device removed');
+    }catch(e){toast('Could not remove device');}
+  });
+}
+
+// ── Sign-in (login screen, stage 5) ─────────────────────────────────
+// Unauthenticated by nature -- there is no currentUser/idToken yet. On
+// success, signInWithCustomToken fires the SAME onAuthStateChanged listener
+// password login does, so no separate "now show the app" logic is needed
+// here; that listener already handles both paths identically.
+async function signInWithTouchID(){
+  var err=document.getElementById('loginError');
+  if(err)err.textContent='';
+  if(!(await _waPlatformAvailable())){
+    if(err)err.textContent='Touch ID isn’t available in this browser.';
+    return;
+  }
+  try{
+    var optRes=await fetch(JARVIS_PROXY_URL+'/webauthn/login-options',{
+      method:'POST',headers:{'Content-Type':'application/json'},body:'{}'
+    });
+    var optPayload=await optRes.json().catch(function(){return null;});
+    if(!optRes.ok||!optPayload)throw new Error('Touch ID sign-in is unavailable right now.');
+
+    var cred=await navigator.credentials.get(_waOptionsToGetInit(optPayload.options));
+    if(!cred)throw new Error('Touch ID was cancelled');
+
+    var verRes=await fetch(JARVIS_PROXY_URL+'/webauthn/login-verify',{
+      method:'POST',headers:{'Content-Type':'application/json'},
+      body:JSON.stringify({sessionId:optPayload.sessionId,response:_waCredentialToAuthenticationJSON(cred)})
+    });
+    var verPayload=await verRes.json().catch(function(){return null;});
+    if(!verRes.ok||!verPayload||!verPayload.customToken){
+      // Server collapses every failure to one generic message on purpose
+      // (see webauthn.js) -- surfaced verbatim, not reworded here, so the
+      // guarantee it makes server-side isn't quietly widened on the client.
+      throw new Error((verPayload&&verPayload.error)||'Touch ID sign-in could not be verified');
+    }
+    await firebase.auth().signInWithCustomToken(verPayload.customToken);
+  }catch(e){
+    var msg=(e.name==='NotAllowedError')?'Touch ID was cancelled.':(e.message||'Touch ID sign-in failed');
+    if(err)err.textContent=msg;
+    // A credential that no longer verifies (removed on another device,
+    // Keychain cleared, etc.) shouldn't keep offering a button that will
+    // just fail again next time.
+    if(/could not be verified/i.test(msg))_waMarkEnrolled(false);
+  }
+}
+
 async function doForgotPassword(){
   const email=document.getElementById('loginEmail').value.trim();
   const succ=document.getElementById('loginSuccess');
@@ -494,10 +710,21 @@ function showSigninPanel(){
   document.getElementById('loginError').textContent='';
   document.getElementById('loginSuccess').textContent='';
   showLoginForm();
+  _waMaybeShowSigninButton();
   setTimeout(function(){
     var em=document.getElementById('loginEmail');
     if(em)em.focus();
   },120);
+}
+// Shown only if THIS browser previously enrolled (local hint) AND the
+// platform actually supports it right now -- avoids a button that's
+// guaranteed to fail on a browser/device that was never enrolled.
+async function _waMaybeShowSigninButton(){
+  var btn=document.getElementById('waSigninBtn');
+  if(!btn)return;
+  btn.style.display='none';
+  if(!_waLocallyEnrolled())return;
+  if(await _waPlatformAvailable())btn.style.display='';
 }
 function hideSigninPanel(){
   var ov=document.getElementById('signinOverlay');
@@ -1235,12 +1462,17 @@ function openCustomize(){
   // WKWebView (loads with no way back out). Untouched on web.
   var _kmSection=document.getElementById('kidsModeSettingsSection');
   if(_kmSection)_kmSection.style.display=(document.body.classList.contains('capacitor-native'))?'none':'';
+  // Touch ID sign-in (WebAuthn) is web/Mac only -- native already has its own
+  // Face ID via the Keychain for the journal, a different mechanism entirely.
+  var _waSection=document.getElementById('waSettingsSection');
+  if(_waSection)_waSection.style.display=(document.body.classList.contains('capacitor-native'))?'none':'';
   _renderDevSwitcherInSettings();
   _renderAxisProfileForm();
   _renderSupportLevelSettings();
   if(typeof _renderNotifSettings==='function')_renderNotifSettings();
   if(typeof _renderBreathHealthSettings==='function')_renderBreathHealthSettings();
   if(typeof _renderPointsSettings==='function')_renderPointsSettings();
+  if(typeof loadTouchIDDevices==='function')loadTouchIDDevices();
 }
 
 function closeCustomize(){

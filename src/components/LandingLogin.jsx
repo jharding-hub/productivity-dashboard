@@ -260,6 +260,12 @@ export default function LandingLogin() {
           <h2>&#128274; Sign In</h2>
           <p className="login-sub" id="loginSub">Welcome back to your workspace</p>
           <div id="loginForm">
+            {/* Hidden by default -- _waMaybeShowSigninButton (legacy.js,
+                called from showSigninPanel) reveals it only when THIS
+                browser previously enrolled Touch ID (a local hint, not a
+                security check) and the platform still supports it now.
+                Password stays the primary path either way. */}
+            <button id="waSigninBtn" className="login-btn" style={{ display: 'none', background: 'var(--surface-raised)', color: 'var(--text)', border: '1px solid var(--border)', marginBottom: 10 }} onClick={() => window.signInWithTouchID()}>&#128272; Sign in with Touch ID</button>
             <input type="email" id="loginEmail" placeholder="Email address..." onKeyDown={e => { if (e.key === 'Enter') document.getElementById('loginPass').focus(); }} />
             <input type="password" id="loginPass" placeholder="Password..." onKeyDown={e => { if (e.key === 'Enter') window.doLogin(); }} />
             <button className="login-btn" onClick={() => window.doLogin()}>Sign In</button>

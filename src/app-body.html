@@ -354,6 +354,26 @@
 <button class="btn btn-danger" onclick="deleteMyAccount()">Delete my account</button>
 </div>
 <div style="border-bottom:1px solid var(--border);margin:16px 0;"></div>
+<!-- R13/Touch ID (2026-08-05): sign in with Touch ID instead of typing your
+     password, Mac web only. Native iOS's Face ID (journal unlock) is a
+     completely separate mechanism -- see legacy.js's TOUCH ID SIGN-IN
+     comment block for why. Password sign-in is never removed; this is
+     additive, and every device can be removed here if a Mac is lost, sold,
+     or its Touch ID sensor stops trusting you for any reason. -->
+<!-- Hidden on native (openCustomize, same technique as kidsModeSettingsSection
+     just above): the journal already has its own Face ID via the iOS
+     Keychain, and WebAuthn inside a WKWebView is a different, unreliable
+     surface that would just confuse that existing path. Web/Mac only. -->
+<div id="waSettingsSection">
+<div class="section-label" style="margin-bottom:8px;">Touch ID sign-in</div>
+<p class="cust-sub">Sign in on this Mac with Touch ID instead of your password. Your password still works everywhere, always.</p>
+<div class="customize-actions">
+<button class="btn btn-accent" onclick="enrollTouchID()">&#128272; Enable Touch ID on this Mac</button>
+</div>
+<div class="cust-sub" id="waEnrollStatus" style="margin-top:6px;"></div>
+<div id="waDeviceList" style="margin-top:10px;"></div>
+<div style="border-bottom:1px solid var(--border);margin:16px 0;"></div>
+</div>
 <div class="section-label" style="margin-bottom:8px;">About You (for Axis)</div>
 <p class="cust-sub">Optional. Anything you share here helps Axis understand how you think and work. Leave it blank and Axis uses a generic assistant persona instead.</p>
 <div style="display:flex;flex-direction:column;gap:8px;margin-bottom:10px;">
