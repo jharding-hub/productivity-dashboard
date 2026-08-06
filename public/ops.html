@@ -1104,7 +1104,7 @@ function renderSweepResults(data) {
         const ts = i.ts ? new Date(i.ts).toLocaleTimeString([], {hour:'2-digit',minute:'2-digit'}) : '';
         return `<div style="padding:6px 10px;border-top:1px solid var(--border);display:flex;gap:8px;font-size:10px">
           <span style="color:var(--text-dim);font-family:var(--mono);min-width:60px">${i.uid ? i.uid.slice(0,12)+'…' : '—'}</span>
-          <span style="color:${color};flex:1;word-break:break-word">${escHtml(i.text || '')}</span>
+          <span style="color:${color};flex:1;word-break:break-word">${escHtml((i.patterns || []).join(', '))}</span>
           <span style="color:var(--text-dim);white-space:nowrap">${ts}</span>
         </div>`;
       }).join('');
