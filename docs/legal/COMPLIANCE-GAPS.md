@@ -275,17 +275,32 @@ Then list all three in the privacy policy. Consider `youtube-nocookie.com` for e
 
 ---
 
-## 🟡 G-11 — Google Sign-In without Sign in with Apple
+## ✅ G-11 — CLOSED 2026-08-06 — false positive, no Google Sign-In exists
 
-**What the code does.** `GOOGLE_CLIENT_ID` is configured (`public/config.js:17`); no Apple Sign-In
-was found in the web codebase.
+**Original finding was wrong.** It inferred "Google Sign-In is offered" from `GOOGLE_CLIENT_ID`
+being configured in `public/config.js`, without tracing what that identifier actually
+authenticates. It doesn't authenticate anything. Corrected after Joe asked what the fix would
+actually involve and the call site got traced properly.
 
-**Why it matters.** App Store Guideline 4.8 requires an equivalent privacy-preserving login option
-where a third-party social login is offered. Sign in with Apple is the standard way to satisfy it.
-This is an App Review rejection risk, not a privacy-law issue.
+**What `GOOGLE_CLIENT_ID` actually does.** It feeds `google.accounts.oauth2.initTokenClient()`
+(`legacy.js:14158`) — the Google Identity Services **token client**, used only to request Calendar
+API scopes for the Google Calendar sync feature (§3 of `data-inventory.md`). It never calls
+`firebase.auth()` and never authenticates a Centerpost account.
 
-**Recommended fix.** Either add Sign in with Apple, or confirm Google Sign-In is not exposed in the
-native build. Verify before submission.
+**Centerpost's actual sign-in methods:** email/password (Firebase Auth), plus a WebAuthn (Touch
+ID/Face ID) passkey unlock layered on the same account. No third-party social login exists on web
+or native — grep-confirmed against the iOS project too: no `GoogleSignIn` SDK, no `GIDSignIn`, no
+`GoogleAuthProvider`, nothing in any Podfile or Package.swift.
+
+**Guideline 4.8 does not apply.** It governs services used to authenticate the user's account —
+"Sign in with Google," "Sign in with Facebook." A Calendar-sync OAuth scope grant is a feature
+integration, the same category as connecting to Spotify or Dropbox, not an identity provider for
+the app. **No Sign in with Apple work is needed for this guideline.**
+
+**What the correction surfaced instead — see G-14.** Tracing the actual call site found that
+Google Calendar sync itself, a real bidirectional data flow, was never listed anywhere in
+`data-inventory.md` or disclosed in the privacy policy. That's the genuine gap this correction
+turned up.
 
 ---
 
@@ -317,6 +332,46 @@ direct-to-consumer wellness app. **No BAA is needed with any of these providers,
 would be a category error.** The applicable regime is the FTC Act, the FTC Health Breach
 Notification Rule, MHMDA, and the state comprehensive privacy laws — not HIPAA. The documents
 should say this explicitly, because it is a common and expensive misconception.
+
+---
+
+## 🟠 G-14 — Google Calendar sync is a real, undisclosed third-party data flow
+
+**Found while correcting G-11.** Tracing what `GOOGLE_CLIENT_ID` actually does (see G-11) surfaced
+a genuine gap that the original audit missed entirely: the Google Calendar sync feature is not
+mentioned anywhere in `data-inventory.md` or `privacy-policy.md`, and it's a real, bidirectional,
+sensitive-scope data flow.
+
+**What the code does.** `gcalPushAll()` (`legacy.js:14404`) sends task, subtask, reminder, and
+timeline-block titles and times to the user's Google Calendar as events, via `_gcalPushItem`
+(`legacy.js:14385`). `gcalPullEvents()` (`legacy.js:14520`) reads events back in. Both require the
+full `https://www.googleapis.com/auth/calendar` scope — **read/write access to the user's entire
+Google Calendar**, not a narrower events-only or read-only scope — plus their Google account email.
+
+**Why it matters.** This is Dashboard Data — potentially including task titles that reference
+wellness content, since nothing stops a user from naming a task "Therapy appointment" or "Refill
+prescription" — leaving Centerpost's systems entirely and landing in a third party's calendar,
+under a very broad permission grant. The current privacy policy's third-party table has no row for
+it. A user who reads the privacy policy today would have no way to know this feature exists or
+what scope it requests before they click "Connect Google Calendar."
+
+**Recommended fix — two parts:**
+
+1. **Add a section to `privacy-policy.md`** describing the feature: that it's optional, off by
+   default, requires the user's own Google sign-in and consent to the OAuth scope, that Centerpost
+   never sees the calendar data pass through our servers (`_gcalAccessToken` lives in the browser,
+   never sent to Jarvis or stored in Firestore), and that revoking access is done through the user's
+   own Google Account permissions page, not through Centerpost.
+2. **Consider narrowing the scope.** `auth/calendar` grants full read/write to the entire calendar.
+   If the feature only needs to create/read Centerpost-created events, a narrower scope
+   (`auth/calendar.events`) reduces both the privacy exposure and the OAuth consent screen's
+   scariness for users. This is a product decision, not just a documentation one — flagging it here
+   because the fix touches both.
+
+**Not yet done.** This gap was found during this session but the privacy policy has not been
+updated to include it — that edit needs sign-off before publication, since the policy is already
+committed and Joe should decide the scope-narrowing question first rather than have it decided for
+him.
 
 ---
 

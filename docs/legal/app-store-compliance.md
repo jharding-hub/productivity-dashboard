@@ -169,7 +169,7 @@ The URL must be live **before** submission. Apple checks it.
 
 | Guideline | Issue | Status |
 |---|---|---|
-| **4.8 — Login Services** | Google Sign-In is offered; Apple requires an equivalent privacy-preserving option | ⚠️ **Verify.** Either add Sign in with Apple, or confirm Google Sign-In isn't exposed in the native build. COMPLIANCE-GAPS.md G-11 |
+| **4.8 — Login Services** | Does not apply. No third-party social login exists — sign-in is email/password plus a WebAuthn Touch ID/Face ID passkey on the same account. `GOOGLE_CLIENT_ID` is Calendar-sync OAuth, not a login provider. | ✅ Closed. COMPLIANCE-GAPS.md G-11 |
 | **1.4.1 — Physical harm** | Medical/wellness apps must not provide inaccurate health information, and must not be a crisis service without being one | ✅ Covered by [medical-crisis-disclaimer.md](medical-crisis-disclaimer.md). Ship the first-launch modal. |
 | **5.1.1(i) — Data minimisation** | Only request data relevant to the app | ✅ Clean |
 | **5.1.2 — Data use and sharing** | No sharing without consent; no data brokers | ✅ Clean |
@@ -224,10 +224,14 @@ The URL must be live **before** submission. Apple checks it.
 - [ ] First-launch disclaimer modal shipped
 - [ ] AI disclosure screen + 7-day re-disclosure shipped
 - [ ] Terms acceptance recorded at signup
-- [ ] Resolve Sign in with Apple (G-11)
+- [x] Sign in with Apple (G-11) — **closed as not applicable**, no third-party login exists.
+      No build work needed.
 - [x] Answer the Firestore backup retention question (G-02) — confirmed 2026-08-06: PITR enabled
       (7-day retention) + daily scheduled backups enabled (98-day retention, no weekly schedule).
       Worst case is **98 days**. `privacy-policy.md` updated with this figure.
+- [ ] Add a privacy-policy section for Google Calendar sync (G-14, found during the G-11
+      correction) — a real bidirectional data flow with the full-access `auth/calendar` scope,
+      currently undisclosed anywhere
 
 **Reminder:** a web deploy does **not** update the native app. Anything above that touches the app
 bundle needs a native ship — `centerpost-sync.command` → Xcode Archive → TestFlight.

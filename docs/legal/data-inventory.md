@@ -34,15 +34,31 @@ check a vendor console — they must not be asserted as fact in any published po
 |---|---|---|
 | Email address | Firebase Auth; mirrored to Firestore `users/{uid}.email` | `legacy.js:290`, `:821`, `:887` |
 | Password | Firebase Auth only — never stored by Centerpost | Email/password provider; min 6 chars (`legacy.js:286`) |
-| Google account identifier | Firebase Auth (Google sign-in) | `GOOGLE_CLIENT_ID` in `public/config.js` |
+| WebAuthn credential (Touch ID / Face ID) | Firebase Auth via custom token, minted by the Jarvis worker's `/webauthn/*` endpoints | `legacy.js:501`–`:521`, `jarvis/webauthn.js`. Still ultimately tied to the same email/password account — this is a passkey unlock, not a separate identity. |
 | Firebase UID | Everywhere — primary key for all user data | |
 | `createdAt`, `lastActive` | Firestore `users/{uid}` | Server timestamps; `lastActive` updated every sign-in (`legacy.js:884`) |
 | `admin`, `disabled`, `accountTier` | Firestore `users/{uid}` | Privileged fields; users cannot self-modify (`firestore.rules`) |
 | `invitedWith` | Firestore `users/{uid}` | Invite code used at signup, retained for admin audit (`legacy.js:825`) |
 
-**Auth providers:** Firebase Email/Password and Google Sign-In. No Apple Sign-In found in the web
-codebase — **see COMPLIANCE-GAPS.md G-11**, since Apple requires Sign in with Apple where other
-third-party sign-in is offered.
+**Auth providers: Firebase Email/Password, plus a WebAuthn (Touch ID/Face ID) passkey unlock on top
+of the same account. No third-party social login exists anywhere in the app.**
+
+**Correction to an earlier version of this document.** A prior draft listed "Google Sign-In" as an
+auth provider because `GOOGLE_CLIENT_ID` is configured in `public/config.js`. That was wrong, and
+it drove a real compliance gap (G-11) that turned out to be a false positive — corrected here after
+tracing the actual call site.
+
+`GOOGLE_CLIENT_ID` is wired to `google.accounts.oauth2.initTokenClient()` (`legacy.js:14158`),
+the **Google Identity Services token client**, used only to request Calendar API scopes for the
+Google Calendar sync feature. It never calls `firebase.auth()` and never authenticates a Centerpost
+account — it is a feature-level OAuth scope grant, the same category as connecting to Spotify or
+Dropbox, not an identity provider for the app. Grep-confirmed against the native iOS project too:
+no `GoogleSignIn` SDK, no `GIDSignIn`, no `GoogleAuthProvider`, nothing in any Podfile or
+Package.swift.
+
+**Guideline 4.8 does not apply.** It governs services used to authenticate a user's *account* —
+"Sign in with Google," "Sign in with Facebook." A Calendar-sync OAuth grant is not that. See
+COMPLIANCE-GAPS.md G-11 for the closed-out finding.
 
 ### 1.2 Dashboard Data — Firestore `users/{uid}/data/dashboard`
 
@@ -255,6 +271,7 @@ human review of user input and must be disclosed.
 | Provider | Data sent | Own purposes? | Retention | DPA/BAA |
 |---|---|---|---|---|
 | **Google / Firebase** (Auth, Firestore) | Email, password hash, UID, all Dashboard + Wellness Data | Processor role under Google Cloud terms | Until deletion; see §5 backups | Google Cloud DPA applies by acceptance of terms — **UNVERIFIED that Joe has accepted/recorded it** |
+| **Google Calendar** (optional sync feature) | **Bidirectional.** "Push All to Google" (`_gcalPushItem`, `legacy.js:14385`) sends task/subtask/reminder/timeline-block titles and times to the user's Google Calendar as events; "Pull Events from Google" (`legacy.js:14520`) reads events back in. Requires full read/write Calendar scope (`https://www.googleapis.com/auth/calendar`) plus the account's Google email, via `google.accounts.oauth2.initTokenClient()` (`legacy.js:14158`, `:14124`). **This is a distinct data flow from Firebase/Google Cloud above** — a feature integration under the user's own Google account, not part of Centerpost's processor relationship. **Not previously listed in this table** — found during the G-11 correction below. | Google's own purposes under the user's Google account, not ours | Access token held in memory only (`_gcalAccessToken`), not persisted to Firestore; pushed event data lives in the user's own Google Calendar under Google's retention, outside our control | Governed by the user's own consent to the Google OAuth scope grant, not a Centerpost-Google DPA |
 | **Cloudflare** (Pages, Workers, KV) | Request metadata, IP addresses, KV contents per §1.7 | Processor | Per KV TTLs; CF logs per CF policy | Cloudflare DPA — **UNVERIFIED** |
 | **Anthropic** (via Jarvis) | Prompt content per §2 | Not for training under Commercial ToS — **UNVERIFIED, re-check** | Per Anthropic retention policy — **UNVERIFIED** | Commercial ToS; **no BAA — and none is needed, since Centerpost is not a HIPAA covered entity** |
 | **SendGrid / Twilio (Twilio SendGrid)** | Recipient email addresses, email bodies containing Dashboard Data | Processor | Per SendGrid policy; tracking status **UNVERIFIED** | Twilio DPA — **UNVERIFIED** |
@@ -283,7 +300,7 @@ codebase** — grep-verified across web and iOS.
   200 chars persists 48h in `sec:inputs`
 
 ### Personal but not sensitive
-Email address, Firebase UID, Google account identifier, `createdAt`/`lastActive`, `invitedWith`,
+Email address, Firebase UID, WebAuthn credential metadata, `createdAt`/`lastActive`, `invitedWith`,
 IP addresses in `sec:auth401` and in Cloudflare/Sentry logs, all Dashboard Data (tasks, projects,
 notes, reminders, routines, workout selections), points/streaks, settings.
 
