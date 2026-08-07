@@ -166,19 +166,50 @@ app removes it.
 servers, but a local copy may remain on each other device until you open Centerpost on it again.
 See §10.
 
-### 3.9 Apple Health
+### 3.9 Google Calendar sync — optional
+
+If you connect Google Calendar (Settings → Calendar), Centerpost can push your tasks, subtasks,
+reminders, and timeline blocks into your Google Calendar as events, and pull your existing Google
+Calendar events into Centerpost's timeline so you can see conflicts against your real schedule.
+
+**This feature is off until you connect it, and you can disconnect it at any time.**
+
+**What we ask Google for.** Connecting requires granting Centerpost **full read and write access to
+your Google Calendar** (Google's `calendar` permission scope) — not a narrower "just this app's
+events" permission. We ask for this because the feature does two things that each need broad
+access: it creates a dedicated "Centerpost" calendar in your Google account to hold what it syncs
+(which needs permission to create a calendar, not just edit events), and it reads your **primary**
+calendar's real events — titles, times, and locations — so it can show you conflicts.
+
+**We are telling you plainly that this is broader access than the feature strictly needs**, because
+Google does not currently offer a permission scope narrow enough to cover both of those things at
+once without also covering more. We are evaluating whether to split this into two more limited
+permissions in a future update.
+
+**What actually happens with it:**
+- Your Google access token is held only in your browser session — **it is never sent to our
+  servers, never stored in our database, and never persisted anywhere by us.** Disconnecting, or
+  simply closing the tab, ends it.
+- Events Centerpost creates go into the **dedicated "Centerpost" calendar** it creates for you, not
+  your personal calendar. Your existing calendars are never written to.
+- Events pulled from your primary calendar are displayed to you, in your own timeline, and are not
+  sent to our servers, not sent to the AI assistant, and not stored in Firestore.
+- You can revoke this access at any time from your own **Google Account → Security → Third-party
+  access**, independent of anything in Centerpost.
+
+### 3.10 Apple Health
 
 If you use breathwork on Apple Watch and grant permission, Centerpost writes **Mindful Minutes** to
 Apple Health. This is **write-only**: Centerpost requests no read access and **cannot read any of
 your Apple Health data**. What we write stays in your Apple Health store on your device. It is not
 sent to us, and it is never shared with anyone, including the AI provider.
 
-### 3.10 Notifications
+### 3.11 Notifications
 
 Centerpost uses **local notifications only** — scheduled by the app on your own device. We do not
 operate a push server and **we do not collect a push notification token**.
 
-### 3.11 What we do not collect
+### 3.12 What we do not collect
 
 - No advertising identifiers (no IDFA), no advertising SDKs, no ad networks
 - No cross-app or cross-site tracking
@@ -194,6 +225,7 @@ These companies process data on our behalf, under contract, for the purposes abo
 | Provider | Role | What they get | Privacy terms |
 |---|---|---|---|
 | **Google / Firebase** | Authentication and database | Your email, account ID, and all data you save | https://firebase.google.com/support/privacy |
+| **Google Calendar** (only if you connect it) | Optional feature, under your own Google account — see §3.9 | Task/reminder titles and times you push; your primary calendar's events, read but not stored by us | https://policies.google.com/privacy |
 | **Cloudflare** | Hosting, application servers, caching | IP address, request data, security counters | https://www.cloudflare.com/privacypolicy/ |
 | **Anthropic** | AI model behind Axis | Only what §3.4 describes | https://www.anthropic.com/legal/privacy |
 | **Twilio SendGrid** | Transactional email | Your email address and message contents | https://www.twilio.com/legal/privacy |

@@ -335,43 +335,37 @@ should say this explicitly, because it is a common and expensive misconception.
 
 ---
 
-## 🟠 G-14 — Google Calendar sync is a real, undisclosed third-party data flow
+## ✅ G-14 — RESOLVED 2026-08-06 — Google Calendar sync now disclosed in the privacy policy
 
-**Found while correcting G-11.** Tracing what `GOOGLE_CLIENT_ID` actually does (see G-11) surfaced
-a genuine gap that the original audit missed entirely: the Google Calendar sync feature is not
-mentioned anywhere in `data-inventory.md` or `privacy-policy.md`, and it's a real, bidirectional,
-sensitive-scope data flow.
+**Found while correcting G-11.** Tracing what `GOOGLE_CLIENT_ID` actually does surfaced a genuine
+gap the original audit missed: Google Calendar sync was not mentioned anywhere in
+`data-inventory.md` or `privacy-policy.md`, despite being a real, bidirectional, broad-scope data
+flow.
 
-**What the code does.** `gcalPushAll()` (`legacy.js:14404`) sends task, subtask, reminder, and
-timeline-block titles and times to the user's Google Calendar as events, via `_gcalPushItem`
-(`legacy.js:14385`). `gcalPullEvents()` (`legacy.js:14520`) reads events back in. Both require the
-full `https://www.googleapis.com/auth/calendar` scope — **read/write access to the user's entire
-Google Calendar**, not a narrower events-only or read-only scope — plus their Google account email.
+**What the code does.** `gcalPushAll()` (`legacy.js:14404`) creates a dedicated "Centerpost"
+calendar in the user's Google account (`_gcalEnsureCalendar`, `legacy.js:14315`, via `POST
+/calendars`) and pushes task/subtask/reminder/timeline-block titles and times into it as events.
+`gcalPullEvents()` (`legacy.js:14520`) reads the user's **primary** calendar
+(`GET /calendars/primary/events`) — their real appointments, titles, times, and locations — so the
+app can show conflicts. Both require the full `https://www.googleapis.com/auth/calendar` scope.
 
-**Why it matters.** This is Dashboard Data — potentially including task titles that reference
-wellness content, since nothing stops a user from naming a task "Therapy appointment" or "Refill
-prescription" — leaving Centerpost's systems entirely and landing in a third party's calendar,
-under a very broad permission grant. The current privacy policy's third-party table has no row for
-it. A user who reads the privacy policy today would have no way to know this feature exists or
-what scope it requests before they click "Connect Google Calendar."
+**Scope-narrowing was investigated and explicitly declined.** The obvious fix — swap to
+`auth/calendar.events` — does not work: that scope cannot create a new calendar, which push
+depends on. A combination (`calendar.calendars` + `calendar.events`) might work but could not be
+verified without live on-device OAuth testing, which carries real risk of a silent breakage (403s)
+discovered only after shipping. Joe chose to keep the current scope and disclose it honestly rather
+than risk breaking calendar sync on an unverified scope change. **Revisit if Google ships a purpose
+-built scope for "app-created calendar plus read access to the primary calendar"** — as of this
+writing, `calendar.app.created` covers only calendars the app itself created, not the primary-read
+half of this feature.
 
-**Recommended fix — two parts:**
-
-1. **Add a section to `privacy-policy.md`** describing the feature: that it's optional, off by
-   default, requires the user's own Google sign-in and consent to the OAuth scope, that Centerpost
-   never sees the calendar data pass through our servers (`_gcalAccessToken` lives in the browser,
-   never sent to Jarvis or stored in Firestore), and that revoking access is done through the user's
-   own Google Account permissions page, not through Centerpost.
-2. **Consider narrowing the scope.** `auth/calendar` grants full read/write to the entire calendar.
-   If the feature only needs to create/read Centerpost-created events, a narrower scope
-   (`auth/calendar.events`) reduces both the privacy exposure and the OAuth consent screen's
-   scariness for users. This is a product decision, not just a documentation one — flagging it here
-   because the fix touches both.
-
-**Not yet done.** This gap was found during this session but the privacy policy has not been
-updated to include it — that edit needs sign-off before publication, since the policy is already
-committed and Joe should decide the scope-narrowing question first rather than have it decided for
-him.
+**Resolution.** Added `privacy-policy.md` §3.9, which states plainly that the access requested is
+broader than the feature strictly needs, explains why (dedicated-calendar creation needs
+calendar-management permission; conflict detection needs primary-calendar read; no single Google
+scope covers both without also covering more), and describes what actually happens with the data:
+the token never leaves the browser, push writes only go to the dedicated calendar, pulled events
+are displayed locally and never stored or sent to the AI. Also added a row to the §4 processor
+table. `data-inventory.md` §3 got the matching row during the G-11 correction.
 
 ---
 

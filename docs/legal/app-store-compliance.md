@@ -229,9 +229,9 @@ The URL must be live **before** submission. Apple checks it.
 - [x] Answer the Firestore backup retention question (G-02) — confirmed 2026-08-06: PITR enabled
       (7-day retention) + daily scheduled backups enabled (98-day retention, no weekly schedule).
       Worst case is **98 days**. `privacy-policy.md` updated with this figure.
-- [ ] Add a privacy-policy section for Google Calendar sync (G-14, found during the G-11
-      correction) — a real bidirectional data flow with the full-access `auth/calendar` scope,
-      currently undisclosed anywhere
+- [x] Add a privacy-policy section for Google Calendar sync (G-14, found during the G-11
+      correction) — `privacy-policy.md` §3.9. Scope-narrowing investigated and declined (breaks
+      calendar creation); disclosed honestly as broader-than-strictly-needed instead.
 
 **Reminder:** a web deploy does **not** update the native app. Anything above that touches the app
 bundle needs a native ship — `centerpost-sync.command` → Xcode Archive → TestFlight.
