@@ -12,7 +12,7 @@ documents need to make. Severity reflects regulatory and App Store exposure, not
 
 ---
 
-## ✅ G-01 — FIXED 2026-08-06 (committed, not yet deployed)
+## ✅ G-01 — FIXED + DEPLOYED 2026-08-06
 
 **Resolution.** Option 1 was implemented. Pattern matching moved into Jarvis at request time;
 only `{uid, patterns, ts}` is written to KV, and **only when a pattern actually matches** — benign
@@ -34,8 +34,12 @@ text-bearing entries are ignored.
 when. That is ordinary abuse-detection metadata and is disclosed in the privacy policy and AI
 disclosure as such.
 
-**Deployment is still pending** — see the deploy note at the end of this file. Until
-`wrangler deploy` runs for both workers, production still logs prompt text.
+**Deployed and confirmed live 2026-08-06.** Jarvis (`0c8c24b1-c3d0-4269-a72c-c1c0574e797e`) and
+Guardian (`6afe50f8-008c-40c0-8be2-4d3d261e6e73`) both shipped via `wrangler deploy`; both respond
+and correctly reject unauthenticated requests. The `ops.html` fix went live in web commit `b06a408`,
+verified 6/6 against the production site. Old text-bearing `sec:inputs` entries from before the
+deploy age out on their 48h TTL by **2026-08-08 ~12:30**. Privacy policy §3.5 is now an accurate
+description of the running system, not a forward-looking promise.
 
 <details>
 <summary>Original finding (retained for the record)</summary>
@@ -74,7 +78,27 @@ a worse product story than simply not doing it.
 
 ---
 
-## 🔴 G-02 — Firestore backup retention is unknown, so no retention promise can be published
+## ✅ G-02 — RESOLVED 2026-08-06 — Firestore backup retention confirmed
+
+**Confirmed via Firebase console** (Firestore Database → Disaster Recovery — the tab was renamed
+from "Backups" at some point after this gap was written):
+
+| Layer | Status | Retention |
+|---|---|---|
+| Point-in-time recovery (PITR) | Enabled | 7 days |
+| Scheduled backups — daily | Enabled | **98 days** |
+| Scheduled backups — weekly | Not configured | — |
+
+**The governing number is 98 days**, not 7 — the retention promise has to reflect the longer of the
+two layers, since a deleted record could still be recoverable from a daily backup up to 98 days out
+even after PITR's 7-day window has passed.
+
+**`privacy-policy.md` updated** in both places that referenced `[BACKUP_RETENTION_WINDOW]` (the
+retention table and the account-deletion caveats), now reading "up to 98 days." This is a real
+number, not the smaller PITR figure that would have made a stronger-sounding but false promise.
+
+<details>
+<summary>Original finding (retained for the record)</summary>
 
 **What's missing.** Nothing in either repo reveals whether Point-in-Time Recovery or scheduled
 backups are enabled on Firebase project `productivity-dashboard-f8488`. PITR retains 7 days;
@@ -85,12 +109,7 @@ the criteria for one. "We delete your data when you ask" is false if a backup ho
 7 days to 14 weeks, and a deletion-request response that ignores backups is the single most common
 enforcement finding against small apps.
 
-**Action for Joe (console only, no code):**
-1. Open https://console.firebase.google.com → project **productivity-dashboard-f8488**
-2. Firestore Database → **Backups** tab → note whether a schedule exists and its retention
-3. Firestore Database → **Point-in-time recovery** → note enabled/disabled
-
-Report both numbers back; the privacy policy's retention table is blocked on them.
+</details>
 
 ---
 

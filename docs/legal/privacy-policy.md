@@ -239,16 +239,14 @@ Full detail: [AI Transparency Statement](ai-disclosure.md).
 | Aggregate AI cost totals (no user content) | 90 days |
 | Error reports | Per Sentry's retention for our plan — [SENTRY_RETENTION] |
 | Email delivery records | Per SendGrid's retention — [SENDGRID_RETENTION] |
-| **Database backups** | **[BACKUP_RETENTION_WINDOW]** — see the note below |
+| **Database backups** | **up to 98 days** — see the note below |
 | Record that an item was deleted (a "tombstone": an identifier and a date, no content) | Retained so deletions sync correctly across your devices |
 
 > **Backups.** When you delete data, it is removed from our live database immediately. A copy may
-> persist in encrypted backups for **[BACKUP_RETENTION_WINDOW]** before those backups age out. We do
-> not restore backups to recover deleted user data, and backup copies are not used for any other
-> purpose.
->
-> *Drafting note — this value must be filled in from the Firebase console before publication. See
-> COMPLIANCE-GAPS.md G-02.*
+> persist in encrypted backups for **up to 98 days** before those backups age out. We maintain two
+> layers of backup: a 7-day point-in-time recovery window used only to undo accidental data loss,
+> and daily scheduled backups retained for 98 days for disaster recovery. We do not restore backups
+> to recover deleted user data, and backup copies are not used for any other purpose.
 
 ## 7. Security
 
@@ -344,9 +342,9 @@ Deleting your account removes, from our systems:
 1. **Other devices.** A local copy of your data may remain in the storage of other devices you
    signed in on, until you open Centerpost on them again. To clear it immediately, sign out or
    clear that browser's site data / delete the app on each device.
-2. **Backups and short-lived logs.** Encrypted backups may retain a copy for
-   **[BACKUP_RETENTION_WINDOW]**. Security counters expire within 48 hours. Aggregate usage counts,
-   which are not linked to your account, expire within 35 days.
+2. **Backups and short-lived logs.** Encrypted backups may retain a copy for **up to 98 days**.
+   Security counters expire within 48 hours. Aggregate usage counts, which are not linked to your
+   account, expire within 35 days.
 
 Deleting your account does not cancel an Apple subscription. Cancel that in
 **Settings → your name → Subscriptions** on your iPhone; see the

@@ -219,13 +219,15 @@ The URL must be live **before** submission. Apple checks it.
 - [ ] Signing & Capabilities re-checked on every target
 
 **Should be done first:**
-- [ ] Deploy the G-01 worker fix (see COMPLIANCE-GAPS.md) — prompt text no longer logged
+- [x] Deploy the G-01 worker fix (see COMPLIANCE-GAPS.md) — prompt text no longer logged. Deployed
+      2026-08-06 (Jarvis `0c8c24b1`, Guardian `6afe50f8`), confirmed live.
 - [ ] First-launch disclaimer modal shipped
 - [ ] AI disclosure screen + 7-day re-disclosure shipped
 - [ ] Terms acceptance recorded at signup
 - [ ] Resolve Sign in with Apple (G-11)
-- [ ] Answer the Firestore backup retention question (G-02) and fill
-      `[BACKUP_RETENTION_WINDOW]`
+- [x] Answer the Firestore backup retention question (G-02) — confirmed 2026-08-06: PITR enabled
+      (7-day retention) + daily scheduled backups enabled (98-day retention, no weekly schedule).
+      Worst case is **98 days**. `privacy-policy.md` updated with this figure.
 
 **Reminder:** a web deploy does **not** update the native app. Anything above that touches the app
 bundle needs a native ship — `centerpost-sync.command` → Xcode Archive → TestFlight.
