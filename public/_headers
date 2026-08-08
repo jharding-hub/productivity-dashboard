@@ -96,3 +96,23 @@
   Cache-Control: no-cache, no-store, must-revalidate
 /architecture
   Cache-Control: no-cache, no-store, must-revalidate
+/privacy.html
+  Cache-Control: no-cache, no-store, must-revalidate
+/privacy
+  Cache-Control: no-cache, no-store, must-revalidate
+/health-privacy.html
+  Cache-Control: no-cache, no-store, must-revalidate
+/health-privacy
+  Cache-Control: no-cache, no-store, must-revalidate
+/terms.html
+  Cache-Control: no-cache, no-store, must-revalidate
+/terms
+  Cache-Control: no-cache, no-store, must-revalidate
+/ai.html
+  Cache-Control: no-cache, no-store, must-revalidate
+/ai
+  Cache-Control: no-cache, no-store, must-revalidate
+/disclaimer.html
+  Cache-Control: no-cache, no-store, must-revalidate
+/disclaimer
+  Cache-Control: no-cache, no-store, must-revalidate

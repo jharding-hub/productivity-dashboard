@@ -191,9 +191,28 @@ export default function LandingLogin() {
 
           {/* FOOTER */}
           <footer className="landing-footer">
+            {/* MHMDA requires the Consumer Health Data Privacy Policy to be its own
+                conspicuous homepage link, separate from the general privacy policy --
+                not merely one item in a list of footer links. Kept web-only for the
+                same reason as kids.html below: this footer also renders inside
+                native's "What is Centerpost?" toggle, and a bare <a href> there
+                strands the user in the chrome-less WKWebView with no way back
+                (the exact bug that trapped Joe once already). Native reaches these
+                docs from Settings instead, via an in-app browser view, once that
+                ships (see COMPLIANCE-GAPS.md / onboarding-consent-flow.md Stage C). */}
+            {!isNative && (
+              <div className="landing-footer-health-link">
+                Centerpost collects consumer health data through its optional wellness
+                tools. Read our <a href="/health-privacy">Consumer Health Data Privacy Policy</a>.
+              </div>
+            )}
             <div>&copy; 2026 Centerpost. Built for first responders, by a first responder.</div>
             <div className="landing-footer-links">
               {!isNative && <a href="kids.html" className="landing-footer-link">Kids Mode</a>}
+              {!isNative && <a href="/privacy" className="landing-footer-link">Privacy Policy</a>}
+              {!isNative && <a href="/terms" className="landing-footer-link">Terms of Service</a>}
+              {!isNative && <a href="/ai" className="landing-footer-link">AI Transparency</a>}
+              {!isNative && <a href="/disclaimer" className="landing-footer-link">Medical &amp; Crisis Disclaimer</a>}
               <a className="landing-footer-link" onClick={() => window.showSigninPanel()}>Sign In</a>
               <a className="landing-footer-link" onClick={() => window.showSignupPanel()}>Sign Up</a>
             </div>

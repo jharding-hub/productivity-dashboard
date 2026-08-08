@@ -2674,9 +2674,14 @@ body[data-theme="storm-dark"] .tl-hour-label{
 .landing-final-cta p{font-size:calc(16px * var(--type-scale,1));color:var(--text-dim);margin-bottom:28px;}
 /* Footer */
 .landing-footer{padding:30px 32px;border-top:1px solid var(--border);font-size:calc(12px * var(--type-scale,1));color:var(--text-faint);display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:14px;}
-.landing-footer-links{display:flex;gap:16px;}
+.landing-footer-links{display:flex;gap:16px;flex-wrap:wrap;}
 .landing-footer-link{color:var(--text-faint);text-decoration:none;cursor:pointer;}
 .landing-footer-link:hover{color:var(--text-dim);}
+/* MHMDA requires the health-data policy link to be its own conspicuous
+   homepage line, not just one of several footer links -- flex-basis:100%
+   forces it onto its own row inside the wrapping .landing-footer flex row. */
+.landing-footer-health-link{flex-basis:100%;order:-1;}
+.landing-footer-health-link a{color:var(--accent);text-decoration:underline;}
 /* R6: native first-run compact brand block, replaces the marketing nav/hero
    inside the native app (see LandingLogin.jsx isNative branch). */
 .landing-native-brand{display:flex;flex-direction:column;align-items:center;gap:18px;text-align:center;padding:80px 24px 40px;}
