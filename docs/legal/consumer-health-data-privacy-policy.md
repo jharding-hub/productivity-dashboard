@@ -1,8 +1,8 @@
 # Centerpost Consumer Health Data Privacy Policy
 
 **Version:** 1.0
-**Effective date:** [EFFECTIVE_DATE]
-**Contact:** [CONTACT_EMAIL]
+**Effective date:** August 7, 2026
+**Contact:** medicjth@gmail.com
 
 This is a **separate, standalone policy** required by the Washington My Health My Data Act
 (RCW 19.373) and Nevada SB 370. It must be linked directly from centerpost.app's homepage, not
@@ -30,8 +30,8 @@ everyone.
 
 ## 1. Who we are
 
-**Centerpost LLC**, an Indiana limited liability company. Contact: [CONTACT_EMAIL],
-[BUSINESS_ADDRESS].
+**Centerpost LLC**, an Indiana limited liability company. Contact: medicjth@gmail.com,
+444 Valley Lane North Dr, Greenwood, IN 46142.
 
 Centerpost LLC is the regulated entity here. We have no affiliates. There is no parent company and
 no corporate group with access to your data.
@@ -105,7 +105,7 @@ source code.
 However, Axis is a free-text box. **If you type health-related content into it, that text goes to
 Anthropic** with your message. This is under your control, and we tell you so before your first AI
 interaction. Anthropic's commercial terms provide that API content is not used to train their
-models (as of [AI_TERMS_VERIFIED_DATE]).
+models (as of August 7, 2026).
 
 **Human access.** No employee, contractor, or operator of Centerpost routinely reads your health
 data. There is no support tool that surfaces it and no analytics dashboard that displays it. The
@@ -166,7 +166,7 @@ beyond the two processors named in §4.
 | **Withdraw consent** | In the app: **Settings → Wellness features → off**. Collection stops immediately. |
 | **Access / copy** | In the app: **Settings → Export** (includes a decrypted journal copy). Or email us. |
 
-**By email:** [CONTACT_EMAIL]. We respond within **45 days**, extendable once by 45 days where the
+**By email:** medicjth@gmail.com. We respond within **45 days**, extendable once by 45 days where the
 law permits, with an explanation. We verify by confirming control of your account email.
 
 **If we deny a request,** you may appeal by replying with "Appeal." We will respond in writing
@@ -201,8 +201,8 @@ consent again.
 
 ## 9. Contact
 
-**Email:** [CONTACT_EMAIL]
-**Centerpost LLC**, [BUSINESS_ADDRESS]
+**Email:** medicjth@gmail.com
+**Centerpost LLC**, 444 Valley Lane North Dr, Greenwood, IN 46142
 
 Related: [Privacy Policy](privacy-policy.md) · [Terms of Service](terms-of-service.md) ·
 [AI Transparency Statement](ai-disclosure.md) ·

@@ -1,8 +1,8 @@
 # Centerpost Terms of Service
 
 **Version:** 1.0
-**Effective date:** [EFFECTIVE_DATE]
-**Contact:** [CONTACT_EMAIL]
+**Effective date:** August 7, 2026
+**Contact:** medicjth@gmail.com
 
 These terms are a contract between you and Centerpost LLC. Please read §11 (arbitration) and §9
 (limits on our liability) carefully — they affect your legal rights.
@@ -43,7 +43,7 @@ or legal guardian and consent to the handling described in the [Privacy Policy](
 ## 3. Your account
 
 You are responsible for your credentials and for activity under your account. Tell us promptly at
-[CONTACT_EMAIL] if you suspect unauthorised use. Give accurate information and keep it current. One
+medicjth@gmail.com if you suspect unauthorised use. Give accurate information and keep it current. One
 person per account; don't share it.
 
 We may suspend or terminate an account that violates these Terms — see §12.
@@ -66,7 +66,7 @@ Don't:
 - Impersonate anyone, or misrepresent your affiliation
 - Use Centerpost to store or transmit another person's health information without their permission
 
-**Security research.** If you find a vulnerability, tell us at [CONTACT_EMAIL] before disclosing it
+**Security research.** If you find a vulnerability, tell us at medicjth@gmail.com before disclosing it
 publicly. We won't pursue legal action against good-faith research that respects user privacy,
 avoids service degradation, and gives us a reasonable window to fix the issue.
 
@@ -209,7 +209,7 @@ written consent.
 conflict-of-laws rules. This does not deprive you of mandatory consumer protections in your place
 of residence.
 
-**Informal resolution first.** Before starting formal proceedings, email [CONTACT_EMAIL] with a
+**Informal resolution first.** Before starting formal proceedings, email medicjth@gmail.com with a
 description of the dispute and what you want. We'll try in good faith to resolve it within **60
 days**. Most things get fixed here.
 
@@ -227,7 +227,7 @@ or misuse of intellectual property.
 
 > ### 🕐 Your right to opt out of arbitration
 >
-> **You can reject the arbitration clause entirely.** Email **[CONTACT_EMAIL]** with the subject
+> **You can reject the arbitration clause entirely.** Email **medicjth@gmail.com** with the subject
 > line **"Arbitration Opt-Out"**, plus the email address on your account, **within 30 days of first
 > accepting these Terms**. That's all it takes — no form, no reason required.
 >
@@ -286,7 +286,7 @@ These provisions apply to the iOS app, as Apple requires:
 8. **Apple and its subsidiaries are third-party beneficiaries of these Terms**, and upon your
    acceptance, **Apple has the right (and is deemed to have accepted the right) to enforce these
    Terms against you** as a third-party beneficiary.
-9. Contact for questions, complaints, or claims about the app: **[CONTACT_EMAIL]**.
+9. Contact for questions, complaints, or claims about the app: **medicjth@gmail.com**.
 
 ## 15. General
 
@@ -308,7 +308,7 @@ survive termination.
 
 **Force majeure.** Neither party is liable for delays caused by events beyond reasonable control.
 
-**Contact:** [CONTACT_EMAIL] · **Centerpost LLC**, [BUSINESS_ADDRESS]
+**Contact:** medicjth@gmail.com · **Centerpost LLC**, 444 Valley Lane North Dr, Greenwood, IN 46142
 
 ---
 

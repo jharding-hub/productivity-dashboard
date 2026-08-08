@@ -1,8 +1,8 @@
 # Centerpost AI Transparency Statement
 
 **Version:** 1.0
-**Effective date:** [EFFECTIVE_DATE]
-**Contact:** [CONTACT_EMAIL]
+**Effective date:** August 7, 2026
+**Contact:** medicjth@gmail.com
 
 This statement is written to the standard of **Utah HB 452** (the Artificial Intelligence Policy
 Act's mental-health-chatbot provisions), which is the strictest AI disclosure regime in the United
@@ -113,7 +113,7 @@ is transmitted like any other message. You control what goes in.
 ### What happens to it
 
 - **Training:** Anthropic's commercial API terms provide that content submitted through the API is
-  **not used to train their models.** This reflects those terms as of **[AI_TERMS_VERIFIED_DATE]**;
+  **not used to train their models.** This reflects those terms as of **August 7, 2026**;
   Anthropic's terms are theirs to change, and their current version governs.
 - **Human review:** **We do not read your AI conversations.** There is no operator tool that
   displays them.
@@ -155,7 +155,7 @@ such. Centerpost does not use AI to generate clinical communications.
 ## 7. Reporting a problem
 
 If Axis says something harmful, wrong, or inappropriate — especially anything that sounds like
-medical or mental-health advice — please tell us at **[CONTACT_EMAIL]**. Include what you asked and
+medical or mental-health advice — please tell us at **medicjth@gmail.com**. Include what you asked and
 what it answered. Reports like these are how we find the failure modes that matter.
 
 ## 8. Changes

@@ -1,8 +1,8 @@
 # Centerpost Medical & Crisis Disclaimer
 
 **Version:** 1.0
-**Effective date:** [EFFECTIVE_DATE]
-**Contact:** [CONTACT_EMAIL]
+**Effective date:** August 7, 2026
+**Contact:** medicjth@gmail.com
 
 This disclaimer forms part of the [Terms of Service](terms-of-service.md).
 
@@ -107,7 +107,7 @@ mitigate, prevent, or treat any disease or condition.
 
 Nothing in Centerpost — in the app, on our website, or in any of our materials — should be read as
 a claim to treat a medical condition. If you ever see something in Centerpost that reads that way,
-please tell us at [CONTACT_EMAIL] so we can fix it.
+please tell us at medicjth@gmail.com so we can fix it.
 
 ## 5. Physical activity
 

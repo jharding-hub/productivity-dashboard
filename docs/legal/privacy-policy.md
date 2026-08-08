@@ -1,9 +1,9 @@
 # Centerpost Privacy Policy
 
 **Version:** 1.0
-**Effective date:** [EFFECTIVE_DATE]
-**Last updated:** [EFFECTIVE_DATE]
-**Contact:** [CONTACT_EMAIL]
+**Effective date:** August 7, 2026
+**Last updated:** August 7, 2026
+**Contact:** medicjth@gmail.com
 
 > **If you use Centerpost's wellness features, please also read our separate
 > [Consumer Health Data Privacy Policy](consumer-health-data-privacy-policy.md).** Washington and
@@ -36,8 +36,8 @@ Centerpost is operated by **Centerpost LLC**, a limited liability company organi
 United States. Centerpost LLC is the "controller" of the personal data described here (the
 "business," in California's terminology).
 
-**Contact:** [CONTACT_EMAIL]
-**Postal address:** [BUSINESS_ADDRESS]
+**Contact:** medicjth@gmail.com
+**Postal address:** 444 Valley Lane North Dr, Greenwood, IN 46142
 
 "Centerpost" or "the Service" means the web app at centerpost.app, the Centerpost iOS app, its
 Apple Watch companion, its home-screen widget, and its share extension.
@@ -46,7 +46,7 @@ Apple Watch companion, its home-screen widget, and its share extension.
 
 **Centerpost is for people aged 16 and over.** We do not knowingly collect personal information
 from anyone under 16. If you believe a child under 16 has given us personal information, contact
-[CONTACT_EMAIL] and we will delete it.
+medicjth@gmail.com and we will delete it.
 
 We chose 16 rather than 13 deliberately: it clears the highest age of digital consent set by any
 EU member state under GDPR Article 8, so we don't have to guess which national rule applies to you,
@@ -249,7 +249,7 @@ under 16 — we do not knowingly have any.
 - Axis is **not a person, not a clinician, not a therapist, and not a licensed professional of any
   kind.** It does not provide medical advice.
 - Anthropic's commercial API terms provide that content submitted through the API is not used to
-  train their models. This reflects those terms **as of [AI_TERMS_VERIFIED_DATE]**; Anthropic's
+  train their models. This reflects those terms **as of August 7, 2026**; Anthropic's
   terms are theirs to change, and the current version governs.
 - **Human review:** we do not read your AI conversations. The only human-visible signal is
   described in §3.5 — that an account tripped a named security pattern, without the message text.
@@ -269,8 +269,8 @@ Full detail: [AI Transparency Statement](ai-disclosure.md).
 | Security counters (requests, failed logins, rate limits, injection-pattern matches) | 48 hours |
 | Aggregate feature-usage counts | 35 days |
 | Aggregate AI cost totals (no user content) | 90 days |
-| Error reports | Per Sentry's retention for our plan — [SENTRY_RETENTION] |
-| Email delivery records | Per SendGrid's retention — [SENDGRID_RETENTION] |
+| Error reports | Per Sentry's retention for our plan — our Sentry plan's standard retention period |
+| Email delivery records | Per SendGrid's retention — our SendGrid plan's standard retention period |
 | **Database backups** | **up to 98 days** — see the note below |
 | Record that an item was deleted (a "tombstone": an identifier and a date, no content) | Retained so deletions sync correctly across your devices |
 
@@ -340,7 +340,7 @@ effects, and we do not profile you.
 - **Export:** Settings → Export, which includes a decrypted copy of your journal.
 - **Withdraw wellness consent:** Settings → turn wellness features off.
 
-**Otherwise:** email [CONTACT_EMAIL]. We will respond within 45 days, and may extend once by a
+**Otherwise:** email medicjth@gmail.com. We will respond within 45 days, and may extend once by a
 further 45 days where permitted, telling you why. We verify requests by confirming control of the
 account email address. We do not require you to create an account to make a request.
 
@@ -402,8 +402,8 @@ request.
 
 ## 12. Contact
 
-**Email:** [CONTACT_EMAIL]
-**Centerpost LLC**, [BUSINESS_ADDRESS]
+**Email:** medicjth@gmail.com
+**Centerpost LLC**, 444 Valley Lane North Dr, Greenwood, IN 46142
 
 Related documents:
 - [Consumer Health Data Privacy Policy](consumer-health-data-privacy-policy.md)
