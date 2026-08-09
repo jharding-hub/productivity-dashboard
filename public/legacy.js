@@ -5553,12 +5553,15 @@ function _healthLogMindful(startMs,endMs){
 }
 
 // ── Breathwork frequency safety net ───────────────────────────────────
-// Joe's design (persona panel 2 follow-up): a third session start inside a
+// Joe's design (persona panel 2 follow-up): a fifth session start inside a
 // rolling hour surfaces one calm 988 line on the session screen. It never
 // blocks -- the session starts regardless -- and dismissing suppresses it
 // for an hour. The start log is localStorage ONLY, per device, never synced:
 // a distress-usage pattern is not sync data.
-var BREATH_RESOURCE_THRESHOLD=3;
+// Raised from 3 to 5 (panels.html "988-threshold", 2026-08-09): the ER-nurse
+// persona flagged that 3 resets/hr can be normal mid-shift, not distress --
+// Joe's call, tell was to loosen it rather than make it context-aware.
+var BREATH_RESOURCE_THRESHOLD=5;
 var BREATH_RESOURCE_WINDOW_MS=60*60*1000;
 function _breathLogKey(){return 'cpBreathStarts_'+(currentUser?currentUser.uid:'local');}
 function _breathDismissKey(){return 'cpBreathResDismissed_'+(currentUser?currentUser.uid:'local');}
