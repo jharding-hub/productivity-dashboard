@@ -2804,6 +2804,20 @@ var _notifNativeSyncTimer=null;
 function _notifNative(){
   try{return (window.webkit&&window.webkit.messageHandlers&&window.webkit.messageHandlers.notify)||null;}catch(e){return null;}
 }
+// Legal doc suite: opens a centerpost.app page from inside the app -- the
+// Settings "About & Legal" links (privacy, terms, AI disclosure, medical
+// disclaimer). On native this goes over the SAME notify channel as every
+// other bridge (openBrowser action -> BrowserBridge.swift), which presents
+// an in-app Safari sheet with its own back/done chrome. A bare navigation
+// on native would strand the user in the chrome-less WKWebView with no way
+// back -- the exact bug that once trapped a link to kids.html (see
+// LandingLogin.jsx). On web, a plain new tab has no such risk.
+function openLegalDoc(path){
+  var url='https://centerpost.app'+path;
+  var h=_notifNative();
+  if(h){try{h.postMessage({action:'openBrowser',url:url});return;}catch(e){}}
+  window.open(url,'_blank','noopener');
+}
 function _notifTimeInQuiet(time){
   var p=state.notifPrefs;if(!p)return false;
   var cur=_hmToMin(time),s=_hmToMin(p.quietStart||'21:00'),e=_hmToMin(p.quietEnd||'08:00');
