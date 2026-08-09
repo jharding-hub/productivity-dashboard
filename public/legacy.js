@@ -902,6 +902,11 @@ function initAuthListener(){
       // gone the moment you sign out rather than lingering until someone
       // signs in again. Belt and braces on a leak that has now bitten twice.
       _resetStateForNewUser();_lastLoadedUid=null;
+      // Weekly-review readiness gate follows the same lifecycle as state:
+      // signed out means the data is gone, so an openWeeklyReview() arriving
+      // now must defer to the next successful sign-in's initApp, not render
+      // from the cleared default. (See openWeeklyReview's deferral.)
+      _appDataReady=false;
       hideApp();
       // R6: native has no marketing page to tap "Sign In" from anymore, so
       // open the card automatically instead of leaving a bare brand screen.
@@ -9037,7 +9042,19 @@ function _renderStateCard(period){
 // pieces (tasks completed, routine consistency). Same "descriptive counts only,
 // small-n guarded" convention as _renderStateCard: an empty-state message when
 // there's nothing to show yet, rather than a mostly-blank modal.
+// R16 Phase B cold-launch fix: this can be invoked BEFORE sign-in and load()
+// have run -- the native notification tap fires it on a fixed 1.5s timer
+// (MainViewController.swift), and the web SW notificationclick path has the
+// same race. As a top-level function it exists from parse time, so the
+// callers' `window.openWeeklyReview &&` guard passes while `state` is still
+// the empty default, and the modal snapshotted zeroed HTML into innerHTML
+// that nothing ever re-rendered -- the notification "worked" but the review
+// sat empty after login. Defer instead of rendering early: record the intent
+// and let initApp consume it once the data this renders from actually exists.
+var _pendingWeeklyReviewOpen=false;
+var _appDataReady=false;
 function openWeeklyReview(){
+  if(!_appDataReady){_pendingWeeklyReviewOpen=true;return;}
   var modal=document.getElementById('weeklyReviewModal');
   if(!modal)return;
   var body=document.getElementById('weeklyReviewBody');
@@ -12540,6 +12557,12 @@ await load();
 // can render at any time). Must run after load() so pre-migration data
 // already merged into state.checkins/state.moodLog is available to adopt.
 await Promise.all([_loadCheckinsDoc(),_loadMoodLogDoc(),_loadCompletedTasksDoc(),_loadRemindersArchiveDoc()]);
+// State is real from here on. Consume a weekly-review open that arrived
+// before load() finished (cold-launch notification tap, native or SW) --
+// see openWeeklyReview's deferral. Small delay so the dashboard paints
+// first and the modal opens over a rendered app, not a blank one.
+_appDataReady=true;
+if(_pendingWeeklyReviewOpen){_pendingWeeklyReviewOpen=false;setTimeout(openWeeklyReview,400);}
 initPanelVisibility();applyPanelOrder();applyPanelVisibility();applyPointsVisibility();updateLockUI();updateClock();updateTimeLeft();setInterval(updateClock,1000);setInterval(updateTimeLeft,30000);updateTimerDisplay();renderPointsBadge();awardDailyLogin();
 _bindPanelUsageTracking();
 // -- DAILY ROUTINE RESET -- robust against tabs left open overnight --
