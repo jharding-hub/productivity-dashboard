@@ -9053,6 +9053,19 @@ function _renderStateCard(period){
 // and let initApp consume it once the data this renders from actually exists.
 var _pendingWeeklyReviewOpen=false;
 var _appDataReady=false;
+// Warm fast lane for a native notification tap (build-82 postmortem: on a
+// cold launch the eval that calls this fires before legacy.js has parsed and
+// silently no-ops -- that's fine, native keeps its pending flag and initApp
+// pulls it via checkWeeklyReviewPending instead). When this DOES run, the
+// SPA owns the open from here: ack native so the pull can't double-fire on
+// a later boot, then go through the same readiness-gated open as everyone
+// else -- which still defers correctly if the user is sitting at the login
+// gate with data not yet loaded.
+function __cpWeeklyReviewTap(){
+  var h=_notifNative();
+  if(h){try{h.postMessage({action:'ackWeeklyReviewTap'});}catch(e){}}
+  openWeeklyReview();
+}
 function openWeeklyReview(){
   if(!_appDataReady){_pendingWeeklyReviewOpen=true;return;}
   var modal=document.getElementById('weeklyReviewModal');
@@ -12563,6 +12576,12 @@ await Promise.all([_loadCheckinsDoc(),_loadMoodLogDoc(),_loadCompletedTasksDoc()
 // first and the modal opens over a rendered app, not a blank one.
 _appDataReady=true;
 if(_pendingWeeklyReviewOpen){_pendingWeeklyReviewOpen=false;setTimeout(openWeeklyReview,400);}
+// Cold-launch pull (build-82 postmortem): a notification tap delivered
+// before legacy.js parsed leaves no trace in this page -- only native knows
+// it happened (AppDelegate.pendingWeeklyReview). Ask now, the first moment
+// the review can render real data; native answers by evaluating
+// openWeeklyReview only if a tap is actually pending. No-ops on web.
+(function(){var h=_notifNative();if(h){try{h.postMessage({action:'checkWeeklyReviewPending'});}catch(e){}}})();
 initPanelVisibility();applyPanelOrder();applyPanelVisibility();applyPointsVisibility();updateLockUI();updateClock();updateTimeLeft();setInterval(updateClock,1000);setInterval(updateTimeLeft,30000);updateTimerDisplay();renderPointsBadge();awardDailyLogin();
 _bindPanelUsageTracking();
 // -- DAILY ROUTINE RESET -- robust against tabs left open overnight --
