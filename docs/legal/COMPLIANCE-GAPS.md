@@ -113,52 +113,40 @@ enforcement finding against small apps.
 
 ---
 
-## 🔴 G-03 — No Global Privacy Control handling
+## ✅ G-03 — RESOLVED 2026-08-11 — Global Privacy Control now read and acknowledged
 
-**What the code does.** Nothing. `grep` for `globalPrivacyControl` / `Sec-GPC` across
-`public/` and `src/` returns zero hits.
+**What the code does now.** `GPC_DETECTED` (`legacy.js`, near the top-level vars) reads
+`navigator.globalPrivacyControl` once at script load. `openCustomize()` calls
+`_renderGpcBanner()`, which shows a banner in Settings → About & Legal
+(`#gpcBanner`, `src/app-body.html`) when the signal is present: "We detected a Global Privacy
+Control signal. Centerpost does not sell or share your personal data for advertising, so there is
+nothing to opt out of — this is already how your account works." `privacy-policy.md` / `privacy.html`
+§4 now state plainly that GPC is recognised.
 
-**Why it matters.** California (CCPA/CPRA regs § 7025), Colorado, and Connecticut require a
-universal opt-out mechanism to be honoured on the web. GPC is the recognised signal. Colorado's
-is mandatory, not optional.
-
-**Mitigating factor — and it's a strong one.** GPC is an opt-out of *sale* and *sharing for
-targeted advertising*. Centerpost does neither. So the substantive obligation is already met; what's
-missing is the **acknowledgement**. Several state AGs expect the signal to at least be recognised.
-
-**Recommended fix (small).** Read `navigator.globalPrivacyControl` on load; if `true`, record it on
-the client and surface it in the privacy UI as "We detected a Global Privacy Control signal.
-Centerpost does not sell or share your personal data for advertising, so there is nothing to opt
-out of — this is already how your account works." Then the privacy policy can state truthfully that
-the signal is recognised and honoured.
+**Original finding.** Nothing read the signal — `grep` for `globalPrivacyControl` / `Sec-GPC`
+returned zero hits. California (CCPA/CPRA regs § 7025), Colorado, and Connecticut require a
+universal opt-out mechanism to be honoured on the web; Colorado's is mandatory. Mitigating factor:
+GPC is an opt-out of *sale* and *sharing for targeted advertising*, which Centerpost does neither
+of — the substantive obligation was already met, what was missing was the acknowledgement.
 
 ---
 
-## 🟠 G-04 — SendGrid open/click tracking status is unknown and not disabled in code
+## ✅ G-04 — RESOLVED 2026-08-11 — SendGrid tracking explicitly disabled in code
 
-**What the code does.** None of the three SendGrid senders
-(`guardian-worker.js:921`, `sentinel-worker.js:318`, `pulse-worker.js:162`) include a
-`tracking_settings` object. The account-level default therefore applies — and SendGrid's default is
-**click tracking on**.
+**What the code does now.** All three SendGrid senders (`guardian-worker.js`, `sentinel-worker.js`,
+`pulse-worker.js`) now include an explicit `tracking_settings` object on every `mail/send` payload
+with click, open, subscription, and Google Analytics tracking all off. Explicit-off in code, not
+reliant on the SendGrid account console default (which was click tracking **on**). Deployed via
+`wrangler deploy` for all three Workers.
 
-**Why it matters.** Open/click tracking on the Pulse daily briefing means an invisible pixel and
-rewritten links reporting user engagement back to a third party. In a wellness app, "user opened
-their daily briefing at 06:12" is behavioural data that a privacy policy claiming "we don't track
-you" cannot survive.
+**Original finding.** None of the three senders included a `tracking_settings` object
+(`guardian-worker.js:921`, `sentinel-worker.js:318`, `pulse-worker.js:162`), so the account-level
+default applied. Open/click tracking on the Pulse daily briefing would have meant an invisible pixel
+and rewritten links reporting user engagement back to a third party — behavioural data a privacy
+policy claiming "we don't track you" cannot survive.
 
-**Recommended fix.** Add to every `mail/send` payload:
-
-```json
-"tracking_settings": {
-  "click_tracking": { "enable": false, "enable_text": false },
-  "open_tracking":  { "enable": false },
-  "subscription_tracking": { "enable": false },
-  "ganalytics": { "enable": false }
-}
-```
-
-Explicit-off in code beats relying on a console setting nobody will remember. Also verify at
-SendGrid → Settings → Tracking.
+Recommend also verifying at SendGrid → Settings → Tracking that the account-level default is off,
+as defense in depth.
 
 ---
 
@@ -259,19 +247,20 @@ inventory's "may not claim" list.
 
 ---
 
-## 🟡 G-10 — Third-party endpoints called directly from the browser are undocumented
+## ✅ G-10 — RESOLVED 2026-08-11 — weather.gov/Overpass were dead code, not an undocumented flow
 
-**What the code does.** CSP `connect-src` allows `api.weather.gov` and `overpass-api.de`; `frame-src`
-allows YouTube. These are direct browser-to-third-party calls, so at minimum the user's IP is
-disclosed to each.
+**What the investigation found.** CSP `connect-src` still allowed `api.weather.gov` and
+`overpass-api.de`, and the privacy policy claimed those two parties saw the user's IP. But the
+weather/location feature that used to call them was removed from `legacy.js` entirely in commit
+`9b158e9` ("Remove weather/restaurant spinner (unreachable)") — grep-verified zero remaining
+references anywhere in the web repo, the workers repo, or the iOS project. Before removal, that
+dead code actually sent precise `navigator.geolocation` coordinates to both, not just IP — so this
+would have been a bigger gap than originally scoped if it were still live.
 
-**Why it matters.** Subprocessor lists must be complete. YouTube embeds additionally set cookies
-and feed Google's own purposes — that is a genuine third-party disclosure, not a processor
-relationship.
-
-**Recommended fix.** Determine what is actually sent to weather.gov and Overpass (IP only, or
-coordinates?). If coordinates, that is precise geolocation and needs its own consent treatment.
-Then list all three in the privacy policy. Consider `youtube-nocookie.com` for embeds.
+**What changed.** Both domains removed from `public/_headers`' CSP `connect-src` (nothing calls
+them — unnecessary attack surface). `privacy-policy.md` / `privacy.html` §4 and
+`data-inventory.md` §1.11 corrected to drop the now-inaccurate weather.gov/Overpass disclosure.
+YouTube (`frame-src`) is unaffected and remains documented as a genuine third-party flow.
 
 ---
 

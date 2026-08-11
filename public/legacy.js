@@ -6,6 +6,11 @@
 // DEBUG gates verbose payload logging. Keep false in production; even when
 // true, never log the Firebase ID token or Authorization headers.
 var DEBUG=false;
+// G-03: Global Privacy Control is a browser-level opt-out signal (CA/CO/CT).
+// Centerpost doesn't sell or share data for advertising, so there's nothing
+// to opt out of -- read once at script load and surface it in Settings so
+// the signal is acknowledged, not silently ignored.
+var GPC_DETECTED=(typeof navigator!=='undefined'&&navigator.globalPrivacyControl===true);
 var currentUser=null;
 var isAdmin=false;
 var userProfile=null;
@@ -1478,6 +1483,12 @@ function openCustomize(){
   if(typeof _renderBreathHealthSettings==='function')_renderBreathHealthSettings();
   if(typeof _renderPointsSettings==='function')_renderPointsSettings();
   if(typeof loadTouchIDDevices==='function')loadTouchIDDevices();
+  _renderGpcBanner();
+}
+function _renderGpcBanner(){
+  var el=document.getElementById('gpcBanner');
+  if(!el)return;
+  el.style.display=GPC_DETECTED?'':'none';
 }
 
 function closeCustomize(){

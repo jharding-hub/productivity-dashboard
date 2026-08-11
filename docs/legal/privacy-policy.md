@@ -233,14 +233,18 @@ These companies process data on our behalf, under contract, for the purposes abo
 | **Apple** | App distribution, subscriptions | Subscription and transaction data, under Apple's own terms | https://www.apple.com/legal/privacy/ |
 
 **Other connections.** Some Centerpost features load content directly from third parties in your
-browser, which means those parties see your IP address: the US National Weather Service
-(weather.gov) and OpenStreetMap's Overpass API for location-related features, and YouTube where a
-video is embedded. YouTube is operated by Google under its own privacy policy and may set cookies.
+browser, which means those parties see your IP address: YouTube, where a video is embedded.
+YouTube is operated by Google under its own privacy policy and may set cookies.
 
 **We do not sell personal data, and we do not share it for cross-context behavioural advertising**,
 as those terms are defined under California, Colorado, Connecticut, Virginia, and other state
 privacy laws. We have not done so in the past 12 months. We do not sell or share the data of minors
 under 16 — we do not knowingly have any.
+
+**Global Privacy Control.** We recognize the Global Privacy Control (GPC) signal. Because we do not
+sell or share personal data for advertising, there is nothing for GPC to opt you out of — but if
+your browser sends the signal, the app acknowledges it and shows you confirmation in
+Settings → About & Legal.
 
 ## 5. AI processing — plain statement
 

@@ -220,10 +220,14 @@ delivery statistics only.
 
 ### 1.11 Other outbound calls
 
-From the CSP `connect-src` allowlist (`public/_headers`): `api.weather.gov` and `overpass-api.de`.
-These are third-party endpoints the browser contacts directly. Weather/location lookups leak at
-minimum the user's IP to those services. **UNVERIFIED what is sent** — needs confirmation before
-the privacy policy describes it. See COMPLIANCE-GAPS.md **G-10**.
+**RESOLVED 2026-08-11 (G-10).** `api.weather.gov` and `overpass-api.de` were allowlisted in the CSP
+`connect-src` but the weather/location feature that used to call them (which sent precise
+`navigator.geolocation` coordinates to both) was removed from the code entirely in commit
+`9b158e9` ("Remove weather/restaurant spinner (unreachable)"). Grep-verified zero remaining
+references anywhere in the web repo, the workers repo, or the iOS project. Both domains have been
+removed from `public/_headers`' `connect-src` — nothing calls them, so allowlisting them was
+unnecessary attack surface. The privacy policy's claim that these two parties see the user's IP has
+been removed as inaccurate.
 
 YouTube is allowlisted in `frame-src`/`script-src` — embedded YouTube sets cookies and is a
 third-party data flow.
@@ -278,7 +282,6 @@ human review of user input and must be disclosed.
 | **Sentry** | Exception messages, stack traces, CSP reports. No bodies, no user info, no AI I/O | Processor | Per Sentry plan retention — **UNVERIFIED** | Sentry DPA — **UNVERIFIED** |
 | **Apple** | App Store transaction data, subscription status; HealthKit writes stay on-device/in the user's Health store | Apple's own terms | Apple policy | Apple DPLA |
 | **Twilio (SMS)** | Operator phone number only — no user data | Processor | Twilio policy | — |
-| **weather.gov / Overpass** | User IP; possibly coordinates — **UNVERIFIED** | Public APIs, no contract | Unknown | None |
 | **YouTube (embeds)** | IP, cookies, viewing data | Google's own purposes | Google policy | None |
 
 **No data is sold. No targeted advertising. No advertising SDK of any kind exists in the
