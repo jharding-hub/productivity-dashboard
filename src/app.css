@@ -2729,8 +2729,12 @@ body[data-theme="storm-dark"] .tl-hour-label{
    (1100), modal-overlay (1200) and workTodayModal (1300). At its old 300 it
    opened BEHIND every one of those: the sheet was genuinely open and taking
    taps, just invisible until the surface above it closed. Kept under
-   proj-multi-dropdown (1500) and the gcal modal (2000); nothing inside
-   Settings opens the 1200 modal layer (account delete uses native confirm). */
+   proj-multi-dropdown (1500) and the gcal modal (2000).
+   The original note here claimed "nothing inside Settings opens the 1200 modal
+   layer (account delete uses native confirm)". That was never true -- Delete
+   Account calls _confirm(), so raising Settings to 1400 buried its own
+   confirmation behind itself (Joe hit it on-device, build 84). #confirmDialog
+   is now z-2500 and clears this; see the note there before moving either. */
 .customize-overlay{position:fixed;inset:0;background:rgba(0,0,0,0.6);z-index:1400;display:none;align-items:center;justify-content:center;padding:20px;}
 .customize-overlay.show{display:flex;}
 .customize-box{background:var(--surface);border:1px solid var(--border);border-radius:var(--radius);padding:28px;max-width:440px;width:100%;max-height:80vh;max-height:80dvh;overflow-y:auto;}
@@ -2955,6 +2959,17 @@ body[data-theme="storm-dark"] .tl-hour-label{
 .note-org-btn i{font-size:calc(12px * var(--type-scale,1));}
 .modal-blur-overlay{position:fixed;inset:0;z-index:1100;display:flex;align-items:center;justify-content:center;visibility:hidden;opacity:0;transition:opacity 0.3s ease,visibility 0.3s ease;}
 .modal-blur-overlay.open{visibility:visible;opacity:1;}
+/* _confirm() is the universal blocking-question layer -- it is raised FROM
+   nearly every other surface, so it cannot share their 1100 band. Joe hit this
+   on-device (build 84): Settings > Delete Account opened the confirm behind the
+   Settings sheet, which is z-1400. The gcal modal (z-2000, Disconnect) had the
+   same latent bug. 2500 clears every surface that can raise a confirm --
+   .panel-overlay 1000, .journal-overlay/.breath-overlay 1050, .modal-overlay
+   1200, #workTodayModal 1300, .customize-overlay 1400, .proj-multi-dropdown
+   1500, .gcal-modal-overlay 2000 -- while staying under the 9000+ band
+   (celebrations, sign-in gate, update toast), none of which raise confirms.
+   ANY NEW SURFACE THAT CALLS _confirm() MUST STAY BELOW 2500. */
+#confirmDialog{z-index:2500;}
 .modal-blur-backdrop{position:absolute;inset:0;background:rgba(10,9,8,0.55);backdrop-filter:blur(6px);-webkit-backdrop-filter:blur(6px);}
 .modal-blur-panel{position:relative;z-index:1;background:var(--surface);border:1px solid var(--border);border-radius:var(--radius);width:min(680px,92vw);max-height:88vh;display:flex;flex-direction:column;overflow:hidden;box-shadow:0 24px 60px rgba(0,0,0,0.6);animation:journalSlideIn 0.3s cubic-bezier(0.22,1,0.36,1) both;}
 .modal-blur-header{display:flex;align-items:center;justify-content:space-between;padding:16px 20px 12px;border-bottom:1px solid var(--border);flex-shrink:0;}
