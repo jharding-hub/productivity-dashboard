@@ -199,15 +199,27 @@ Separately, a medication item about a named child is a sensitive-data element un
 laws.
 
 **Recommended fix.**
-1. Privacy policy gets an explicit "Family features" section: the parent is the account holder, the
-   parent supplies the child's information, the child does not have an account or log in, the data
-   is stored under the parent's account and deleted with it.
-2. Confirm and state that `users/{uid}/data/kids` **is** covered by account deletion — it is
-   (`USER_DATA_DOCS` includes `kids`, `jarvis-worker.js:985`). Good.
-3. Consider renaming the default "Take meds" item to something non-medical, or make it opt-in. It
-   is the only element pulling child data into the health-data category.
-4. App Store: if `kids.html` is reachable from the iOS app, Apple may push the listing toward the
-   Kids Category, which carries much stricter rules. Confirm whether it is reachable from native.
+1. ✅ **DONE** — privacy policy has an explicit "Family features (COPPA)" section: the parent is the
+   account holder, the parent supplies the child's information, the child does not have an account
+   or log in, the data is stored under the parent's account and deleted with it.
+2. ✅ **DONE** — `users/{uid}/data/kids` **is** covered by account deletion (`USER_DATA_DOCS`
+   includes `kids`, `jarvis-worker.js`). Verified; unchanged by the separation below.
+3. ⬜ **STILL OPEN** — the default "Take meds" item is unchanged. Lower exposure now that this is
+   not a product feature, but it is still a medication item about a named child in a doc that syncs
+   to the parent's account, so the state-law point stands.
+4. ✅ **RESOLVED 2026-08-11 — Kids Mode separated from the product entirely** (Joe's call). This
+   went further than "is it reachable from native": **`kids.html` is no longer in the iOS bundle at
+   all.** R13.5 had only hidden the native UI entry points, which left the full 189 KB page and its
+   5 assets sitting in the shipped binary — a reviewer reads the bundle, not the UI, so that was
+   never sufficient. `centerpost-sync.sh` now deletes all 6 files from `WWW/` on every sync, with a
+   hard stop if the deletion fails. Every web entry point is gone too (Settings section,
+   `openKidsMode()`, 4 landing-page links, How To section 15, SW precache).
+
+**What this did NOT change.** Joe chose to keep the optional account sync, so `kids.html` still
+writes `users/{uid}/data/kids` for anyone who uses it standalone. Child data is therefore still in
+the data model and the COPPA section of the privacy policy is still load-bearing — it was reworded,
+not removed. **This gap is reduced in scope, not closed.** Closing it fully means making
+`kids.html` localStorage-only, which was considered and explicitly deferred.
 
 ---
 

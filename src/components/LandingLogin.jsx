@@ -16,13 +16,6 @@ export default function LandingLogin() {
               <div className="landing-cta-row">
                 <button className="landing-cta-primary" onClick={() => window.showSignupPanel()}>Get Started — Free <span aria-hidden="true">&rarr;</span></button>
                 <button className="landing-cta-tertiary" onClick={() => window.showSigninPanel()}>I have an account</button>
-                {/* R13.5: uncoupled from native -- kids.html is a standalone
-                    PWA never built to run inside a chrome-less native WKWebView
-                    (no way back out once it loads there). Web-only link;
-                    marketingBody is shared and reachable on native too via the
-                    "What is Centerpost?" toggle, so this has to check isNative
-                    even though it's visually part of the "web" marketing page. */}
-                {!isNative && <a href="kids.html" className="landing-cta-secondary" style={{ textDecoration: 'none', display: 'inline-flex', alignItems: 'center' }}>&#127918; Try Kids Mode</a>}
               </div>
               {/* Pre-App-Store pass: no "free during beta" promise here — tier
                   design is still open, and a free claim that later grows a
@@ -162,11 +155,6 @@ export default function LandingLogin() {
                   <div className="feature-name">Axis — AI Assistant</div>
                   <div className="feature-desc">Built-in AI that knows your dashboard. Ask &quot;what should I work on next?&quot; Tap Breakdown on any task or project to get a micro-step plan.</div>
                 </div>
-                <div className="feature-card">
-                  <div className="feature-icon">&#127918;</div>
-                  <div className="feature-name">Kids Mode</div>
-                  <div className="feature-desc">Help your child build routines, create tasks, track reading and feelings, and learn productivity through small micro-habits each day. Pixel-art themed and easy to use. Optional cross-device sync with your account.</div>
-                </div>
               </div>
             </div>
           </section>
@@ -208,7 +196,6 @@ export default function LandingLogin() {
             )}
             <div>&copy; 2026 Centerpost. Built for first responders, by a first responder.</div>
             <div className="landing-footer-links">
-              {!isNative && <a href="kids.html" className="landing-footer-link">Kids Mode</a>}
               {!isNative && <a href="/privacy" className="landing-footer-link">Privacy Policy</a>}
               {!isNative && <a href="/terms" className="landing-footer-link">Terms of Service</a>}
               {!isNative && <a href="/ai" className="landing-footer-link">AI Transparency</a>}
@@ -259,7 +246,6 @@ export default function LandingLogin() {
               <nav className="landing-nav">
                 <div className="landing-logo"><span className="logo-dot"></span> Centerpost</div>
                 <div className="landing-nav-right">
-                  <a href="kids.html" className="landing-nav-link">Kids Mode</a>
                   <button className="landing-signin-btn" onClick={() => window.showSigninPanel()}>Sign In</button>
                   <button className="landing-signup-btn" onClick={() => window.showSignupPanel()}>Sign Up</button>
                 </div>

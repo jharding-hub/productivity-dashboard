@@ -121,6 +121,15 @@ MHMDA.
 Firestore UID (`kids.html:4759`, `:4771`). It is a separate Firebase app instance named `kids`
 (`kids.html:4546`).
 
+**Separated from the product 2026-08-11.** This is no longer a Centerpost feature: it is not in the
+iOS bundle at all (`centerpost-sync.sh` strips it and its 5 assets every sync), and the web app has
+no link to it — the `teacher.html` model, deployed but unlisted, reachable only at
+`centerpost.app/kids.html`. **The data flow described below is unchanged**, because the optional
+account sync was deliberately kept: anyone who uses the standalone page still writes
+`users/{uid}/data/kids`. So this section stays live, and so does the privacy policy's COPPA
+section. It also still has its own sign-in (`_kidsQuickAuthSubmit`), so it reaches the account
+without the removed `openKidsMode()` handoff.
+
 Collected: child first names, chore/routine item names and completion state, points/rewards.
 Default routine items include **"Take meds" 💊** (`kids.html:2455`, `:2464`) — a medication-adherence
 item about a child.

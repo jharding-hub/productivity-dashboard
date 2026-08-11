@@ -3,7 +3,7 @@
 // ═══════════════════════════════════════════════════════════════════════
 //
 // STRATEGY
-//   - HTML pages (index.html, kids.html, /):  NETWORK-FIRST
+//   - HTML pages (index.html, /):  NETWORK-FIRST
 //       Browser tries the network first (4s timeout). On success, the
 //       fresh response is served AND cached. On failure or offline,
 //       falls back to the cached copy. This means deploys take effect
@@ -24,21 +24,22 @@ const CACHE_VERSION = 'centerpost-__COMMIT__';
 
 // Assets to pre-cache on install (offline-ready essentials).
 // Failures are tolerated individually — one missing icon won't break install.
+//
+// kids.html, its manifest, its 4 icons and the Press Start 2P/VT323 fonts were
+// dropped 2026-08-11 when Kids Mode was separated from the product. It is no
+// longer part of either app, so the app's service worker has no business
+// precaching it -- and it is excluded from the native bundle entirely
+// (centerpost-sync.sh), where precaching a file that isn't there would be
+// pointless anyway. kids.html still works online at /kids.html; it just no
+// longer gets offline support from the main app's SW, the same as teacher.html.
 const PRECACHE_ASSETS = [
   './',
   './index.html',
-  './kids.html',
   './manifest.json',
-  './kids-manifest.json',
-  './kids-icon.svg',
-  './kids-icon.png',
-  './kids-icon-192.png',
-  './kids-icon-512.png',
   './ops',
   './howto',
   'https://cdn.jsdelivr.net/npm/@tabler/icons-webfont@3.0.0/dist/tabler-icons.min.css',
   'https://fonts.googleapis.com/css2?family=DM+Sans:ital,wght@0,400;0,500;0,600;0,700&family=Fraunces:ital,opsz,wght@0,9..144,400;0,9..144,600;0,9..144,700;1,9..144,400&display=swap',
-  'https://fonts.googleapis.com/css2?family=Press+Start+2P&family=VT323&display=swap',
   'https://www.gstatic.com/firebasejs/10.12.0/firebase-app-compat.js',
   'https://www.gstatic.com/firebasejs/10.12.0/firebase-auth-compat.js',
   'https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore-compat.js'

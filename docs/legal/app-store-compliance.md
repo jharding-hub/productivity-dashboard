@@ -90,10 +90,11 @@ nothing to track is itself a rejection reason, and it costs user trust for nothi
 
 **The HealthKit story is genuinely clean and worth stating plainly in review notes.**
 
-⚠️ **Watch item:** the children's routine tracker includes a default **"Take meds"** item
-(`kids.html:2455`). It is a checkbox, not a dosage instruction or a medical recommendation, so it
-does not implicate the dosage-calculation prohibition. But if a reviewer sees it, be ready to
-explain it as a parent-managed chore checklist. Consider renaming it — see COMPLIANCE-GAPS.md G-06.
+~~⚠️ **Watch item:** the children's routine tracker includes a default **"Take meds"** item.~~
+**No longer an App Store item as of 2026-08-11** — `kids.html` is excluded from the native bundle
+entirely, so nothing about it is in the binary under review. It still exists as a standalone web
+page, so the item stays open as a *product* question (COMPLIANCE-GAPS.md G-06); it is simply no
+longer something a reviewer can encounter.
 
 ---
 
@@ -176,7 +177,7 @@ The URL must be live **before** submission. Apple checks it.
 | **2.5.1 — Public APIs only** | — | ✅ Standard Capacitor |
 | **1.2 — User-generated content** | N/A — no social features, no content sharing between users | ✅ |
 | **3.1.1 — In-app purchase** | Digital subscriptions must use IAP | ⚠️ If web billing is added later, keep it entirely out of the iOS app |
-| **Kids Category** | Stricter rules if listed there | ⚠️ **Do not list Centerpost in the Kids Category.** Confirm whether `kids.html` is reachable from the native app; if it is, be ready to explain it as a parent-facing feature. |
+| **Kids Category** | Stricter rules if listed there | ✅ **RESOLVED 2026-08-11.** `kids.html` is no longer in the app at all. `centerpost-sync.sh` deletes it and its 5 assets from the bundle every sync (with a hard stop if the deletion fails), so it is not in the binary a reviewer inspects — the earlier R13.5 pass only hid the buttons, which was never enough. It remains a standalone unlisted page on the web. **Do not list Centerpost in the Kids Category**; there is now nothing child-facing to explain. |
 
 ---
 

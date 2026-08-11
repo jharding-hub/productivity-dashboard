@@ -2732,7 +2732,6 @@ body[data-theme="storm-dark"] .tl-hour-label{
   .signin-card{padding:32px 24px;}
 }
 .customize-btn{background:none;border:1px solid var(--border);color:var(--text-dim);padding:6px 10px;border-radius:var(--radius-sm);cursor:pointer;font-size:calc(12px * var(--type-scale,1));font-family:inherit;transition:all 0.15s;min-height:40px;}
-.kids-launcher:hover{background:linear-gradient(135deg,#ffe060,#ff66bb) !important;border-color:#ffcc00 !important;color:#1a0033 !important;}
 .customize-btn:hover{border-color:var(--accent-dim);color:var(--accent);}
 /* z-index 1400: Settings is reachable from the mobile tab bar while a
    full-screen surface is already up, so it has to clear all of them --

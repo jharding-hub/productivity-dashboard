@@ -550,27 +550,15 @@ function doLogout(){
   firebase.auth().signOut();
 }
 
-// Moved off the primary status bar into Settings (R2): it used to sit on the
-// bottom bar one thumb-width from Settings itself and eject straight to
-// Safari with zero confirmation -- easy to hit by mistake, high context loss.
-function openKidsMode(){
-  // R13.5: defense in depth -- every native entry point to this is hidden
-  // (LandingLogin.jsx, the Settings section above), but refuse here too in
-  // case anything else ever calls it directly. kids.html isn't built to run
-  // inside a chrome-less native WKWebView; window.open('_blank') itself
-  // behaves inconsistently there too, unlike a real browser tab.
-  if(document.body.classList.contains('capacitor-native')){
-    if(typeof toast==='function')toast('Kids Mode isn\'t available in the app -- open centerpost.app/kids.html in a browser instead.');
-    return;
-  }
-  if(currentUser){
-    try{
-      localStorage.setItem('_kidsParentUid',currentUser.uid);
-      localStorage.setItem('_kidsParentEmail',currentUser.email||'');
-    }catch(e){}
-  }
-  window.open('https://centerpost.app/kids.html','_blank');
-}
+// openKidsMode() removed 2026-08-11 along with every other Kids Mode entry
+// point (Joe's call). kids.html is now a standalone page in the teacher.html
+// mould: still deployed, still works, reachable only by URL, and excluded
+// from the native bundle by centerpost-sync.sh. It carries its own Firebase
+// app instance and its own sign-in, so it never needed this launcher to reach
+// the account -- the _kidsParentUid/_kidsParentEmail handoff written here was
+// only a convenience prefill, and kids.html sets _kidsParentUid itself on
+// sign-in. Nothing calls this anymore; deleting it rather than leaving a
+// dead export.
 
 // -- Self-serve data export + account deletion (Settings > Account & data) --
 // Export runs fully client-side: the signed-in user already has read access
@@ -1509,11 +1497,9 @@ function openCustomize(){
   // sw.js's CACHE_VERSION) -- lets Joe tell from the app itself whether a
   // native build is running a stale www/ resync, no separate check needed.
   if(_cb)_cb.textContent='Build '+APP_BUILD+' · Web '+(typeof CENTERPOST_WEB_BUILD!=='undefined'?CENTERPOST_WEB_BUILD:'dev');
-  // R13.5: Kids Mode uncoupled from the native app entirely -- kids.html is a
-  // standalone PWA that was never built to run inside a chrome-less native
-  // WKWebView (loads with no way back out). Untouched on web.
-  var _kmSection=document.getElementById('kidsModeSettingsSection');
-  if(_kmSection)_kmSection.style.display=(document.body.classList.contains('capacitor-native'))?'none':'';
+  // (The R13.5 native-only hide for #kidsModeSettingsSection lived here. The
+  // section itself is gone as of 2026-08-11 -- Kids Mode is no longer part of
+  // either app, so there is nothing left to conditionally hide.)
   // Touch ID sign-in (WebAuthn) is web/Mac only -- native already has its own
   // Face ID via the Keychain for the journal, a different mechanism entirely.
   var _waSection=document.getElementById('waSettingsSection');

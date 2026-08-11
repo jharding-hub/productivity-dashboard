@@ -324,23 +324,13 @@
 <div class="section-label" style="margin-bottom:8px;">Points</div>
 <div id="pointsSettings"></div>
 <div style="border-bottom:1px solid var(--border);margin:16px 0;"></div>
-<!-- R13.5: uncoupled from native -- kids.html is a standalone PWA never
-     built to run inside a chrome-less native WKWebView (loads with no way
-     back out; this is what trapped Joe on-device). Whole section hidden on
-     native by openCustomize(), including its own trailing divider so
-     "Points" sits directly above "Account & data" when hidden. kids.html
-     and openKidsMode() are untouched -- still fully functional from the web
-     app's Settings, and directly by URL as a standalone PWA. -->
-<div id="kidsModeSettingsSection">
-<div class="section-label" style="margin-bottom:8px;">Kids Mode</div>
-<p class="cust-sub">A separate, kid-friendly arcade mode (4th tier). Opens in a new tab.</p>
-<div class="customize-actions">
-<!-- R2: moved off the primary status bar, where it sat one thumb-width from
-     Settings and ejected straight to Safari with zero confirmation. -->
-<button class="btn kids-launcher" onclick="openKidsMode()" style="background:linear-gradient(135deg,#ffcc00,#ff3399);border:1px solid #cc9900;color:#1a0033;font-weight:700;letter-spacing:0.5px;box-shadow:0 0 8px rgba(255,204,0,0.3);">&#127918; Kids Mode</button>
-</div>
-<div style="border-bottom:1px solid var(--border);margin:16px 0;"></div>
-</div>
+<!-- Kids Mode was fully separated from the product 2026-08-11 (Joe's call).
+     R13.5 had already hidden it on native; this removes the web entry point
+     too. kids.html still exists and still works, but only as a standalone
+     page reachable by URL -- the teacher.html model: shipped, unlinked, not
+     part of either app. Removing it from the product (and from the native
+     bundle, see centerpost-sync.sh) is what takes children's data off the
+     App Store review surface, rather than just hiding a button. -->
 <div class="section-label" style="margin-bottom:8px;">Account &amp; data</div>
 <p class="cust-sub">Your data belongs to you. Download a full copy anytime, or permanently delete your account and everything in it.</p>
 <div class="customize-actions">
@@ -360,10 +350,11 @@
      comment block for why. Password sign-in is never removed; this is
      additive, and every device can be removed here if a Mac is lost, sold,
      or its Touch ID sensor stops trusting you for any reason. -->
-<!-- Hidden on native (openCustomize, same technique as kidsModeSettingsSection
-     just above): the journal already has its own Face ID via the iOS
-     Keychain, and WebAuthn inside a WKWebView is a different, unreliable
-     surface that would just confuse that existing path. Web/Mac only. -->
+<!-- Hidden on native by openCustomize(), by id: the journal already has its
+     own Face ID via the iOS Keychain, and WebAuthn inside a WKWebView is a
+     different, unreliable surface that would just confuse that existing path.
+     Web/Mac only. (This used to cite kidsModeSettingsSection as the reference
+     example for the technique; that section was removed 2026-08-11.) -->
 <div id="waSettingsSection">
 <div class="section-label" style="margin-bottom:8px;">Touch ID sign-in</div>
 <p class="cust-sub">Sign in on this Mac with Touch ID instead of your password. Your password still works everywhere, always.</p>
