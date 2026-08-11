@@ -2259,7 +2259,18 @@ body[data-theme="storm-dark"] .tl-hour-label{
 .modal-actions{display:flex;gap:8px;flex-wrap:wrap;}
 ::-webkit-scrollbar{width:5px;}::-webkit-scrollbar-track{background:transparent;}
 ::-webkit-scrollbar-thumb{background:var(--border);border-radius:3px;}::-webkit-scrollbar-thumb:hover{background:var(--border-focus);}
-.toast{position:fixed;bottom:80px;right:24px;background:var(--green);color:var(--bg);padding:10px 18px;border-radius:var(--radius);font-size:calc(13px * var(--type-scale,1));font-weight:600;opacity:0;transform:translateY(10px);transition:all 0.3s;pointer-events:none;z-index:999;}
+/* z-9500, was 999 -- which sat BELOW every overlay in the app, so any toast
+   raised while one was open rendered behind it, invisible. Found testing build
+   85: Settings (z-1400) hides its own "Export downloaded", "Export failed",
+   and "Account deleted" toasts -- the failure case being the bad one, since a
+   silent failure reads as nothing having happened. .toast.update-toast was
+   already bumped to 10002 for this exact reason; only that one instance got
+   fixed. Toasts also fire from background save/sync paths (storage-full, sync
+   failed) that can land while ANY surface is up, so this has to clear the
+   9000-band overlays too -- reminder popup (9000) and music stream (9001) --
+   not just the modal band. Stays under the fireworks/points celebration layer
+   (9998/9999), the sign-in gate (9999), and the update toast (10002). */
+.toast{position:fixed;bottom:80px;right:24px;background:var(--green);color:var(--bg);padding:10px 18px;border-radius:var(--radius);font-size:calc(13px * var(--type-scale,1));font-weight:600;opacity:0;transform:translateY(10px);transition:all 0.3s;pointer-events:none;z-index:9500;}
 .toast.show{opacity:1;transform:translateY(0);}
 .toast.update-toast{pointer-events:auto;cursor:pointer;bottom:130px;z-index:10002;}
 /* SHARE INBOX BANNER */
