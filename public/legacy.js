@@ -624,20 +624,19 @@ function deleteMyAccount(){
     _confirm('Last check: this really is forever and cannot be undone. Export your data first if you want a copy. Delete everything?',_performAccountDeletion,{destructive:true,confirmText:'Yes, delete everything',icon:'ti-trash-x'});
   },{destructive:true,confirmText:'Delete my account'});
 }
+// Every localStorage key that is written as PREFIX + uid. This list is the
+// single source of truth for both wipe paths below -- the same-device wipe on
+// deletion, and the other-device purge in _purgeDeletedAccountData. Keeping
+// one list is the point: this wipe has silently drifted out of date twice as
+// new per-account caches were added. ADD NEW uid-SUFFIXED KEYS HERE.
+var UID_SCOPED_LS_PREFIXES=['prodDash_','cpCheckins_','cpMoodLog_','cpJournal_','cpJournalBio_','cpCompletedTasks_','cpRemindersArchive_','cpAxisProfile_','cpBreathStarts_','cpBreathResDismissed_'];
 // Clear every device-local trace of this account. Deleting the cloud copy is
 // not enough on its own: the local mirrors below are what the app reads FIRST
 // on load, and reconcileLifetimeCounter takes a max, so a surviving local
 // cache would resurrect the "deleted" data and push it straight back up.
 function _wipeLocalAccountData(uid){
   try{
-    localStorage.removeItem('prodDash_'+uid);
-    localStorage.removeItem('cpCompletedTasks_'+uid);
-    localStorage.removeItem('cpRemindersArchive_'+uid);
-    // R8 phase 2 pass: the encrypted journal mirror + biometric-unlock flag
-    // were missing from this wipe (the journal doc is encrypted at rest, but
-    // an account deletion should still leave nothing behind).
-    localStorage.removeItem('cpJournal_'+uid);
-    localStorage.removeItem('cpJournalBio_'+uid);
+    UID_SCOPED_LS_PREFIXES.forEach(function(p){localStorage.removeItem(p+uid);});
     localStorage.removeItem('cpNotifFired');
     localStorage.removeItem('devTierOverride');
     // Legacy pre-multi-account key. The migration that read it is gone, but a
@@ -648,6 +647,44 @@ function _wipeLocalAccountData(uid){
   // fire-and-forget -- the item is biometric-gated and useless without the
   // account's data, but a deleted account should leave no key behind).
   try{if(typeof _bioRequest==='function')_bioRequest('clear');}catch(e){}
+}
+// G-05: the OTHER-device half of account deletion. Deleting an account wipes
+// the server and the device it was done from, but a second signed-in device
+// keeps its localStorage mirror until someone opens the app there. Firebase
+// revokes the refresh token on delete, so that device lands in the signed-out
+// branch of onAuthStateChanged -- which is where this runs.
+//
+// Fails CLOSED in every direction: a normal sign-out leaves the account very
+// much alive and the server says so, and any error (offline, 503, malformed
+// response) purges nothing. Only an explicit {exists:false} deletes anything.
+async function _purgeDeletedAccountData(){
+  var uids={};
+  try{
+    for(var i=0;i<localStorage.length;i++){
+      var k=localStorage.key(i);
+      if(!k)continue;
+      UID_SCOPED_LS_PREFIXES.forEach(function(p){
+        if(k.indexOf(p)!==0)return;
+        var u=k.slice(p.length);
+        // 'local' is the signed-out scratch scope, not an account.
+        if(u&&u!=='local')uids[u]=true;
+      });
+    }
+  }catch(e){return;}
+  var list=Object.keys(uids);
+  if(!list.length)return;
+  for(var j=0;j<list.length;j++){
+    try{
+      var resp=await fetch(JARVIS_PROXY_URL+'/account/exists',{
+        method:'POST',
+        headers:{'Content-Type':'application/json'},
+        body:JSON.stringify({uid:list[j]})
+      });
+      if(!resp.ok)continue;
+      var out=await resp.json();
+      if(out&&out.exists===false)_wipeLocalAccountData(list[j]);
+    }catch(e){}
+  }
 }
 
 async function _performAccountDeletion(){
@@ -913,6 +950,11 @@ function initAuthListener(){
       // from the cleared default. (See openWeeklyReview's deferral.)
       _appDataReady=false;
       hideApp();
+      // G-05: this branch is also where a device lands when its account was
+      // deleted from somewhere else (the delete revokes the refresh token).
+      // Fire-and-forget -- nothing below depends on it, and it no-ops for an
+      // ordinary sign-out because the account still exists.
+      _purgeDeletedAccountData();
       // R6: native has no marketing page to tap "Sign In" from anymore, so
       // open the card automatically instead of leaving a bare brand screen.
       if(document.body.classList.contains('capacitor-native')&&typeof showSigninPanel==='function'){

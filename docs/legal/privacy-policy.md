@@ -241,11 +241,6 @@ as those terms are defined under California, Colorado, Connecticut, Virginia, an
 privacy laws. We have not done so in the past 12 months. We do not sell or share the data of minors
 under 16 — we do not knowingly have any.
 
-**Global Privacy Control.** We recognize the Global Privacy Control (GPC) signal. Because we do not
-sell or share personal data for advertising, there is nothing for GPC to opt you out of — but if
-your browser sends the signal, the app acknowledges it and shows you confirmation in
-Settings → About & Legal.
-
 ## 5. AI processing — plain statement
 
 - Axis is powered by Anthropic's Claude models, accessed through our own server.
@@ -358,7 +353,8 @@ requires. If we deny your appeal, you may contact your state Attorney General.
 **Global Privacy Control.** Centerpost recognises the Global Privacy Control browser signal.
 Because we do not sell personal data and do not share it for targeted advertising, there is nothing
 for the signal to opt you out of — your account already works that way. We honour it as a valid
-opt-out request regardless.
+opt-out request regardless. If your browser sends the signal, the app confirms that it was detected
+in **Settings → About & Legal**.
 
 **In the EEA, UK, or Switzerland**, you also have the right to lodge a complaint with your local
 supervisory authority.
@@ -376,8 +372,10 @@ Deleting your account removes, from our systems:
 **Two honest caveats:**
 
 1. **Other devices.** A local copy of your data may remain in the storage of other devices you
-   signed in on, until you open Centerpost on them again. To clear it immediately, sign out or
-   clear that browser's site data / delete the app on each device.
+   signed in on until you next open Centerpost there — at which point the app detects that the
+   account no longer exists and erases that local copy automatically. A device that is never opened
+   again keeps its copy until it is; to clear it immediately, clear that browser's site data or
+   delete the app on that device.
 2. **Backups and short-lived logs.** Encrypted backups may retain a copy for **up to 98 days**.
    Security counters expire within 48 hours. Aggregate usage counts, which are not linked to your
    account, expire within 35 days.

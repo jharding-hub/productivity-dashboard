@@ -150,21 +150,36 @@ as defense in depth.
 
 ---
 
-## 🟠 G-05 — Account deletion does not clear localStorage on the user's other devices
+## ✅ G-05 — RESOLVED 2026-08-11 — other-device local data now purges itself
 
-**What the code does.** `handleAccountDelete` cleans Firestore, KV, and Auth server-side. The
-client wipes its own local caches. Any *other* device where the user signed in still holds
-`cpCheckins_<uid>`, `cpMoodLog_<uid>`, `cpJournal_<uid>`, `prodDash_<uid>` etc. in localStorage,
-indefinitely.
+**What the code does now.** `_purgeDeletedAccountData()` (`legacy.js`) runs in the signed-out
+branch of `onAuthStateChanged` — which is exactly where a second device lands when its account is
+deleted elsewhere, because the delete revokes the refresh token. It scans localStorage for
+`uid`-suffixed keys, and for each distinct uid asks the new `POST /account/exists` endpoint
+(`jarvis-worker.js`, backed by `authUserExists` in `shared/google-admin.js`) whether that account
+still exists. Only an explicit `{exists:false}` triggers `_wipeLocalAccountData(uid)`.
 
-**Why it matters.** Wellness data persists on a device after the user believes they erased
-everything. This is also the same class of bug as the two cross-account leaks already fixed
-(`a3f6c42`, `2b1e21d`), so the pattern has bitten this codebase before.
+**Fails closed in every direction**, which matters because a false "gone" would destroy a live
+user's cache: `authUserExists` throws rather than returning false on any Google/transport error,
+the endpoint turns that into a 503, and the client purges nothing on a non-OK response, a thrown
+fetch, or a malformed body. A normal sign-out purges nothing either — the account still exists and
+the server says so. All four failure modes plus the happy path were verified in-browser, and the
+happy path re-verified end-to-end against the deployed Worker (a live uid kept its data, a
+nonexistent uid was purged, the `local` scratch scope untouched).
 
-**Recommended fix.** On app boot, if a signed-out `uid`-suffixed key exists and a lightweight
-server check says that UID no longer exists, purge those keys. Simpler alternative: the deletion
-confirmation copy explicitly tells the user to open Centerpost once on each of their other devices
-to finish clearing local data — and the privacy policy says the same. Cheap and honest.
+**Also fixed in the same pass — a same-device gap this surfaced.** `_wipeLocalAccountData` had
+silently drifted out of date: `cpCheckins_<uid>`, `cpMoodLog_<uid>`, and `cpAxisProfile_<uid>` were
+never being removed, so check-ins, mood log, and the Axis profile survived deletion *on the
+deleting device itself*. Both wipe paths now iterate one shared `UID_SCOPED_LS_PREFIXES` list, so
+the list can't drift per-path again — the drift is what caused this.
+
+**Why it mattered.** Wellness data persisted on a device after the user believed they erased
+everything. Same class as the two cross-account leaks already fixed (`a3f6c42`, `2b1e21d`).
+
+**Endpoint security note.** `/account/exists` is necessarily unauthenticated (the caller's account
+may be gone, so it cannot present a token). It is origin-gated, IP rate-limited on the same bucket
+as Touch ID login, answers exactly one bit about a uid the caller already holds, and Firebase uids
+are 28 random characters — not an enumeration surface in practice.
 
 ---
 
