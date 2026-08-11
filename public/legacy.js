@@ -7497,7 +7497,7 @@ function _haltTrendLine(){
 }
 function _renderHalt(){
   var body=document.getElementById('haltBody');
-  var html='<div class="halt-intro">A one-tap diagnostic for <strong>physical and environmental inputs</strong> that tank executive function before you know why. Tap each to expand, address it, and check it off.</div>';
+  var html='<div class="halt-intro"><strong>Physical and environmental factors</strong> tank focus before you notice why. Expand each item, address it, check it off.</div>';
   var trend=_haltTrendLine();
   if(trend)html+='<div class="halt-trend">'+esc(trend)+'</div>';
   HALT_ITEMS.forEach(function(item){
@@ -7720,7 +7720,7 @@ function _renderUrge(){
       +'<button class="btn" id="urgeOutcomeBtn-acted" onclick="urgeOutcome(\'acted\')">Did it anyway</button>'
       +'</div>';
   }else{
-    html+='<div class="urge-intro">Notice an urge to act on impulse? Log it, then put a deliberate pause between the urge and the action. Most urges fade within minutes.</div>';
+    html+='<div class="urge-intro">Notice an urge to act on impulse? Log it, then take a deliberate pause before acting. Most urges fade within minutes.</div>';
     html+='<div class="urge-type-grid">';
     URGE_TYPES.forEach(function(t){
       html+='<button class="urge-type-btn'+(_urgeType===t.key?' selected':'')+'" aria-pressed="'+(_urgeType===t.key?'true':'false')+'" onclick="urgeSelectType(\''+t.key+'\')">'
