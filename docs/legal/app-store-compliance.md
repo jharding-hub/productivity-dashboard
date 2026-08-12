@@ -91,10 +91,10 @@ nothing to track is itself a rejection reason, and it costs user trust for nothi
 **The HealthKit story is genuinely clean and worth stating plainly in review notes.**
 
 ~~⚠️ **Watch item:** the children's routine tracker includes a default **"Take meds"** item.~~
-**No longer an App Store item as of 2026-08-11** — `kids.html` is excluded from the native bundle
-entirely, so nothing about it is in the binary under review. It still exists as a standalone web
-page, so the item stays open as a *product* question (COMPLIANCE-GAPS.md G-06); it is simply no
-longer something a reviewer can encounter.
+**Closed 2026-08-11.** `kids.html` is excluded from the native bundle entirely, so nothing about it
+is in the binary under review. It also no longer sends anything anywhere — its cloud sync was
+removed the same day (COMPLIANCE-GAPS.md G-06), so the item lives only in a parent's own browser.
+Nothing for a reviewer to encounter and no children's data to declare.
 
 ---
 

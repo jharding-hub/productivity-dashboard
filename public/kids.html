@@ -13,11 +13,10 @@
 <link rel="icon" type="image/png" sizes="180x180" href="kids-icon.png">
 <link rel="manifest" href="kids-manifest.json">
 <title>Centerpost Kids</title>
-<!-- Firebase (loaded for OPTIONAL cross-device sync; app works fully offline if these fail) -->
-<script src="config.js"></script>
-<script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-app-compat.js"></script>
-<script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-auth-compat.js"></script>
-<script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore-compat.js"></script>
+<!-- No Firebase, no config.js. Cloud sync was removed 2026-08-11 to close
+     COMPLIANCE-GAPS.md G-06 -- this page collects no children's data for us,
+     so it loads no auth or database SDK and shares nothing with the main app.
+     config.js went with it: its only use here was the Firebase config. -->
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Press+Start+2P&family=VT323&display=swap" rel="stylesheet">
@@ -2506,7 +2505,6 @@ var DEFAULT_STATE={
   timerDuration:15,
   // parentPin is legacy plaintext — replaced by parentPinHash/parentPinSalt
   // (see PARENT PIN section). Fresh installs default to '1234' at migration.
-  sync:{enabled:false,email:null,lastSync:null},
   electronics:{
     sessionMins:15,       // length of each session (parent sets)
     sessionsPerDay:2,     // how many sessions allowed per day (parent sets)
@@ -2540,9 +2538,26 @@ var SACRED_KEYS = [
   'breathLastDate',
   'tasks',
   'parentPin',          // legacy plaintext — kept so old cloud snapshots migrate
-  'parentPinHash', 'parentPinSalt',
-  'sync'  // Firebase sync settings
+  'parentPinHash', 'parentPinSalt'
+  // 'sync' was here until 2026-08-11. Deliberately NOT preserved now: it held
+  // {enabled, email, lastSync} -- i.e. the parent's email address -- and with
+  // cloud sync gone there is nothing for it to configure. _purgeLegacySync()
+  // strips it from existing saved state on load.
 ];
+
+// G-06 cleanup, runs once per load. Devices that used the old cloud sync still
+// have the parent's Firebase uid and email address sitting in localStorage,
+// written by the main app's removed openKidsMode() handoff and by the removed
+// sign-in flow. Nothing reads them anymore, so leave nothing behind: this is
+// the difference between "we stopped collecting it" and "it's actually gone".
+// Cheap, idempotent, and safe if the keys were never there.
+function _purgeLegacySync(){
+  try{
+    localStorage.removeItem('_kidsParentUid');
+    localStorage.removeItem('_kidsParentEmail');
+  }catch(e){}
+}
+_purgeLegacySync();
 
 function loadState(){
   try{
@@ -2559,7 +2574,10 @@ function loadState(){
       merged.breathLastDate = Object.assign({calm:null, ready:null}, loaded.breathLastDate || {});
       merged.routines = loaded.routines || JSON.parse(JSON.stringify(DEFAULT_ROUTINES));
       merged.feelings = loaded.feelings || [];
-      merged.sync = Object.assign({enabled:false, email:null, lastSync:null}, loaded.sync || {});
+      // G-06: drop any legacy sync block rather than carrying it forward. It
+      // held the parent's email; with cloud sync gone it is dead weight and
+      // personal data we have no reason to keep sitting in localStorage.
+      delete merged.sync;
       // Defensive: make sure sacred numeric fields are actually numbers
       ['points','lifetimePoints','streak','longestStreak'].forEach(function(k){
         if(typeof merged[k] !== 'number') merged[k] = loaded[k] || 0;
@@ -2592,16 +2610,13 @@ function _dailyBackup(){
   } catch(e){console.warn('backup failed',e);}
 }
 
-var _syncDebounceTimer=null;
 function save(){
   try{
     localStorage.setItem('centerpost_kids_state',JSON.stringify(state));
     _dailyBackup();
-    // If sync is enabled and Firebase is connected, debounce-push to cloud
-    if(state.sync && state.sync.enabled && _kidsFirebaseUser){
-      clearTimeout(_syncDebounceTimer);
-      _syncDebounceTimer = setTimeout(_pushToFirebase, 1500);
-    }
+    // Local only. The debounced cloud push that used to live here was removed
+    // 2026-08-11 (G-06) -- nothing leaves this device except a backup file the
+    // parent downloads themselves.
   }
   catch(e){console.warn('save failed',e);}
 }
@@ -4042,8 +4057,10 @@ async function _verifyPin(pin){
   if(pin===legacy){await _setPin(pin);return true;}
   return false;
 }
-// One-time migration: hash any plaintext PIN (or the '1234' default) on boot
-// and again after a sync pull, since old Firestore snapshots carry plaintext.
+// One-time migration: hash any plaintext PIN (or the '1234' default) on boot.
+// (It also used to re-run after a cloud sync pull, since old Firestore
+// snapshots carried plaintext PINs. Sync is gone as of 2026-08-11, but a
+// restored backup file can still carry one, so this stays.)
 async function _migratePinHash(){
   try{
     if(state.parentPin){await _setPin(state.parentPin);return;}
@@ -4077,7 +4094,7 @@ function renderParentSettings(){
   document.getElementById('parentModalTitle').textContent='PARENT SETTINGS';
   var body=document.getElementById('parentModalBody');
   body.innerHTML=
-    '<h3>SYNC &amp; BACKUP</h3>'
+    '<h3>DATA &amp; BACKUP</h3>'
     +'<div id="parentSyncSection"></div>'
     +'<h3>FEELINGS LOG</h3>'
     +'<div id="parentFeelingsSection"></div>'
@@ -4124,28 +4141,14 @@ function renderParentSync(){
   var el=document.getElementById('parentSyncSection');
   if(!el)return;
   var html='';
-  if(!_kidsFirebaseReady){
-    html+='<div style="font-size:16px;color:var(--text-dim);font-style:italic;padding:8px 0;">Cloud sync unavailable (Firebase didn\'t load). Local data is still safe — use the backup buttons below to export a copy you can restore later.</div>';
-  } else if(_kidsFirebaseUser && state.sync.enabled){
-    var lastSyncTxt=state.sync.lastSync ? new Date(state.sync.lastSync).toLocaleString() : 'pending';
-    html+='<div style="background:var(--bg);border:3px solid var(--success);padding:10px;font-size:15px;margin-bottom:10px;">'
-      +'<div style="font-family:var(--header-font);font-size:11px;color:var(--success);margin-bottom:6px;">✓ SYNCED</div>'
-      +'Signed in as <strong>'+(state.sync.email||_kidsFirebaseUser.email)+'</strong><br>'
-      +'Last sync: '+lastSyncTxt+'<br>'
-      +'Lifetime stars: <strong>'+(state.lifetimePoints||0)+'</strong>'
-      +'</div>';
-    html+='<button class="parent-btn" onclick="_pullFromFirebase()">⬇ Sync from cloud now</button>';
-    html+='<button class="parent-btn" onclick="_pushToFirebase().then(function(){toast(\'Pushed to cloud\');})">⬆ Push to cloud now</button>';
-    html+='<button class="parent-btn danger" onclick="syncSignOut()">Sign out of sync</button>';
-  } else {
-    html+='<div style="font-size:15px;color:var(--text);margin-bottom:10px;line-height:1.5;">'
-      +'Sync points across devices using your <strong>Centerpost parent account</strong> (same email/password you use on the main app).'
-      +'<br><br><span style="font-size:13px;color:var(--text-dim);">Without sync, data stays on this device only. Local backups still auto-save daily.</span>'
-      +'</div>';
-    html+='<input class="parent-input" type="email" id="syncEmail" placeholder="Parent email" inputmode="email" autocomplete="email">';
-    html+='<input class="parent-input" type="password" id="syncPass" placeholder="Password" autocomplete="current-password">';
-    html+='<button class="parent-btn primary" onclick="(function(){var e=document.getElementById(\'syncEmail\').value.trim();var p=document.getElementById(\'syncPass\').value;if(e&&p)syncSignIn(e,p).then(function(ok){if(ok)setTimeout(_pullFromFirebase,500);});})()">Connect parent account</button>';
-  }
+  // Cloud sync removed 2026-08-11 (G-06). This panel used to hold a parent
+  // sign-in and push/pull buttons; everything is local now, so the file
+  // backup below IS the whole story -- say so plainly rather than leaving a
+  // section that looks like it lost a feature.
+  html+='<div style="font-size:15px;color:var(--text);margin-bottom:10px;line-height:1.5;">'
+    +'Everything stays <strong>on this device</strong>. Nothing is sent to an account or the internet.'
+    +'<br><br><span style="font-size:13px;color:var(--text-dim);">Local backups auto-save daily. To move to a new device, download a backup file below and restore it there.</span>'
+    +'</div>';
   // Manual backup always available
   html+='<div style="margin-top:18px;padding-top:14px;border-top:2px dashed var(--border-dark);">';
   html+='<div style="font-family:var(--header-font);font-size:11px;color:var(--accent);margin-bottom:8px;">MANUAL BACKUP</div>';
@@ -4523,320 +4526,22 @@ window.addEventListener('focus',_refreshOnDayChange);
 _refreshOnDayChange();
 
 // ═══════════════════════════════════════════════════════════════════════
-// FIREBASE SYNC — OPTIONAL cross-device sync via parent account
+// NO CLOUD SYNC — this app is localStorage-only, by design.
 //
-// How it works:
-//  - The kids app uses the SAME Firebase project as the main Centerpost.
-//  - Parent signs in with the SAME email/password they use on the main app.
-//  - Kid state is saved to: users/{parent-uid}/data/kids
-//  - Sync is OPT-IN. Without it, app works 100% offline (localStorage only).
-//  - On reconnect after device switch, cloud state is merged with local,
-//    preferring whichever has the higher lifetimePoints (anti-rollback).
+// Until 2026-08-11 this file synced kid state to users/{parent-uid}/data/kids
+// in the parent's Centerpost account. That was removed to close COMPLIANCE-
+// GAPS.md G-06: Centerpost now collects NO children's data of any kind. The
+// page is standalone (not in the iOS bundle, not linked from the web app),
+// and it no longer touches the account, Firebase, or any network at all.
+//
+// Cross-device is handled by the manual export/import below -- download a
+// backup file on one device, restore it on another. Deliberately manual:
+// a file the parent moves themselves never becomes data we hold.
+//
+// DO NOT reintroduce cloud sync here without re-opening G-06 and the COPPA
+// section of the privacy policy -- both currently state that no children's
+// data reaches us, and that is only true while this stays local.
 // ═══════════════════════════════════════════════════════════════════════
-
-var KIDS_FIREBASE_CONFIG = CENTERPOST_FIREBASE_CONFIG;
-var _kidsFirebaseReady=false;
-var _kidsFirebaseUser=null;
-var _kidsFirebaseDb=null;
-
-(function _initKidsFirebase(){
-  try {
-    if(typeof firebase==='undefined'){console.warn('[sync] Firebase SDK not loaded');return;}
-    // Use a named app so we don't collide if main app is in same browser context
-    var existingApps=firebase.apps?firebase.apps.filter(function(a){return a.name==='kids';}):[];
-    var app=existingApps.length?existingApps[0]:firebase.initializeApp(KIDS_FIREBASE_CONFIG,'kids');
-    _kidsFirebaseDb=firebase.firestore(app);
-    _kidsFirebaseReady=true;
-    // Restore auth state if previously signed in
-    firebase.auth(app).onAuthStateChanged(function(user){
-      _kidsFirebaseUser=user;
-      if(user && state.sync && state.sync.enabled){
-        state.sync.email=user.email;
-        save();
-        _pullFromFirebase();
-      }
-      _renderParentSettingsIfOpen();
-    });
-
-    // ── AUTO-CONNECT: if parent opened Kids from the main app, they
-    //    stored their UID in localStorage. We can load directly from
-    //    that Firestore path using the same firebase app without a
-    //    separate sign-in step.
-    // If not already signed in, try to authenticate via the stored UID.
-    // We use the UID directly to access the shared Firestore path.
-    // (The Firestore rules allow admin/owner writes; the kids path is:
-    //   users/{parent-uid}/data/kids — readable if authenticated as that user.
-    //   For cross-app access we rely on the parent already being authed in
-    //   the default Firebase app in the same browser, then share the token.)
-    setTimeout(function(){
-      _tryAutoConnectFromParent(app);
-    },600);
-  } catch(e){console.warn('[sync] init failed',e);}
-})();
-
-function _renderParentSettingsIfOpen(){
-  var modal=document.getElementById('parentModal');
-  if(modal && modal.classList.contains('open') && document.getElementById('parentFeelingsSection')){
-    // Re-render to refresh sync section status
-    renderParentSettings();
-  }
-}
-
-// ── AUTO-CONNECT from parent session ─────────────────────────────────────
-// The main Centerpost app stores the parent UID in localStorage before
-// opening kids.html. We read it here, then check if the default Firebase
-// app (if accessible in the same browser context) is already authenticated
-// as that user. If so, we silently connect sync and pull data — no login
-// screen needed for the parent.
-function _tryAutoConnectFromParent(kidsApp){
-  try {
-    var parentUid=localStorage.getItem('_kidsParentUid');
-    var parentEmail=localStorage.getItem('_kidsParentEmail')||'';
-    if(!parentUid)return; // Not launched from the main app — skip
-
-    // Already signed in with correct account
-    if(_kidsFirebaseUser && _kidsFirebaseUser.uid===parentUid){
-      if(!state.sync.enabled){
-        state.sync.enabled=true;
-        state.sync.email=parentEmail||_kidsFirebaseUser.email;
-        save();
-        _pullFromFirebase();
-        toast('Synced with parent account ✓',2000);
-      }
-      return;
-    }
-
-    // Try to reuse the default Firebase app's auth token (same project,
-    // same browser — the token lives in IndexedDB/localStorage shared
-    // across tabs on the same origin).
-    // We use the persistence key that Firebase SDK stores internally.
-    // Fallback: just mark sync as enabled with the stored UID so the
-    // app reads/writes to the right Firestore path on next proper auth.
-    if(!_kidsFirebaseUser){
-      // Attempt to get current user from default app if it exists
-      try {
-        var defaultApp=firebase.app(); // default app
-        var defaultUser=firebase.auth(defaultApp).currentUser;
-        if(defaultUser && defaultUser.uid===parentUid){
-          // Re-auth kids named app with the same token
-          defaultUser.getIdToken(false).then(function(token){
-            firebase.auth(kidsApp).signInWithCustomToken(token).catch(function(){
-              // Custom token not supported without admin SDK — fall back
-              // to marking sync ready with the stored UID directly
-              _kidsAutoConnectFallback(parentUid,parentEmail);
-            });
-          }).catch(function(){
-            _kidsAutoConnectFallback(parentUid,parentEmail);
-          });
-          return;
-        }
-      } catch(e){}
-      // Default app not in same context — use direct UID fallback
-      _kidsAutoConnectFallback(parentUid,parentEmail);
-    }
-  } catch(e){console.warn('[kids] auto-connect failed',e);}
-}
-
-// Fallback: if we have the UID but can't transfer the auth token,
-// set the UID directly and read from Firestore using the cached
-// offline data. The sync section in Parent Settings will show
-// "sign in to sync" but local data is still correct.
-function _kidsAutoConnectFallback(uid,email){
-  if(!uid)return;
-  // Store the parent UID so Firestore reads target the right path
-  // even before a full re-authentication
-  if(!state.sync)state.sync={enabled:false,email:null};
-  if(state.sync.enabled && state.sync.email===email){return;} // already connected
-  // Mark as connected — Firebase auth persistence will restore the session
-  // automatically on the next visibilitychange or focus event
-  state.sync.pendingParentUid=uid;
-  state.sync.email=email;
-  save();
-  // Prompt parent to tap confirm once (avoids full login form)
-  _showAutoConnectBanner(email);
-}
-
-function _showAutoConnectBanner(email){
-  // Only show if not already synced and banner not yet shown this session
-  if(_kidsAutoConnectBannerShown)return;
-  _kidsAutoConnectBannerShown=true;
-  var banner=document.createElement('div');
-  banner.id='kidsAutoConnectBanner';
-  banner.style.cssText=[
-    'position:fixed;top:0;left:0;right:0;z-index:9999',
-    'background:var(--accent);color:var(--bg)',
-    'padding:10px 16px;display:flex;align-items:center;justify-content:space-between',
-    'font-family:var(--header-font);font-size:12px;gap:10px'
-  ].join(';');
-  banner.innerHTML=[
-    '<span>Sync with parent account? ('+escapeHtml(email)+')</span>',
-    '<div style="display:flex;gap:8px;">',
-    '<button onclick="_kidsConfirmAutoConnect()" style="background:var(--bg);color:var(--accent);border:2px solid var(--bg);padding:4px 12px;font-family:inherit;font-weight:700;cursor:pointer;">YES</button>',
-    '<button onclick="document.getElementById(\'kidsAutoConnectBanner\').remove()" style="background:none;border:2px solid var(--bg);color:var(--bg);padding:4px 10px;font-family:inherit;cursor:pointer;">SKIP</button>',
-    '</div>'
-  ].join('');
-  document.body.prepend(banner);
-}
-var _kidsAutoConnectBannerShown=false;
-
-function _kidsConfirmAutoConnect(){
-  var b=document.getElementById('kidsAutoConnectBanner');if(b)b.remove();
-  if(!_kidsFirebaseReady){toast('Sync not available');return;}
-  // Show compact sign-in form (email pre-filled, only password needed)
-  var email=state.sync.email||'';
-  var overlay=document.createElement('div');
-  overlay.id='kidsQuickAuth';
-  overlay.style.cssText='position:fixed;inset:0;z-index:9999;background:rgba(0,0,0,0.7);display:flex;align-items:center;justify-content:center;';
-  overlay.innerHTML=[
-    '<div style="background:var(--surface);border:3px solid var(--accent);border-radius:12px;padding:24px;max-width:320px;width:calc(100%-32px);font-family:var(--header-font);">',
-    '<div style="color:var(--accent);font-size:16px;margin-bottom:6px;">🔐 CONNECT</div>',
-    '<div style="font-size:11px;color:var(--text-dim);margin-bottom:14px;">Sign in once to sync kids data with your account.</div>',
-    '<div style="font-size:11px;color:var(--text-dim);margin-bottom:4px;">EMAIL</div>',
-    '<input id="kqaEmail" type="email" value="'+escapeHtml(email)+'" style="width:100%;padding:8px;margin-bottom:10px;background:var(--bg);border:2px solid var(--border);color:var(--text);font-family:inherit;font-size:13px;box-sizing:border-box;">',
-    '<div style="font-size:11px;color:var(--text-dim);margin-bottom:4px;">PASSWORD</div>',
-    '<input id="kqaPass" type="password" placeholder="Your Centerpost password" style="width:100%;padding:8px;margin-bottom:14px;background:var(--bg);border:2px solid var(--border);color:var(--text);font-family:inherit;font-size:13px;box-sizing:border-box;">',
-    '<div style="display:flex;gap:8px;">',
-    '<button onclick="_kidsQuickAuthSubmit()" style="flex:1;padding:10px;background:var(--accent);color:var(--bg);border:none;font-family:inherit;font-weight:700;font-size:13px;cursor:pointer;">SIGN IN</button>',
-    '<button onclick="document.getElementById(\'kidsQuickAuth\').remove()" style="padding:10px 14px;background:none;border:2px solid var(--border);color:var(--text-dim);font-family:inherit;cursor:pointer;">SKIP</button>',
-    '</div>',
-    '</div>'
-  ].join('');
-  document.body.appendChild(overlay);
-  setTimeout(function(){var p=document.getElementById('kqaPass');if(p)p.focus();},100);
-}
-
-async function _kidsQuickAuthSubmit(){
-  var email=(document.getElementById('kqaEmail')||{}).value||'';
-  var pass=(document.getElementById('kqaPass')||{}).value||'';
-  if(!email||!pass){toast('Enter email + password');return;}
-  var ok=await syncSignIn(email,pass);
-  if(ok){
-    var el=document.getElementById('kidsQuickAuth');if(el)el.remove();
-    localStorage.setItem('_kidsParentUid',_kidsFirebaseUser?_kidsFirebaseUser.uid:'');
-    toast('Synced! ✓',2000);
-  }
-}
-
-async function syncSignIn(email,password){
-  if(!_kidsFirebaseReady){toast('Sync not available');return false;}
-  try {
-    var app=firebase.app('kids');
-    await firebase.auth(app).signInWithEmailAndPassword(email,password);
-    state.sync.enabled=true;
-    state.sync.email=email;
-    save();
-    toast('Signed in! Syncing...');
-    return true;
-  } catch(e){
-    toast('Sign-in failed: '+(e.code||'try again'));
-    return false;
-  }
-}
-
-async function syncSignOut(){
-  try {
-    if(_kidsFirebaseReady){
-      await firebase.auth(firebase.app('kids')).signOut();
-    }
-  } catch(e){}
-  state.sync.enabled=false;
-  state.sync.email=null;
-  save();
-  toast('Signed out — sync paused. Local data is safe.');
-  _renderParentSettingsIfOpen();
-}
-
-async function _pushToFirebase(){
-  if(!_kidsFirebaseReady || !_kidsFirebaseUser || !state.sync.enabled) return;
-  try {
-    var snapshot={
-      state: JSON.stringify(state),
-      lifetimePoints: state.lifetimePoints || 0,
-      streak: state.streak || 0,
-      updated: firebase.firestore.FieldValue.serverTimestamp(),
-      updatedClient: new Date().toISOString()
-    };
-    await _kidsFirebaseDb.collection('users').doc(_kidsFirebaseUser.uid)
-      .collection('data').doc('kids').set(snapshot);
-    state.sync.lastSync=new Date().toISOString();
-    // Save WITHOUT re-triggering sync (silent save)
-    localStorage.setItem('centerpost_kids_state',JSON.stringify(state));
-    _renderParentSettingsIfOpen();
-  } catch(e){console.warn('[sync] push failed',e);}
-}
-
-async function _pullFromFirebase(){
-  if(!_kidsFirebaseReady || !_kidsFirebaseUser) return;
-  try {
-    var doc=await _kidsFirebaseDb.collection('users').doc(_kidsFirebaseUser.uid)
-      .collection('data').doc('kids').get();
-    if(!doc.exists){
-      // First sync from this device — push current local state up
-      await _pushToFirebase();
-      return;
-    }
-    var cloudData=doc.data();
-    if(!cloudData.state)return;
-    var cloudState=JSON.parse(cloudData.state);
-    // ANTI-ROLLBACK MERGE: whichever side has more lifetime points wins for
-    // the sacred fields. Other fields (theme, tasks, current routines) take
-    // the most-recently-updated source.
-    var cloudLifetime=cloudState.lifetimePoints||0;
-    var localLifetime=state.lifetimePoints||0;
-
-    // ── STREAK PROTECTION ──────────────────────────────────────────────────
-    // Streak fields move INDEPENDENTLY of lifetime points (you earn points for
-    // each routine item, but a streak DAY only counts when both routines are
-    // fully done). A stale cloud snapshot can have equal/higher points but an
-    // OLDER streak — adopting it wholesale rolls the streak back and resets it
-    // to 1 on the next completion. So we merge streak fields separately, always
-    // keeping the most-progressed values regardless of which side "wins".
-    var bestStreak=Math.max(state.streak||0, cloudState.streak||0);
-    var bestLongest=Math.max(state.longestStreak||0, cloudState.longestStreak||0, bestStreak);
-    // Keep the MORE RECENT lastStreakDate (string compare works for YYYY-MM-DD)
-    var bestStreakDate=state.lastStreakDate||null;
-    if(cloudState.lastStreakDate && (!bestStreakDate || cloudState.lastStreakDate>bestStreakDate)){
-      bestStreakDate=cloudState.lastStreakDate;
-    }
-
-    if(cloudLifetime >= localLifetime){
-      // Cloud is ahead or equal — adopt cloud version of sacred fields
-      SACRED_KEYS.forEach(function(k){
-        if(cloudState[k]!==undefined) state[k]=cloudState[k];
-      });
-      // Also adopt routines + tasks + theme from cloud since it's authoritative
-      if(cloudState.routines)state.routines=cloudState.routines;
-      if(cloudState.routineDate)state.routineDate=cloudState.routineDate;
-      if(cloudState.theme)state.theme=cloudState.theme;
-      if(cloudState.timerDuration)state.timerDuration=cloudState.timerDuration;
-      if(cloudState.thoughts)state.thoughts=cloudState.thoughts;
-      // Override streak fields with the protected best-of values
-      state.streak=bestStreak;
-      state.longestStreak=bestLongest;
-      state.lastStreakDate=bestStreakDate;
-      state.sync.lastSync=new Date().toISOString();
-      localStorage.setItem('centerpost_kids_state',JSON.stringify(state));
-      // Refresh UI
-      applyTheme(state.theme||'rainbow');
-      renderTasks();renderRoutines();renderBubbles();renderReading();renderFeelingsWheel();renderRewards();updateHeader();
-      // If we corrected a streak rollback, push the fix back up
-      if(bestStreak>(cloudState.streak||0)||bestStreakDate!==cloudState.lastStreakDate){
-        _pushToFirebase();
-      }
-      toast('Synced from cloud ('+cloudLifetime+' lifetime stars)');
-    } else {
-      // Local is ahead — push our state up (local streak fields already best)
-      state.streak=bestStreak;
-      state.longestStreak=bestLongest;
-      state.lastStreakDate=bestStreakDate;
-      await _pushToFirebase();
-      toast('Pushed local data to cloud');
-    }
-    // An old cloud snapshot may have restored a plaintext parentPin — re-hash it.
-    _migratePinHash();
-    _renderParentSettingsIfOpen();
-  } catch(e){console.warn('[sync] pull failed',e);}
-}
 
 // ═══ MANUAL EXPORT / IMPORT (backup safety net) ═══
 function exportKidsData(){
@@ -4874,7 +4579,9 @@ function importKidsData(){
         state.rewards=Object.assign({},DEFAULT_STATE.rewards,imported.rewards||{});
         state.reading=Object.assign({current:[],completed:[]},imported.reading||{});
         state.breathLastDate=Object.assign({calm:null,ready:null},imported.breathLastDate||{});
-        state.sync=Object.assign({enabled:false,email:null,lastSync:null},imported.sync||{});
+        // G-06: a backup file written before 2026-08-11 still carries a `sync`
+        // block with the parent's email in it. Restoring must not resurrect it.
+        delete state.sync;
         save();
         toast('Backup restored — '+state.lifetimePoints+' lifetime stars');
         location.reload();

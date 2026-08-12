@@ -53,17 +53,23 @@ EU member state under GDPR Article 8, so we don't have to guess which national r
 and it keeps health-related features away from minors entirely.
 
 **Family features (COPPA).** A separate chore-and-routine tracker for children is available as a
-standalone page at `centerpost.app/kids.html`. **It is not part of the Centerpost app** — not the
-iOS app, which does not contain it at all, and not the web app, which does not link to it. You
-reach it only by going to that address directly.
+standalone page at `centerpost.app/kids`. **It is not part of the Centerpost app** — not the iOS
+app, which does not contain it at all, and not the web app, which does not link to it. You reach it
+only by going to that address directly.
 
-If you choose to use it, it is operated **by the parent or guardian**, and it can optionally sync
-to the parent's own Centerpost account. A child does not create an account, does not log in, and
-does not interact with us directly. Any information about a child is provided by the adult account
-holder, is stored under that adult's account, and is deleted when that adult deletes their account.
+**We do not receive any of its data.** As of August 11, 2026 that page stores everything in your
+own browser's local storage and nothing else: it has no account sign-in, loads no database or
+authentication code, and sends nothing to us or to anyone. Moving it to another device is done by
+downloading a backup file and restoring it yourself. There is therefore no children's information
+for us to hold, share, sell, or breach.
+
 Consistent with the Children's Online Privacy Protection Act, we do not knowingly collect personal
-information directly from children under 13, and we do not use this information for advertising,
-profiling, or any purpose other than displaying it back to the family that entered it.
+information from children under 13 — in this feature we collect none at all.
+
+*Historical note, for accounts created before August 11, 2026:* this page previously offered an
+optional sync to the parent's own Centerpost account, which stored that data under the parent's
+account. That sync has been removed. Any data written by the old version remains under the parent's
+account until they delete it, and is erased when they delete their account.
 
 ## 3. What we collect, why, and on what legal basis
 

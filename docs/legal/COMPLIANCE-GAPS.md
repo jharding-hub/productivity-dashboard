@@ -183,43 +183,56 @@ are 28 random characters — not an enumeration surface in practice.
 
 ---
 
-## 🟠 G-06 — Children's data is collected with no COPPA-facing treatment
+## ✅ G-06 — RESOLVED 2026-08-11 — Centerpost no longer collects children's data at all
 
-**What the code does.** `public/kids.html` collects child first names, routines, and completion
-history under the parent's UID (`kids.html:4759`), including a default **"Take meds"** item
-(`:2455`, `:2464`). There is no age gate, no parental-consent record, and no notice describing it.
+**Closed at the root rather than mitigated.** The original finding was that `kids.html` collected
+child first names, routines, and completion history under the parent's UID — including a default
+**"Take meds"** item — with no age gate, no consent record, and no notice. Every recommended fix
+was a *disclosure* fix, which would have left the collection in place.
 
-**Why it matters.** COPPA applies to personal information collected from children under 13. The
-architecture here is the favourable one — the parent creates the account, the parent is the user,
-the child never logs in — which is a defensible "parent-provided information" posture rather than
-collection *from* a child. But that argument only works if it's documented, and right now nothing
-documents it.
+Instead the collection was removed. In two steps, same day:
 
-Separately, a medication item about a named child is a sensitive-data element under several state
-laws.
+1. **Separated from the product.** Not in the iOS bundle (`centerpost-sync.sh` strips it and its 5
+   assets every sync, hard-stopping if that fails), no link from the web app. Standalone unlisted
+   page at `centerpost.app/kids`, the `teacher.html` model.
+2. **Cloud sync deleted.** ~316 lines of Firebase sync, the three Firebase SDK script tags, and
+   `config.js` removed from the page. It writes nothing to `users/{uid}/data/kids`, holds no auth,
+   and makes no data request. Cross-device is manual backup-file export/import.
 
-**Recommended fix.**
-1. ✅ **DONE** — privacy policy has an explicit "Family features (COPPA)" section: the parent is the
-   account holder, the parent supplies the child's information, the child does not have an account
-   or log in, the data is stored under the parent's account and deleted with it.
-2. ✅ **DONE** — `users/{uid}/data/kids` **is** covered by account deletion (`USER_DATA_DOCS`
-   includes `kids`, `jarvis-worker.js`). Verified; unchanged by the separation below.
-3. ⬜ **STILL OPEN** — the default "Take meds" item is unchanged. Lower exposure now that this is
-   not a product feature, but it is still a medication item about a named child in a doc that syncs
-   to the parent's account, so the state-law point stands.
-4. ✅ **RESOLVED 2026-08-11 — Kids Mode separated from the product entirely** (Joe's call). This
-   went further than "is it reachable from native": **`kids.html` is no longer in the iOS bundle at
-   all.** R13.5 had only hidden the native UI entry points, which left the full 189 KB page and its
-   5 assets sitting in the shipped binary — a reviewer reads the bundle, not the UI, so that was
-   never sufficient. `centerpost-sync.sh` now deletes all 6 files from `WWW/` on every sync, with a
-   hard stop if the deletion fails. Every web entry point is gone too (Settings section,
-   `openKidsMode()`, 4 landing-page links, How To section 15, SW precache).
+**Personal data actively purged, not just no longer written:**
+- `state.sync` held the **parent's email address** in localStorage. It is deleted on load, removed
+  from `SACRED_KEYS` so migrations don't preserve it, and stripped from any restored backup file so
+  an old export can't resurrect it.
+- `_kidsParentUid` / `_kidsParentEmail` (parent's Firebase uid and email) are purged by
+  `_purgeLegacySync()` on every load.
 
-**What this did NOT change.** Joe chose to keep the optional account sync, so `kids.html` still
-writes `users/{uid}/data/kids` for anyone who uses it standalone. Child data is therefore still in
-the data model and the COPPA section of the privacy policy is still load-bearing — it was reworded,
-not removed. **This gap is reduced in scope, not closed.** Closing it fully means making
-`kids.html` localStorage-only, which was considered and explicitly deferred.
+**Verified in-browser** against a seeded pre-change state: both legacy keys purged, the sync block
+gone from memory *and* disk, all kid data preserved (points, lifetime stars, streak, tasks), zero
+network requests to Firebase/gstatic/googleapis, no sign-in UI left in parent settings, and the
+export→import round trip confirmed to drop a legacy `sync` block while keeping the data.
+
+**The "Take meds" item still exists** in the standalone page. It is no longer a compliance concern
+for Centerpost — that item and everything around it now lives only in the parent's own browser, and
+we never see it.
+
+**One thing deliberately left alone:** legacy `users/{uid}/data/kids` documents written by the old
+sync still exist for accounts that used it. Nothing writes to them now, `kids` stays in
+`USER_DATA_DOCS` so they are still erased on account deletion, and the privacy policy carries an
+explicit historical note. That is the only children's data remaining anywhere in the system.
+
+**Where the original four recommendations landed.**
+1. ✅ Privacy policy has a "Family features (COPPA)" section — now rewritten to state that we
+   receive nothing, with a historical note for pre-2026-08-11 accounts.
+2. ✅ `users/{uid}/data/kids` is covered by account deletion (`USER_DATA_DOCS` includes `kids`).
+   Kept deliberately, to clean up legacy documents.
+3. ✅ Moot — renaming "Take meds" was only ever needed because the item reached us. It doesn't.
+4. ✅ Superseded — the question was "is `kids.html` reachable from the iOS app"; the answer is now
+   that it isn't *in* the iOS app.
+
+**Audit note on how this was found.** R13.5 hid every native entry point and looked complete from
+the app's behaviour, but the full 189 KB page and its 5 assets were still in the shipped binary.
+The gap only surfaced by inspecting the **bundle** rather than the UI. Worth repeating that check
+on anything else where "we removed it" means "we stopped linking to it".
 
 ---
 

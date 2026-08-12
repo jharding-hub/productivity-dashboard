@@ -121,14 +121,22 @@ MHMDA.
 Firestore UID (`kids.html:4759`, `:4771`). It is a separate Firebase app instance named `kids`
 (`kids.html:4546`).
 
-**Separated from the product 2026-08-11.** This is no longer a Centerpost feature: it is not in the
-iOS bundle at all (`centerpost-sync.sh` strips it and its 5 assets every sync), and the web app has
-no link to it — the `teacher.html` model, deployed but unlisted, reachable only at
-`centerpost.app/kids.html`. **The data flow described below is unchanged**, because the optional
-account sync was deliberately kept: anyone who uses the standalone page still writes
-`users/{uid}/data/kids`. So this section stays live, and so does the privacy policy's COPPA
-section. It also still has its own sign-in (`_kidsQuickAuthSubmit`), so it reaches the account
-without the removed `openKidsMode()` handoff.
+**Separated from the product, then fully decoupled — 2026-08-11.** Two steps, same day:
+
+1. Removed from the product: not in the iOS bundle at all (`centerpost-sync.sh` strips it and its 5
+   assets every sync), and no link from the web app — the `teacher.html` model, deployed but
+   unlisted at `centerpost.app/kids`.
+2. **Cloud sync removed entirely (closes G-06).** The ~316-line Firebase block, the Firebase SDK
+   script tags, and `config.js` are gone from the page. It writes **nothing** to
+   `users/{uid}/data/kids`, holds no auth, and makes no network call for data. Cross-device is
+   manual export/import of a backup file. `state.sync` — which held the **parent's email address**
+   in localStorage — is deleted on load and stripped from any restored backup, and the legacy
+   `_kidsParentUid` / `_kidsParentEmail` keys are purged by `_purgeLegacySync()`.
+
+**Nothing below is collected anymore.** It is retained as a record of what the pre-2026-08-11
+version did, because legacy `users/{uid}/data/kids` documents still exist for accounts that used
+the old sync. Those are untouched, still covered by account deletion (`kids` stays in
+`USER_DATA_DOCS`), and are the only children's data still in the system.
 
 Collected: child first names, chore/routine item names and completion state, points/rewards.
 Default routine items include **"Take meds" 💊** (`kids.html:2455`, `:2464`) — a medication-adherence
