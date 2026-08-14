@@ -12143,8 +12143,8 @@ setInterval(function(){
 // THEME SYSTEM
 // =======================================
 var THEMES=[
-  {key:'dark',name:'Dark',tier:'free',bg:'#1a1917',surface:'#242320',accent:'#d4a853'},
-  {key:'light',name:'Light',tier:'free',bg:'#f6f4f0',surface:'#ffffff',accent:'#b08830'},
+  {key:'dark',name:'Dark',tier:'free',bg:'#1a1917',surface:'#242320',accent:'#ce2029'},
+  {key:'light',name:'Light',tier:'free',bg:'#f6f4f0',surface:'#ffffff',accent:'#a8121a'},
   {key:'starry',name:'Starry Night',tier:'pro',bg:'#0a0e1a',surface:'#10152a',accent:'#7b68ee'},
   {key:'sunny',name:'Sunny Sky',tier:'pro',bg:'#e8f0fa',surface:'#ffffff',accent:'#e07828'},
   {key:'ocean',name:'Midnight Ocean',tier:'pro',bg:'#0a1a1a',surface:'#0f2222',accent:'#20c9a6'},

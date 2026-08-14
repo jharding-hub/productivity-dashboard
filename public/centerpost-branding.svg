@@ -1,9 +1,9 @@
 <svg xmlns="http://www.w3.org/2000/svg" width="512" height="512" viewBox="0 0 512 512">
   <rect width="512" height="512" rx="96" fill="#1a1a1a"/>
   <!-- Centerpost text -->
-  <text x="256" y="80" font-family="Georgia,serif" font-size="52" font-weight="bold" text-anchor="middle" fill="#d4a853">Centerpost</text>
+  <text x="256" y="80" font-family="Georgia,serif" font-size="52" font-weight="bold" text-anchor="middle" fill="#ce2029">Centerpost</text>
   <!-- Spoke wheel centered vertically with room for text -->
-  <g transform="translate(256,272)" fill="none" stroke="#d4a853">
+  <g transform="translate(256,272)" fill="none" stroke="#ce2029">
     <!-- Outer ring -->
     <circle cx="0" cy="0" r="150" stroke-width="7"/>
     <!-- Inner hub ring -->
@@ -21,7 +21,7 @@
     <circle cx="0" cy="0" r="162" stroke-width="1.5" opacity="0.3"/>
   </g>
   <!-- Center C -->
-  <text x="256" y="290" font-family="Georgia,serif" font-size="58" font-weight="bold" text-anchor="middle" fill="#d4a853">C</text>
+  <text x="256" y="290" font-family="Georgia,serif" font-size="58" font-weight="bold" text-anchor="middle" fill="#ce2029">C</text>
   <!-- Productivity text -->
-  <text x="256" y="476" font-family="Georgia,serif" font-size="48" font-weight="bold" text-anchor="middle" fill="#d4a853">Productivity</text>
+  <text x="256" y="476" font-family="Georgia,serif" font-size="48" font-weight="bold" text-anchor="middle" fill="#ce2029">Productivity</text>
 </svg>
