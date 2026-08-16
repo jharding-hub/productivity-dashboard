@@ -211,9 +211,11 @@ gone from memory *and* disk, all kid data preserved (points, lifetime stars, str
 network requests to Firebase/gstatic/googleapis, no sign-in UI left in parent settings, and the
 export→import round trip confirmed to drop a legacy `sync` block while keeping the data.
 
-**The "Take meds" item still exists** in the standalone page. It is no longer a compliance concern
-for Centerpost — that item and everything around it now lives only in the parent's own browser, and
-we never see it.
+**Update 2026-08-16 — "Take meds" item removed.** It was never a compliance concern after the
+2026-08-11 change (it lived only in the parent's own browser, never reached Centerpost), but it was
+still the one thing in `kids.html` that could prompt a reviewer to ask about health data. Removed
+from both default routines (`DEFAULT_ROUTINES.morning`/`evening`) rather than left as a
+belt-and-suspenders disclosure risk.
 
 **One thing deliberately left alone:** legacy `users/{uid}/data/kids` documents written by the old
 sync still exist for accounts that used it. Nothing writes to them now, `kids` stays in
