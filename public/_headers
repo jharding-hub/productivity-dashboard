@@ -116,3 +116,10 @@
   Cache-Control: no-cache, no-store, must-revalidate
 /disclaimer
   Cache-Control: no-cache, no-store, must-revalidate
+
+# Apple app-site-association (Face ID/Touch ID sign-in on native). The file
+# is deliberately extensionless — Apple's CDN fetches it by exact path — so
+# Pages would otherwise serve it as application/octet-stream and Apple's
+# validator rejects it. Content-Type must be application/json.
+/.well-known/apple-app-site-association
+  Content-Type: application/json
