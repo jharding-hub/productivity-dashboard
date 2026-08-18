@@ -350,7 +350,60 @@ function _waEnrolledFlagKey(){return 'cpWebAuthnEnrolled';}
 function _waMarkEnrolled(v){try{if(v)localStorage.setItem(_waEnrolledFlagKey(),'1');else localStorage.removeItem(_waEnrolledFlagKey());}catch(e){}}
 function _waLocallyEnrolled(){try{return localStorage.getItem(_waEnrolledFlagKey())==='1';}catch(e){return false;}}
 
+// ── Native passkey bridge (iPhone/iPad/Mac-hosted app) ──────────────
+// A WKWebView's navigator.credentials never reaches the system passkey sheet
+// -- it resolves to nothing at all, regardless of what origin the web content
+// is served from. So on native the whole ceremony runs in Swift
+// (PasskeyBridge.swift) and only the finished JSON crosses back. Same `notify`
+// channel and same request/reply shape as the journal's _bioRequest.
+//
+// The credential itself is identical either way: it lives in the iCloud
+// Keychain, so a passkey enrolled in Safari on the Mac signs you in on the
+// phone with nothing new to enrol.
+var _pkPending={},_pkReqSeq=0,_pkBiometry=null;
+window.__cpPasskeyResult=function(reqId,ok,b64){
+  var p=_pkPending[reqId];if(!p)return;
+  clearTimeout(p.timer);delete _pkPending[reqId];
+  var data=null;
+  try{data=b64?JSON.parse(atob(b64)):null;}catch(e){}
+  p.resolve({ok:!!ok,data:data});
+};
+function _pkNative(){
+  if(!document.body.classList.contains('capacitor-native'))return null;
+  try{return (window.webkit&&window.webkit.messageHandlers&&window.webkit.messageHandlers.notify)||null;}catch(e){return null;}
+}
+// Never rejects. 120s rather than the journal's 60s: the passkey sheet can sit
+// open while you pick a credential AND then authenticate, and nothing
+// destructive happens on timeout -- password sign-in is still right there.
+function _pkRequest(op,options){
+  return new Promise(function(resolve){
+    var h=_pkNative();
+    if(!h){resolve({ok:false,data:{error:'no-bridge'}});return;}
+    var id=++_pkReqSeq;
+    _pkPending[id]={resolve:resolve,timer:setTimeout(function(){
+      delete _pkPending[id];resolve({ok:false,data:{error:'timeout'}});
+    },120000)};
+    try{h.postMessage({action:'passkey',op:op,reqId:id,options:options||null});}
+    catch(e){clearTimeout(_pkPending[id].timer);delete _pkPending[id];resolve({ok:false,data:{error:'post-failed'}});}
+  });
+}
+// "Face ID" / "Touch ID" / generic. Native only -- populated by the
+// availability check below, which every entry point already awaits.
+function _pkLabel(){
+  if(_pkBiometry==='face')return 'Face ID';
+  if(_pkBiometry==='touch')return 'Touch ID';
+  return 'Touch ID';
+}
+
 async function _waPlatformAvailable(){
+  // On native the WebAuthn DOM API is PRESENT but non-functional. Asking it
+  // would answer true and then the sheet would silently never appear, so the
+  // native branch has to come first.
+  if(_pkNative()){
+    var r=await _pkRequest('available');
+    if(r.ok&&r.data&&r.data.available){_pkBiometry=r.data.biometry||null;return true;}
+    return false;
+  }
   try{
     if(!window.PublicKeyCredential)return false;
     if(!PublicKeyCredential.isUserVerifyingPlatformAuthenticatorAvailable)return false;
@@ -498,23 +551,44 @@ async function removeTouchIDDevice(credentialID){
 async function signInWithTouchID(){
   var err=document.getElementById('loginError');
   if(err)err.textContent='';
+  var _native=!!_pkNative();
   if(!(await _waPlatformAvailable())){
-    if(err)err.textContent='Touch ID isn’t available in this browser.';
+    if(err)err.textContent=_native
+      ? 'Passkey sign-in needs iOS 16 or later.'
+      : 'Touch ID isn’t available in this browser.';
     return;
   }
+  var _lbl=_native?_pkLabel():'Touch ID';
   try{
     var optRes=await fetch(JARVIS_PROXY_URL+'/webauthn/login-options',{
       method:'POST',headers:{'Content-Type':'application/json'},body:'{}'
     });
     var optPayload=await optRes.json().catch(function(){return null;});
-    if(!optRes.ok||!optPayload)throw new Error('Touch ID sign-in is unavailable right now.');
+    if(!optRes.ok||!optPayload)throw new Error(_lbl+' sign-in is unavailable right now.');
 
-    var cred=await navigator.credentials.get(_waOptionsToGetInit(optPayload.options));
-    if(!cred)throw new Error('Touch ID was cancelled');
+    var authJSON;
+    if(_native){
+      // Swift hands back the assertion already in the shape
+      // /webauthn/login-verify expects, so there is no ArrayBuffer/base64url
+      // conversion to do on this path -- _waCredentialToAuthenticationJSON
+      // is the browser-only equivalent of what PasskeyBridge already did.
+      var pk=await _pkRequest('assert',optPayload.options);
+      if(!pk.ok||!pk.data||!pk.data.credential){
+        var code=(pk.data&&pk.data.error)||'failed';
+        // iOS cannot distinguish "user dismissed" from "no passkey to offer",
+        // so cancel stays quiet rather than accusing them of anything.
+        throw new Error(code==='cancel'?_lbl+' was cancelled.':_lbl+' sign-in failed');
+      }
+      authJSON=pk.data.credential;
+    }else{
+      var cred=await navigator.credentials.get(_waOptionsToGetInit(optPayload.options));
+      if(!cred)throw new Error('Touch ID was cancelled');
+      authJSON=_waCredentialToAuthenticationJSON(cred);
+    }
 
     var verRes=await fetch(JARVIS_PROXY_URL+'/webauthn/login-verify',{
       method:'POST',headers:{'Content-Type':'application/json'},
-      body:JSON.stringify({sessionId:optPayload.sessionId,response:_waCredentialToAuthenticationJSON(cred)})
+      body:JSON.stringify({sessionId:optPayload.sessionId,response:authJSON})
     });
     var verPayload=await verRes.json().catch(function(){return null;});
     if(!verRes.ok||!verPayload||!verPayload.customToken){
@@ -525,7 +599,7 @@ async function signInWithTouchID(){
     }
     await firebase.auth().signInWithCustomToken(verPayload.customToken);
   }catch(e){
-    var msg=(e.name==='NotAllowedError')?'Touch ID was cancelled.':(e.message||'Touch ID sign-in failed');
+    var msg=(e.name==='NotAllowedError')?(_lbl+' was cancelled.'):(e.message||(_lbl+' sign-in failed'));
     if(err)err.textContent=msg;
     // A credential that no longer verifies (removed on another device,
     // Keychain cleared, etc.) shouldn't keep offering a button that will
@@ -753,8 +827,19 @@ async function _waMaybeShowSigninButton(){
   var btn=document.getElementById('waSigninBtn');
   if(!btn)return;
   btn.style.display='none';
-  if(!_waLocallyEnrolled())return;
-  if(await _waPlatformAvailable())btn.style.display='';
+  // The local-enrolment hint is a BROWSER heuristic and does not carry to
+  // native: a fresh app install has an empty localStorage even when a
+  // perfectly good passkey is sitting in the iCloud Keychain from the Mac.
+  // On native, offer it whenever the platform supports it -- if there turns
+  // out to be no passkey, the system sheet just cancels, which
+  // signInWithTouchID treats as a quiet no-op.
+  if(!_pkNative()&&!_waLocallyEnrolled())return;
+  if(await _waPlatformAvailable()){
+    // Wrong-name-on-the-wrong-device: the markup says "Touch ID" (LandingLogin.jsx),
+    // which is right on a Mac and wrong on every iPhone since the X.
+    if(_pkNative())btn.textContent='🔐 Sign in with '+_pkLabel();
+    btn.style.display='';
+  }
 }
 function hideSigninPanel(){
   var ov=document.getElementById('signinOverlay');
