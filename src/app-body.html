@@ -356,10 +356,10 @@
      Web/Mac only. (This used to cite kidsModeSettingsSection as the reference
      example for the technique; that section was removed 2026-08-11.) -->
 <div id="waSettingsSection">
-<div class="section-label" style="margin-bottom:8px;">Touch ID sign-in</div>
-<p class="cust-sub">Sign in on this Mac with Touch ID instead of your password. Your password still works everywhere, always.</p>
+<div class="section-label" style="margin-bottom:8px;" id="waSectionLabel">Touch ID sign-in</div>
+<p class="cust-sub" id="waSectionBlurb">Sign in on this Mac with Touch ID instead of your password. Your password still works everywhere, always.</p>
 <div class="customize-actions">
-<button class="btn btn-accent" onclick="enrollTouchID()">&#128272; Enable Touch ID on this Mac</button>
+<button class="btn btn-accent" onclick="enrollTouchID()" id="waEnrollBtn">&#128272; Enable Touch ID on this Mac</button>
 </div>
 <div class="cust-sub" id="waEnrollStatus" style="margin-top:6px;"></div>
 <div id="waDeviceList" style="margin-top:10px;"></div>

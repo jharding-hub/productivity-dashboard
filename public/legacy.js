@@ -394,6 +394,36 @@ function _pkLabel(){
   if(_pkBiometry==='touch')return 'Touch ID';
   return 'Touch ID';
 }
+// What to call the hardware in copy, and what to store as the credential's
+// label in Settings so devices are tellable apart. Deliberately coarse --
+// the exact model is neither knowable from here nor useful.
+function _waDeviceLabel(){
+  var ua=navigator.userAgent||'';
+  if(/iPhone/.test(ua))return 'iPhone';
+  if(/iPad/.test(ua))return 'iPad';
+  // iPadOS can identify as Macintosh; inside the native app the touch-point
+  // count is what actually separates an iPad from a real Mac.
+  if(/Macintosh/.test(ua))return (navigator.maxTouchPoints>1&&_pkNative())?'iPad':'Mac';
+  return 'This device';
+}
+// The Settings copy is written for a Mac in the markup ("Touch ID", "this
+// Mac"). Rewrite it for whatever this actually is. Async because the biometry
+// name has to come back from the native bridge -- the section is already
+// visible by then, so the wording just settles a moment later.
+async function _waRelabelSettings(){
+  var labelEl=document.getElementById('waSectionLabel');
+  var blurbEl=document.getElementById('waSectionBlurb');
+  var btnEl=document.getElementById('waEnrollBtn');
+  if(!labelEl&&!blurbEl&&!btnEl)return;
+  var device=_waDeviceLabel();
+  var lbl='Touch ID';
+  if(_pkNative()){await _waPlatformAvailable();lbl=_pkLabel();}
+  var where=(device==='This device')?'this device':('this '+device);
+  if(labelEl)labelEl.textContent=lbl+' sign-in';
+  if(blurbEl)blurbEl.textContent='Sign in on '+where+' with '+lbl
+    +' instead of your password. Your password still works everywhere, always.';
+  if(btnEl)btnEl.textContent='🔐 Enable '+lbl+' on '+where;
+}
 
 async function _waPlatformAvailable(){
   // On native the WebAuthn DOM API is PRESENT but non-functional. Asking it
@@ -462,11 +492,16 @@ function _waCredentialToAuthenticationJSON(cred){
 async function enrollTouchID(){
   var statusEl=document.getElementById('waEnrollStatus');
   if(!currentUser){if(statusEl)statusEl.textContent='Sign in first.';return;}
+  var _native=!!_pkNative();
   if(!(await _waPlatformAvailable())){
-    if(statusEl)statusEl.textContent='Touch ID isn’t available in this browser.';
+    if(statusEl)statusEl.textContent=_native
+      ? 'Passkey sign-in needs iOS 16 or later.'
+      : 'Touch ID isn’t available in this browser.';
     return;
   }
-  if(statusEl)statusEl.textContent='Follow the Touch ID prompt…';
+  var _lbl=_native?_pkLabel():'Touch ID';
+  var device=_waDeviceLabel();
+  if(statusEl)statusEl.textContent='Follow the '+_lbl+' prompt…';
   try{
     var idToken=await currentUser.getIdToken();
     var optRes=await fetch(JARVIS_PROXY_URL+'/webauthn/register-options',{
@@ -476,26 +511,39 @@ async function enrollTouchID(){
     var optPayload=await optRes.json().catch(function(){return null;});
     if(!optRes.ok)throw new Error((optPayload&&optPayload.error)||'Could not start enrollment');
 
-    var cred=await navigator.credentials.create(_waOptionsToCreateInit(optPayload));
-    if(!cred)throw new Error('Touch ID was cancelled');
+    // NOTE the asymmetry with sign-in: register-options returns the options
+    // object at the TOP level, where login-options nests it under .options.
+    // Passing the wrong one here fails as "bad-challenge" from the bridge.
+    var regJSON;
+    if(_native){
+      var pk=await _pkRequest('register',optPayload);
+      if(!pk.ok||!pk.data||!pk.data.credential){
+        var code=(pk.data&&pk.data.error)||'failed';
+        throw new Error(code==='cancel'?(_lbl+' was cancelled.'):(_lbl+' enrollment failed'));
+      }
+      regJSON=pk.data.credential;
+    }else{
+      var cred=await navigator.credentials.create(_waOptionsToCreateInit(optPayload));
+      if(!cred)throw new Error('Touch ID was cancelled');
+      regJSON=_waCredentialToRegistrationJSON(cred);
+    }
 
-    var label=(navigator.platform&&/Mac/.test(navigator.platform))?'Mac':'This device';
     var verRes=await fetch(JARVIS_PROXY_URL+'/webauthn/register-verify',{
       method:'POST',headers:{'Authorization':'Bearer '+idToken,'Content-Type':'application/json'},
-      body:JSON.stringify({response:_waCredentialToRegistrationJSON(cred),label:label})
+      body:JSON.stringify({response:regJSON,label:device})
     });
     var verPayload=await verRes.json().catch(function(){return null;});
     if(!verRes.ok)throw new Error((verPayload&&verPayload.error)||'Enrollment could not be verified');
 
     _waMarkEnrolled(true);
-    if(statusEl)statusEl.textContent='Touch ID enabled on this Mac.';
+    if(statusEl)statusEl.textContent=_lbl+' enabled on this '+device+'.';
     if(typeof loadTouchIDDevices==='function')loadTouchIDDevices();
-    if(typeof toast==='function')toast('✓ Touch ID sign-in enabled');
+    if(typeof toast==='function')toast('✓ '+_lbl+' sign-in enabled');
   }catch(e){
     // NotAllowedError covers both "user cancelled" and "user declined" --
     // WebAuthn deliberately doesn't distinguish them from the API, so
     // neither do we.
-    var msg=(e.name==='NotAllowedError')?'Touch ID was cancelled.':(e.message||'Enrollment failed');
+    var msg=(e.name==='NotAllowedError')?(_lbl+' was cancelled.'):(e.message||'Enrollment failed');
     if(statusEl)statusEl.textContent=msg;
   }
 }
@@ -504,7 +552,6 @@ async function enrollTouchID(){
 async function loadTouchIDDevices(){
   var listEl=document.getElementById('waDeviceList');
   if(!listEl||!currentUser)return;
-  if(document.body.classList.contains('capacitor-native'))return; // web/Mac only -- see waSettingsSection
   try{
     var idToken=await currentUser.getIdToken();
     var res=await fetch(JARVIS_PROXY_URL+'/webauthn/list-devices',{
@@ -1585,10 +1632,12 @@ function openCustomize(){
   // (The R13.5 native-only hide for #kidsModeSettingsSection lived here. The
   // section itself is gone as of 2026-08-11 -- Kids Mode is no longer part of
   // either app, so there is nothing left to conditionally hide.)
-  // Touch ID sign-in (WebAuthn) is web/Mac only -- native already has its own
-  // Face ID via the Keychain for the journal, a different mechanism entirely.
+  // Passkey sign-in used to be hidden on native because a WKWebView could not
+  // reach the system passkey sheet. PasskeyBridge.swift (build 90) fixed that,
+  // so the section is shown everywhere now -- but the markup's copy is written
+  // for a Mac ("Touch ID", "this Mac"), so relabel it for whatever this is.
   var _waSection=document.getElementById('waSettingsSection');
-  if(_waSection)_waSection.style.display=(document.body.classList.contains('capacitor-native'))?'none':'';
+  if(_waSection){_waSection.style.display='';_waRelabelSettings();}
   _renderDevSwitcherInSettings();
   _renderAxisProfileForm();
   _renderSupportLevelSettings();
