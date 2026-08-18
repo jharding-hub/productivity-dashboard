@@ -1,27 +1,40 @@
 <svg xmlns="http://www.w3.org/2000/svg" width="512" height="512" viewBox="0 0 512 512">
+  <defs>
+    <!-- Same single reused ramp as centerpost-icon.svg, spanning this file's
+         wheel (centred at y=268, outer notch edges at y=96 and y=440). -->
+    <linearGradient id="cpGrad" gradientUnits="userSpaceOnUse" x1="0" y1="96" x2="0" y2="440">
+      <stop offset="0%" stop-color="#f2a63a"/>
+      <stop offset="50%" stop-color="#ce2029"/>
+      <stop offset="100%" stop-color="#8a1418"/>
+    </linearGradient>
+  </defs>
   <rect width="512" height="512" rx="96" fill="#1a1a1a"/>
-  <!-- Centerpost text -->
-  <text x="256" y="80" font-family="Georgia,serif" font-size="52" font-weight="bold" text-anchor="middle" fill="#ce2029">Centerpost</text>
-  <!-- Spoke wheel centered vertically with room for text -->
-  <g transform="translate(256,272)" fill="none" stroke="#ce2029">
-    <!-- Outer ring -->
-    <circle cx="0" cy="0" r="150" stroke-width="7"/>
-    <!-- Inner hub ring -->
-    <circle cx="0" cy="0" r="42" stroke-width="6"/>
-    <!-- 8 spokes -->
-    <line x1="0" y1="-46" x2="0" y2="-146" stroke-width="8"/>
-    <line x1="32.5" y1="-32.5" x2="103.5" y2="-103.5" stroke-width="8"/>
-    <line x1="46" y1="0" x2="146" y2="0" stroke-width="8"/>
-    <line x1="32.5" y1="32.5" x2="103.5" y2="103.5" stroke-width="8"/>
-    <line x1="0" y1="46" x2="0" y2="146" stroke-width="8"/>
-    <line x1="-32.5" y1="32.5" x2="-103.5" y2="103.5" stroke-width="8"/>
-    <line x1="-46" y1="0" x2="-146" y2="0" stroke-width="8"/>
-    <line x1="-32.5" y1="-32.5" x2="-103.5" y2="-103.5" stroke-width="8"/>
-    <!-- Faint outer boundary -->
-    <circle cx="0" cy="0" r="162" stroke-width="1.5" opacity="0.3"/>
+  <!-- Wordmark stays flat #ce2029 -- the spec grades the MARK (ring, spokes,
+       notches, cap), not the type. Baselines nudged out from 80/476 to 74/486
+       because the notches now reach r=172 and would otherwise touch the type. -->
+  <text x="256" y="74" font-family="Georgia,serif" font-size="52" font-weight="bold" text-anchor="middle" fill="#ce2029">Centerpost</text>
+  <g fill="none" stroke="url(#cpGrad)">
+    <circle cx="256" cy="268" r="150" stroke-width="20"/>
+    <g stroke-width="16" stroke-linecap="butt">
+      <line x1="256" y1="202" x2="256" y2="128"/>
+      <line x1="302.669" y1="221.331" x2="354.995" y2="169.005"/>
+      <line x1="322" y1="268" x2="396" y2="268"/>
+      <line x1="302.669" y1="314.669" x2="354.995" y2="366.995"/>
+      <line x1="256" y1="334" x2="256" y2="408"/>
+      <line x1="209.331" y1="314.669" x2="157.005" y2="366.995"/>
+      <line x1="190" y1="268" x2="116" y2="268"/>
+      <line x1="209.331" y1="221.331" x2="157.005" y2="169.005"/>
+    </g>
   </g>
-  <!-- Center C -->
-  <text x="256" y="290" font-family="Georgia,serif" font-size="58" font-weight="bold" text-anchor="middle" fill="#ce2029">C</text>
-  <!-- Productivity text -->
-  <text x="256" y="476" font-family="Georgia,serif" font-size="48" font-weight="bold" text-anchor="middle" fill="#ce2029">Productivity</text>
+  <g fill="url(#cpGrad)">
+    <rect x="248" y="96"  width="16" height="44"/>
+    <rect x="384" y="260" width="44" height="16"/>
+    <rect x="248" y="396" width="16" height="44"/>
+    <rect x="84"  y="260" width="44" height="16"/>
+    <circle cx="256" cy="268" r="60"/>
+  </g>
+  <text x="256" y="304" font-family="Georgia,serif" font-size="104" font-weight="900"
+        text-anchor="middle" fill="#1a1210" stroke="#1a1210" stroke-width="5"
+        paint-order="stroke fill">C</text>
+  <text x="256" y="486" font-family="Georgia,serif" font-size="48" font-weight="bold" text-anchor="middle" fill="#ce2029">Productivity</text>
 </svg>
