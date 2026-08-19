@@ -795,6 +795,7 @@ body.cp-stop-motion .jarvis-fab{animation:none !important;}
 .mtb-btn .ti{font-size:calc(20px * min(var(--type-scale,1),1.3));font-style:normal;}
 .mtb-btn.active{color:var(--accent);}
 @media(max-width:768px),(orientation:landscape) and (max-height:600px){
+  .settings-crisis-row{display:block !important;}
   .qc-hint-mobile{display:inline !important;}
   .qc-hint-desktop{display:none !important;}
   .mobile-tab-bar{display:flex;}
@@ -1446,6 +1447,8 @@ body.unlocked .date-editable{border-bottom-color:var(--border);}
 .qc-save-btn:hover{background:var(--accent);color:var(--bg);}
 .qc-hint{font-size:calc(11.5px * var(--type-scale,1));color:var(--text-faint);margin-top:10px;line-height:1.5;}
 .qc-hint-mobile{display:none;}
+/* Crisis resources row in Settings -- mobile only; desktop uses the status-bar ribbon button (Joe, 2026-08-19). */
+.settings-crisis-row{display:none;}
 .qc-hint-desktop{display:inline;}
 
 /* ═══ POINTS / REWARDS SYSTEM ═══

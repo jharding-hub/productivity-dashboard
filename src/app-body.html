@@ -294,6 +294,18 @@
 <div class="customize-overlay" id="customizeOverlay" onclick="if(event.target===this)closeCustomize()">
 <div class="customize-box">
 <h3>&#9881; Customize Panels</h3>
+<!-- Crisis resources, mobile only (Joe, 2026-08-19). The desktop entry point
+     is the status-bar ribbon, which has no equivalent on phone -- the mobile
+     tab bar is full. Placed at the TOP of this sheet rather than down in
+     About & Legal: if it's worth having at all, it shouldn't be behind a
+     scroll past theme pickers and AI-profile fields. Mobile/desktop split is
+     CSS (same 768px + short-landscape breakpoint the rest of the app uses),
+     NOT a window._isMobile() check at render time -- that pattern caused a
+     real load-order bug in the Quick Capture hint (see QuickCaptureModal). -->
+<div class="settings-crisis-row">
+  <button class="btn" onclick="openCrisisResources()" style="width:100%;">&#128222; Crisis resources</button>
+  <div style="border-bottom:1px solid var(--border);margin:16px 0;"></div>
+</div>
 <div class="section-label" style="margin-bottom:8px;">Theme</div>
 <div class="theme-selector" id="themeSelector"></div>
 <div style="border-bottom:1px solid var(--border);margin-bottom:16px;"></div>
