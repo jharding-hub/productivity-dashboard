@@ -16,6 +16,10 @@ export default function StatusBar() {
           legacy.js, dead but harmless. */}
       <button className="customize-btn" onClick={() => window.openCommandPalette()} title="Menu — jump to anything (Ctrl/Cmd+K)">&#9776; Menu</button>
       <button className="customize-btn" onClick={() => window.openCustomize()} title="Show/hide panels and theme settings">&#9881; Settings</button>
+      {/* Moved here from the Tool Kit grid at Joe's request, 2026-08-19 --
+          always-reachable regardless of which panels are shown/hidden, same
+          idea as Settings/Tour living in this ribbon rather than a panel. */}
+      <button className="customize-btn" onClick={() => window.openCrisisResources()} title="Crisis resources -- 988 and other help, always here">&#128222; Crisis</button>
       <button
         className="customize-btn"
         onClick={() => window.openOnboardingTour()}
