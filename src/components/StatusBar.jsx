@@ -2,7 +2,13 @@ export default function StatusBar() {
   return (
     <>
       <span className="user-email-display" id="userEmail"></span>
-      <span className="sync-status offline" id="syncStatus"><span className="sync-dot"></span> Local</span>
+      {/* Panel survey 2026-08-18 (I-5): was a static label with no detail,
+          no last-synced time, and no retry -- now tap-through to a small
+          popover (toggleSyncPopover/_renderSyncPopover in legacy.js). */}
+      <span className="sync-status-wrap">
+        <span className="sync-status offline" id="syncStatus" onClick={() => window.toggleSyncPopover()} style={{ cursor: 'pointer' }} title="Sync status -- tap for detail"><span className="sync-dot"></span> Local</span>
+        <div className="sync-status-popover" id="syncStatusPopover" style={{ display: 'none' }}></div>
+      </span>
       <div className="status-bar-spacer"></div>
       {/* R2b: the ☀ Focus / ⊞ All Panels button was retired -- the Today/
           Everything switch in the header now serves the "give me less" need

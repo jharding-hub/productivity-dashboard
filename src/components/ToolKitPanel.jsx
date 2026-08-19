@@ -48,7 +48,7 @@ export default function ToolKitPanel() {
           <div className="music-dropdown" id="musicDropdown" style={{ display: 'none' }}></div>
         </div>
         <button
-          className="toolkit-btn"
+          className="toolkit-btn toolkit-streaming"
           id="toolkitMusicStreamBtn"
           onClick={() => window.openMusicStreamingModal()}
           title="Open Spotify, Apple Music, or Amazon Music"

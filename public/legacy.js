@@ -833,6 +833,15 @@ function showApp(){
   if(ov)ov.classList.remove('open');
   var ov2=document.getElementById('signupOverlay');
   if(ov2)ov2.classList.remove('open');
+  // Panel survey 2026-08-18 (J-1): Tool Kit tile order. All eight personas
+  // flagged Music/Streaming occupying the top row of the regulation toolkit
+  // -- reordered via CSS `order` (no DOM move, so this is a single class
+  // toggle, not a JSX-render-time check like the Quick Capture mobile-hint
+  // bug this same survey found; that race can't happen here). isAdmin is
+  // set above this call in both onAuthStateChanged branches, so the timing
+  // is always correct by the time this runs. The owner's own layout is
+  // unchanged -- see .is-owner overrides in app.css.
+  document.body.classList.toggle('is-owner',isAdmin);
 }
 function hideApp(){
   document.getElementById('loginGate').classList.remove('hidden');
@@ -1131,7 +1140,86 @@ function _resetStateForNewUser(){
 }
 
 // SYNC STATUS
-function setSyncStatus(status,label){const el=document.getElementById('syncStatus');if(!el)return;el.className='sync-status '+status;var icon={synced:'✓',syncing:'↻',error:'⚠',offline:'•'}[status]||'•';el.innerHTML='<span class="sync-icon">'+icon+'</span> '+label;}
+// Panel survey 2026-08-18 (I-5): the status pill had no tap-through, no
+// last-synced time, and no retry -- "the single scariest pixel in the app"
+// for a multi-device user (Very High Utilizer). _syncDetail carries what the
+// popover needs; _lastSyncedAt is stamped only on a genuine 'synced' status.
+// Local write always happens before any cloud attempt (see save()), so it is
+// always true that data is saved on-device regardless of cloud status --
+// the popover says so plainly rather than leaving that to be inferred.
+var _lastSyncedAt=null;
+var _syncDetail={status:'offline',label:'Local'};
+function setSyncStatus(status,label){
+  const el=document.getElementById('syncStatus');
+  _syncDetail={status:status,label:label};
+  if(status==='synced')_lastSyncedAt=Date.now();
+  if(!el)return;
+  el.className='sync-status '+status;
+  var icon={synced:'✓',syncing:'↻',error:'⚠',warning:'⚠',offline:'•'}[status]||'•';
+  el.innerHTML='<span class="sync-icon">'+icon+'</span> '+label;
+  _refreshSyncPopoverIfOpen();
+}
+function _relTimeAgo(ms){
+  if(!ms)return null;
+  var s=Math.round((Date.now()-ms)/1000);
+  if(s<10)return 'just now';
+  if(s<60)return s+'s ago';
+  var m=Math.round(s/60);
+  if(m<60)return m+' min'+(m!==1?'s':'')+' ago';
+  var h=Math.round(m/60);
+  if(h<24)return h+' hour'+(h!==1?'s':'')+' ago';
+  var d=Math.round(h/24);
+  return d+' day'+(d!==1?'s':'')+' ago';
+}
+function _syncSafetyLine(status){
+  // Local write happens unconditionally in save() before any cloud attempt,
+  // so this sentence is true in every branch below -- it is the one thing
+  // this popover exists to say plainly.
+  switch(status){
+    case 'synced':return 'Your data is saved on this device and backed up to the cloud.';
+    case 'syncing':return 'Your data is saved on this device. Backing it up to the cloud now.';
+    case 'warning':return 'Your data is saved on this device and backed up to the cloud, but you are close to the storage limit.';
+    case 'offline':return 'Your data is saved on this device only. It will back up to the cloud once you are signed in and online.';
+    case 'error':default:return 'Your data is saved on this device. The cloud backup hit a problem -- your work here is not at risk.';
+  }
+}
+function toggleSyncPopover(){
+  var pop=document.getElementById('syncStatusPopover');
+  if(!pop)return;
+  if(pop.style.display==='block'){pop.style.display='none';return;}
+  _renderSyncPopover();
+  pop.style.display='block';
+  setTimeout(function(){
+    document.addEventListener('click',function _closeSyncPop(e){
+      if(!pop.contains(e.target)&&e.target.id!=='syncStatus'&&!(document.getElementById('syncStatus')&&document.getElementById('syncStatus').contains(e.target))){
+        pop.style.display='none';
+        document.removeEventListener('click',_closeSyncPop);
+      }
+    });
+  },0);
+}
+function _refreshSyncPopoverIfOpen(){
+  var pop=document.getElementById('syncStatusPopover');
+  if(pop&&pop.style.display==='block')_renderSyncPopover();
+}
+function _retrySyncNow(){
+  toast('Retrying sync\u2026');
+  if(typeof save==='function')save();
+  toggleSyncPopover();
+}
+function _renderSyncPopover(){
+  var pop=document.getElementById('syncStatusPopover');
+  if(!pop)return;
+  var d=_syncDetail;
+  var lastSynced=_lastSyncedAt?_relTimeAgo(_lastSyncedAt):(d.status==='offline'?'Not yet synced':'Unknown');
+  var html='<div class="sync-popover-status">'+esc(d.label)+'</div>'
+    +'<div class="sync-popover-row"><span class="sync-popover-label">Last synced</span><span class="sync-popover-value">'+esc(lastSynced)+'</span></div>'
+    +'<div class="sync-popover-safety">'+esc(_syncSafetyLine(d.status))+'</div>';
+  if(d.status==='error'){
+    html+='<button class="btn btn-sm sync-popover-retry" onclick="_retrySyncNow()">Retry sync</button>';
+  }
+  pop.innerHTML=html;
+}
 
 // TOMBSTONES -- deletion and completion are durable, synced FACTS, never the
 // mere absence of an item from an array (absence can't survive a merge). Every
@@ -1223,7 +1311,7 @@ function save(){
       if(wrote){
         _saveSkipCount=0;
         // Keep the storage warning visible in the pill once it's serious
-        if(_lastStateKB>950)setSyncStatus('error','Synced -- storage almost full');
+        if(_lastStateKB>950)setSyncStatus('warning','Synced -- storage almost full');
         else setSyncStatus('synced','Synced');
       }else if(++_saveSkipCount<=3){
         setSyncStatus('syncing','Merging newer cloud data...');
@@ -2500,9 +2588,19 @@ var showAll=!inOverlay&&upcomingEl&&upcomingEl.checked;
 var visibleProjects=_sortedProjects();
 if(state.projects.length===0){el.innerHTML='<div class="empty-state"><p style="margin:0 0 8px;color:var(--text-dim);">No projects yet. Create one to start tracking goals and subtasks.</p><button class="btn btn-accent btn-sm" onclick="document.getElementById(\'newProjName\').focus()" style="margin:0 auto;display:block;">+ Create your first project</button></div>'+_renderCompletedProjectsSection();document.getElementById('projCount').textContent='0';var emptyProjCompCount=state.completedProjectSubtasksLifetime!==undefined?state.completedProjectSubtasksLifetime:(state.completedTasks||[]).filter(function(t){return t.source==='project';}).length;var emptyProjCompBadge=document.getElementById('projCompletedBadge');if(emptyProjCompBadge){emptyProjCompBadge.textContent='✓ '+emptyProjCompCount;emptyProjCompBadge.title=emptyProjCompCount+' completed subtask'+(emptyProjCompCount!==1?'s':'');emptyProjCompBadge.style.display=emptyProjCompCount>0?'inline-flex':'none';}updateNoteSelectors();if(typeof _updateTileSummaryProjects==='function')_updateTileSummaryProjects();return;}
 var pcpEl=document.getElementById('pc_projects');
-// Tile mode, unchecked -- blank panel so add-form anchors to bottom
+// Tile mode, unchecked -- blank panel so add-form anchors to bottom.
+// Panel survey 2026-08-18 (I-1): with real projects in state, this blank
+// body under a nonzero count badge read as data loss to six of eight
+// personas ("a bug wearing a filter's clothes" -- Skeptic), verified by the
+// surveyor at both 2 and 26 seeded projects. Keeping the compact tile (this
+// was a deliberate choice -- see the original comment above, the add-form
+// staying reachable without scrolling past a long list still matters) but
+// the empty space now says plainly that the filter, not a missing project,
+// is why nothing is showing, with a one-tap way to reveal them.
 if(!inOverlay&&!showAll){
-  el.innerHTML='';
+  el.innerHTML=visibleProjects.length>0
+    ?'<div class="empty-state proj-filtered-state" onclick="var cb=document.getElementById(\'projUpcomingOnly\');if(cb){cb.checked=true;renderProjects();}" style="cursor:pointer;"><p style="margin:0;color:var(--text-dim);">'+visibleProjects.length+' project'+(visibleProjects.length!==1?'s':'')+' hidden by the filter above \u2014 tap here or check &ldquo;Show all projects&rdquo; to see '+(visibleProjects.length!==1?'them':'it')+'.</p></div>'
+    :'';
   if(pcpEl){pcpEl.style.flex='none';pcpEl.style.minHeight='0';}
   document.getElementById('projCount').textContent=state.projects.length;
   updateNoteSelectors();
@@ -3014,8 +3112,14 @@ function _notifTodayTimeEpoch(time){
   var d=new Date();d.setHours(parseInt(t[0],10),parseInt(t[1],10),0,0);
   return d.getTime();
 }
-// Build the full desired notification set (native replaces everything each sync).
-function _notifBuildNativeItems(){
+// Panel survey 2026-08-18 (I-6): _notifReminderItems() is the shared,
+// pre-cap-sorted list -- both the native scheduler and the Reminders panel's
+// disclosure line (_notifSchedulableCount below) read from the SAME
+// soonest-first ordering, so what the panel tells you matches what actually
+// gets scheduled. Previously the 60-cap sliced items in array-insertion
+// order, not chronological order, so which reminders silently lost their
+// notification wasn't even predictable.
+function _notifReminderItems(){
   var p=state.notifPrefs;if(!p||!p.enabled)return [];
   var items=[];
   var nowMs=Date.now();
@@ -3027,6 +3131,26 @@ function _notifBuildNativeItems(){
     var when=(typeof fmtTime==='function')?fmtTime(r.time):r.time;
     items.push({id:'rem_'+r.id,title:'⏰ '+(r.text||'Reminder'),body:'Reminder for '+when,at:at,repeatsDaily:false});
   });
+  items.sort(function(a,b){return a.at-b.at;}); // soonest first, so a cap always drops the FARTHEST-out items
+  return items;
+}
+// Reminders panel disclosure (I-6): how many of the user's schedulable
+// reminders actually fit under the native 60-notification cap. Diffs the
+// full native item set (reminders + routine/weekly-review nudges, already
+// capped) against the reminder-only count, so this stays correct regardless
+// of how many routine slots are enabled -- no separate cap math to drift
+// out of sync with _notifBuildNativeItems.
+function _notifSchedulableCount(){
+  var reminderTotal=_notifReminderItems().length;
+  if(reminderTotal===0)return {total:0,scheduled:0};
+  var fullSet=_notifBuildNativeItems();
+  var scheduledReminders=fullSet.filter(function(it){return it.id&&it.id.indexOf('rem_')===0;}).length;
+  return {total:reminderTotal,scheduled:scheduledReminders};
+}
+// Build the full desired notification set (native replaces everything each sync).
+function _notifBuildNativeItems(){
+  var p=state.notifPrefs;if(!p||!p.enabled)return [];
+  var items=_notifReminderItems();
   if(p.routineMorning&&p.routineMorning.on&&!_notifTimeInQuiet(p.routineMorning.time)){
     items.push({id:'routine_morning',title:'☀ Morning routine',body:'A gentle nudge for your morning routine — no pressure.',at:_notifTodayTimeEpoch(p.routineMorning.time),repeatsDaily:true});
   }
@@ -6932,6 +7056,16 @@ function _updateTileSummaryReminders(){
   if(overdueCount>0)html+=_summaryPill(overdueCount+' overdue','urgent');
   if(todayCount>0)html+=_summaryPill(todayCount+' today','warn');
   if(upcomingCount>0)html+=_summaryPill(upcomingCount+' upcoming');
+  // Panel survey 2026-08-18 (I-6): local notifications cap at 60 scheduled
+  // (iOS's own limit is 64) -- past that, the FARTHEST-out reminders with a
+  // date+time silently got no alert. Now sorted soonest-first before the cap
+  // (see _notifReminderItems) and disclosed here rather than staying silent.
+  if(typeof _notifSchedulableCount==='function'){
+    var _schedInfo=_notifSchedulableCount();
+    if(_schedInfo.total>_schedInfo.scheduled){
+      html+=_summaryPill((_schedInfo.total-_schedInfo.scheduled)+' not scheduled','warn',_schedInfo.scheduled+' of '+_schedInfo.total+' reminders with a date and time fit under the notification limit -- soonest first. The rest still show in your list, they just will not alert you.');
+    }
+  }
   if(!html)html='<span style="color:var(--text-faint);font-style:italic;">No reminders</span>';
   el.innerHTML=html;
 }
@@ -7613,6 +7747,14 @@ function _exportCheckinsCSV(){
     rows.push([d.toLocaleDateString('en-US'),d.toLocaleTimeString('en-US'),c.type,_checkinDetail(c)]);
   });
   downloadCSV('centerpost-checkins.csv',_csvRows(rows));
+  // Panel survey 2026-08-18 (I-6): state.checkins rolls off past
+  // CHECKIN_LOG_MAX (500) with no chart or count displayed anywhere in-app
+  // -- this CSV export is the only place a user ever sees this data, so
+  // it's the only place that can honestly disclose the roll-off. Length
+  // hitting the cap exactly is the signal it has trimmed at least once.
+  if((state.checkins||[]).length>=CHECKIN_LOG_MAX){
+    toast('Exported your most recent '+CHECKIN_LOG_MAX+' check-ins. Older ones have rolled off to keep the app fast.',5000);
+  }
 }
 function _exportMoodLogCSV(){
   var rows=[['Date','Mood (1-4)','Energy (1-4)']];

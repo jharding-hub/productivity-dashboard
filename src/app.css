@@ -2823,7 +2823,15 @@ body[data-theme="storm-dark"] .tl-hour-label{
 .logout-btn{background:none;border:1px solid var(--border);color:var(--text-dim);padding:6px 10px;border-radius:var(--radius-sm);cursor:pointer;font-size:calc(12px * var(--type-scale,1));font-family:inherit;transition:all 0.15s;min-height:40px;}
 .logout-btn:hover{border-color:var(--red);color:var(--red);}
 .sync-status{font-size:calc(12px * var(--type-scale,1));padding:4px 10px;border-radius:10px;display:inline-flex;align-items:center;gap:5px;min-height:32px;font-weight:500;}
-.sync-status.synced{color:var(--green);}.sync-status.syncing{color:var(--accent);}.sync-status.error{color:var(--red);}.sync-status.offline{color:var(--text-dim);}
+.sync-status.synced{color:var(--green);}.sync-status.syncing{color:var(--accent);}.sync-status.error{color:var(--red);}.sync-status.offline{color:var(--text-dim);}.sync-status.warning{color:var(--amber,#c9922f);}
+/* Panel survey 2026-08-18 (I-5): tap-through detail popover, modeled on
+   .points-popup's positioning/visual pattern for consistency. */
+.sync-status-wrap{position:relative;display:inline-flex;}
+.sync-status-popover{position:absolute;bottom:calc(100% + 8px);left:0;background:var(--surface);border:1px solid var(--border);border-radius:var(--radius);padding:12px 14px;min-width:220px;max-width:calc(100vw - 24px);box-shadow:0 8px 24px rgba(0,0,0,0.4);z-index:100;font-size:calc(12px * var(--type-scale,1));}
+.sync-popover-status{font-weight:600;margin-bottom:6px;}
+.sync-popover-row{display:flex;justify-content:space-between;gap:12px;color:var(--text-dim);margin-bottom:6px;}
+.sync-popover-safety{color:var(--text-dim);line-height:1.4;padding-top:6px;border-top:1px solid var(--border);}
+.sync-popover-retry{margin-top:10px;width:100%;}
 /* ── JOURNAL BUTTON ── */
 .journal-btn{background:var(--accent-glow);border:1.5px solid var(--accent-dim);color:var(--accent);padding:7px 16px;border-radius:var(--radius-sm);cursor:pointer;font-size:calc(14px * var(--type-scale,1));font-weight:600;font-family:'Fraunces',serif;letter-spacing:0.3px;transition:all 0.2s;}
 .journal-btn:hover{background:var(--accent);color:var(--bg);}
@@ -3150,6 +3158,30 @@ body[data-theme="storm-dark"] .tl-hour-label{
 
 /* ── TOOL KIT PANEL BUTTONS ── */
 .toolkit-grid{display:grid;grid-template-columns:1fr 1fr;gap:10px;padding:4px 0;}
+/* Panel survey 2026-08-18 (J-1): regulation tools first for everyone by
+   default (no JS needed, correct from first paint); the owner's original
+   order (Music/Streaming first) is preserved via the .is-owner override,
+   toggled once in showApp() -- see the comment there. Streaming itself
+   stays display:none regardless (separate, existing gate); order here only
+   matters for whichever tiles ARE visible. */
+.toolkit-music-wrap{order:8;}
+.toolkit-streaming{order:9;}
+.toolkit-breath{order:1;}
+.toolkit-mood{order:2;}
+.toolkit-journal{order:3;}
+.toolkit-workout{order:4;}
+.toolkit-halt{order:5;}
+.toolkit-urge{order:6;}
+.toolkit-wellness{order:7;}
+body.is-owner .toolkit-music-wrap{order:1;}
+body.is-owner .toolkit-streaming{order:2;}
+body.is-owner .toolkit-breath{order:3;}
+body.is-owner .toolkit-mood{order:4;}
+body.is-owner .toolkit-journal{order:5;}
+body.is-owner .toolkit-workout{order:6;}
+body.is-owner .toolkit-halt{order:7;}
+body.is-owner .toolkit-urge{order:8;}
+body.is-owner .toolkit-wellness{order:9;}
 .toolkit-grid .toolkit-btn:last-child:nth-child(odd){grid-column:1/-1;}
 .toolkit-btn{display:flex;flex-direction:column;align-items:center;justify-content:center;gap:7px;padding:18px 10px;border-radius:var(--radius-sm);border:1.5px solid var(--border);background:var(--surface-raised);cursor:pointer;font-family:inherit;font-size:calc(22px * var(--type-scale,1));transition:all 0.18s;color:var(--text-dim);}
 .toolkit-btn span{font-size:calc(12px * var(--type-scale,1));font-weight:600;letter-spacing:0.3px;}
