@@ -4949,7 +4949,29 @@ function _safePriority(p){return p==='low'||p==='high'?p:'med';}
 function _safeDateStr(d){return /^\d{4}-\d{2}-\d{2}$/.test(d||'')?d:'';}
 function _safeTimeStr(t){return /^\d{1,2}:\d{2}$/.test(t||'')?t:'';}
 function slugify(s){return s.toLowerCase().replace(/[^a-z0-9]+/g,'-').replace(/(^-|-$)/g,'');}
-function toast(msg,durationMs){const el=document.getElementById('toast');el.textContent=msg;el.classList.add('show');setTimeout(()=>el.classList.remove('show'),durationMs||2500);_announce(msg);}
+// Panel survey 2026-08-18 (I-9): optional {label,onClick} makes the toast
+// clickable for exactly this one case (the capture-verdict flip) without
+// changing behavior for the ~200 existing plain-text toast() calls -- the
+// base .toast is pointer-events:none so it never eats a click behind it;
+// only the .has-action variant (added/removed per-call, never left stuck)
+// turns pointer-events back on.
+function toast(msg,durationMs,action){
+  const el=document.getElementById('toast');
+  el.classList.remove('has-action');
+  if(action&&action.label&&typeof action.onClick==='function'){
+    el.innerHTML='';
+    var span=document.createElement('span');span.textContent=msg;
+    var btn=document.createElement('button');btn.type='button';btn.className='toast-action-btn';btn.textContent=action.label;
+    btn.onclick=function(){el.classList.remove('show','has-action');action.onClick();};
+    el.appendChild(span);el.appendChild(btn);
+    el.classList.add('has-action');
+  }else{
+    el.textContent=msg;
+  }
+  el.classList.add('show');
+  setTimeout(()=>el.classList.remove('show','has-action'),durationMs||2500);
+  _announce(msg+(action&&action.label?'. '+action.label+' available.':''));
+}
 // Speak a toast through the dedicated sr-only live region rather than the
 // toast div itself. Strips leading decorative glyphs (checkmark, lightning,
 // emoji) -- VoiceOver spells those out, which is what turned a capture
@@ -5018,53 +5040,183 @@ function _omniMatch(haystack,terms){
   for(var i=0;i<terms.length;i++){if(h.indexOf(terms[i])<0)return false;}
   return true;
 }
+// Panel survey 2026-08-18 (A-10): query tokens. The High-Functioning
+// persona's framing was "there is currently no way to ask the system a
+// question at all -- the panel sort dropdowns are the entire query surface."
+// Recognized tokens are pulled OUT of the term list before the normal
+// substring match runs, so "overdue lease" still requires "lease" to match
+// too -- tokens narrow, they don't replace, free-text search.
+function _omniParseTokens(terms){
+  var filters={overdue:false,week:false,nodate:false,projectTag:null};
+  var remaining=[];
+  terms.forEach(function(t){
+    if(t==='overdue'){filters.overdue=true;return;}
+    if(t==='week'||t==='due:week'){filters.week=true;return;}
+    if(t==='nodate'||t==='no-date'){filters.nodate=true;return;}
+    var pm=t.match(/^project:(.+)$/);
+    if(pm){filters.projectTag=pm[1];return;}
+    remaining.push(t);
+  });
+  return {filters:filters,terms:remaining};
+}
+// dateStr: 'YYYY-MM-DD' or falsy. Applies overdue/week/nodate -- a no-op
+// (passes everything) if none of the three were typed, so items with no
+// date field at all (Notes, Brain Dump, Journal) are never wrongly excluded
+// by a filter that doesn't apply to them.
+function _omniPassesDateFilters(dateStr,filters){
+  if(!filters.overdue&&!filters.week&&!filters.nodate)return true;
+  if(filters.nodate)return !dateStr;
+  if(!dateStr)return false;
+  var today=todayStr();
+  if(filters.overdue)return dateStr<today;
+  if(filters.week)return dateStr>=today&&dateStr<=_tlPlusDays(today,7);
+  return true;
+}
+// Resolves filters.projectTag against real projects (reusing the same
+// exact/starts-with/substring resolver Quick Capture's #tag uses, so the two
+// project-tag syntaxes in the app behave identically) and reports whether an
+// item's own project association matches. No tag typed -> passes everything.
+function _omniPassesProjectFilter(itemProjectId,filters){
+  if(!filters.projectTag)return true;
+  var proj=_resolveProjectTag(filters.projectTag);
+  if(!proj)return false;
+  return itemProjectId===proj.id;
+}
 
+// Panel survey 2026-08-18 (I-10): result objects now carry enough metadata
+// (resultType/id/source/projectId/due) for the palette to act on a row --
+// complete a task/reminder, or change its date -- without leaving the
+// palette. `run` (reveal-and-jump) is unchanged and stays the Enter action;
+// the new fields are additive, so nothing that only reads `run`/`label`
+// breaks.
 function _omniSearchResults(q){
   q=(q||'').toLowerCase().trim();
   if(q.length<OMNISEARCH_MIN_CHARS)return [];
-  var terms=q.split(/\s+/).filter(Boolean);
-  if(!terms.length)return [];
+  var rawTerms=q.split(/\s+/).filter(Boolean);
+  if(!rawTerms.length)return [];
+  var parsed=_omniParseTokens(rawTerms);
+  var terms=parsed.terms; // token words removed; free-text match uses only what's left
+  var filters=parsed.filters;
+  var anyDateFilter=filters.overdue||filters.week||filters.nodate;
+  // A bare token query ("overdue" alone) must still find results even
+  // though `terms` is now empty -- _omniMatch with zero terms is vacuously
+  // true for every item, which is exactly what we want here.
   var out=[];
-  function pushResult(type,icon,label,sublabel,run){
-    out.push({omni:true,label:'['+icon+' '+type+'] '+label+(sublabel?' — '+sublabel:''),run:run});
+  function pushResult(type,icon,label,sublabel,run,meta){
+    var r={omni:true,label:'['+icon+' '+type+'] '+label+(sublabel?' — '+sublabel:''),run:run};
+    if(meta)for(var k in meta)r[k]=meta[k];
+    out.push(r);
   }
   // getAllTasks(), NOT state.tasks: the task list renders standalone tasks
   // AND every project's subtasks, so searching the raw array silently missed
   // every subtask -- "Kitchen island" under a project returned nothing while
   // a standalone "Ambulance certification" matched fine. Same source as the
   // panel means search and list can never disagree about what exists.
-  getAllTasks().filter(function(t){return _omniMatch(t.name,terms);})
+  getAllTasks().filter(function(t){
+      return _omniMatch(t.name,terms)&&_omniPassesDateFilters(t.due,filters)&&_omniPassesProjectFilter(t.projectId,filters);
+    })
     .slice(0,OMNISEARCH_MAX_PER_TYPE)
     .forEach(function(t){
       var bits=[];
       if(t.projectName)bits.push(t.projectName);
       if(t.due)bits.push(fmtDate(t.due));
       if(t.done)bits.push('done');
-      pushResult('Task','✅',t.name,bits.join(' · '),function(){_revealTask(t.id);});
+      pushResult('Task','✅',t.name,bits.join(' · '),function(){_revealTask(t.id);},
+        {resultType:'task',id:t.id,source:t.source,projectId:t.projectId,due:t.due,done:t.done});
     });
-  (state.projects||[]).filter(function(p){return _omniMatch(p.name,terms);})
+  (state.projects||[]).filter(function(p){
+      if(anyDateFilter)return false; // "overdue project" etc. has no meaning
+      if(filters.projectTag){var pr=_resolveProjectTag(filters.projectTag);if(!pr||pr.id!==p.id)return false;}
+      return _omniMatch(p.name,terms);
+    })
     .slice(0,OMNISEARCH_MAX_PER_TYPE)
     .forEach(function(p){
-      pushResult('Project','\u{1F4C1}',p.name,((p.subtasks||[]).length)+' subtask'+((p.subtasks||[]).length!==1?'s':''),function(){_revealProject(p.id);});
+      pushResult('Project','\u{1F4C1}',p.name,((p.subtasks||[]).length)+' subtask'+((p.subtasks||[]).length!==1?'s':''),function(){_revealProject(p.id);},
+        {resultType:'project',id:p.id});
     });
-  (state.reminders||[]).filter(function(r){return _omniMatch(r.text,terms);})
+  (state.reminders||[]).filter(function(r){
+      var rpid=r.projectId||(r.projectIds&&r.projectIds[0])||'';
+      return _omniMatch(r.text,terms)&&_omniPassesDateFilters(r.date,filters)&&_omniPassesProjectFilter(rpid,filters);
+    })
     .slice(0,OMNISEARCH_MAX_PER_TYPE)
-    .forEach(function(r){pushResult('Reminder','\u{1F535}',r.text,r.date?fmtDate(r.date):'',function(){_revealReminder(r.id);});});
-  (state.notes||[]).filter(function(n){return _omniMatch((n.label||'')+' '+_stripHtml(n.body||''),terms);})
+    .forEach(function(r){pushResult('Reminder','\u{1F535}',r.text,r.date?fmtDate(r.date):'',function(){_revealReminder(r.id);},
+      {resultType:'reminder',id:r.id,due:r.date});});
+  (state.notes||[]).filter(function(n){
+      if(anyDateFilter)return false; // notes carry no due date
+      var npid=n.projectId||(n.projectIds&&n.projectIds[0])||'';
+      return _omniMatch((n.label||'')+' '+_stripHtml(n.body||''),terms)&&_omniPassesProjectFilter(npid,filters);
+    })
     .slice(0,OMNISEARCH_MAX_PER_TYPE)
-    .forEach(function(n){pushResult('Note','\u{1F4DD}',n.label||'Untitled',n.date||'',function(){_revealNote(n.id);});});
-  (state.thoughts||[]).filter(function(t){return _omniMatch(t.text,terms);})
+    .forEach(function(n){pushResult('Note','\u{1F4DD}',n.label||'Untitled',n.date||'',function(){_revealNote(n.id);},
+      {resultType:'note',id:n.id});});
+  (state.thoughts||[]).filter(function(t){
+      if(anyDateFilter||filters.projectTag)return false; // thoughts carry neither field
+      return _omniMatch(t.text,terms);
+    })
     .slice(0,OMNISEARCH_MAX_PER_TYPE)
-    .forEach(function(t){pushResult('Brain Dump','\u{1F9E0}',t.text,'',function(){_revealThought(t.id);});});
-  if(_journalUnlocked&&typeof _journalEntries!=='undefined'){
+    .forEach(function(t){pushResult('Brain Dump','\u{1F9E0}',t.text,'',function(){_revealThought(t.id);},
+      {resultType:'thought',id:t.id});});
+  if(_journalUnlocked&&typeof _journalEntries!=='undefined'&&!anyDateFilter&&!filters.projectTag){
     _journalEntries.filter(function(e){return _omniMatch(_journalPlain[e.id]||'',terms);})
       .slice(0,OMNISEARCH_MAX_PER_TYPE)
       .forEach(function(e){
         var txt=_journalPlain[e.id]||'';
-        pushResult('Journal','\u{1F512}',txt.slice(0,60)+(txt.length>60?'…':''),'',function(){_revealJournalEntry(e.id);});
+        pushResult('Journal','\u{1F512}',txt.slice(0,60)+(txt.length>60?'…':''),'',function(){_revealJournalEntry(e.id);},
+          {resultType:'journal',id:e.id});
       });
   }
   return out;
+}
+
+// Panel survey 2026-08-18 (I-10): "recents" for the palette's empty-query
+// state -- three seats asked for it. Deduped by "type:id", newest first,
+// capped small (8 stored, 5 shown) since this is a convenience shortcut for
+// the last few things touched, not a history feature. Persisted via save()
+// like everything else in state, so it survives a reload.
+var OMNI_RECENTS_MAX=8;
+function _pushOmniRecent(resultType,id){
+  if(!state.omniRecents)state.omniRecents=[];
+  var key=resultType+':'+id;
+  state.omniRecents=state.omniRecents.filter(function(r){return (r.resultType+':'+r.id)!==key;});
+  state.omniRecents.unshift({resultType:resultType,id:id,ts:Date.now()});
+  if(state.omniRecents.length>OMNI_RECENTS_MAX)state.omniRecents.length=OMNI_RECENTS_MAX;
+  save();
+}
+// Re-derives a fresh, renderable result (icon/label/sublabel/run/metadata)
+// for a stored recent entry from the CURRENT data -- never caches display
+// text, so a renamed/deleted item is never shown stale or, worse, points
+// `run` at something that no longer exists. Silently drops entries whose
+// item is gone.
+function _omniRecentResults(){
+  if(!state.omniRecents||!state.omniRecents.length)return [];
+  var live=[];
+  state.omniRecents.forEach(function(r){
+    var hit=null;
+    if(r.resultType==='task'){
+      var t=getAllTasks().find(function(x){return x.id===r.id;});
+      if(t){
+        var bits=[];if(t.projectName)bits.push(t.projectName);if(t.due)bits.push(fmtDate(t.due));if(t.done)bits.push('done');
+        hit={omni:true,label:'[✅ Task] '+t.name+(bits.length?' — '+bits.join(' · '):''),run:function(){_revealTask(t.id);},resultType:'task',id:t.id,source:t.source,projectId:t.projectId,due:t.due,done:t.done};
+      }
+    }else if(r.resultType==='project'){
+      var p=(state.projects||[]).find(function(x){return x.id===r.id;});
+      if(p)hit={omni:true,label:'[\u{1F4C1} Project] '+p.name,run:function(){_revealProject(p.id);},resultType:'project',id:p.id};
+    }else if(r.resultType==='reminder'){
+      var rem=(state.reminders||[]).find(function(x){return x.id===r.id;});
+      if(rem)hit={omni:true,label:'[\u{1F535} Reminder] '+rem.text+(rem.date?' — '+fmtDate(rem.date):''),run:function(){_revealReminder(rem.id);},resultType:'reminder',id:rem.id,due:rem.date};
+    }else if(r.resultType==='note'){
+      var n=(state.notes||[]).find(function(x){return x.id===r.id;});
+      if(n)hit={omni:true,label:'[\u{1F4DD} Note] '+(n.label||'Untitled'),run:function(){_revealNote(n.id);},resultType:'note',id:n.id};
+    }else if(r.resultType==='thought'){
+      var th=(state.thoughts||[]).find(function(x){return x.id===r.id;});
+      if(th)hit={omni:true,label:'[\u{1F9E0} Brain Dump] '+th.text,run:function(){_revealThought(th.id);},resultType:'thought',id:th.id};
+    }else if(r.resultType==='journal'&&_journalUnlocked&&typeof _journalEntries!=='undefined'){
+      var e=_journalEntries.find(function(x){return x.id===r.id;});
+      if(e){var txt=_journalPlain[e.id]||'';hit={omni:true,label:'[\u{1F512} Journal] '+txt.slice(0,60)+(txt.length>60?'…':''),run:function(){_revealJournalEntry(e.id);},resultType:'journal',id:e.id};}
+    }
+    if(hit)live.push(hit);
+  });
+  return live.slice(0,5);
 }
 
 // Each _revealX opens the owning panel/overlay, clears any leftover
@@ -5072,6 +5224,7 @@ function _omniSearchResults(q){
 // (a stale filter is otherwise a silent "the search found it but the
 // panel is still hiding it" failure), re-renders, then flashes the row.
 function _revealTask(id){
+  _pushOmniRecent('task',id);
   openPanelOverlay('tasklist');
   var upcomingEl=document.getElementById('taskUpcomingOnly');if(upcomingEl)upcomingEl.checked=true;
   var filt=document.getElementById('tlFilterProj');if(filt)filt.value='all';
@@ -5081,6 +5234,7 @@ function _revealTask(id){
   setTimeout(function(){_flashNewCapture('taskListItems','tlname_',id,'tl-item');},60);
 }
 function _revealProject(id){
+  _pushOmniRecent('project',id);
   openPanelOverlay('projects');
   var p=(state.projects||[]).find(function(x){return x.id===id;});
   if(p)p.expanded=true; // open the card so its subtasks are visible on arrival
@@ -5088,6 +5242,7 @@ function _revealProject(id){
   setTimeout(function(){_flashNewCapture('projectList','pn_',id,'project-card');},60);
 }
 function _revealReminder(id){
+  _pushOmniRecent('reminder',id);
   openPanelOverlay('reminders');
   var srch=document.getElementById('remSearch');if(srch)srch.value='';
   _remRenderLimit=999999;
@@ -5095,6 +5250,7 @@ function _revealReminder(id){
   setTimeout(function(){_flashNewCapture('reminderList','rt_',id,'reminder-item');},60);
 }
 function _revealNote(id){
+  _pushOmniRecent('note',id);
   openPanelOverlay('notes');
   var filt=document.getElementById('noteFilterProj');if(filt)filt.value='all';
   var srch=document.getElementById('noteSearch');if(srch)srch.value='';
@@ -5102,11 +5258,13 @@ function _revealNote(id){
   setTimeout(function(){_flashNewCapture('notesList','nl_',id,'note-card');},60);
 }
 function _revealThought(id){
+  _pushOmniRecent('thought',id);
   openPanelOverlay('brain');
   renderThoughts();
   setTimeout(function(){_flashNewCapture('thoughtChips','tt_',id,'thought-chip');},60);
 }
 function _revealJournalEntry(id){
+  _pushOmniRecent('journal',id);
   openJournal();
   setTimeout(function(){
     var srch=document.getElementById('journalSearch');if(srch)srch.value='';
@@ -5118,20 +5276,74 @@ function _revealJournalEntry(id){
 
 var _cmdPaletteSelected=0;
 var _cmdPaletteFiltered=COMMAND_REGISTRY;
+// Panel survey 2026-08-18 (A-10): pinnable saved filters. A saved filter is
+// just a remembered query string (tokens and/or free text) -- re-running it
+// goes through the exact same _cmdPaletteFilter/_omniSearchResults path as
+// typing it fresh, so a saved filter can never drift out of sync with what
+// the live search would actually return.
+function _cmdPaletteSaveCurrentFilter(){
+  var input=document.getElementById('cmdPaletteInput');
+  var q=(input?input.value:'').trim();
+  if(!q){toast('Type a search first, then pin it');return;}
+  if(!state.omniSavedFilters)state.omniSavedFilters=[];
+  if(state.omniSavedFilters.some(function(f){return f.query===q;})){toast('Already pinned');return;}
+  state.omniSavedFilters.push({id:'sf'+Date.now(),query:q});
+  save();
+  toast('Pinned: '+q);
+  _cmdPaletteRenderChips();
+}
+function _cmdPaletteRunSavedFilter(id){
+  var f=(state.omniSavedFilters||[]).find(function(x){return x.id===id;});
+  if(!f)return;
+  var input=document.getElementById('cmdPaletteInput');
+  if(input)input.value=f.query;
+  _cmdPaletteFilter();
+}
+function _cmdPaletteUnpinFilter(id,ev){
+  if(ev)ev.stopPropagation();
+  state.omniSavedFilters=(state.omniSavedFilters||[]).filter(function(x){return x.id!==id;});
+  save();
+  _cmdPaletteRenderChips();
+}
+function _cmdPaletteRenderChips(){
+  var wrap=document.getElementById('cmdPaletteChips');
+  if(!wrap)return;
+  var input=document.getElementById('cmdPaletteInput');
+  var hasQuery=!!(input&&input.value.trim());
+  var filters=state.omniSavedFilters||[];
+  // Chips are a navigation aid for the empty-query browsing state -- once
+  // you're mid-search they'd just be one more thing competing with the
+  // results for attention, so they hide as soon as you type.
+  if(hasQuery||!filters.length){wrap.style.display='none';wrap.innerHTML='';return;}
+  wrap.style.display='flex';
+  wrap.innerHTML=filters.map(function(f){
+    return '<span class="cmd-palette-chip" onclick="_cmdPaletteRunSavedFilter(\''+f.id+'\')" style="display:inline-flex;align-items:center;gap:5px;padding:4px 8px;border-radius:12px;background:var(--surface-raised);border:1px solid var(--border);font-size:11px;cursor:pointer;">'
+      +'\u{1F4CC} '+esc(f.query)
+      +'<span onclick="_cmdPaletteUnpinFilter(\''+f.id+'\',event)" style="color:var(--text-faint);cursor:pointer;" aria-label="Unpin" title="Unpin">&#10005;</span>'
+      +'</span>';
+  }).join('');
+}
 function openCommandPalette(){
   var modal=document.getElementById('cmdPaletteModal');if(!modal)return;
   modal.classList.add('open');
   var input=document.getElementById('cmdPaletteInput');
   if(input){input.value='';input.focus();}
   _cmdPaletteSelected=0;
-  _cmdPaletteFiltered=COMMAND_REGISTRY;
+  _cmdPaletteDateEditIdx=-1;
+  // Panel survey 2026-08-18 (I-10): recents on open too, not just after the
+  // first keystroke -- otherwise the palette opens to the plain command
+  // list and only shows recents once you type-then-clear.
+  var recents=(typeof _omniRecentResults==='function')?_omniRecentResults():[];
+  _cmdPaletteFiltered=recents.length?recents.concat(COMMAND_REGISTRY):COMMAND_REGISTRY;
   _cmdPaletteRender();
+  _cmdPaletteRenderChips();
 }
 function closeCommandPalette(){
   var modal=document.getElementById('cmdPaletteModal');if(!modal)return;
   modal.classList.remove('open');
 }
 function _cmdPaletteFilter(){
+  _cmdPaletteDateEditIdx=-1;
   var input=document.getElementById('cmdPaletteInput');
   var q=(input?input.value:'').trim().toLowerCase();
   // Typing here means "find my stuff", not "run a command" -- every command
@@ -5141,7 +5353,12 @@ function _cmdPaletteFilter(){
   // keeps "settings"/"export" reachable without burying real results.
   var hits=_omniSearchResults(q);
   if(!q){
-    _cmdPaletteFiltered=COMMAND_REGISTRY;
+    // Panel survey 2026-08-18 (I-10): recents ahead of the command list on
+    // the empty-query state -- the Skeptic ranked this lowest of the three
+    // asks in this stage ("weakest mechanism"), which is why it's a small
+    // prepend rather than restructuring the menu.
+    var recents=_omniRecentResults();
+    _cmdPaletteFiltered=recents.length?recents.concat(COMMAND_REGISTRY):COMMAND_REGISTRY;
   }else if(hits.length){
     _cmdPaletteFiltered=hits;
   }else{
@@ -5151,6 +5368,21 @@ function _cmdPaletteFilter(){
   }
   _cmdPaletteSelected=0;
   _cmdPaletteRender();
+  _cmdPaletteRenderChips();
+}
+// Panel survey 2026-08-18 (I-10): actionable results. The selected row
+// shows which shortcuts apply to IT specifically (a Note/Project/Brain-Dump/
+// Journal result has no complete or date action, so it only ever shows
+// "open") -- rather than a static legend that would be wrong for half the
+// result types.
+function _cmdPaletteRowHint(r){
+  if(!r||!r.omni)return '↵ open';
+  var canComplete=(r.resultType==='task'&&!r.done)||r.resultType==='reminder';
+  var canDate=r.resultType==='task'||r.resultType==='reminder';
+  var bits=['↵ open'];
+  if(canComplete)bits.push('⌘↵ complete');
+  if(canDate)bits.push('⌘D date');
+  return bits.join(' · ');
 }
 function _cmdPaletteRender(){
   var list=document.getElementById('cmdPaletteList');if(!list)return;
@@ -5159,8 +5391,12 @@ function _cmdPaletteRender(){
     return;
   }
   list.innerHTML=_cmdPaletteFiltered.map(function(c,i){
+    var selected=i===_cmdPaletteSelected;
+    var dateEditing=_cmdPaletteDateEditIdx===i;
+    var hint=selected?'<div style="font-size:10px;color:var(--text-faint);margin-top:2px;">'+_cmdPaletteRowHint(c)+'</div>':'';
+    var dateRow=dateEditing?'<input type="date" id="cmdPaletteDateInput" value="'+esc(c.due||'')+'" onclick="event.stopPropagation();" onchange="_cmdPaletteDateChanged('+i+',this.value)" style="margin-top:6px;">':'';
     return '<div class="cmd-palette-item" data-idx="'+i+'" onclick="_cmdPaletteRun('+i+')" style="padding:9px 10px;border-radius:6px;cursor:pointer;font-size:13px;'
-      +(i===_cmdPaletteSelected?'background:var(--accent-bg,rgba(91,232,255,0.12));':'')+'">'+esc(c.label)+'</div>';
+      +(selected?'background:var(--accent-bg,rgba(91,232,255,0.12));':'')+'">'+esc(c.label)+hint+dateRow+'</div>';
   }).join('');
 }
 function _cmdPaletteRun(i){
@@ -5169,10 +5405,78 @@ function _cmdPaletteRun(i){
   closeCommandPalette();
   cmd.run();
 }
+// Panel survey 2026-08-18 (I-10): complete a task/reminder result directly
+// from the palette (Cmd/Ctrl+Enter) without leaving it -- routes through the
+// SAME functions the panels use (toggleTaskDone/completeReminder), so the
+// onSnapshot inline-edit clobber guard and every other invariant those
+// functions already carry (tombstones, archive, points) still apply here;
+// this never mutates state directly. Palette stays open and re-searches so
+// several results can be knocked out in a row.
+function _cmdPaletteComplete(i){
+  var r=_cmdPaletteFiltered[i];
+  if(!r||!r.omni)return;
+  if(r.resultType==='task'){
+    if(r.done){toast('Already done');return;}
+    toggleTaskDone(r.id,r.source,r.projectId);
+    toast('✓ Completed: '+r.label.replace(/^\[[^\]]+\]\s*/,'').split(' — ')[0]);
+  }else if(r.resultType==='reminder'){
+    if(typeof completeReminder==='function')completeReminder(r.id);
+    toast('✓ Reminder done');
+  }else{
+    return; // no complete action for this result type
+  }
+  _cmdPaletteFilter();
+}
+// Panel survey 2026-08-18 (I-10): inline date change (Cmd/Ctrl+D) for a
+// task/reminder result. Routes through the SAME date-setters the panels'
+// click-to-edit date fields use (editStandaloneTaskDue/editSubtaskDue/
+// editReminderDate) -- never sets `due` directly on the record.
+var _cmdPaletteDateEditIdx=-1;
+function _cmdPaletteToggleDateEdit(i){
+  var r=_cmdPaletteFiltered[i];
+  if(!r||!r.omni||(r.resultType!=='task'&&r.resultType!=='reminder'))return;
+  _cmdPaletteDateEditIdx=(_cmdPaletteDateEditIdx===i)?-1:i;
+  _cmdPaletteRender();
+  if(_cmdPaletteDateEditIdx===i){
+    setTimeout(function(){
+      var inp=document.getElementById('cmdPaletteDateInput');
+      if(!inp)return;
+      inp.focus();
+      if(typeof inp.showPicker==='function'){try{inp.showPicker();}catch(e){}}
+    },0);
+  }
+}
+function _cmdPaletteDateChanged(i,v){
+  var r=_cmdPaletteFiltered[i];
+  if(!r)return;
+  if(r.resultType==='task'){
+    if(r.source==='standalone')editStandaloneTaskDue(r.id,v);
+    else editSubtaskDue(r.projectId,r.id,v);
+  }else if(r.resultType==='reminder'){
+    editReminderDate(r.id,v);
+  }
+  _cmdPaletteDateEditIdx=-1;
+  toast('Date updated');
+  _cmdPaletteFilter();
+}
 function _cmdPaletteKeydown(e){
-  if(e.key==='Escape'){closeCommandPalette();e.preventDefault();return;}
+  if(e.key==='Escape'){
+    if(_cmdPaletteDateEditIdx>=0){_cmdPaletteDateEditIdx=-1;_cmdPaletteRender();e.preventDefault();return;}
+    closeCommandPalette();e.preventDefault();return;
+  }
   if(e.key==='ArrowDown'){_cmdPaletteSelected=Math.min(_cmdPaletteSelected+1,_cmdPaletteFiltered.length-1);_cmdPaletteRender();e.preventDefault();return;}
   if(e.key==='ArrowUp'){_cmdPaletteSelected=Math.max(_cmdPaletteSelected-1,0);_cmdPaletteRender();e.preventDefault();return;}
+  // Panel survey 2026-08-18 (I-10): j/k as alternate navigation, per the
+  // High-Functioning persona's ask -- but ONLY with a modifier held. Bare
+  // j/k would hijack every letter "j" or "k" typed while composing a search
+  // query (e.g. "jacket", "kitchen"), which is a worse bug than the feature
+  // is worth; Ctrl/Cmd+j/k is the deviation from the literal "arrow/j-k"
+  // wording, flagged here and in the ship notes.
+  if((e.metaKey||e.ctrlKey)&&(e.key==='j'||e.key==='J')){_cmdPaletteSelected=Math.min(_cmdPaletteSelected+1,_cmdPaletteFiltered.length-1);_cmdPaletteRender();e.preventDefault();return;}
+  if((e.metaKey||e.ctrlKey)&&(e.key==='k'||e.key==='K')){_cmdPaletteSelected=Math.max(_cmdPaletteSelected-1,0);_cmdPaletteRender();e.preventDefault();return;}
+  if((e.metaKey||e.ctrlKey)&&e.key==='Enter'){_cmdPaletteComplete(_cmdPaletteSelected);e.preventDefault();return;}
+  if((e.metaKey||e.ctrlKey)&&(e.key==='d'||e.key==='D')){_cmdPaletteToggleDateEdit(_cmdPaletteSelected);e.preventDefault();return;}
+  if((e.metaKey||e.ctrlKey)&&(e.key==='s'||e.key==='S')){_cmdPaletteSaveCurrentFilter();e.preventDefault();return;}
   if(e.key==='Enter'){_cmdPaletteRun(_cmdPaletteSelected);e.preventDefault();return;}
 }
 // Separate listener from the single-letter shortcut block above -- Cmd/Ctrl+K
@@ -8727,9 +9031,18 @@ function _renderQuickAddPreview(inputId,previewId,opts){
   if(typeof window.parseQuickAdd!=='function'){el.style.display='none';return;}
   var p=window.parseQuickAdd(inp.value);
   var bits=[];
+  // Panel survey 2026-08-18 (I-9): show the opt-in tokens too, so typing
+  // "task:"/"thought:"/"#project" gets the same before-you-save preview the
+  // date/time/recurrence tokens already had -- otherwise they're invisible
+  // until the toast, which is one beat too late for a preview to be useful.
+  if(opts.type&&p.forcedType)bits.push(p.forcedType==='task'?'Task':'Brain Dump thought');
   if(opts.date&&p.due)bits.push(fmtDate(p.due));
   if(opts.time&&p.time)bits.push(fmtTime(p.time));
   if(opts.recurrence&&p.recurrence)bits.push('repeats '+(RECUR_LABEL[p.recurrence.freq]||p.recurrence.freq));
+  if(opts.project&&p.projectTag){
+    var proj=(typeof _resolveProjectTag==='function')?_resolveProjectTag(p.projectTag):null;
+    bits.push(proj?proj.name:'#'+p.projectTag+' (no match)');
+  }
   if(bits.length===0){el.style.display='none';el.textContent='';return;}
   el.style.display='block';
   el.textContent='→ '+bits.join(', ');
@@ -9016,20 +9329,70 @@ function quickCaptureKeydown(e){
 // batch decide when to persist and re-render. Same task/thought split
 // submitQuickCapture has always used; ids carry a random suffix so a batch
 // drained within one millisecond can't collide.
+// Panel survey 2026-08-18 (I-9): resolves an opt-in "#tag" against real
+// project names -- exact match first, then a starts-with, then a plain
+// substring, so "#apt" still finds "Apartment Move" without being so loose
+// it grabs the wrong project on a short/common tag. No match is a silent
+// no-op (the task is still created, just without a project) rather than an
+// error -- the tag is a convenience, not a required, validated field.
+function _resolveProjectTag(tag){
+  if(!tag||!state.projects||!state.projects.length)return null;
+  var t=tag.toLowerCase();
+  var exact=state.projects.find(function(p){return p.name.toLowerCase()===t;});
+  if(exact)return exact;
+  var starts=state.projects.find(function(p){return p.name.toLowerCase().indexOf(t)===0;});
+  if(starts)return starts;
+  var sub=state.projects.find(function(p){return p.name.toLowerCase().indexOf(t)>=0;});
+  return sub||null;
+}
 function _captureString(text){
   text=(text||'').trim();
   if(!text)return null;
-  var p=(typeof window.parseQuickAdd==='function')?window.parseQuickAdd(text):{name:text,due:null,time:null,recurrence:null};
-  var hasSignal=!!(p.due||p.time||p.recurrence);
+  var p=(typeof window.parseQuickAdd==='function')?window.parseQuickAdd(text):{name:text,due:null,time:null,recurrence:null,forcedType:null,projectTag:null};
+  // Panel survey 2026-08-18 (I-9): an explicit "task:"/"thought:" prefix
+  // skips the heuristic entirely -- opt-in only, the heuristic below is
+  // unchanged for anyone who never types it.
+  var hasSignal=p.forcedType?p.forcedType==='task':!!(p.due||p.time||p.recurrence);
+  var proj=_resolveProjectTag(p.projectTag);
   if(hasSignal){
-    var t={id:'tk'+Date.now()+Math.random().toString(36).slice(2,6),name:p.name,due:p.due||'',priority:'med',timeEst:'',projectId:'',projectIds:[],done:false,recurrence:p.recurrence};
+    var t={id:'tk'+Date.now()+Math.random().toString(36).slice(2,6),name:p.name,due:p.due||'',priority:'med',timeEst:'',projectId:proj?proj.id:'',projectIds:proj?[proj.id]:[],done:false,recurrence:p.recurrence};
     state.tasks.push(t);
     return {type:'task',name:p.name,id:t.id};
   }
   if(!state.thoughts)state.thoughts=[];
-  var th={id:'th'+Date.now()+Math.random().toString(36).slice(2,6),text:text};
+  // A thought has no project field in this schema -- an unused #tag on a
+  // thought is simply dropped rather than silently promoted into a task.
+  var th={id:'th'+Date.now()+Math.random().toString(36).slice(2,6),text:p.name||text};
   state.thoughts.push(th);
-  return {type:'thought',name:text,id:th.id};
+  return {type:'thought',name:p.name||text,id:th.id};
+}
+// Panel survey 2026-08-18 (I-9): the one-tap flip from the capture-verdict
+// toast. No confirm dialog -- clicking the flip button IS the confirmation,
+// unlike deleteThought's user-initiated deletion elsewhere. Tombstones the
+// old id and creates a new one under the other type, mirroring the existing
+// promoteThought pattern (a type change is a new record, not a same-id
+// reuse, per the repo's sync-invariant rule on tombstoning moves).
+function _flipCaptureType(id,fromType){
+  if(fromType==='task'){
+    var t=(state.tasks||[]).find(function(x){return x.id===id;});
+    if(!t)return;
+    _tombstone(id);
+    state.tasks=state.tasks.filter(function(x){return x.id!==id;});
+    if(!state.thoughts)state.thoughts=[];
+    var th={id:'th'+Date.now()+Math.random().toString(36).slice(2,6),text:t.name};
+    state.thoughts.push(th);
+    save();renderTaskList();renderThoughts();
+    toast('Moved to Brain Dump');
+  }else{
+    var th2=(state.thoughts||[]).find(function(x){return x.id===id;});
+    if(!th2)return;
+    _tombstone(id);
+    state.thoughts=state.thoughts.filter(function(x){return x.id!==id;});
+    var t2={id:'tk'+Date.now()+Math.random().toString(36).slice(2,6),name:th2.text,due:'',priority:'med',timeEst:'',projectId:'',projectIds:[],done:false,recurrence:null};
+    state.tasks.push(t2);
+    save();renderTaskList();renderThoughts();
+    toast('Saved as Task');
+  }
 }
 // Scroll a freshly captured row/chip into view and flash it briefly, so a
 // capture is provably visible rather than only toasted -- the toast fades in
@@ -9062,12 +9425,14 @@ function submitQuickCapture(){
   if(res.type==='task'){
     renderTaskList();
     _flashNewCapture('taskListItems','tlname_',res.id,'tl-item');
-    toast('✓ Task added: '+res.name);
+    // Panel survey 2026-08-18 (I-9): states the verdict rather than leaving
+    // it implicit, with a one-tap flip -- the ADHD/High-Functioning ask.
+    toast('✓ Saved as Task: '+res.name,4000,{label:'Make it a Thought',onClick:function(){_flipCaptureType(res.id,'task');}});
     _trackEvent('tool_use','quick_capture_task','Quick Capture');
   }else{
     renderThoughts();
     _flashNewCapture('thoughtChips','tt_',res.id,'thought-chip');
-    toast('✓ Captured to Brain Dump');
+    toast('✓ Captured to Brain Dump',4000,{label:'Make it a Task',onClick:function(){_flipCaptureType(res.id,'thought');}});
     _trackEvent('tool_use','quick_capture_thought','Quick Capture');
   }
   closeQuickCapture();

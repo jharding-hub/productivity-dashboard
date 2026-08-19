@@ -93,6 +93,7 @@ test('combined: date + time + recurrence together; a leftover "!high" is inert, 
     time: '15:00',
     priority: null,
     recurrence: { freq: 'monthly', interval: 1 },
+    forcedType: null, projectTag: null,
   });
 });
 
@@ -100,11 +101,13 @@ test('combined: date + time + recurrence together; a leftover "!high" is inert, 
 test('no signal at all: name passes through unchanged, every field null', () => {
   assert.deepEqual(parseQuickAdd('buy groceries', NOW), {
     name: 'buy groceries', due: null, time: null, priority: null, recurrence: null,
+    forcedType: null, projectTag: null,
   });
 });
 test('empty input', () => {
   assert.deepEqual(parseQuickAdd('', NOW), {
     name: '', due: null, time: null, priority: null, recurrence: null,
+    forcedType: null, projectTag: null,
   });
 });
 
@@ -115,6 +118,7 @@ test('bare recurrence: trailing daily/weekly/monthly is recognised', () => {
   assert.deepEqual(parseQuickAdd('workout 6am daily', NOW), {
     name: 'workout', due: null, time: '06:00', priority: null,
     recurrence: { freq: 'daily', interval: 1 },
+    forcedType: null, projectTag: null,
   });
   assert.equal(parseQuickAdd('review inbox weekly', NOW).recurrence.freq, 'weekly');
   assert.equal(parseQuickAdd('pay rent monthly', NOW).recurrence.freq, 'monthly');
@@ -141,4 +145,54 @@ test('bare recurrence: keyword alone is not a recurrence', () => {
 test('bare recurrence: never overrides an explicit "every N" form', () => {
   const r = parseQuickAdd('water plants every 2 weeks', NOW);
   assert.deepEqual(r.recurrence, { freq: 'weekly', interval: 2 });
+});
+
+// ── Opt-in explicit type prefix (panel survey 2026-08-18, I-9) ────────────
+test('type prefix: "task:" / "thought:" forces the type and is stripped', () => {
+  assert.equal(parseQuickAdd('task: buy milk', NOW).forcedType, 'task');
+  assert.equal(parseQuickAdd('task: buy milk', NOW).name, 'buy milk');
+  assert.equal(parseQuickAdd('thought: what if', NOW).forcedType, 'thought');
+  assert.equal(parseQuickAdd('thought: what if', NOW).name, 'what if');
+});
+test('type prefix: case-insensitive, optional space before the colon', () => {
+  assert.equal(parseQuickAdd('TASK: call bob', NOW).forcedType, 'task');
+  assert.equal(parseQuickAdd('Thought : idea', NOW).forcedType, 'thought');
+});
+test('type prefix: must be a LEADING token -- a mid-sentence colon is left alone', () => {
+  const r = parseQuickAdd('discuss my task: buy milk', NOW);
+  assert.equal(r.forcedType, null);
+  assert.equal(r.name, 'discuss my task: buy milk');
+});
+test('type prefix: absent when not typed', () => {
+  assert.equal(parseQuickAdd('buy milk', NOW).forcedType, null);
+});
+test('type prefix: composes with date/time/recurrence extraction', () => {
+  const r = parseQuickAdd('task: call bob tomorrow at 3pm', NOW);
+  assert.equal(r.forcedType, 'task');
+  assert.equal(r.name, 'call bob');
+  assert.equal(r.time, '15:00');
+  assert.equal(r.due, '2026-07-18');
+});
+
+// ── Opt-in project tag (panel survey 2026-08-18, I-9) ──────────────────────
+// Deliberately returns the RAW tag text, not a resolved project id -- this
+// module stays pure (no state.projects access); the caller resolves it.
+test('project tag: "#name" is extracted and stripped, lowercased', () => {
+  assert.equal(parseQuickAdd('renew lease #Apartment', NOW).projectTag, 'apartment');
+  assert.equal(parseQuickAdd('renew lease #Apartment', NOW).name, 'renew lease');
+});
+test('project tag: absent when not typed', () => {
+  assert.equal(parseQuickAdd('renew lease', NOW).projectTag, null);
+});
+test('project tag: takes the LAST tag if more than one appears', () => {
+  const r = parseQuickAdd('renew lease #home #apartment', NOW);
+  assert.equal(r.projectTag, 'apartment');
+  assert.equal(r.name, 'renew lease #home');
+});
+test('project tag: composes with type prefix and date extraction', () => {
+  const r = parseQuickAdd('task: renew lease #apartment tomorrow', NOW);
+  assert.equal(r.forcedType, 'task');
+  assert.equal(r.projectTag, 'apartment');
+  assert.equal(r.due, '2026-07-18');
+  assert.equal(r.name, 'renew lease');
 });

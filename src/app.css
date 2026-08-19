@@ -2288,6 +2288,11 @@ body[data-theme="storm-dark"] .tl-hour-label{
    not just the modal band. Stays under the fireworks/points celebration layer
    (9998/9999), the sign-in gate (9999), and the update toast (10002). */
 .toast{position:fixed;bottom:80px;right:24px;background:var(--green);color:var(--bg);padding:10px 18px;border-radius:var(--radius);font-size:calc(13px * var(--type-scale,1));font-weight:600;opacity:0;transform:translateY(10px);transition:all 0.3s;pointer-events:none;z-index:9500;}
+/* Panel survey 2026-08-18 (I-9): capture-verdict flip is the one toast that
+   needs to be clickable. Base .toast stays pointer-events:none. */
+.toast.has-action{pointer-events:auto;display:flex;align-items:center;gap:12px;}
+.toast-action-btn{background:rgba(0,0,0,0.15);color:inherit;border:1px solid rgba(0,0,0,0.25);border-radius:var(--radius-sm);padding:4px 10px;font-size:calc(12px * var(--type-scale,1));font-weight:600;cursor:pointer;white-space:nowrap;}
+.toast-action-btn:hover{background:rgba(0,0,0,0.25);}
 .toast.show{opacity:1;transform:translateY(0);}
 .toast.update-toast{pointer-events:auto;cursor:pointer;bottom:130px;z-index:10002;}
 /* SHARE INBOX BANNER */

@@ -26,7 +26,7 @@ export default function QuickCaptureModal() {
             aria-label="Capture a thought or task"
             autoComplete="off"
             onKeyDown={e => window.quickCaptureKeydown(e.nativeEvent)}
-            onInput={() => window._renderQuickAddPreview('quickCaptureInput', 'quickCapturePreview', { date: true, time: true, recurrence: true })}
+            onInput={() => window._renderQuickAddPreview('quickCaptureInput', 'quickCapturePreview', { date: true, time: true, recurrence: true, type: true, project: true })}
             onBlur={() => window.submitQuickCapture()}
           />
           <div className="quick-add-preview" id="quickCapturePreview" style={{ display: 'none' }}></div>

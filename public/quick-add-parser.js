@@ -7,9 +7,14 @@
 // structured fields from a line of typed text and returns both the
 // structured result and the leftover "clean" name with matched tokens
 // removed. Deliberately RRULE-lite: daily/weekly/monthly only, interval 1.
-// No project-tagging (#project) -- every add-form already has its own
-// project picker, and fuzzy name-matching from free text is a real
-// ambiguity risk not worth taking on in v1.
+//
+// Panel survey 2026-08-18 (I-9) added two OPT-IN tokens on top of the
+// original heuristic-only design: a leading "task:"/"thought:" prefix
+// (forcedType) and a trailing "#project" tag (projectTag). Both are no-ops
+// unless typed -- the heuristic remains the only default. This module still
+// does NOT attempt fuzzy project-name matching itself (stays pure, no
+// state.projects access); it returns the raw tag text and the caller
+// resolves it against real projects.
 //
 // Pure and side-effect-free so it's easy to hand-verify in the console and,
 // if a test runner is ever added to this repo, to unit test directly.
@@ -63,6 +68,40 @@
     // prove the keyword isn't the entire input.
     var cut = text.slice(0, m.index + 1) + text.slice(m.index + m[0].length);
     return { recurrence: { freq: freq, interval: 1 }, text: cut };
+  }
+
+  // -- Opt-in explicit type prefix: "task: buy milk" / "thought: idea" -----
+  // Panel survey 2026-08-18 (I-9): the High-Functioning persona called the
+  // task-vs-thought heuristic "a black box I audit later" -- this lets that
+  // seat skip the guess entirely. Must be a LEADING token (anchored at the
+  // start) so it reads as a deliberate declaration, not a word that happens
+  // to appear in the text ("task: buy milk" vs "discuss my task: buy milk").
+  // Opt-in only: the heuristic is unchanged for anyone who doesn't type it.
+  function extractTypePrefix(text) {
+    var m = text.match(/^\s*(task|thought)\s*:\s*/i);
+    if (!m) return { forcedType: null, text: text };
+    return { forcedType: m[1].toLowerCase(), text: text.slice(m[0].length) };
+  }
+
+  // -- Opt-in project tag: "#project-name" ----------------------------------
+  // Panel survey 2026-08-18 (I-9). The original file header on this module
+  // explicitly deferred #project tagging as "a real ambiguity risk not worth
+  // taking on in v1" -- still true for fuzzy free-text matching, so this
+  // module stays pure and does NOT attempt to resolve the tag against real
+  // project names. It only extracts the raw token; the caller (legacy.js,
+  // which holds state.projects) resolves it to an id or leaves it unmatched.
+  // Takes the LAST #tag in the text (a task name is unlikely to contain a
+  // literal hash otherwise, but "last" avoids swallowing an incidental one
+  // mid-sentence ahead of the real tag).
+  function extractProjectTag(text) {
+    var matches = text.match(/#(\S+)/g);
+    if (!matches || !matches.length) return { projectTag: null, text: text };
+    var last = matches[matches.length - 1];
+    var idx = text.lastIndexOf(last);
+    return {
+      projectTag: last.slice(1).toLowerCase(),
+      text: text.slice(0, idx) + text.slice(idx + last.length),
+    };
   }
 
   // -- Time: "3pm", "3:30pm", "15:00", "at 9am" -> 'HH:MM' (24h) ----------
@@ -139,6 +178,9 @@
     now = now || new Date();
     var text = rawText || '';
 
+    var tp = extractTypePrefix(text); text = tp.text;
+    var pt = extractProjectTag(text); text = pt.text;
+
     var rec = extractRecurrence(text); text = rec.text;
     var tm = extractTime(text); text = tm.text;
     var dt = extractDate(text, now); text = dt.text;
@@ -166,6 +208,8 @@
       time: tm.time,
       priority: null,
       recurrence: recurrence,
+      forcedType: tp.forcedType,
+      projectTag: pt.projectTag,
     };
   };
 
