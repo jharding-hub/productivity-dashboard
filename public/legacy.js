@@ -271,34 +271,50 @@ function _setDevTier(tier){
 }
 // -----------------------------------------------------------------------------
 
+// #setupForm was removed with the retired first-time-setup path (Stage 4,
+// J-2 -- see doSetup below). showLoginForm() is still called on live paths
+// (sign-out, post-password-reset), so both lookups are null-guarded rather
+// than assuming that element still exists.
 function showSetupForm(){
-  document.getElementById('loginForm').style.display='none';
-  document.getElementById('setupForm').style.display='block';
-  document.getElementById('loginSub').textContent='Create the first admin account';
+  // Retired -- kept only so a stale cached shell calling it is a no-op.
+  showLoginForm();
 }
 function showLoginForm(){
-  document.getElementById('loginForm').style.display='block';
-  document.getElementById('setupForm').style.display='none';
-  document.getElementById('loginSub').textContent='Sign in to your workspace';
+  var lf=document.getElementById('loginForm');
+  if(lf)lf.style.display='block';
+  var sf=document.getElementById('setupForm');
+  if(sf)sf.style.display='none';
+  var sub=document.getElementById('loginSub');
+  if(sub)sub.textContent='Sign in to your workspace';
 }
 
+// RETIRED 2026-08-19 -- panel survey Stage 4 (J-2). This was the
+// "First-time setup" link on the sign-in card, and the security audit that
+// stage called for found it was a WORKING INVITE-GATE BYPASS. The trace:
+//
+//   1. createUserWithEmailAndPassword() SUCCEEDS -- Firebase Auth account
+//      creation is not governed by firestore.rules at all.
+//   2. The admin:true profile write is correctly REJECTED by the rules
+//      (self-create requires admin == false), so the escalation half never
+//      worked -- the rules did their job.
+//   3. But onAuthStateChanged then hits its "profile missing -> create one
+//      (non-admin by default)" branch, which SUCCEEDS.
+//   4. Net result: a signed-in, fully working account, no invite code, with
+//      only a flash of a red error on the way in.
+//
+// So it could no longer do its stated job (bootstrap an admin -- the rules
+// forbid it) and did do something nobody intended. Removed rather than
+// gated: there is no live purpose left for it, the project's admin already
+// exists, and a fresh-project bootstrap would go through the Firebase
+// console, not a public link on the sign-in card.
+//
+// Kept as a refusing stub rather than deleted outright so that a stale
+// cached shell still holding the old markup can't reach a live signup path
+// -- it gets a no-op instead of a ReferenceError.
 async function doSetup(){
-  const email=document.getElementById('setupEmail').value.trim();
-  const pass=document.getElementById('setupPass').value;
-  const err=document.getElementById('setupError');
-  err.textContent='';
-  if(!email||!pass){err.textContent='Enter email and password.';return;}
-  if(pass.length<6){err.textContent='Password must be at least 6 characters.';return;}
-  try{
-    const cred=await firebase.auth().createUserWithEmailAndPassword(email,pass);
-    // Write user profile -- this user becomes admin
-    await db.collection('users').doc(cred.user.uid).set({
-      email:email,admin:true,disabled:false,
-      createdAt:firebase.firestore.FieldValue.serverTimestamp(),
-      lastActive:firebase.firestore.FieldValue.serverTimestamp()
-    });
-    // onAuthStateChanged will fire and handle the rest
-  }catch(e){err.textContent=e.message;}
+  var err=document.getElementById('setupError');
+  if(err)err.textContent='First-time setup has been retired. Use Sign Up, or join the waitlist.';
+  return;
 }
 
 async function doLogin(){
@@ -909,7 +925,13 @@ function showSignupPanel(){
   ov.classList.add('open');
   document.getElementById('signupError').textContent='';
   document.getElementById('signupSuccess').textContent='';
+  // Panel survey Stage 4 (I-2): focus the FIRST field. This used to focus
+  // the email input, skipping the invite-code field sitting above it -- so
+  // the caret landed mid-form and, on a phone, the keyboard covered the
+  // "why do I need a code" explainer before it could be read.
   setTimeout(function(){
+    var inv=document.getElementById('signupInvite');
+    if(inv){inv.focus();return;}
     var em=document.getElementById('signupEmail');
     if(em)em.focus();
   },120);
@@ -917,6 +939,71 @@ function showSignupPanel(){
 function hideSignupPanel(){
   var ov=document.getElementById('signupOverlay');
   if(ov)ov.classList.remove('open');
+}
+
+// ── Waitlist (panel survey Stage 4, A-1) ─────────────────────────────
+// Signup is invite-gated, which the survey's two newcomer personas both
+// bounced off inside two minutes -- the wall itself is a deliberate choice,
+// but a wall with no way to knock is what actually lost them. This gives
+// them one field and an honest answer.
+//
+// Falls back to a mailto if the endpoint isn't reachable (not yet deployed,
+// offline, rate-limited): the whole point of this feature is "never a dead
+// end", so it must not become one itself when the network misbehaves.
+var WAITLIST_CONTACT_EMAIL='medicjth@gmail.com';
+function _waitlistMailtoHref(email){
+  return 'mailto:'+WAITLIST_CONTACT_EMAIL
+    +'?subject='+encodeURIComponent('Centerpost waitlist')
+    +'&body='+encodeURIComponent('Please add me to the Centerpost waitlist'+(email?': '+email:'.'));
+}
+function _waitlistFallback(email,msgEl){
+  if(!msgEl)return;
+  msgEl.innerHTML='Could not reach the waitlist just now. '
+    +'<a href="'+_waitlistMailtoHref(email)+'">Email to request access</a> instead.';
+  msgEl.style.color='var(--text-dim)';
+}
+async function joinWaitlist(){
+  var emailEl=document.getElementById('waitlistEmail');
+  var msgEl=document.getElementById('waitlistMsg');
+  var btn=document.getElementById('waitlistBtn');
+  if(!emailEl||!msgEl)return;
+  var email=(emailEl.value||'').trim();
+  msgEl.style.color='var(--text-dim)';
+  if(!email||email.indexOf('@')<0){
+    msgEl.textContent='Enter your email address.';
+    return;
+  }
+  if(btn){btn.disabled=true;btn.textContent='Joining\u2026';}
+  msgEl.textContent='';
+  try{
+    var base=(typeof JARVIS_PROXY_URL!=='undefined')?JARVIS_PROXY_URL:'';
+    var res=await fetch(base+'/waitlist',{
+      method:'POST',
+      headers:{'Content-Type':'application/json'},
+      body:JSON.stringify({email:email})
+    });
+    var data={};
+    try{data=await res.json();}catch(e){}
+    if(res.ok&&data.ok){
+      msgEl.textContent='You\u2019re on the list. We\u2019ll email you when a spot opens.';
+      msgEl.style.color='var(--green)';
+      emailEl.value='';
+      emailEl.disabled=true;
+      if(btn){btn.style.display='none';}
+      return;
+    }
+    if(res.status===400){
+      msgEl.textContent=data.error||'Enter a valid email address.';
+    }else if(res.status===429){
+      msgEl.textContent='Too many tries just now \u2014 give it a few minutes.';
+    }else{
+      _waitlistFallback(email,msgEl);
+    }
+  }catch(e){
+    _waitlistFallback(email,msgEl);
+  }finally{
+    if(btn&&btn.style.display!=='none'){btn.disabled=false;btn.textContent='Join the waitlist';}
+  }
 }
 
 async function doSignup(){
@@ -1084,11 +1171,15 @@ function initAuthListener(){
       // Fire-and-forget -- nothing below depends on it, and it no-ops for an
       // ordinary sign-out because the account still exists.
       _purgeDeletedAccountData();
-      // R6: native has no marketing page to tap "Sign In" from anymore, so
-      // open the card automatically instead of leaving a bare brand screen.
-      if(document.body.classList.contains('capacitor-native')&&typeof showSigninPanel==='function'){
-        showSigninPanel();
-      }
+      // R6 opened the sign-in card automatically here, because native had no
+      // marketing page to tap "Sign In" from and would otherwise show a bare
+      // brand screen. Panel survey Stage 4 (I-2) reversed that: all three
+      // newcomer personas hit a sign-in sheet with the keyboard already up
+      // before seeing a single thing the app does, and the Student called it
+      // the most hostile first screen they'd seen this year. The bare-screen
+      // problem R6 was solving is now fixed at the source instead -- the
+      // native landing renders its real content expanded (LandingLogin.jsx),
+      // so there IS something to read, with Sign In one tap away.
     }
   });
 }
@@ -3813,6 +3904,9 @@ function shouldShowWellness(){if(state.supportLevel==='lean')return false;return
 function updateWellnessVisibility(){
   const wp=document.querySelector('[data-panel="wellness"]');
   if(shouldShowWellness()){
+    // Panel survey Stage 4 (I-3): first time this would auto-surface, ask
+    // whether the user wants it to. See _jitMaybeAskSupportLevel.
+    if(typeof _jitMaybeAskSupportLevel==='function')setTimeout(_jitMaybeAskSupportLevel,400);
     wp.classList.remove('hidden-panel');
     const triggers=[];
     if(triggerStates.includes(state.energy))triggers.push(state.energy);
@@ -4682,7 +4776,7 @@ function buildMobileHome(){
     }
     var badgeHtml=badgeVal&&badgeVal!=='0'?'<span class="mnr-badge">'+badgeVal+'</span>':'';
     var rowAction=p.route?'window.location.hash=\''+p.route+'\'':"showMobilePanel('"+p.id+"')";
-    html+='<button class="mobile-nav-row" onclick="'+rowAction+'">'
+    html+='<button class="mobile-nav-row" data-jit="'+p.id+'" onclick="'+rowAction+'">'
       +'<span class="mnr-icon">'+p.icon+'</span>'
       +'<span class="mnr-label">'+p.label+'</span>'
       +badgeHtml
@@ -6223,6 +6317,9 @@ function setViewMode(mode){
     todayEl.style.display='none';
     dashEl.style.display='';
     if(_isMobile())showMobileHome();
+    // Panel survey Stage 4 (I-3): Everything view / mobile home is where the
+    // Tool Kit entry is actually on screen, so that's where its hint belongs.
+    if(typeof _jitHintToolkit==='function')setTimeout(_jitHintToolkit,500);
   }
 }
 // One entry point for "go to the mobile home surface" that honors the current
@@ -8666,6 +8763,170 @@ function dismissFabHint(){
   state.fabHintDismissed=true;save();
   var el=document.getElementById('fabHint');
   if(el)el.style.display='none';
+}
+
+// ── Just-in-time hints (panel survey Stage 4, I-3) ───────────────────
+// Replaces the 8-card front-loaded tour as the DEFAULT first-run teaching
+// path. The panel split evenly on "anchor the cards" vs "delete the tour",
+// and both camps' reasoning converged on the same mechanism: say one thing,
+// at the moment it's useful, pointing at the actual control -- rather than
+// eight text cards, anchored to nothing, before the user has touched
+// anything. The tour itself is NOT deleted; it stays replayable from the
+// status bar's Tour button for anyone who wants the full read.
+//
+// Deliberately austere: one hint at a time, each shown once ever, each
+// dismissible, and none of them block. state.jitHints is a grow-only map of
+// key -> true so a hint never re-fires across devices.
+function _jitSeen(key){
+  return !!(state.jitHints&&state.jitHints[key]);
+}
+function _markJitSeen(key){
+  if(!state.jitHints)state.jitHints={};
+  if(state.jitHints[key])return;
+  state.jitHints[key]=true;
+  save();
+}
+function dismissJitHint(key){
+  _markJitSeen(key);
+  var el=document.getElementById('jitHint');
+  if(el)el.remove();
+}
+// anchorSel: CSS selector for the element the hint points at. If it isn't on
+// screen right now the hint is skipped entirely rather than floating
+// somewhere meaningless -- an unanchored hint is the exact failure mode this
+// replaced.
+function _showJitHint(key,anchorSel,text){
+  if(_jitSeen(key))return;
+  if(document.getElementById('jitHint'))return; // never stack two
+  // Several of these selectors legitimately match twice (the desktop control
+  // and its mobile-tab-bar twin), and querySelector would just take the
+  // first -- which on desktop is sometimes the hidden mobile one with a 0x0
+  // rect. Pick the first match that is actually laid out instead.
+  var anchor=null;
+  var all=document.querySelectorAll(anchorSel);
+  for(var i=0;i<all.length;i++){
+    var rr=all[i].getBoundingClientRect();
+    if(rr.width>0&&rr.height>0){anchor=all[i];break;}
+  }
+  if(!anchor)return;
+  var el=document.createElement('div');
+  el.className='jit-hint';
+  el.id='jitHint';
+  el.setAttribute('role','status');
+  el.innerHTML='<span></span><button class="jit-hint-close" aria-label="Dismiss hint">&#10005;</button>';
+  el.querySelector('span').textContent=text;
+  el.querySelector('button').onclick=function(){dismissJitHint(key);};
+  document.body.appendChild(el);
+  // Place it twice on purpose.
+  //
+  // Synchronously first, because requestAnimationFrame does NOT fire in a
+  // backgrounded tab -- an rAF-only version left the hint permanently
+  // invisible and, because one hint blocks another, silently swallowed the
+  // next one too. Found by testing with the browser pane hidden.
+  //
+  // Then again on the next frame, because a caller firing before layout has
+  // settled (init, or immediately after a view switch) measures a
+  // not-yet-positioned anchor and would otherwise pin the hint to the
+  // top-left corner, pointing at nothing -- which is precisely the failure
+  // the old unanchored tour was replaced to avoid. Both reproduced in-browser.
+  function _placeJit(){
+    var r=anchor.getBoundingClientRect();
+    if(r.width<=0&&r.height<=0)return;
+    var top=r.bottom+10;
+    var left=Math.max(12,Math.min(r.left,window.innerWidth-el.offsetWidth-12));
+    if(top+el.offsetHeight>window.innerHeight-12)top=Math.max(12,r.top-el.offsetHeight-10);
+    el.style.top=top+'px';
+    el.style.left=left+'px';
+  }
+  _placeJit();
+  requestAnimationFrame(_placeJit);
+  // Auto-retire after a while so it can't linger over later navigation.
+  setTimeout(function(){
+    var cur=document.getElementById('jitHint');
+    if(cur===el)dismissJitHint(key);
+  },12000);
+}
+// ── Starter template (panel survey Stage 4, A-15) ────────────────────
+// One template, not four -- the Skeptic's scope cut, on the grounds that
+// seeded content becomes clutter people won't delete. Offered once, on an
+// empty account, and fully declinable. The "Student semester" and "Shift
+// rotation" variants the survey also floated are deliberately NOT here:
+// they'd want to set day anchors and rotation profiles, which don't exist
+// until Stage 9, and a template that only seeds tasks would misrepresent
+// what they're for.
+var STARTER_BASICS=[
+  {name:'Try Quick Capture \u2014 tap the pencil and type anything',timeEst:'5'},
+  {name:'Add one thing you actually need to do this week',timeEst:'5'},
+  {name:'Open the Tool Kit and try one breathing exercise',timeEst:'10'}
+];
+function _maybeOfferStarter(){
+  if(state.onboardingSeen!==true)return;
+  if(_jitSeen('starter'))return;
+  var empty=(state.tasks||[]).length===0&&(state.notes||[]).length===0
+    &&(state.projects||[]).length===0&&(state.reminders||[]).length===0;
+  if(!empty)return;
+  _markJitSeen('starter');
+  _confirm('Want three starter tasks to try things out? You can delete them in one go afterwards.',
+    function(){
+      var now=Date.now();
+      STARTER_BASICS.forEach(function(t,i){
+        state.tasks.push({
+          id:'t'+(now+i)+Math.random().toString(36).slice(2,6),
+          name:t.name,due:'',priority:'',timeEst:t.timeEst,done:false,
+          projectId:'',projectIds:[],starter:true
+        });
+      });
+      save();
+      if(typeof renderTaskList==='function')renderTaskList();
+      if(typeof renderTodayView==='function')renderTodayView();
+      toast('Added 3 starter tasks \u2014 Settings has a one-tap way to clear them');
+    },
+    {confirmText:'Add them',icon:'ti-list-check',altText:'No thanks'});
+}
+// One-tap removal of anything still flagged starter:true, so accepting the
+// template can never leave a mess the user has to pick apart by hand.
+function clearStarterTasks(){
+  var before=(state.tasks||[]).length;
+  var starters=(state.tasks||[]).filter(function(t){return t.starter;});
+  if(!starters.length){toast('No starter tasks left to clear');return;}
+  starters.forEach(function(t){_tombstone(t.id);});
+  state.tasks=(state.tasks||[]).filter(function(t){return !t.starter;});
+  save();
+  if(typeof renderTaskList==='function')renderTaskList();
+  if(typeof renderTodayView==='function')renderTodayView();
+  toast('Cleared '+(before-state.tasks.length)+' starter task'+((before-state.tasks.length)!==1?'s':''));
+}
+function _jitHintToday(){
+  if(state.onboardingSeen!==true)return;
+  _showJitHint('today','.vms-btn[data-mode="today"]',
+    'Today is your home base \u2014 what\u2019s due, your routine, and today\u2019s reminders, nothing else.');
+}
+// Points AT the Tool Kit entry rather than firing once it's already open --
+// a hint that says "the tools live here" while you're standing in them
+// teaches nothing. Anchor differs by surface (desktop panel vs the mobile
+// home's nav row), so try each and use whichever is actually on screen.
+function _jitHintToolkit(){
+  if(state.onboardingSeen!==true)return;
+  var sels=['[data-panel="time"] .panel-title','.mobile-nav-row[data-jit="time"]','.tab-btn[data-panel="time"]'];
+  for(var i=0;i<sels.length;i++){
+    if(document.querySelector(sels[i])){
+      _showJitHint('toolkit',sels[i],
+        'Breathing, grounding, HALT+ and the focus timer live here \u2014 always one tap away.');
+      return;
+    }
+  }
+}
+// Support Level used to be step 6 of the tour, which asked the question
+// before the user had been shown what a Grounding Session even was. Asked
+// here instead: the first time low energy/mood would actually surface one,
+// so the choice is about something visible on screen.
+function _jitMaybeAskSupportLevel(){
+  if(_jitSeen('supportLevel'))return;
+  if(state.onboardingSeen!==true)return;
+  _markJitSeen('supportLevel');
+  _confirm('Centerpost can offer a grounding exercise on its own when your energy or mood dips \u2014 like right now. Want that, or would you rather nothing popped up uninvited?',
+    function(){setSupportLevel('full');toast('Support level: Full');},
+    {confirmText:'Offer it',icon:'ti-heart-rate',altText:'Don\u2019t interrupt me',onAlt:function(){setSupportLevel('lean');toast('Support level: Lean');}});
 }
 // R3 stage 4 (F11) bug class, found on device in build 60: Quick Capture was
 // the ONE full-screen surface that never got the immersive treatment --
@@ -13343,12 +13604,21 @@ if('serviceWorker' in navigator){
 })();
 // Handle Web Share Target inbound data
 setTimeout(checkShareTarget, 400); // slight delay so panels render first
-// R11: brand-new accounts only (see load()'s first-time branch). Small delay
-// lets the dashboard's initial paint settle before the full-screen blur hits.
-if(state.onboardingSeen===false && typeof openOnboardingTour==='function'){
-  setTimeout(openOnboardingTour,600);
+// R11 auto-opened the 8-card tour here for brand-new accounts. Panel survey
+// Stage 4 (I-3) retired that as the default: the tour is now opt-in via the
+// status bar's Tour button, and first-run teaching happens through anchored
+// just-in-time hints instead (_jitHintToday / _jitHintToolkit / the existing
+// FAB hint). A new account is marked as having "seen" onboarding right away
+// so the hint gates -- all of which require onboardingSeen===true, so they
+// could never compete with the tour -- open up immediately.
+if(state.onboardingSeen===false){
+  state.onboardingSeen=true;
+  save();
 }
 if(typeof _maybeShowFabHint==='function')setTimeout(_maybeShowFabHint,600);
+if(typeof _jitHintToday==='function')setTimeout(_jitHintToday,900);
+// Starter offer comes after the Today hint so they never overlap.
+if(typeof _maybeOfferStarter==='function')setTimeout(_maybeOfferStarter,2200);
 }
 // Auth is handled by Firebase onAuthStateChanged listener in Script 1
 

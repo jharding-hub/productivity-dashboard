@@ -226,22 +226,24 @@ export default function LandingLogin() {
         <div className="landing">
 
           {isNative ? (
+            /* Panel survey Stage 4 (I-2): value before auth. This screen
+               used to be a logo, a tagline, two buttons and a "What is
+               Centerpost?" link you had to tap -- and legacy.js additionally
+               threw the sign-in sheet over it automatically with the keyboard
+               up, so a first launch showed a password field before showing a
+               single thing the app does. The auto-open is gone (see
+               onAuthStateChanged in legacy.js) and the real content now
+               renders expanded by default, so there's something to read on
+               arrival. The standalone tagline was dropped because
+               marketingBody's hero leads with the same headline -- it was
+               printing twice, back to back. */
             <div className="landing-native-brand">
               <div className="landing-logo"><span className="logo-dot"></span> Centerpost</div>
-              <p className="landing-native-tagline">A workspace for brains that don't quit.</p>
               <div className="landing-native-cta-row">
                 <button className="landing-signin-btn" onClick={() => window.showSigninPanel()}>Sign In</button>
                 <button className="landing-signup-btn" onClick={() => window.showSignupPanel()}>Sign Up</button>
               </div>
-              <div className="landing-native-links">
-                <a className="landing-nav-link" onClick={() => document.getElementById('nativeMoreContent').classList.toggle('open')}>What is Centerpost?</a>
-                {/* R13.5: this is almost certainly the exact link that trapped
-                    Joe -- always visible on native, no toggle needed to reach
-                    it, navigates the chrome-less WKWebView in place with no
-                    way back out. kids.html itself is untouched; it's still a
-                    fully working standalone PWA reachable directly by URL. */}
-              </div>
-              <div id="nativeMoreContent" className="landing-native-more">
+              <div id="nativeMoreContent" className="landing-native-more open">
                 {marketingBody}
               </div>
             </div>
@@ -289,17 +291,12 @@ export default function LandingLogin() {
             <div className="login-error" id="loginError"></div>
             <div className="login-success" id="loginSuccess"></div>
             <span className="login-link" onClick={() => window.doForgotPassword()}>Forgot password?</span>
-            <span style={{ margin: '0 6px', color: 'var(--text-faint)' }}>|</span>
-            <span className="login-link" onClick={() => window.showSetupForm()}>First-time setup</span>
+            {/* Panel survey 2026-08-19, Stage 4 (J-2): the "First-time setup"
+                link and its Create Admin Account form used to sit here. The
+                stage's security audit found it was a working invite-gate
+                bypass -- see the retired doSetup() in legacy.js for the full
+                trace and why it was removed rather than gated. */}
             <div className="signin-switch">Don't have an account? <a onClick={() => { window.hideSigninPanel(); window.showSignupPanel(); }}>Sign up free</a></div>
-          </div>
-          <div id="setupForm" style={{ display: 'none' }}>
-            <p style={{ fontSize: 12, color: 'var(--text-dim)', marginBottom: 12 }}>Create the admin account. This only needs to be done once.</p>
-            <input type="email" id="setupEmail" placeholder="Your email..." onKeyDown={e => { if (e.key === 'Enter') document.getElementById('setupPass').focus(); }} />
-            <input type="password" id="setupPass" placeholder="Password (min 6 chars)..." onKeyDown={e => { if (e.key === 'Enter') window.doSetup(); }} />
-            <button className="login-btn" onClick={() => window.doSetup()}>Create Admin Account</button>
-            <div className="login-error" id="setupError"></div>
-            <span className="login-link" onClick={() => window.showLoginForm()}>&larr; Back to sign in</span>
           </div>
         </div>
       </div>
@@ -318,7 +315,19 @@ export default function LandingLogin() {
             <button className="login-btn" onClick={() => window.doSignup()} id="signupBtn">Create Account</button>
             <div className="login-error" id="signupError"></div>
             <div className="login-success" id="signupSuccess"></div>
-            <p style={{ fontSize: 11, color: 'var(--text-faint)', marginTop: 12, lineHeight: 1.5 }}>Access is invite-only right now. Ask the developer (or a current member) for a code. By creating an account you agree to use Centerpost for personal productivity — features may change, and you can export your data anytime.</p>
+            <p style={{ fontSize: 11, color: 'var(--text-faint)', marginTop: 12, lineHeight: 1.5 }}>Access is invite-only right now. By creating an account you agree to use Centerpost for personal productivity — features may change, and you can export your data anytime.</p>
+            {/* Panel survey Stage 4 (A-1): the waitlist lives HERE, at the
+                exact point where someone without a code hits the wall --
+                that's where both newcomer personas bounced. Previously this
+                paragraph just told them to go find the developer. */}
+            <div className="waitlist-block" style={{ marginTop: 14, paddingTop: 14, borderTop: '1px solid var(--border)' }}>
+              <p style={{ fontSize: 12, color: 'var(--text-dim)', margin: '0 0 8px', lineHeight: 1.5 }}>No code? Leave your email and we&rsquo;ll send you one when a spot opens.</p>
+              <div style={{ display: 'flex', gap: 6 }}>
+                <input type="email" id="waitlistEmail" placeholder="you@example.com" autoComplete="email" style={{ flex: 1, marginBottom: 0 }} onKeyDown={e => { if (e.key === 'Enter') window.joinWaitlist(); }} />
+                <button className="btn" id="waitlistBtn" onClick={() => window.joinWaitlist()} style={{ whiteSpace: 'nowrap' }}>Join the waitlist</button>
+              </div>
+              <div id="waitlistMsg" style={{ fontSize: 11, color: 'var(--text-dim)', marginTop: 8, minHeight: 14, lineHeight: 1.5 }}></div>
+            </div>
             <div className="signin-switch">Already have an account? <a onClick={() => { window.hideSignupPanel(); window.showSigninPanel(); }}>Sign in</a></div>
           </div>
         </div>

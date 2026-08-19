@@ -1409,6 +1409,12 @@ body.unlocked .date-editable{border-bottom-color:var(--border);}
 .fab-hint::after{content:'';position:absolute;bottom:-6px;left:20px;width:12px;height:12px;background:inherit;border-right:1px solid var(--border-focus);border-bottom:1px solid var(--border-focus);transform:rotate(45deg);}
 .fab-hint-close{flex-shrink:0;background:none;border:none;color:var(--text-faint);cursor:pointer;font-size:calc(12px * var(--type-scale,1));padding:2px;}
 .fab-hint-close:hover{color:var(--text);}
+/* Just-in-time anchored hints (panel survey Stage 4, I-3). Positioned in JS
+   against the element they describe; visual language deliberately matches
+   .fab-hint so the two read as the same mechanism. */
+.jit-hint{position:fixed;z-index:1500;display:flex;align-items:flex-start;gap:8px;max-width:280px;padding:10px 12px;border-radius:var(--radius-sm);background:var(--surface-raised);border:1px solid var(--border-focus);box-shadow:0 4px 20px rgba(0,0,0,0.5);font-size:calc(12px * var(--type-scale,1));line-height:1.45;color:var(--text);animation:fabHintIn 0.3s ease both;}
+.jit-hint-close{flex-shrink:0;background:none;border:none;color:var(--text-faint);cursor:pointer;font-size:calc(12px * var(--type-scale,1));padding:2px;line-height:1;}
+.jit-hint-close:hover{color:var(--text);}
 @keyframes fabHintIn{from{opacity:0;transform:translateY(6px);}to{opacity:1;transform:translateY(0);}}
 @media(max-width:768px),(orientation:landscape) and (max-height:600px){
   .fab-hint{bottom:calc(52px + env(safe-area-inset-bottom) + 12px + 36px + 14px);}
