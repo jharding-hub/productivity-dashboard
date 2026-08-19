@@ -5508,21 +5508,56 @@ function renderMoodHistory(days){
   _mhActivePeriod=days;
   document.getElementById('mhBtn7').classList.toggle('active',days===7);
   document.getElementById('mhBtn30').classList.toggle('active',days===30);
+  var b90=document.getElementById('mhBtn90');
+  if(b90)b90.classList.toggle('active',days===90);
 
   var ENERGY={high:4,good:3,low:2,crashed:1};
   var MOOD={focused:4,calm:3,scattered:2,anxious:1};
   var ELABELS={4:'High',3:'Good',2:'Low',1:'Crash'};
   var MLABELS={4:'Focused',3:'Calm',2:'Scattered',1:'Anxious'};
 
+  // Panel survey 2026-08-18 (I-13): the 90-day view aggregates into weekly
+  // averages instead of plotting 90 daily points. The Utilizer's note was
+  // that the existing 30-day DAILY line is already an unreadable zigzag --
+  // tripling the point count without aggregating would have made the new
+  // view worse than the one it was meant to improve, not better.
+  var weekly=days>30;
+  // BUG FIX while here: this loop built its day key with
+  // d.toISOString().slice(0,10), which is the exact pattern CLAUDE.md's
+  // date rules forbid -- it yields the UTC day, so for any western-hemisphere
+  // user (Joe included) the chart was reading each point against the WRONG
+  // DAY's entry for the whole evening. _dayKey() is the local-day helper the
+  // rest of the app already uses, and matches how moodLog entries are keyed.
   var today=new Date();
   var labels=[],eData=[],mData=[];
-  for(var i=days-1;i>=0;i--){
-    var d=new Date(today);d.setDate(d.getDate()-i);
-    var ds=d.toISOString().slice(0,10);
-    var entry=(state.moodLog||[]).find(function(e){return e.date===ds;});
-    labels.push(ds);
-    eData.push(entry&&entry.energy?ENERGY[entry.energy]:null);
-    mData.push(entry&&entry.mood?MOOD[entry.mood]:null);
+  if(weekly){
+    var bucketCount=Math.ceil(days/7);
+    for(var b=bucketCount-1;b>=0;b--){
+      var eVals=[],mVals=[],endKey=null,startKey=null;
+      for(var dd=0;dd<7;dd++){
+        var offset=b*7+dd;
+        if(offset>=days)continue;
+        var dw=new Date(today);dw.setDate(dw.getDate()-offset);
+        var kw=_dayKey(dw);
+        if(endKey===null)endKey=kw;
+        startKey=kw;
+        var ew=(state.moodLog||[]).find(function(e){return e.date===kw;});
+        if(ew&&ew.energy&&ENERGY[ew.energy])eVals.push(ENERGY[ew.energy]);
+        if(ew&&ew.mood&&MOOD[ew.mood])mVals.push(MOOD[ew.mood]);
+      }
+      labels.push(startKey);
+      eData.push(eVals.length?eVals.reduce(function(a,c){return a+c;},0)/eVals.length:null);
+      mData.push(mVals.length?mVals.reduce(function(a,c){return a+c;},0)/mVals.length:null);
+    }
+  }else{
+    for(var i=days-1;i>=0;i--){
+      var d=new Date(today);d.setDate(d.getDate()-i);
+      var ds=_dayKey(d);
+      var entry=(state.moodLog||[]).find(function(e){return e.date===ds;});
+      labels.push(ds);
+      eData.push(entry&&entry.energy?ENERGY[entry.energy]:null);
+      mData.push(entry&&entry.mood?MOOD[entry.mood]:null);
+    }
   }
 
   var hasAny=eData.some(function(v){return v!==null;})||mData.some(function(v){return v!==null;});
@@ -5532,7 +5567,10 @@ function renderMoodHistory(days){
 
   var W=580,H=200,padL=52,padR=12,padT=16,padB=38;
   var cW=W-padL-padR,cH=H-padT-padB;
-  var n=days;
+  // n follows the SERIES length, not `days` -- in weekly mode there are
+  // ~13 points for 90 days, and using `days` here would squash every point
+  // into the left eighth of the chart.
+  var n=labels.length;
   var stepX=n>1?cW/(n-1):cW;
 
   function xp(i){return padL+i*stepX;}
@@ -5555,7 +5593,8 @@ function renderMoodHistory(days){
       svg+='<line x1="'+ePts[j-1].x+'" y1="'+ePts[j-1].y+'" x2="'+ePts[j].x+'" y2="'+ePts[j].y+'" stroke="#d4a853" stroke-width="2.5" stroke-linecap="round" opacity="0.85"/>';
   }
   ePts.forEach(function(p){
-    svg+='<circle cx="'+p.x+'" cy="'+p.y+'" r="4.5" fill="#d4a853" stroke="var(--surface-raised)" stroke-width="2"><title>'+labels[p.i]+': '+ELABELS[p.v]+'</title></circle>';
+    var etip=weekly?('Week of '+labels[p.i]+': avg '+p.v.toFixed(1)+'/4'):(labels[p.i]+': '+ELABELS[p.v]);
+    svg+='<circle cx="'+p.x+'" cy="'+p.y+'" r="4.5" fill="#d4a853" stroke="var(--surface-raised)" stroke-width="2"><title>'+etip+'</title></circle>';
   });
 
   // Build path segments (mood)
@@ -5566,15 +5605,19 @@ function renderMoodHistory(days){
       svg+='<line x1="'+mPts[k-1].x+'" y1="'+mPts[k-1].y+'" x2="'+mPts[k].x+'" y2="'+mPts[k].y+'" stroke="#5f8fc7" stroke-width="2.5" stroke-linecap="round" opacity="0.85"/>';
   }
   mPts.forEach(function(p){
-    svg+='<circle cx="'+p.x+'" cy="'+p.y+'" r="4.5" fill="#5f8fc7" stroke="var(--surface-raised)" stroke-width="2"><title>'+labels[p.i]+': '+MLABELS[p.v]+'</title></circle>';
+    var mtip=weekly?('Week of '+labels[p.i]+': avg '+p.v.toFixed(1)+'/4'):(labels[p.i]+': '+MLABELS[p.v]);
+    svg+='<circle cx="'+p.x+'" cy="'+p.y+'" r="4.5" fill="#5f8fc7" stroke="var(--surface-raised)" stroke-width="2"><title>'+mtip+'</title></circle>';
   });
 
   // X-axis labels
-  var step=days<=7?1:days<=14?2:Math.ceil(days/10);
+  var step=weekly?1:(days<=7?1:days<=14?2:Math.ceil(days/10));
   labels.forEach(function(ds,i){
     if(i%step===0||i===n-1){
+      // Noon UTC is deliberate here: it parses the YYYY-MM-DD key without
+      // the timezone slip a bare Date('YYYY-MM-DD') would introduce, and
+      // it's only ever used to derive a month/day LABEL, never a stored day.
       var dObj=new Date(ds+'T12:00:00Z');
-      var lbl=i===n-1?'Today':(dObj.getUTCMonth()+1)+'/'+(dObj.getUTCDate());
+      var lbl=(i===n-1&&!weekly)?'Today':(dObj.getUTCMonth()+1)+'/'+(dObj.getUTCDate());
       svg+='<text x="'+xp(i)+'" y="'+(H-10)+'" text-anchor="middle" font-size="9" fill="rgba(128,128,128,0.7)">'+lbl+'</text>';
       svg+='<line x1="'+xp(i)+'" y1="'+(H-padB+3)+'" x2="'+xp(i)+'" y2="'+(H-padB+8)+'" stroke="rgba(128,128,128,0.3)" stroke-width="1"/>';
     }

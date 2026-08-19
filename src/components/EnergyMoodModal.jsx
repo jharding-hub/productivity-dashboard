@@ -72,6 +72,9 @@ export default function EnergyMoodModal() {
             <div className="mh-period-row">
               <button className="mh-period-btn active" id="mhBtn7" onClick={() => window.renderMoodHistory(7)}>7 Days</button>
               <button className="mh-period-btn" id="mhBtn30" onClick={() => window.renderMoodHistory(30)}>30 Days</button>
+              {/* Panel survey 2026-08-18 (I-13): 90 days, plotted as weekly
+                  averages rather than 90 daily points -- see renderMoodHistory. */}
+              <button className="mh-period-btn" id="mhBtn90" onClick={() => window.renderMoodHistory(90)}>90 Days</button>
             </div>
             <div className="mh-chart-wrap" id="mhChartWrap"></div>
             <div className="mh-legend">
