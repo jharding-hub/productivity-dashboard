@@ -7809,8 +7809,42 @@ var HALT_ITEMS=[
    action:'If it\'s 2–4pm, this is likely your natural cortisol trough. A 10-minute walk outside resets the cortisol curve best. If persistent across the day, check Energy & Mood and consider the Wellness Toolkit next.'},
   {key:'T2',letter:'+',icon:'&#127777;',label:'Temperature',
    question:'Are you too hot or cold? Is the room temperature uncomfortable?',
-   action:'Thermal discomfort is a continuous background stressor that depletes attentional resources without you realizing it. Optimal cognitive performance is 70–77°F. Add or remove a layer, adjust a thermostat, or move. This sounds trivial but is one of the most impactful and fastest environment fixes.'}
+   action:'Thermal discomfort is a continuous background stressor that depletes attentional resources without you realizing it. Optimal cognitive performance is 70–77°F. Add or remove a layer, adjust a thermostat, or move. This sounds trivial but is one of the most impactful and fastest environment fixes.'},
+  // Panel survey 2026-08-18 (J-4): the Clinician and Skeptic personas both
+  // flagged that this checklist drops "Lonely" -- the load-bearing letter in
+  // the classic HALT acronym -- for "Late/Behind", and that clients who
+  // learned HALT in treatment may read its absence as permission not to
+  // check it. Your R13 wording call on Late/Behind stands; this is additive,
+  // not a reversal. Hideable per-item, same mechanism as the others --
+  // see hiddenHaltKeys below.
+  {key:'L3',letter:'+',icon:'&#128100;',label:'Lonely / Disconnected',
+   question:'Have you actually talked to another person today, even briefly?',
+   action:'Isolation reads to your nervous system as a threat state and measurably drains focus, independent of mood. It doesn\u2019t have to be a deep conversation -- a text, a call, or five minutes with someone in the room counts. If nobody\u2019s available right now, write in Brain Dump who you\u2019ll reach out to today.'}
 ];
+// Panel survey 2026-08-18 (J-4/J-5): per-item hide, so a user can tailor the
+// checklist without anyone deciding for them which items matter. Persisted
+// in settings (synced like other prefs), read here rather than filtering
+// HALT_ITEMS itself so the full canonical list stays intact for anyone who
+// re-enables an item later.
+function _visibleHaltItems(){
+  var hidden=(state.settings&&state.settings.hiddenHaltKeys)||[];
+  return HALT_ITEMS.filter(function(item){return hidden.indexOf(item.key)<0;});
+}
+function _toggleHaltItemVisibility(key,visible){
+  if(!state.settings)state.settings={};
+  var hidden=state.settings.hiddenHaltKeys||[];
+  if(visible)hidden=hidden.filter(function(k){return k!==key;});
+  else if(hidden.indexOf(key)<0)hidden=hidden.concat([key]);
+  state.settings.hiddenHaltKeys=hidden;
+  save();
+  _renderHalt();
+}
+function _showAllHaltItems(){
+  if(!state.settings)state.settings={};
+  state.settings.hiddenHaltKeys=[];
+  save();
+  _renderHalt();
+}
 
 function openHaltModal(){
   _haltChecked={};
@@ -7847,7 +7881,7 @@ function _renderHalt(){
   var html='<div class="halt-intro"><strong>Physical and environmental factors</strong> tank focus before you notice why. Expand each item, address it, check it off.</div>';
   var trend=_haltTrendLine();
   if(trend)html+='<div class="halt-trend">'+esc(trend)+'</div>';
-  HALT_ITEMS.forEach(function(item){
+  _visibleHaltItems().forEach(function(item){
     var isChecked=!!_haltChecked[item.key];
     // R9/F16: was a plain onclick div -- no way for a keyboard/VoiceOver user
     // to tell this is interactive, expandable, or currently open. role/
@@ -7863,11 +7897,18 @@ function _renderHalt(){
       +'<div class="halt-item-body" id="halt-body-'+item.key+'">'
       +'<div class="halt-item-question">'+item.question+'</div>'
       +'<div class="halt-item-action">'+item.action+'</div>'
-      +'<div style="margin-top:10px;">'
+      +'<div style="margin-top:10px;display:flex;gap:10px;align-items:center;">'
       +'<button class="btn btn-sm'+(isChecked?' btn-accent':'')+'" onclick="haltCheck(event,\''+item.key+'\')">'
       +(isChecked?'&#10003; Addressed':'Mark as Addressed')+'</button>'
+      // Panel survey 2026-08-18 (J-4): per-item hide, reachable right where
+      // the item lives rather than a separate Settings section.
+      +'<button class="btn-link-sm" onclick="event.stopPropagation();_toggleHaltItemVisibility(\''+item.key+'\',false)" style="background:none;border:none;color:var(--text-faint);font-size:11px;cursor:pointer;text-decoration:underline;padding:0;">Hide this item</button>'
       +'</div></div></div>';
   });
+  var _hiddenCount=((state.settings&&state.settings.hiddenHaltKeys)||[]).length;
+  if(_hiddenCount>0){
+    html+='<button class="btn-link-sm" onclick="_showAllHaltItems()" style="background:none;border:none;color:var(--text-faint);font-size:11px;cursor:pointer;text-decoration:underline;padding:0;margin-bottom:10px;display:block;">'+_hiddenCount+' item'+(_hiddenCount!==1?'s':'')+' hidden \u2014 show all</button>';
+  }
   html+='<div class="halt-summary" id="haltSummary"></div>';
   html+='<button class="halt-reset-btn" onclick="haltReset()">&#8634; Reset All</button>';
   body.innerHTML=html;
@@ -7912,6 +7953,43 @@ var URGE_TYPES=[
   {key:'skip',icon:'&#9193;',label:'Skip a task'},
   {key:'other',icon:'&#8230;',label:'Other'}
 ];
+// Panel survey 2026-08-18 (J-5): the Clinician flagged that a delay timer on
+// eating is contraindicated for restrictive-eating patterns, and that
+// hideable categories solve it without anyone policing what a user logs.
+// 'other' is deliberately never hideable -- it's the one category flexible
+// enough to still capture anything if every checkbox category is hidden.
+function _visibleUrgeTypes(){
+  var hidden=(state.settings&&state.settings.hiddenUrgeKeys)||[];
+  return URGE_TYPES.filter(function(t){return t.key==='other'||hidden.indexOf(t.key)<0;});
+}
+function _toggleUrgeTypeVisibility(key,visible){
+  if(key==='other')return;
+  if(!state.settings)state.settings={};
+  var hidden=state.settings.hiddenUrgeKeys||[];
+  if(visible)hidden=hidden.filter(function(k){return k!==key;});
+  else if(hidden.indexOf(key)<0)hidden=hidden.concat([key]);
+  state.settings.hiddenUrgeKeys=hidden;
+  save();
+  _renderUrge();
+}
+function _showAllUrgeTypes(){
+  if(!state.settings)state.settings={};
+  state.settings.hiddenUrgeKeys=[];
+  save();
+  _renderUrge();
+}
+// Panel survey 2026-08-18 (A-14, Skeptic): personal evidence is the actual
+// active ingredient of urge delay -- "your urges passed 14 of 19 times"
+// makes the pause self-reinforcing without adding any gamification. Needs
+// a real sample before it means anything; mirrors the >=3 threshold the
+// existing HALT+ trend line uses, scaled up slightly since urge outcomes
+// are logged less often than HALT+ check-ins.
+function _urgeBaseRateLine(){
+  var all=(state.checkins||[]).filter(function(c){return c.type==='urge'&&c.outcome;});
+  if(all.length<5)return '';
+  var passed=all.filter(function(c){return c.outcome==='passed';}).length;
+  return 'Your urges passed '+passed+' of '+all.length+' times.';
+}
 var URGE_DELAYS=[5,10,20];
 var _urgeStep='idle'; // idle -> running -> outcome
 var _urgeType=null,_urgeNote='';
@@ -8068,12 +8146,26 @@ function _renderUrge(){
       +'</div>';
   }else{
     html+='<div class="urge-intro">Notice an urge to act on impulse? Log it, then take a deliberate pause before acting. Most urges fade within minutes.</div>';
+    var _baseRate=_urgeBaseRateLine();
+    if(_baseRate)html+='<div class="urge-base-rate" style="font-size:12px;color:var(--text-dim);margin-bottom:10px;font-weight:500;">'+esc(_baseRate)+'</div>';
+    // Panel survey 2026-08-18 (J-5): the Skeptic flagged that free-text
+    // "Other" silently accepts safety-relevant urges, where a delay timer
+    // scored equally to acting on it is not an adequate response. Copy-only
+    // scoping -- deliberately NOT keyword-scanning what the user types.
+    html+='<div class="urge-scope-note" style="font-size:11px;color:var(--text-faint);margin-bottom:8px;">For everyday impulses. For urges involving your safety, tap Crisis resources below instead.</div>';
     html+='<div class="urge-type-grid">';
-    URGE_TYPES.forEach(function(t){
-      html+='<button class="urge-type-btn'+(_urgeType===t.key?' selected':'')+'" aria-pressed="'+(_urgeType===t.key?'true':'false')+'" onclick="urgeSelectType(\''+t.key+'\')">'
-        +'<span class="urge-type-icon" aria-hidden="true">'+t.icon+'</span><span>'+t.label+'</span></button>';
+    _visibleUrgeTypes().forEach(function(t){
+      html+='<div class="urge-type-wrap" style="position:relative;">'
+        +'<button class="urge-type-btn'+(_urgeType===t.key?' selected':'')+'" aria-pressed="'+(_urgeType===t.key?'true':'false')+'" onclick="urgeSelectType(\''+t.key+'\')">'
+        +'<span class="urge-type-icon" aria-hidden="true">'+t.icon+'</span><span>'+t.label+'</span></button>'
+        +(t.key!=='other'?'<button class="urge-type-hide" title="Hide this category" aria-label="Hide '+t.label+'" onclick="event.stopPropagation();_toggleUrgeTypeVisibility(\''+t.key+'\',false)" style="position:absolute;top:2px;right:2px;background:none;border:none;color:var(--text-faint);font-size:10px;cursor:pointer;padding:2px 4px;line-height:1;">&#10005;</button>':'')
+        +'</div>';
     });
     html+='</div>';
+    var _hiddenUrgeCount=((state.settings&&state.settings.hiddenUrgeKeys)||[]).length;
+    if(_hiddenUrgeCount>0){
+      html+='<button class="btn-link-sm" onclick="_showAllUrgeTypes()" style="background:none;border:none;color:var(--text-faint);font-size:11px;cursor:pointer;text-decoration:underline;padding:0;margin-bottom:8px;display:block;">'+_hiddenUrgeCount+' categor'+(_hiddenUrgeCount!==1?'ies':'y')+' hidden \u2014 show all</button>';
+    }
     if(_urgeType==='other'){
       html+='<input type="text" id="urgeNoteInput" class="urge-note-input" aria-label="What’s the urge (optional)" placeholder="What’s the urge? (optional)" value="'+esc(_urgeNote)+'">';
     }
@@ -8083,6 +8175,9 @@ function _renderUrge(){
       html+='<button class="urge-delay-btn"'+(_urgeType?'':' disabled')+' onclick="urgeStartDelay('+mins+')">'+mins+' min</button>';
     });
     html+='</div>';
+    // Panel survey 2026-08-18 (A-4): passive footer link, idle screen only
+    // (not shown mid-delay or on the outcome screen -- keep those minimal).
+    html+='<button class="modal-footer-link" onclick="openCrisisResources()" style="background:none;border:none;color:var(--text-faint);font-size:11px;margin-top:14px;cursor:pointer;text-decoration:underline;padding:0;">Crisis resources</button>';
   }
   body.innerHTML=html;
 }
@@ -8117,6 +8212,19 @@ function openWellnessModal(){
 
 function closeWellnessModal(){
   document.getElementById('wellnessModal').classList.remove('open');
+  _unblurDashboard();
+}
+
+// Panel survey 2026-08-18 (A-4): persistent, ungated crisis-resources entry
+// -- see the markup comment in app-body.html. Deliberately does not track
+// or gate on anything (no threshold, no dismiss-suppression window, unlike
+// the breathwork 988 heuristic); it should always be one tap away.
+function openCrisisResources(){
+  document.getElementById('crisisResourcesModal').classList.add('open');
+  _blurDashboard();
+}
+function closeCrisisResources(){
+  document.getElementById('crisisResourcesModal').classList.remove('open');
   _unblurDashboard();
 }
 

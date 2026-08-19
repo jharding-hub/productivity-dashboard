@@ -55,9 +55,16 @@ export default function JournalOverlay() {
           <p className="journal-pin-sub" id="setPinSub">Choose a 4+ digit PIN to protect your journal.</p>
           {/* R8 phase 1: reframed from a red "no reset" alarm block to one
               calm line, per the design review's ask -- the fact still needs
-              to be said, it doesn't need to look like a warning label. */}
+              to be said, it doesn't need to look like a warning label.
+              Panel survey 2026-08-18 (I-8): three personas independently
+              named a forgotten PIN as the likeliest data-loss event in the
+              app; kept the calm tone (that was a deliberate, reasoned past
+              call) but gave "can't be reset" enough visual weight that it
+              isn't easy to read past. Biometric enrollment is already
+              offered automatically right after this, on native --
+              _journalBioAfterPinUnlock() below. */}
           <p className="journal-pin-warn" style={{ fontSize: 11, color: 'var(--text-dim)', maxWidth: 320, margin: '0 auto 6px', lineHeight: 1.5 }}>
-            This PIN can’t be reset if you forget it. Export keeps a backup.
+            This PIN <strong style={{ color: 'var(--text)' }}>can’t be reset</strong> if you forget it. Export keeps a backup.
           </p>
           <div className="journal-pin-dots" id="setPinDots"></div>
           <span className="sr-only" id="setPinDotsStatus" aria-live="polite"></span>

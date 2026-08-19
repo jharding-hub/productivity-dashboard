@@ -19,6 +19,8 @@ export default function GroundingToolkit() {
         <option value="">Choose a technique...</option>
       </select>
       <div id="techniqueDetail"></div>
+      {/* Panel survey 2026-08-18 (A-4): passive footer link. */}
+      <button className="modal-footer-link" onClick={() => window.openCrisisResources()} style={{ background: 'none', border: 'none', color: 'var(--text-faint)', fontSize: 11, margin: '10px 0 0', cursor: 'pointer', textDecoration: 'underline', padding: 0, display: 'block' }}>Crisis resources</button>
       <div className="guided-display" id="guidedDisplay">
         <div className="guided-phase" id="guidedPhase">&mdash;</div>
         <div className="guided-count" id="guidedCount">&mdash;</div>

@@ -112,6 +112,9 @@ export default function BreathworkOverlay() {
             </select>
             <div className="breathwork-desc" id="breathDesc" style={{ fontSize: 12, color: 'var(--text-dim)', marginBottom: 16, lineHeight: 1.6 }}></div>
             <button className="breathwork-start" id="breathStartBtn" onClick={() => window.startBreathworkFromModal()} style={{ display: 'none' }}>&#9654; Begin Session</button>
+            {/* Panel survey 2026-08-18 (A-4): passive footer link, not a
+                popup -- does not touch BREATH_RESOURCE_THRESHOLD. */}
+            <button className="modal-footer-link" onClick={() => window.openCrisisResources()} style={{ background: 'none', border: 'none', color: 'var(--text-faint)', fontSize: 11, marginTop: 14, cursor: 'pointer', textDecoration: 'underline', padding: 0 }}>Crisis resources</button>
           </div>
         </div>
       </div>

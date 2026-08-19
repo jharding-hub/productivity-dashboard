@@ -57,6 +57,15 @@ export default function ToolKitPanel() {
           <i className="ti ti-headphones" aria-hidden="true"></i>
           <span>Streaming</span>
         </button>
+        {/* Panel survey 2026-08-18 (A-4): persistent, always-reachable crisis
+            entry -- ordered first among regulation tools (order:0 in CSS)
+            for every user, owner included; this one tile is not part of
+            the J-1 owner/non-owner reorder split. */}
+        <button className="toolkit-btn toolkit-crisis" onClick={() => window.openCrisisResources()}>
+          <i className="ti ti-lifebuoy" aria-hidden="true"></i>
+          <span>Crisis resources</span>
+          <span className="toolkit-btn-sub">988 and other help, always here</span>
+        </button>
         <button className="toolkit-btn toolkit-breath" onClick={() => window.openBreathworkModal()}>
           <i className="ti ti-wind" aria-hidden="true"></i>
           <span>Breathwork</span>

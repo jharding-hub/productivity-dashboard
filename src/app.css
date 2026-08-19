@@ -3164,6 +3164,7 @@ body[data-theme="storm-dark"] .tl-hour-label{
    toggled once in showApp() -- see the comment there. Streaming itself
    stays display:none regardless (separate, existing gate); order here only
    matters for whichever tiles ARE visible. */
+.toolkit-crisis{order:0;}
 .toolkit-music-wrap{order:8;}
 .toolkit-streaming{order:9;}
 .toolkit-breath{order:1;}

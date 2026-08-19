@@ -444,6 +444,36 @@
 <div id="urge-modal-root"></div>
 
 <!-- WELLNESS WHEEL MODAL -->
+<!-- CRISIS RESOURCES -- panel survey 2026-08-18 (A-4). Persistent, ungated
+     Tool Kit entry: this content already existed in docs/legal/medical-
+     crisis-disclaimer.md and was praised by the Clinician/Skeptic personas,
+     but lived only at Settings -> About & Legal, where nobody in a hard
+     moment would find it. Does NOT touch the 988 breathwork-frequency
+     heuristic (BREATH_RESOURCE_THRESHOLD) -- that stays exactly as shipped;
+     this is a second, passive, always-available path, not a replacement. -->
+<div class="modal-blur-overlay" id="crisisResourcesModal" role="dialog" aria-modal="true" aria-labelledby="crisisResourcesTitle">
+<div class="modal-blur-backdrop" onclick="closeCrisisResources()"></div>
+<div class="modal-blur-panel" style="width:min(480px,95vw);">
+  <div class="modal-blur-header">
+    <div class="modal-blur-title" id="crisisResourcesTitle">Crisis resources</div>
+    <button class="modal-blur-close" onclick="closeCrisisResources()" aria-label="Close">&#10005;</button>
+  </div>
+  <div class="modal-blur-body" style="padding:16px 20px;font-size:13px;line-height:1.6;">
+    <p style="margin:0 0 12px;color:var(--text-dim);">Centerpost cannot help you in an emergency. It is not monitored, and no one is reading what you write here.</p>
+    <div style="background:var(--surface-raised);border:1px solid var(--border);border-radius:var(--radius-sm);padding:12px 14px;margin-bottom:14px;">
+      <p style="margin:0 0 6px;"><strong>United States</strong> &mdash; Call or text <strong>988</strong> (Suicide &amp; Crisis Lifeline), free and confidential, 24/7. Call <strong>911</strong> for a medical emergency. Text <strong>HOME</strong> to <strong>741741</strong> (Crisis Text Line).</p>
+      <p style="margin:0 0 6px;"><strong>UK &amp; Ireland</strong> &mdash; Call <strong>116 123</strong> (Samaritans), free, 24/7.</p>
+      <p style="margin:0 0 6px;"><strong>Canada</strong> &mdash; Call or text <strong>988</strong>.</p>
+      <p style="margin:0 0 6px;"><strong>Australia</strong> &mdash; Call <strong>13 11 14</strong> (Lifeline).</p>
+      <p style="margin:0;"><strong>Anywhere else</strong> &mdash; <a href="https://findahelpline.com" target="_blank" rel="noopener noreferrer" style="color:var(--accent);">findahelpline.com</a> lists verified helplines in 130+ countries, or go to your nearest emergency department.</p>
+    </div>
+    <p style="margin:0 0 6px;color:var(--text-dim);">Please close the app and reach out to a real person &mdash; that matters far more than anything in here.</p>
+    <p style="margin:0 0 14px;color:var(--text-faint);font-size:12px;">Centerpost is a general wellness and productivity tool. The breathing, grounding, HALT+, and Urge Log tools here are self-directed skill practice, not therapy or treatment, and there is no monitoring, assessment, or crisis response behind them.</p>
+    <button class="btn btn-sm" onclick="openLegalDoc('/disclaimer')" style="width:100%;">Read the full Medical &amp; Crisis Disclaimer</button>
+  </div>
+</div>
+</div>
+
 <div class="modal-blur-overlay" id="wellnessModal">
 <div class="modal-blur-backdrop" onclick="closeWellnessModal()"></div>
 <div class="modal-blur-panel" style="width:min(620px,95vw);">
