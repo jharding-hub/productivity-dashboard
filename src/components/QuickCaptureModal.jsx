@@ -35,10 +35,18 @@ export default function QuickCaptureModal() {
           </div>
           <div className="qc-hint">
             {/* "Esc discards" is desktop-only copy -- touch devices have no Esc key,
-                and this modal is reached from a tap, not a keyboard shortcut, on phone. */}
-            {window._isMobile && window._isMobile()
-              ? <>Tap outside to save &middot; try &quot;tomorrow&quot; or &quot;every week&quot; &mdash; task-like text becomes a Task, otherwise it's a Brain Dump thought</>
-              : <>Leaving the box saves it &middot; Esc discards &middot; try &quot;tomorrow&quot; or &quot;every week&quot; &mdash; task-like text becomes a Task, otherwise it's a Brain Dump thought</>}
+                and this modal is reached from a tap, not a keyboard shortcut, on phone.
+                Panel survey 2026-08-18: the previous window._isMobile() JS check ran
+                once at this component's initial mount, which can race legacy.js's
+                script-tag load (App.jsx injects it dynamically) -- if legacy.js
+                hadn't finished executing yet, window._isMobile was undefined, the
+                guard fell through to the desktop branch, and it never re-evaluated
+                because this modal stays permanently mounted. Reproduced the exact
+                symptom on a fresh iOS launch. Switched to a CSS-driven split (same
+                768px + landscape-short-height breakpoint _isMobile() uses) so it
+                can't depend on script load order. */}
+            <span className="qc-hint-mobile">Tap outside to save &middot; try &quot;tomorrow&quot; or &quot;every week&quot; &mdash; task-like text becomes a Task, otherwise it's a Brain Dump thought</span>
+            <span className="qc-hint-desktop">Leaving the box saves it &middot; Esc discards &middot; try &quot;tomorrow&quot; or &quot;every week&quot; &mdash; task-like text becomes a Task, otherwise it's a Brain Dump thought</span>
           </div>
         </div>
       </div>

@@ -14,9 +14,21 @@ export default function LandingLogin() {
               <h1 className="landing-h1">A workspace for brains that <span className="accent">don't quit.</span></h1>
               <p className="landing-sub">One dashboard designed to sharpen focus and strengthen executive function — built for anyone who wants a system that bends with the day. Made by a 30-year firefighter / paramedic who lives in it every day.</p>
               <div className="landing-cta-row">
-                <button className="landing-cta-primary" onClick={() => window.showSignupPanel()}>Get Started — Free <span aria-hidden="true">&rarr;</span></button>
+                {/* Panel survey 2026-08-18 (A-1 copy half): "Get Started —
+                    Free" promised open, easy entry and the very next screen
+                    is an invite-code wall -- both new personas in that
+                    survey bounced here inside two minutes. "Free" is still
+                    true and worth keeping (see the no-price-claim comment
+                    below, which is about a FUTURE paywall, not this); the
+                    dishonest part was "Get Started" implying frictionless
+                    access. Says so up front instead of only after a click.
+                    Any real opening of signup (waitlist or open) is
+                    deliberately separate, larger work -- this is the
+                    honesty fix only. */}
+                <button className="landing-cta-primary" onClick={() => window.showSignupPanel()}>Create Account — Free <span aria-hidden="true">&rarr;</span></button>
                 <button className="landing-cta-tertiary" onClick={() => window.showSigninPanel()}>I have an account</button>
               </div>
+              <div className="landing-invite-note" style={{ fontSize: 12, color: 'var(--text-faint,#888)', marginTop: 6 }}>Invite code required right now — ask a current member.</div>
               {/* Pre-App-Store pass: no "free during beta" promise here — tier
                   design is still open, and a free claim that later grows a
                   paywall is the exact trust break the persona panel flagged.

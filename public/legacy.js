@@ -1857,7 +1857,7 @@ function applyPanelOrder(){const dash=document.getElementById('dashboard');const
 function initDragDrop(){document.querySelectorAll('.panel').forEach(panel=>{panel.addEventListener('dragstart',e=>{if(state.panelsLocked){e.preventDefault();return;}dragSrcPanel=panel;panel.classList.add('dragging');e.dataTransfer.effectAllowed='move';e.dataTransfer.setData('text/plain',panel.dataset.panel);});panel.addEventListener('dragend',()=>{panel.classList.remove('dragging');document.querySelectorAll('.panel').forEach(p=>p.classList.remove('drag-over'));dragSrcPanel=null;});panel.addEventListener('dragover',e=>{if(state.panelsLocked)return;e.preventDefault();e.dataTransfer.dropEffect='move';if(panel!==dragSrcPanel)panel.classList.add('drag-over');});panel.addEventListener('dragleave',()=>{panel.classList.remove('drag-over');});panel.addEventListener('drop',e=>{e.preventDefault();panel.classList.remove('drag-over');if(!dragSrcPanel||dragSrcPanel===panel)return;const dash=document.getElementById('dashboard');const all=[...dash.querySelectorAll('.panel')];const fi=all.indexOf(dragSrcPanel);const ti=all.indexOf(panel);if(fi<ti)panel.after(dragSrcPanel);else panel.before(dragSrcPanel);state.panelOrder=[...dash.querySelectorAll('.panel')].map(p=>p.dataset.panel);save();toast('Panel moved');});});}
 
 // CLOCK
-function updateClock(){const now=new Date();const t=now.toLocaleTimeString('en-US',{hour12:true});const clk=document.getElementById('clock');if(clk)clk.textContent=t;const cd=document.getElementById('clockDate');if(cd)cd.textContent=now.toLocaleDateString('en-US',{weekday:'long',year:'numeric',month:'long',day:'numeric'});const mhc=document.getElementById('mobileHomeClock');if(mhc)mhc.textContent=t;var timeStr=now.toLocaleTimeString('en-US',{hour:'numeric',minute:'2-digit',hour12:true});if(!timerRunning&&timerLeft===timerTotal){['headerTimerLabel','pdHeaderTimerLabel'].forEach(function(id){var el=document.getElementById(id);if(el)el.textContent=timeStr;});}}
+function updateClock(){const now=new Date();const t=now.toLocaleTimeString('en-US',{hour12:true});const clk=document.getElementById('clock');if(clk)clk.textContent=t;const cd=document.getElementById('clockDate');if(cd)cd.textContent=now.toLocaleDateString('en-US',{weekday:'long',year:'numeric',month:'long',day:'numeric'});const mhc=document.getElementById('mobileHomeClock');if(mhc)mhc.textContent=t;var timeStr=now.toLocaleTimeString('en-US',{hour:'numeric',minute:'2-digit',hour12:true});if(!timerRunning&&timerLeft===timerTotal){['headerTimerLabel','pdHeaderTimerLabel'].forEach(function(id){var el=document.getElementById(id);if(el)el.innerHTML='<span class="header-timer-idle-icon" aria-hidden="true">&#9654;</span> '+timeStr;});}}
 
 // TIMER (with soft alarm)
 // =======================================
@@ -4731,7 +4731,7 @@ function _safePriority(p){return p==='low'||p==='high'?p:'med';}
 function _safeDateStr(d){return /^\d{4}-\d{2}-\d{2}$/.test(d||'')?d:'';}
 function _safeTimeStr(t){return /^\d{1,2}:\d{2}$/.test(t||'')?t:'';}
 function slugify(s){return s.toLowerCase().replace(/[^a-z0-9]+/g,'-').replace(/(^-|-$)/g,'');}
-function toast(msg){const el=document.getElementById('toast');el.textContent=msg;el.classList.add('show');setTimeout(()=>el.classList.remove('show'),2500);_announce(msg);}
+function toast(msg,durationMs){const el=document.getElementById('toast');el.textContent=msg;el.classList.add('show');setTimeout(()=>el.classList.remove('show'),durationMs||2500);_announce(msg);}
 // Speak a toast through the dedicated sr-only live region rather than the
 // toast div itself. Strips leading decorative glyphs (checkmark, lightning,
 // emoji) -- VoiceOver spells those out, which is what turned a capture
@@ -5468,28 +5468,46 @@ async function adminDeleteUser(uid,email){
 // =======================================
 // BREATHWORK ENGINE
 // =======================================
+// Panel survey 2026-08-18 (I-11): the picker's intro line claimed "each is
+// evidence-based" as a blanket statement, which flattens real differences in
+// evidence weight across seven techniques. Per-technique `evidence` framing
+// (what was actually studied, briefly) replaces that, shown next to `source`.
+// `caution` is set only on techniques with a breath-hold phase (checked
+// against each technique's own `phases` array below, not asserted by hand):
+// Box, 4-7-8, and Alternate Nostril. Verified against Balban et al. 2023
+// directly -- it is a real head-to-head RCT of Cyclic Sighing (this file's
+// "sigh"), Box Breathing, and Cyclic Hyperventilation vs. mindfulness, so
+// citing it for Box Breathing is legitimate; that same trial found Cyclic
+// Sighing had the largest effect on mood and arousal, which the `evidence`
+// line below says plainly rather than implying the two are equally strong.
+var BREATH_HOLD_CAUTION='Stop if you feel lightheaded. If you\u2019re pregnant or have a heart or lung condition, try a technique without a hold instead.';
 var breathTechniques={
   box:{
     name:'Box Breathing (4-4-4-4)',
     source:'Balban et al., 2023 \u2014 Navy SEAL protocol',
+    evidence:'One of three techniques tested head-to-head against mindfulness in a 2023 Stanford RCT; in that trial it helped, but Physiological Sigh (below) had the larger effect on mood and arousal.',
     desc:'Equal inhale, hold, exhale, hold. Activates parasympathetic nervous system and reduces cortisol.',
     phases:['Inhale','Hold','Exhale','Hold'],
     durations:[4,4,4,4],
     cycles:8,
+    caution:BREATH_HOLD_CAUTION,
     cues:['Breathe in slowly through your nose','Keep your lungs full, stay relaxed','Release slowly through your mouth','Stay empty, stay calm']
   },
   '478':{
     name:'4-7-8 Breathing',
     source:'Weil, 2015; pranayama tradition \u2014 vagus nerve activation',
+    evidence:'Widely taught for anxiety; the evidence base is smaller and less controlled than the Stanford trial above.',
     desc:'Extended exhale (2x inhale) shifts autonomic balance toward parasympathetic dominance. Powerful for anxiety.',
     phases:['Inhale','Hold','Exhale'],
     durations:[4,7,8],
     cycles:8,
+    caution:BREATH_HOLD_CAUTION,
     cues:['Inhale quietly through your nose','Gently hold, body relaxed','Exhale slowly and completely through your mouth']
   },
   sigh:{
     name:'Physiological Sigh',
     source:'Balban et al., 2023, Cell Reports Medicine \u2014 Stanford/Huberman Lab',
+    evidence:'The strongest-evidence technique here: this exact protocol had the largest effect on mood and physiological arousal in a controlled trial against mindfulness meditation.',
     desc:'Fastest known voluntary method to reduce autonomic arousal. Double inhale reinflates alveoli, long exhale calms.',
     phases:['Deep Inhale','Quick Sniff In','Long Exhale'],
     durations:[3,1,6],
@@ -5506,6 +5524,7 @@ var breathTechniques={
   scan:{
     name:'2-Minute Body Scan',
     source:'Kabat-Zinn MBSR; Demarzo et al., 2017 meta-analysis',
+    evidence:'Backed by a meta-analysis of mindfulness-based stress reduction, not a single trial of this exact 2-minute version.',
     desc:'Redirects attention from rumination to body awareness. Even brief scans reduce cortisol and cognitive fusion.',
     phases:['Settle In','Feet & Legs','Torso & Hands','Arms & Shoulders','Neck & Face','Integrate'],
     durations:[12,22,22,22,22,20],
@@ -5515,6 +5534,7 @@ var breathTechniques={
   resonance:{
     name:'Resonance Breathing (5.5-5.5)',
     source:'Lehrer & Gevirtz, 2014 \u2014 heart rate variability optimization',
+    evidence:'Well-established in heart-rate-variability biofeedback research, typically studied over repeated longer sessions rather than one short one.',
     desc:'Breathing at ~5.5 breaths/min maximizes heart rate variability. The gold standard for vagal tone training.',
     phases:['Inhale','Exhale'],
     durations:[5,6],
@@ -5524,15 +5544,18 @@ var breathTechniques={
   alternate:{
     name:'Alternate Nostril Breathing',
     source:'Telles et al., 2013; Nadi Shodhana from Hatha Yoga tradition',
+    evidence:'Studied mainly in small yoga-tradition trials; promising but a thinner evidence base than the Stanford RCT above.',
     desc:'Balances sympathetic and parasympathetic activity. Reduces blood pressure and improves attention.',
     phases:['Right Nostril In','Hold','Left Nostril Out','Left Nostril In','Hold','Right Nostril Out'],
     durations:[4,2,4,4,2,4],
     cycles:6,
+    caution:BREATH_HOLD_CAUTION,
     cues:['Close left nostril, inhale right','Close both, hold gently','Close right nostril, exhale left','Keep right closed, inhale left','Close both, hold gently','Close left nostril, exhale right']
   },
   '22exhale':{
     name:'2:1 Extended Exhale (4-8)',
     source:'Gerritsen & Band, 2018 review \u2014 slow breathing and vagal stimulation',
+    evidence:'Backed by a review of the broader slow-breathing literature rather than a single trial of this exact ratio.',
     desc:'Exhale twice as long as inhale. Reliably increases parasympathetic activity and reduces anxiety.',
     phases:['Inhale','Exhale'],
     durations:[4,8],
@@ -5547,7 +5570,16 @@ function showBreathDesc(){
   const btn=document.getElementById('breathStartBtn');
   if(!id){if(desc)desc.innerHTML='';btn.style.display='none';return;}
   const t=breathTechniques[id];
-  if(desc)desc.innerHTML='<strong style="color:var(--teal);">'+t.name+'</strong><br>'+t.desc+'<br><span style="color:var(--text-faint);font-size:10px;">'+t.source+'</span>';
+  // Panel survey 2026-08-18 (I-11): evidence line replaces the picker's old
+  // blanket "each is evidence-based" claim with what this specific technique
+  // is actually backed by; caution line (breath-hold techniques only) is a
+  // Clinician/Skeptic ask -- "stop if lightheaded / skip if pregnant or a
+  // heart-lung condition" satisfies both without turning this into a medical
+  // disclaimer page.
+  var html='<strong style="color:var(--teal);">'+t.name+'</strong><br>'+t.desc+'<br><span style="color:var(--text-faint);font-size:10px;">'+t.source+'</span>';
+  if(t.evidence)html+='<br><span style="color:var(--text-faint);font-size:10px;font-style:italic;">'+t.evidence+'</span>';
+  if(t.caution)html+='<br><span class="breath-caution" style="color:var(--amber,#c9922f);font-size:10px;">\u26A0 '+t.caution+'</span>';
+  if(desc)desc.innerHTML=html;
   btn.style.display='block';
 }
 
@@ -9281,7 +9313,14 @@ function _renderWeeklyReview(){
   var rangeLabel=(rows.length?rows[0].label:'')+' – '+(rows.length?rows[rows.length-1].label:'');
   var html='<div class="wr-range">'+rangeLabel+'</div>';
 
-  if(totalPoints>0)html+='<div class="wr-row"><span class="wr-icon">🏅</span><strong>'+totalPoints+'</strong> Presence points this week</div>';
+  // Panel survey 2026-08-18 (I-4): "Presence" appears here with no
+  // explanation anywhere reachable in-context -- the Basic User's exact
+  // words were "I have no idea what a Presence point is, where I earned
+  // them, or whether 56 is good." Presence is just this app's name for the
+  // underlying points total (see TIER_THRESHOLDS/points comments) -- says so
+  // plainly on tap, via toast rather than a nested modal to avoid stacking
+  // the Weekly Review overlay under another one.
+  if(totalPoints>0)html+='<div class="wr-row wr-row-presence" onclick="toast(\'Presence is this app\u2019s name for your points total \u2014 small credit for using tools like tasks, routines, and the grounding kit. Separate from Days Shown Up, which just counts whether you opened the app.\',5000)" style="cursor:pointer;" title="What is Presence?"><span class="wr-icon">\ud83c\udfc5</span><strong>'+totalPoints+'</strong> Presence points this week <span style="opacity:0.5;font-size:11px;">(what\u2019s this?)</span></div>';
 
   if(tasks.length>0){
     html+='<div class="wr-row"><span class="wr-icon">✅</span><strong>'+tasks.length+'</strong> task'+(tasks.length!==1?'s':'')+' completed'
@@ -12697,7 +12736,14 @@ function renderThemeSelector(){
     // altogether -- no badge at all on a theme everyone can already use;
     // showing a real tier name would just invent paywall signaling ahead of
     // the (not yet designed) paid tier.
-    var tierLabel=(BETA_ALL_THEMES&&t.tier!=='free')?'':(t.tier.charAt(0).toUpperCase()+t.tier.slice(1));
+    // Panel survey 2026-08-18 (J-3): the condition above only cleared the
+    // label for non-free tiers, so 'Free' still rendered on Dark/Light --
+    // the two lonely 'Free' badges were the only price signal anywhere in
+    // the product, and read as a bill about to arrive. Since `allowed` is
+    // always true while BETA_ALL_THEMES is on, tierLabel is only ever used
+    // in the unlocked branch below during beta -- safe to blank it for
+    // every tier, not just non-free ones.
+    var tierLabel=BETA_ALL_THEMES?'':(t.tier.charAt(0).toUpperCase()+t.tier.slice(1));
     var tierClass='theme-tier-'+t.tier;
     if(!allowed){
       return '<button class="theme-btn theme-btn-locked" onclick="_tierUpgradeToast()" title="Upgrade to '+tierLabel+' to unlock">'+

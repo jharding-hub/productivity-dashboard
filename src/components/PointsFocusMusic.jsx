@@ -14,6 +14,7 @@ export default function PointsFocusMusic() {
           id="pointsBadge"
           onClick={() => window.togglePointsPopup()}
           title="Days you showed up and put in effort — any real action counts the day, however small. It only ever goes up; missing a day costs you nothing. Tap for detail."
+          aria-label="Days shown up. Tap for detail."
           style={{ cursor: 'pointer' }}
         >
           <span className="points-tier-icon" id="ptTierIcon">{'🥉'}</span>
@@ -24,6 +25,14 @@ export default function PointsFocusMusic() {
             <span>Days</span>
             <span>shown up</span>
           </span>
+          {/* Panel survey 2026-08-18 (I-4): the full two-line label above is
+              hidden on mobile to save header space (F24), which left the
+              compact badge reading as a bare medal+number -- three personas
+              misread it as a streak or notification count on first glance.
+              The tap-popup has carried a full explainer since 2026-08-04;
+              this is a one-word visual hint that the number IS "days",
+              costing a few px instead of the 69px the full label needed. */}
+          <span className="points-label-compact">days</span>
         </div>
         <div className="points-popup" id="pointsPopup" style={{ display: 'none' }}></div>
       </div>

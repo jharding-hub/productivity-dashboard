@@ -60,23 +60,31 @@ export default function ToolKitPanel() {
         <button className="toolkit-btn toolkit-breath" onClick={() => window.openBreathworkModal()}>
           <i className="ti ti-wind" aria-hidden="true"></i>
           <span>Breathwork</span>
+          <span className="toolkit-btn-sub">Slow your breathing, fast</span>
         </button>
         <button className="toolkit-btn toolkit-mood" onClick={() => window.openEnergyModal()}>
           <i className="ti ti-bolt" aria-hidden="true"></i>
           <span>Energy &amp; Mood</span>
+          <span className="toolkit-btn-sub">Check in on how you're doing</span>
         </button>
         <button className="toolkit-btn toolkit-journal" onClick={() => window.openJournal()}>
           <i className="ti ti-notes" aria-hidden="true"></i>
           <span>Journal</span>
+          <span className="toolkit-btn-sub">Private, encrypted space to write</span>
         </button>
         <button className="toolkit-btn toolkit-workout" onClick={() => window.openWorkoutModal()}>
           <i className="ti ti-barbell" aria-hidden="true"></i>
           <span>Workout</span>
+          <span className="toolkit-btn-sub">Today's strength or cardio plan</span>
         </button>
         {/* R13/F23b: the review's Basic persona never taps these because the
             names assume DBT literacy -- "if a feature requires knowing what
             it's for before you can find out what it's for, it doesn't exist
-            for me." Subtitles here, not tooltips: touch devices can't hover. */}
+            for me." Subtitles here, not tooltips: touch devices can't hover.
+            Panel survey 2026-08-18 (I-4) extended the same treatment to the
+            remaining unsubtitled tiles below (Breathwork, Energy & Mood,
+            Journal, Workout, Wellness) -- HALT+ and Urge Log were the only
+            ones that had gotten it. */}
         <button className="toolkit-btn toolkit-halt" onClick={() => window.openHaltModal()}>
           <i className="ti ti-alert-triangle" aria-hidden="true"></i>
           <span>HALT+</span>
@@ -90,6 +98,7 @@ export default function ToolKitPanel() {
         <button className="toolkit-btn toolkit-wellness" onClick={() => window.openWellnessModal()}>
           <i className="ti ti-heart" aria-hidden="true"></i>
           <span>Wellness</span>
+          <span className="toolkit-btn-sub">Rate how balanced you feel</span>
         </button>
       </div>
       {/* YouTube player host (rendered by PointsFocusMusic component) */}

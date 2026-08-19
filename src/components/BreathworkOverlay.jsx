@@ -89,9 +89,14 @@ export default function BreathworkOverlay() {
           </div>
           <div className="modal-blur-body">
             {/* R3 stage 1: copy matches the new preselect-and-go behavior --
-                "Choose a technique" framed the modal as a required decision. */}
+                "Choose a technique" framed the modal as a required decision.
+                Panel survey 2026-08-18 (I-11): "Each is evidence-based" was a
+                blanket claim across seven techniques of uneven evidence
+                weight -- softened here, with the real per-technique framing
+                (and a caution line on breath-hold techniques) now rendered
+                by showBreathDesc() below each selection. */}
             <p style={{ fontSize: 13, color: 'var(--text-dim)', marginBottom: 16, lineHeight: 1.6 }}>
-              Ready when you are &mdash; begin, or pick a different technique. Each is evidence-based and takes 1&ndash;3 minutes.
+              Ready when you are &mdash; begin, or pick a different technique. Takes 1&ndash;3 minutes; see what each is backed by below.
             </p>
             <select
               className="breathwork-select"

@@ -89,7 +89,8 @@ We collect only what the product needs to work. Everything below is grouped by p
 ### 3.2 Your content ("Dashboard Data")
 
 Tasks, projects and subtasks, notes, reminders, timeline blocks, brain-dump entries, routines,
-workout selections, points and streak counters, and your settings.
+workout selections, Presence points and your days-shown-up count (there is no streak mechanic --
+the count only ever increases and missing a day costs nothing), and your settings.
 
 **Why:** to provide the Service — this *is* the Service.
 **Legal basis:** performance of a contract.
@@ -102,7 +103,7 @@ wellness features on. You can switch them off at any time in Settings.
 | What | What it contains |
 |---|---|
 | Urge logs | Which category you chose (impulse buy, phone/social media, snack, skip a task, or other), an optional free-text note, how long a pause you set, and whether the urge passed |
-| HALT+ / Sensory check-ins | Which of hunger, anger, loneliness, tiredness, and sensory needs you marked as present |
+| HALT+ / Sensory check-ins | Which of hunger, anxious/activated, late/behind, tiredness, noise/sensory load, low energy, and temperature you marked as present |
 | Breathwork and grounding sessions | Which technique you completed and how many cycles |
 | Mood log | Your energy level and mental state for a given day, plus the suggestion Centerpost showed you in response |
 | Journal | Your written entries — **encrypted**, see §7 |

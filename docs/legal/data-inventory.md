@@ -64,9 +64,9 @@ COMPLIANCE-GAPS.md G-11 for the closed-out finding.
 
 One JSON blob in a single document (`legacy.js:1034`, `:1151`). Contains `state` serialized to a
 string. Includes tasks, projects and subtasks, notes, reminders, timeline blocks, brain-dump
-thoughts, routines, points/streak counters, settings (theme, `supportLevel`, `focusMode`,
-stop-motion), workout/gym routine selections, and `_tombstones` (a grow-only map of deleted item
-ids → deletion timestamp).
+thoughts, routines, Presence points and days-shown-up count (monotonic, no streak mechanic),
+settings (theme, `supportLevel`, `focusMode`, stop-motion), workout/gym routine selections, and
+`_tombstones` (a grow-only map of deleted item ids → deletion timestamp).
 
 Explicitly **excluded** from this blob and split into their own documents: `checkins`, `moodLog`,
 `completedTasks`, `completedTasksLifetime`, `completedProjectSubtasksLifetime`, `remindersArchive`,
@@ -322,7 +322,7 @@ codebase** — grep-verified across web and iOS.
 ### Personal but not sensitive
 Email address, Firebase UID, WebAuthn credential metadata, `createdAt`/`lastActive`, `invitedWith`,
 IP addresses in `sec:auth401` and in Cloudflare/Sentry logs, all Dashboard Data (tasks, projects,
-notes, reminders, routines, workout selections), points/streaks, settings.
+notes, reminders, routines, workout selections), Presence points/days-shown-up count, settings.
 
 ### Non-personal
 `aispend:{date}` aggregates, `AI_MODEL_RATES`, SendGrid aggregate stats, service-worker cache

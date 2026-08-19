@@ -677,6 +677,7 @@ body[data-theme="storm-dark"] .day-progress-elapsed{
    header's left slot (see PointsFocusMusic.jsx). The 14px bottom margin was
    panel spacing; in the header it just inflates the top chrome. */
 .points-wrap{position:relative;z-index:2;display:flex;align-items:center;justify-content:center;margin:0;}
+.points-label-compact{display:none;}
 .header-right{display:flex;flex-direction:column;align-items:flex-end;justify-content:center;gap:4px;position:relative;z-index:2;}
 .header-clock-wrap{display:flex;flex-direction:column;align-items:flex-end;gap:2px;}
 .header-clock{font-variant-numeric:tabular-nums;font-size:calc(20px * var(--type-scale,1));font-weight:600;color:var(--text);letter-spacing:1px;line-height:1;}
@@ -685,6 +686,8 @@ body[data-theme="storm-dark"] .day-progress-elapsed{
 .header-timer-label-tag{font-size:calc(11px * var(--type-scale,1));text-transform:uppercase;letter-spacing:1px;color:var(--text-dim);line-height:1;font-weight:600;}
 .header-timer-wrap{display:flex;align-items:center;gap:0;position:relative;flex-shrink:0;}
 .header-timer-btn{background:var(--surface-raised);border:1px solid var(--border);border-right:none;border-radius:var(--radius-sm) 0 0 var(--radius-sm);padding:6px 12px;cursor:pointer;font-family:inherit;font-variant-numeric:tabular-nums;font-size:calc(18px * var(--type-scale,1));font-weight:600;color:var(--text);letter-spacing:0.5px;line-height:1;transition:all 0.15s;-webkit-tap-highlight-color:transparent;min-width:100px;text-align:center;}
+/* Panel survey 2026-08-18 (I-4): idle state shows the current time (a deliberate dual-purpose clock/timer-launcher, not a bug) but read as a plain clock with no hint it is a button. Small play glyph signals "tap to start" without losing the clock. */
+.header-timer-idle-icon{font-size:0.7em;opacity:0.55;margin-right:1px;}
 .header-timer-btn:hover{background:var(--surface-hover);}
 .header-timer-btn.ht-active{border-color:var(--green);background:rgba(0,212,100,0.08);}
 .ht-running{color:var(--green) !important;}
@@ -792,6 +795,8 @@ body.cp-stop-motion .jarvis-fab{animation:none !important;}
 .mtb-btn .ti{font-size:calc(20px * min(var(--type-scale,1),1.3));font-style:normal;}
 .mtb-btn.active{color:var(--accent);}
 @media(max-width:768px),(orientation:landscape) and (max-height:600px){
+  .qc-hint-mobile{display:inline !important;}
+  .qc-hint-desktop{display:none !important;}
   .mobile-tab-bar{display:flex;}
   .status-bar{display:none;}
   .app-wrap{padding-bottom:calc(52px + env(safe-area-inset-bottom) + 8px);}
@@ -913,6 +918,10 @@ body.cp-stop-motion .jarvis-fab{animation:none !important;}
   .points-badge-lg .points-tier-icon{font-size:calc(16px * var(--type-scale,1)) !important;}
   .points-badge-lg .points-value{font-size:calc(14px * var(--type-scale,1)) !important;}
   .points-badge-lg .points-label{display:none !important;}
+  /* Panel survey 2026-08-18 (I-4): one-word compact label, shown only here.
+     Hidden by default (see .points-label-compact base rule) so it never
+     appears on desktop, where the full two-line label already renders. */
+  .points-label-compact{display:block !important;font-size:8px !important;opacity:0.65;letter-spacing:0.3px;text-transform:uppercase;font-weight:600;margin-left:2px;}
   /* Bottom status bar */
   .status-bar{padding:8px 14px;gap:8px;min-height:52px;}
   #status-bar-root{gap:8px;}
@@ -1430,6 +1439,8 @@ body.unlocked .date-editable{border-bottom-color:var(--border);}
 .qc-save-btn{padding:8px 20px;font-size:calc(13px * var(--type-scale,1));font-weight:600;border:1.5px solid var(--accent-dim);border-radius:var(--radius-sm);background:var(--accent-glow);color:var(--accent);cursor:pointer;font-family:inherit;transition:all 0.15s;}
 .qc-save-btn:hover{background:var(--accent);color:var(--bg);}
 .qc-hint{font-size:calc(11.5px * var(--type-scale,1));color:var(--text-faint);margin-top:10px;line-height:1.5;}
+.qc-hint-mobile{display:none;}
+.qc-hint-desktop{display:inline;}
 
 /* ═══ POINTS / REWARDS SYSTEM ═══
    Same flat surface/color treatment as .toolkit-btn -- the only thing that

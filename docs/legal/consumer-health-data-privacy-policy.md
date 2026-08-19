@@ -47,7 +47,7 @@ By that definition, the following are consumer health data:
 | Category | What we collect | Where it comes from |
 |---|---|---|
 | **Urge logs** | The category you chose (impulse buy, phone/social media, snack, skip a task, or other), an optional free-text note, the length of pause you chose, and whether the urge passed or you acted on it | Entered by you in the Urge Log feature |
-| **HALT+ / Sensory check-ins** | Which of hunger, anger, loneliness, tiredness, and sensory needs you marked as present, and how many you addressed | Entered by you in the HALT+ check-in |
+| **HALT+ / Sensory check-ins** | Which of hunger, anxious/activated, late/behind, tiredness, noise/sensory load, low energy, and temperature you marked as present, and how many you addressed | Entered by you in the HALT+ check-in |
 | **Breathwork sessions** | Which breathing technique you completed and how many cycles | Recorded when you finish a session |
 | **Grounding and body-scan sessions** | Which technique you completed | Recorded when you finish a session |
 | **Mood and energy log** | Your energy level and mental state for a given day | Entered by you |
@@ -56,16 +56,22 @@ By that definition, the following are consumer health data:
 | **Apple Health Mindful Minutes** | Duration of a completed breathwork session | Written by Centerpost **to your device's Apple Health store**. We do not receive it back, and we cannot read anything else in Apple Health. |
 | **AI messages you choose to make health-related** | Whatever you type into Axis | Entered by you — see §4 |
 
-**Family features.** The children's chore tracker can include a medication-reminder item. Where a
-parent enters that, we treat it as consumer health data belonging to the parent's account, subject
-to everything in this policy.
+**Family features.** A separate, unlinked chore-and-routine tracker for children exists at
+`centerpost.app/kids` — it is not part of either app and is reached only by going to that address
+directly. As of August 16, 2026 it has no medication-reminder or other health-adjacent default
+item, and as of August 11, 2026 it stores everything only in your own browser's local storage, with
+no account sign-in and nothing sent to us. See the main [Privacy Policy](privacy-policy.md)'s
+Family features section for the full detail. There is accordingly no child health data for this
+policy to cover.
 
 ### What is *not* consumer health data
 
-Your tasks, projects, notes, reminders, calendar blocks, points, streaks, and settings are ordinary
-productivity content, covered by the main [Privacy Policy](privacy-policy.md). Gym and workout
-routines record exercise selections you make, not measurements about your body, and we do not use
-them to infer anything about your health.
+Your tasks, projects, notes, reminders, calendar blocks, Presence points, days-shown-up count, and
+settings are ordinary productivity content, covered by the main [Privacy Policy](privacy-policy.md).
+Centerpost has no streak mechanic — days-shown-up only ever increases, and missing a day costs
+nothing — so there is no streak data to describe here or anywhere else. Gym and workout routines
+record exercise selections you make, not measurements about your body, and we do not use them to
+infer anything about your health.
 
 ## 3. Why we collect it, and nothing else
 

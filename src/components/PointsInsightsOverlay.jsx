@@ -5,6 +5,15 @@ export default function PointsInsightsOverlay() {
       <div className="modal-blur-panel" style={{ width: 'min(720px,96vw)' }}>
         <div className="modal-blur-header">
           <div className="modal-blur-title">{'📈'} Focus &amp; Presence Insights</div>
+          {/* Panel survey 2026-08-18 (I-4): "Presence" is unexplained wherever
+              it appears. Reuses the toast pattern from the Weekly Review's
+              Presence row rather than a nested modal over this one. */}
+          <button
+            className="pi-what-is-presence"
+            onClick={() => window.toast("Presence is this app's name for your points total \u2014 small credit for using tools like tasks, routines, and the grounding kit. It's separate from Days Shown Up, which just counts whether you opened the app.", 5000)}
+            title="What is Presence?"
+            style={{ fontSize: 11, opacity: 0.6, background: 'none', border: 'none', cursor: 'pointer', color: 'inherit', marginLeft: 8 }}
+          >(what's this?)</button>
           <button className="modal-blur-close" onClick={() => window.closePointsInsights()}>&#10005;</button>
         </div>
         <div className="modal-blur-body">
