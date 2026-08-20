@@ -1037,21 +1037,29 @@ body.capacitor-native a[target="_blank"]{-webkit-touch-callout:none;}
 @media(max-width:768px),(orientation:landscape) and (max-height:600px){
   .panel-mobile-back-btn{display:flex;}
 }
-/* minmax, not a flat height: a flat value clamps every row to that exact
-   height, and .panel{overflow:hidden} then silently clips any panel whose
-   natural content is taller -- no scrollbar, just gone. Same bug the R7-era
-   mobile fix below (grid-auto-rows:auto in the ≤768px media query) already
-   documents; this is the desktop half of the same fix -- letting a row grow
-   instead of clip once its content doesn't fit. The floor itself (was a flat
-   629px) was cut 35% to 409px 2026-08-19: 629 made short/empty panels (a
-   fresh Reminders or Projects panel with nothing in it yet) look far taller
-   than their content needed, and minmax's auto ceiling means that's now a
-   pure floor with no clipping risk -- a panel with real content still grows
-   past it exactly as before (confirmed via Tool Kit, whose per-tile
-   subtitles (I-4) push it well past 409px at default scale already). */
-.dashboard{display:grid;grid-template-columns:2fr 2fr 1fr;gap:16px;padding:16px 24px 24px;max-width:1600px;margin:0 auto;grid-auto-rows:minmax(409px,auto);}
+/* Rows size to their content but never exceed 650px (Joe's call, 2026-08-19):
+   minmax(0,650px) is a CEILING, not the old flat height -- a short panel (an
+   empty Reminders, Stuck? Start Here) stays short instead of padding itself
+   out to a fixed row height, and a tall one caps at 650px and SCROLLS rather
+   than growing the page.
+   The history here, because the two halves are easy to re-break separately:
+   this was a flat 629px, which clamped every row to exactly that AND, with
+   .panel{overflow:hidden}, silently clipped anything taller -- no scrollbar,
+   just gone (the Tool Kit grid lost its bottom row this way). The ≤768px
+   media query below already carried the mobile half of that fix
+   (grid-auto-rows:auto). A ceiling only works if the overflow has somewhere
+   to go, hence the .panel scroll rule directly below -- do not set one
+   without the other. */
+.dashboard{display:grid;grid-template-columns:2fr 2fr 1fr;gap:16px;padding:16px 24px 24px;max-width:1600px;margin:0 auto;grid-auto-rows:minmax(0,650px);}
 .panel-narrow{min-width:0;}
-.panel{background:var(--surface);border:1px solid var(--border);border-radius:var(--radius);padding:18px;animation:fadeUp 0.4s ease both;transition:box-shadow 0.2s,opacity 0.2s,transform 0.2s;display:flex;flex-direction:column;overflow:hidden;}
+/* overflow-y:auto, not hidden: five panels (Tool Kit, Timeline, Brain Dump,
+   Routines, Stuck? Start Here) have no inner .panel-content scroll region,
+   so with the 650px ceiling above their overflow would be clipped and
+   unreachable. This makes the panel itself the scroller for those. It's a
+   no-op for the five that DO have .panel-content{flex:1;overflow-y:auto}
+   (projects/reminders/notes/tasklist/admin) -- that child absorbs the
+   overflow, so the panel never overflows and never shows a second bar. */
+.panel{background:var(--surface);border:1px solid var(--border);border-radius:var(--radius);padding:18px;animation:fadeUp 0.4s ease both;transition:box-shadow 0.2s,opacity 0.2s,transform 0.2s;display:flex;flex-direction:column;overflow-x:hidden;overflow-y:auto;}
 
 /* ═══ TILE MODE — collapsed panel showing only title + add bar ═══ */
 .panel.panel-tile{cursor:default;min-height:280px;display:flex;flex-direction:column;}
