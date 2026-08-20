@@ -1037,7 +1037,16 @@ body.capacitor-native a[target="_blank"]{-webkit-touch-callout:none;}
 @media(max-width:768px),(orientation:landscape) and (max-height:600px){
   .panel-mobile-back-btn{display:flex;}
 }
-.dashboard{display:grid;grid-template-columns:2fr 2fr 1fr;gap:16px;padding:16px 24px 24px;max-width:1600px;margin:0 auto;grid-auto-rows:629px;}
+/* minmax, not a flat 629px: a flat value clamps every row to exactly 629px,
+   and .panel{overflow:hidden} then silently clips any panel whose natural
+   content is taller -- no scrollbar, just gone. Same bug the R7-era mobile
+   fix below (grid-auto-rows:auto in the ≤768px media query) already
+   documents; this is the desktop half of the same fix. minmax(629px,auto)
+   keeps the tidy fixed-height look for panels/rows that fit inside 629px
+   (still the common case) while letting a row grow instead of clip once its
+   content doesn't -- confirmed via Tool Kit, whose per-tile subtitles (I-4)
+   push it past 629px at a larger type-scale setting. */
+.dashboard{display:grid;grid-template-columns:2fr 2fr 1fr;gap:16px;padding:16px 24px 24px;max-width:1600px;margin:0 auto;grid-auto-rows:minmax(629px,auto);}
 .panel-narrow{min-width:0;}
 .panel{background:var(--surface);border:1px solid var(--border);border-radius:var(--radius);padding:18px;animation:fadeUp 0.4s ease both;transition:box-shadow 0.2s,opacity 0.2s,transform 0.2s;display:flex;flex-direction:column;overflow:hidden;}
 
