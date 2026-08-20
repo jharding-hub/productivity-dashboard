@@ -3300,7 +3300,7 @@ window.__notifPermissionResult=function(granted){
 };
 
 // BRAIN DUMP
-function handleDumpKey(e){if(e.key==='Enter'&&!e.shiftKey){e.preventDefault();const t=document.getElementById('brainDump').value.trim();if(!t)return;state.thoughts.push({id:'th'+Date.now(),text:t});document.getElementById('brainDump').value='';save();renderThoughts();_trackEvent('tool_use','brain_dump','Brain Dump');}}
+function handleDumpKey(e){if(e.key==='Enter'&&!e.shiftKey){e.preventDefault();const t=document.getElementById('brainDump').value.trim();if(!t)return;state.thoughts.push({id:'th'+Date.now(),text:t,created:new Date().toISOString()});document.getElementById('brainDump').value='';save();renderThoughts();_trackEvent('tool_use','brain_dump','Brain Dump');}}
 function deleteThought(id){_confirm('Delete this thought?',function(){_tombstone(id);state.thoughts=state.thoughts.filter(t=>t.id!==id);save();renderThoughts();},{destructive:true,confirmText:'Delete'});}
 function promoteThought(id){const th=state.thoughts.find(t=>t.id===id);if(!th)return;if(state.projects.length>0){const sp=_sortedProjects();const c=prompt('Promote to which project?\n\n'+sp.map((p,i)=>(i+1)+'. '+p.name).join('\n')+'\n\n(0 = reminders)','1');if(c===null)return;const idx=parseInt(c)-1;if(idx>=0&&idx<sp.length){sp[idx].subtasks.push({id:'st'+Date.now(),name:th.text,due:'',priority:'med',timeEst:'',done:false});deleteThought(id);renderProjects();renderTaskList();toast('Added to '+sp[idx].name);return;}}state.reminders.push({id:'rem'+Date.now(),text:th.text,date:'',time:''});deleteThought(id);renderReminders();toast('Moved to reminders');}
 function editThought(id,v){if(!v)return;const t=state.thoughts.find(t=>t.id===id);if(t)t.text=v;save();}
@@ -3314,7 +3314,7 @@ async function bdOrganize(){
   // Capture any text still in the textarea as a thought first
   var ta = document.getElementById('brainDump');
   if(ta && ta.value.trim()){
-    state.thoughts.push({id:'th'+Date.now(),text:ta.value.trim()});
+    state.thoughts.push({id:'th'+Date.now(),text:ta.value.trim(),created:new Date().toISOString()});
     ta.value=''; save(); renderThoughts();
   }
 
@@ -4739,7 +4739,7 @@ window.__watchApplyAction=function(action){
       var thought=(action.text||'').trim();
       if(thought){
         if(!state.thoughts)state.thoughts=[];
-        state.thoughts.push({id:'th'+Date.now(),text:thought});
+        state.thoughts.push({id:'th'+Date.now(),text:thought,created:new Date().toISOString()});
         save();
         if(typeof renderThoughts==='function')renderThoughts();
       }
@@ -7608,7 +7608,7 @@ function checkShareTarget(){
 function shareIntoBrainDump(){
   const d=document.getElementById('shareInbox');if(!d)return;
   const text=d._shareText;
-  state.thoughts.push({id:'th'+Date.now(),text:text});
+  state.thoughts.push({id:'th'+Date.now(),text:text,created:new Date().toISOString()});
   save();renderThoughts();
   // Make sure Brain Dump panel is visible and briefly highlight it
   if(_isMobile())showMobilePanel('brain');
@@ -7916,6 +7916,75 @@ function _archiveCompletedTask(record){
   state.completedTasksLifetime=(state.completedTasksLifetime||0)+1;
   if(record.source==='project')state.completedProjectSubtasksLifetime=(state.completedProjectSubtasksLifetime||0)+1;
   if(typeof _saveCompletedTasksDoc==='function')_saveCompletedTasksDoc();
+}
+
+// ── Archive sweep (panel survey Stage 6, A-9) ────────────────────────
+// The Very High Utilizer's summary was "scale rendering verified; scale
+// living not yet designed" -- 2,200 completed tasks and hundreds of stale
+// thoughts with no way to retire any of it.
+//
+// Both sweeps go through the TOMBSTONE path, never a bare array splice:
+// per the sync invariants, removal has to be a durable synced fact or a
+// stale device just merges the items back on next load. They use the two
+// DIFFERENT maps on purpose:
+//   - thoughts are live items in SYNC_ACTIVE_ARRAYS  -> _tombstone()
+//   - completedTasks are archive records             -> _archiveTombstone()
+// (an archive record reuses the live item's id, which _tombstones already
+// holds from the completion -- so reusing that map couldn't represent
+// "clear this history entry". See sync-merge.js's comment on the split.)
+//
+// One save() for the whole batch, per the stage's requirement.
+var ARCHIVE_SWEEP_DEFAULT_DAYS=90;
+// Thoughts created before the `created` field existed fall back to the
+// timestamp embedded in their own id ('th' + Date.now()), so a sweep works
+// on legacy data too rather than silently skipping it.
+function _thoughtCreatedMs(th){
+  if(th&&th.created){
+    var t=new Date(th.created).getTime();
+    if(!isNaN(t))return t;
+  }
+  var m=/^th(\d{13})/.exec((th&&th.id)||'');
+  return m?parseInt(m[1],10):null;
+}
+function _sweepPreview(days){
+  var cutoff=Date.now()-days*86400000;
+  var oldThoughts=(state.thoughts||[]).filter(function(t){
+    var ms=_thoughtCreatedMs(t);
+    return ms!==null&&ms<cutoff;
+  });
+  var oldCompleted=(state.completedTasks||[]).filter(function(t){
+    return t.archivedAt&&new Date(t.archivedAt).getTime()<cutoff;
+  });
+  return {thoughts:oldThoughts,completed:oldCompleted};
+}
+function runArchiveSweep(days){
+  days=days||ARCHIVE_SWEEP_DEFAULT_DAYS;
+  var pv=_sweepPreview(days);
+  var nT=pv.thoughts.length,nC=pv.completed.length;
+  if(nT+nC===0){toast('Nothing older than '+days+' days to clear');return;}
+  var parts=[];
+  if(nT)parts.push(nT+' Brain Dump thought'+(nT!==1?'s':''));
+  if(nC)parts.push(nC+' completed-task record'+(nC!==1?'s':''));
+  _confirm('Clear '+parts.join(' and ')+' older than '+days+' days? Your lifetime counts are not affected.',
+    function(){
+      pv.thoughts.forEach(function(t){_tombstone(t.id);});
+      pv.completed.forEach(function(t){_archiveTombstone(t.id);});
+      var tIds={},cIds={};
+      pv.thoughts.forEach(function(t){tIds[t.id]=1;});
+      pv.completed.forEach(function(t){cIds[t.id]=1;});
+      state.thoughts=(state.thoughts||[]).filter(function(t){return !tIds[t.id];});
+      state.completedTasks=(state.completedTasks||[]).filter(function(t){return !cIds[t.id];});
+      // Lifetime counters are deliberately NOT decremented -- they count
+      // everything ever completed, and the archive array has always been a
+      // capped recent subset of that (see reconcileLifetimeCounter). A sweep
+      // trims the subset, it does not un-complete anything.
+      if(typeof _saveCompletedTasksDoc==='function')_saveCompletedTasksDoc();
+      save();
+      if(typeof renderThoughts==='function')renderThoughts();
+      if(typeof renderTaskList==='function')renderTaskList();
+      toast('Cleared '+(nT+nC)+' old item'+((nT+nC)!==1?'s':''));
+    },
+    {confirmText:'Clear them',icon:'ti-archive'});
 }
 
 // R16 Phase A: mirrors _checkinsSince's window filter, but completedTasks
@@ -9405,7 +9474,7 @@ function _captureString(text){
   if(!state.thoughts)state.thoughts=[];
   // A thought has no project field in this schema -- an unused #tag on a
   // thought is simply dropped rather than silently promoted into a task.
-  var th={id:'th'+Date.now()+Math.random().toString(36).slice(2,6),text:p.name||text};
+  var th={id:'th'+Date.now()+Math.random().toString(36).slice(2,6),text:p.name||text,created:new Date().toISOString()};
   state.thoughts.push(th);
   return {type:'thought',name:p.name||text,id:th.id};
 }
@@ -9422,7 +9491,7 @@ function _flipCaptureType(id,fromType){
     _tombstone(id);
     state.tasks=state.tasks.filter(function(x){return x.id!==id;});
     if(!state.thoughts)state.thoughts=[];
-    var th={id:'th'+Date.now()+Math.random().toString(36).slice(2,6),text:t.name};
+    var th={id:'th'+Date.now()+Math.random().toString(36).slice(2,6),text:t.name,created:new Date().toISOString()};
     state.thoughts.push(th);
     save();renderTaskList();renderThoughts();
     toast('Moved to Brain Dump');

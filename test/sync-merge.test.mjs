@@ -316,3 +316,57 @@ test('a restored reminder lives under a fresh id and its old record stays cleare
   const staleArchive = _dropTombstoned(mergeById([], [{ id:'r1', text:'x' }]), archiveTomb);
   assert.equal(staleArchive.length, 0, 'old archive record does not resurrect');
 });
+
+// ── Archive sweep (panel survey Stage 6, A-9) ─────────────────────────────
+// The sweep retires OLD data in two different arrays that are governed by two
+// DIFFERENT tombstone maps. These cases pin that split down, because getting
+// it backwards is silent: the items vanish locally and then merge straight
+// back on the next load from any other device.
+
+test('sweep: swept thoughts stay gone after a stale device merges its old copy back', () => {
+  // Thoughts are live items (SYNC_ACTIVE_ARRAYS) -> the LIVE _tombstones map.
+  const local = {
+    thoughts: [{ id:'th2', text:'recent' }],
+    _tombstones: { th1: '2026-08-19T12:00:00.000Z' },
+  };
+  // Stale device still holds the swept thought and knows nothing of the sweep.
+  const cloud = {
+    thoughts: [{ id:'th1', text:'ancient' }, { id:'th2', text:'recent' }],
+    _tombstones: {},
+  };
+  const out = reconcileSync(local, cloud);
+  assert.deepEqual(out.thoughts.map(t => t.id), ['th2'], 'swept thought does not resurrect');
+});
+
+test('sweep: swept completed-task records use the ARCHIVE map, not the live one', () => {
+  // completedTasks records reuse the live item's id, which _tombstones already
+  // holds from the original completion. If the sweep wrote to _tombstones, the
+  // filter could not distinguish "this item was completed" from "this history
+  // entry was cleared" -- so the split is load-bearing, not stylistic.
+  const archiveTomb = mergeTombstones({ t1: '2026-08-19T12:00:00.000Z' }, {});
+  const staleArchive = mergeById(
+    [{ id:'t2', name:'recent', archivedAt:'2026-08-18T00:00:00.000Z' }],
+    [{ id:'t1', name:'ancient', archivedAt:'2020-01-01T00:00:00.000Z' },
+     { id:'t2', name:'recent',  archivedAt:'2026-08-18T00:00:00.000Z' }]
+  );
+  const kept = _dropTombstoned(staleArchive, archiveTomb);
+  assert.deepEqual(kept.map(t => t.id), ['t2'], 'swept archive record does not resurrect');
+});
+
+test('sweep: clearing history does NOT drop the live item of the same id', () => {
+  // The inverse guard: archive-tombstoning t1's HISTORY entry must leave a
+  // live task that happens to carry id t1 alone, since the two maps are
+  // consulted separately.
+  const out = reconcileSync(
+    { tasks: [{ id:'t1', name:'live task' }], _tombstones: {}, _archiveTombstones: { t1:'2026-08-19T12:00:00.000Z' } },
+    { tasks: [{ id:'t1', name:'live task' }], _tombstones: {}, _archiveTombstones: {} }
+  );
+  assert.deepEqual(out.tasks.map(t => t.id), ['t1'], 'live task survives an archive-only tombstone');
+});
+
+test('sweep: lifetime counter is never reduced by trimming the archive array', () => {
+  // The array has always been a capped recent SUBSET of all completions, so a
+  // sweep shrinking it must not drag the lifetime total down with it.
+  const afterSweep = reconcileLifetimeCounter(2200, 2200, 3);
+  assert.equal(afterSweep, 2200, 'lifetime total survives a sweep down to 3 records');
+});

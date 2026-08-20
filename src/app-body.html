@@ -356,6 +356,10 @@
 <!-- Panel survey Stage 4 (A-15): one-tap removal of the optional starter
      tasks, so saying yes to the template is never a mess to undo by hand. -->
 <button class="btn" onclick="clearStarterTasks()">Clear starter tasks</button>
+<!-- Panel survey Stage 6 (A-9): retire old Brain Dump thoughts and
+     completed-task history. Archives via the tombstone path, never a raw
+     splice -- see runArchiveSweep in legacy.js. -->
+<button class="btn" onclick="runArchiveSweep(90)">Clear items older than 90 days</button>
 <button class="btn btn-danger" onclick="deleteMyAccount()">Delete my account</button>
 </div>
 <div style="border-bottom:1px solid var(--border);margin:16px 0;"></div>
