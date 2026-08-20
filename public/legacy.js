@@ -4613,7 +4613,15 @@ function _buildWatchSnapshot(){
     left:timerLeft||0        // seconds
   };
   var presets=(typeof TIMER_PRESETS!=='undefined'?TIMER_PRESETS:[]).map(function(p){return {label:p.label,minutes:p.minutes};});
-  return {points:points,tasks:tasks,reminders:reminders,routines:routines,timeline:timeline,timer:timer,presets:presets,energy:state.energy||'',mood:state.mood||''};
+  // Panel survey Stage 8 (A-7, watch "next block" complication): `tasks`/
+  // `reminders` above are the watch's own 25-item due-date-sorted lists, NOT
+  // scoped to today, so a count of THOSE would overcount. Reuse the widget's
+  // own today payload (same taskCount+reminderCount definition the phone
+  // lock-screen widget already uses) rather than a second filter that could
+  // drift from it.
+  var todayForCount=(typeof _widgetDayPayload==='function')?_widgetDayPayload(todayK):null;
+  var todayRemainingCount=todayForCount?(todayForCount.taskCount+todayForCount.reminderCount):0;
+  return {points:points,tasks:tasks,reminders:reminders,routines:routines,timeline:timeline,timer:timer,presets:presets,energy:state.energy||'',mood:state.mood||'',todayRemainingCount:todayRemainingCount};
 }
 
 // Push the today-slice of state to the watch. Called from save() and on init.
@@ -4662,7 +4670,11 @@ function _widgetDayPayload(day){
     date:day,
     taskCount:tasks.length,
     reminderCount:reminders.length,
-    items:tasks.slice(0,4).map(function(t){return {title:t.name,priority:t.priority||'med'};}),
+    // `id` added for A-6 (panel survey Stage 8): the widget's interactive
+    // complete button needs it to queue a real completion. Only ever
+    // state.tasks here (never project subtasks), so `source` is always
+    // 'standalone' on the native side -- see PendingCompletionQueue.swift.
+    items:tasks.slice(0,4).map(function(t){return {id:t.id,title:t.name,priority:t.priority||'med'};}),
     timeline:timeline.slice(0,6)
   };
 }
@@ -4688,6 +4700,14 @@ function _computeWidgetSnapshot(){
   snap.reminderCount=today.reminderCount;
   snap.items=today.items;
   snap.timeline=today.timeline;
+  // Panel survey Stage 8 (A-6): "how many are overdue" for the read-only
+  // Shortcuts intent, which answers straight from this snapshot with no web
+  // layer -- so the count has to already be sitting here, not derived from
+  // `days` (which only ever covers today/tomorrow, never the past). Same
+  // due-before-today + not-done definition Fresh Start already uses
+  // (_overdueTasks), kept independent rather than imported so this file
+  // doesn't gain a dependency edge into that panel's code for one count.
+  snap.overdueCount=(state.tasks||[]).filter(function(t){return !t.done&&t.due&&t.due<today.date;}).length;
   return snap;
 }
 var _lastWidgetSnapshot=null;
@@ -4745,6 +4765,35 @@ window.__watchApplyAction=function(action){
       if(typeof updateWellnessVisibility==='function')updateWellnessVisibility();
       var _tdyM=(typeof _dayKey==='function')?_dayKey():'';
       if(state.points&&state.points.lastMoodDate!==_tdyM){state.points.lastMoodDate=_tdyM;save();if(typeof addPoints==='function')addPoints('mood_energy',null);}
+    }else if(action.cmd==='checkin'){
+      // A-11, panel survey Stage 8: the watch's one-tap combined energy+mood
+      // grid. Same per-field bookkeeping as the separate 'energy'/'mood'
+      // branches above, just folded into a single message + a single
+      // logMoodEntry() call instead of two round trips -- logMoodEntry()
+      // upserts today's entry field-by-field, so calling it once with both
+      // fields already set is equivalent to (not a behavior change from)
+      // calling it twice, just faster on a "under 5 seconds" budget.
+      if(action.energy)state.energy=action.energy;
+      if(action.mood)state.mood=action.mood;
+      if(typeof logMoodEntry==='function')logMoodEntry();
+      save();
+      if(typeof showStateAdvice==='function')showStateAdvice();
+      if(typeof updateWellnessVisibility==='function')updateWellnessVisibility();
+      var _tdyC=(typeof _dayKey==='function')?_dayKey():'';
+      var _pointed=false;
+      if(action.energy&&state.points&&state.points.lastEnergyDate!==_tdyC){state.points.lastEnergyDate=_tdyC;_pointed=true;}
+      if(action.mood&&state.points&&state.points.lastMoodDate!==_tdyC){state.points.lastMoodDate=_tdyC;_pointed=true;}
+      if(_pointed){save();if(typeof addPoints==='function')addPoints('mood_energy',null);}
+    }else if(action.cmd==='halt'){
+      // A-11: the watch HALT check used to be @State-only on the watch and
+      // evaporated on dismiss -- the exact "0300 hallway check-in" loss the
+      // Shift Worker flagged. Routes through the SAME logger the phone's
+      // HALT+ modal uses (closeHaltModal), so it shows up in trend lines
+      // and history identically regardless of which device logged it.
+      var haltItems=Array.isArray(action.items)?action.items:[];
+      if(haltItems.length&&typeof _logCheckIn==='function'){
+        _logCheckIn('halt',{items:haltItems,count:haltItems.length});
+      }
     }else if(action.cmd==='breath'){
       if(typeof addPoints==='function')addPoints('breathwork',null);
       save();
@@ -9854,6 +9903,33 @@ window.__drainCaptureQueue=function(itemsJson){
     if(typeof toast==='function')toast('✓ Captured '+processed.length+' item'+(processed.length!==1?'s':''));
     if(typeof _trackEvent==='function')_trackEvent('tool_use','native_capture_drain','Native Capture');
   }
+  return JSON.stringify(processed);
+};
+
+// Panel survey Stage 8 (A-6): native pending-completions drain -- the reverse
+// of __drainCaptureQueue above. The widget's interactive complete button runs
+// in the extension process and can't touch live state, so it only queues
+// {id,source,projectId}; the iOS shell reads that on foreground and calls
+// this with the JSON array. Each item is routed through the REAL
+// toggleTaskDone (never a separate mutation path), so tombstones, recurrence
+// materialization, and points all apply exactly as a normal completion
+// would. Batched into one save() (toggleTaskDone would otherwise fire one
+// per item) via the same _withBatch coalescing bulk task-select uses.
+// Idempotent: an id for a task already completed/removed by another route
+// simply finds nothing in toggleTaskDone's lookup and no-ops.
+window.__drainPendingCompletions=function(itemsJson){
+  var items;
+  try{items=JSON.parse(itemsJson);}catch(e){return '[]';}
+  if(!Array.isArray(items)||items.length===0)return '[]';
+  var processed=[];
+  _withBatch(function(){
+    items.forEach(function(it){
+      if(!it||typeof it.id!=='string')return;
+      if(typeof toggleTaskDone==='function')toggleTaskDone(it.id,it.source||'standalone',it.projectId||'');
+      processed.push(it.id);
+    });
+  });
+  if(processed.length&&typeof _trackEvent==='function')_trackEvent('tool_use','widget_complete_drain','Widget Complete');
   return JSON.stringify(processed);
 };
 
