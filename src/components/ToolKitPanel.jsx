@@ -60,48 +60,44 @@ export default function ToolKitPanel() {
         {/* Crisis resources moved to the status-bar ribbon (Joe, 2026-08-19)
             -- see StatusBar.jsx, next to Settings. Always-reachable there
             regardless of which Tool Kit tiles are shown/hidden. */}
-        <button className="toolkit-btn toolkit-breath" onClick={() => window.openBreathworkModal()}>
+        {/* Subtitles REMOVED 2026-08-19 (Joe's call) -- they were the direct
+            cause of the Tool Kit grid overflowing its 629px panel and getting
+            clipped, and the grid only ever fit by ~13px with them present, so
+            any larger text setting or narrower window clipped the bottom row.
+            This reverses R13/F23b + panel survey I-4, which added them so the
+            Basic persona could tell what HALT+/Urge Log meant without DBT
+            literacy. The explanatory text is preserved as a title tooltip on
+            each tile -- weaker than a visible subtitle (touch devices can't
+            hover, which is exactly why I-4 chose subtitles over tooltips in
+            the first place), so if the naming problem resurfaces the fix is a
+            first-run explainer or clearer NAMES, not putting these back. */}
+        <button className="toolkit-btn toolkit-breath" onClick={() => window.openBreathworkModal()} title="Breathwork — slow your breathing, fast">
           <i className="ti ti-wind" aria-hidden="true"></i>
           <span>Breathwork</span>
-          <span className="toolkit-btn-sub">Slow your breathing, fast</span>
         </button>
-        <button className="toolkit-btn toolkit-mood" onClick={() => window.openEnergyModal()}>
+        <button className="toolkit-btn toolkit-mood" onClick={() => window.openEnergyModal()} title="Energy &amp; Mood — check in on how you're doing">
           <i className="ti ti-bolt" aria-hidden="true"></i>
           <span>Energy &amp; Mood</span>
-          <span className="toolkit-btn-sub">Check in on how you're doing</span>
         </button>
-        <button className="toolkit-btn toolkit-journal" onClick={() => window.openJournal()}>
+        <button className="toolkit-btn toolkit-journal" onClick={() => window.openJournal()} title="Journal — private, encrypted space to write">
           <i className="ti ti-notes" aria-hidden="true"></i>
           <span>Journal</span>
-          <span className="toolkit-btn-sub">Private, encrypted space to write</span>
         </button>
-        <button className="toolkit-btn toolkit-workout" onClick={() => window.openWorkoutModal()}>
+        <button className="toolkit-btn toolkit-workout" onClick={() => window.openWorkoutModal()} title="Workout — today's strength or cardio plan">
           <i className="ti ti-barbell" aria-hidden="true"></i>
           <span>Workout</span>
-          <span className="toolkit-btn-sub">Today's strength or cardio plan</span>
         </button>
-        {/* R13/F23b: the review's Basic persona never taps these because the
-            names assume DBT literacy -- "if a feature requires knowing what
-            it's for before you can find out what it's for, it doesn't exist
-            for me." Subtitles here, not tooltips: touch devices can't hover.
-            Panel survey 2026-08-18 (I-4) extended the same treatment to the
-            remaining unsubtitled tiles below (Breathwork, Energy & Mood,
-            Journal, Workout, Wellness) -- HALT+ and Urge Log were the only
-            ones that had gotten it. */}
-        <button className="toolkit-btn toolkit-halt" onClick={() => window.openHaltModal()}>
+        <button className="toolkit-btn toolkit-halt" onClick={() => window.openHaltModal()} title="HALT+ — body check when focus tanks">
           <i className="ti ti-alert-triangle" aria-hidden="true"></i>
           <span>HALT+</span>
-          <span className="toolkit-btn-sub">Body check when focus tanks</span>
         </button>
-        <button className="toolkit-btn toolkit-urge" onClick={() => window.openUrgeModal()}>
+        <button className="toolkit-btn toolkit-urge" onClick={() => window.openUrgeModal()} title="Urge Log — pause before you act on impulse">
           <i className="ti ti-hand-stop" aria-hidden="true"></i>
           <span>Urge Log</span>
-          <span className="toolkit-btn-sub">Pause before you act on impulse</span>
         </button>
-        <button className="toolkit-btn toolkit-wellness" onClick={() => window.openWellnessModal()}>
+        <button className="toolkit-btn toolkit-wellness" onClick={() => window.openWellnessModal()} title="Wellness — rate how balanced you feel">
           <i className="ti ti-heart" aria-hidden="true"></i>
           <span>Wellness</span>
-          <span className="toolkit-btn-sub">Rate how balanced you feel</span>
         </button>
       </div>
       {/* YouTube player host (rendered by PointsFocusMusic component) */}
