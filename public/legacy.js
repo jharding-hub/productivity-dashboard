@@ -9935,10 +9935,28 @@ function closePointsInsights(){
   document.getElementById('pointsInsightsModal').classList.remove('open');
 }
 
-function _usageTotalForDay(dayKey){
+// Panel survey 2026-08-18 (I-7). The Skeptic's finding: Presence points are
+// awarded for using the regulation tools, so plotting "tool use" against
+// "Presence earned" made the correlation partly DEFINITIONAL -- the chart
+// was partly measuring itself. These sources are excluded from the usage
+// series the correlation uses. Note this is display-only: no stored points
+// change, and whether regulation tools keep EARNING Presence at all is
+// deliberately left as Joe's call (survey section 8), not decided here.
+var INSIGHTS_REGULATION_SOURCES=['breathwork','urge_log','log_mood','halt_check','grounding','panel:wellness'];
+function _isRegulationSource(src){
+  if(INSIGHTS_REGULATION_SOURCES.indexOf(src)>=0)return true;
+  // panel:wellness is the grounding panel; catch its overlay variants too.
+  return src.indexOf('wellness')>=0;
+}
+// excludeRegulation: pass true for the correlation series. The plain total
+// (all sources) is still what the rest of the app reports.
+function _usageTotalForDay(dayKey,excludeRegulation){
   var day=state.panelUseLog[dayKey];
   if(!day)return 0;
-  return Object.keys(day).reduce(function(sum,src){return sum+day[src];},0);
+  return Object.keys(day).reduce(function(sum,src){
+    if(excludeRegulation&&_isRegulationSource(src))return sum;
+    return sum+day[src];
+  },0);
 }
 
 // Returns an ordered array of {label,dateKey,points,energy,mood,usage} rows
@@ -9956,7 +9974,7 @@ function getInsightsSeries(period){
       var pts=(state.points.monthlyTotals[mk]||0);
       Object.keys(state.points.totalsByDay).forEach(function(k){if(k.slice(0,7)===mk)pts+=state.points.totalsByDay[k];});
       var usage=(state.usageMonthlyTotals[mk]||0);
-      Object.keys(state.panelUseLog).forEach(function(k){if(k.slice(0,7)===mk)usage+=_usageTotalForDay(k);});
+      Object.keys(state.panelUseLog).forEach(function(k){if(k.slice(0,7)===mk)usage+=_usageTotalForDay(k,true);});
       var energyVals=[],moodVals=[];
       (state.moodLog||[]).forEach(function(e){
         if(e.date&&e.date.slice(0,7)===mk){
@@ -9983,7 +10001,7 @@ function getInsightsSeries(period){
       points:state.points.totalsByDay[dk]||0,
       energy:entry&&entry.energy?_PI_ENERGY_NUM[entry.energy]:null,
       mood:entry&&entry.mood?_PI_MOOD_NUM[entry.mood]:null,
-      usage:_usageTotalForDay(dk)
+      usage:_usageTotalForDay(dk,true)
     });
   }
   return rows;
@@ -9991,20 +10009,35 @@ function getInsightsSeries(period){
 
 // Plain-English correlation callout: splits rows into more-active/less-active
 // halves by usage and compares average mood between them.
-function getUsageMoodInsight(rows){
+// Panel survey 2026-08-18 (I-7). ONE computation of the usage/mood
+// relationship, shared by the headline insight and the tips below it.
+// Previously each derived its own claim independently, and during the
+// survey they contradicted each other in the same modal: a banner saying
+// mood was "fairly steady regardless of usage" sitting directly above a tip
+// asserting "low-usage days tend to coincide with lower mood". At the data
+// volumes where Insights should be most useful, a panel that argues with
+// itself costs the whole feature its credibility.
+// Returns: {status:'insufficient'|'steady'|'positive'|'negative', moreAvg, lessAvg, diff}
+function _usageMoodStats(rows){
   var withMood=rows.filter(function(r){return r.mood!==null&&r.mood!==undefined;});
-  if(withMood.length<4)return 'Keep logging mood and using Centerpost -- insights unlock after a few more days of data.';
+  if(withMood.length<4)return {status:'insufficient'};
   var sorted=rows.slice().sort(function(a,b){return b.usage-a.usage;});
   var half=Math.floor(sorted.length/2);
   var moreActive=sorted.slice(0,half).filter(function(r){return r.mood!==null;});
   var lessActive=sorted.slice(sorted.length-half).filter(function(r){return r.mood!==null;});
-  if(moreActive.length<2||lessActive.length<2)return 'Keep logging mood and using Centerpost -- insights unlock after a few more days of data.';
+  if(moreActive.length<2||lessActive.length<2)return {status:'insufficient'};
   var avg=function(arr){return arr.reduce(function(s,r){return s+r.mood;},0)/arr.length;};
   var moreAvg=avg(moreActive),lessAvg=avg(lessActive);
   var diff=moreAvg-lessAvg;
-  if(Math.abs(diff)<0.15)return 'Your mood looks fairly steady regardless of how much you use Centerpost on a given day.';
-  if(diff>0)return 'On your most active days, mood averaged '+moreAvg.toFixed(1)+'/4 vs '+lessAvg.toFixed(1)+'/4 on your least active days -- more engagement is tracking with a better mood.';
-  return 'On your least active days, mood averaged '+lessAvg.toFixed(1)+'/4 vs '+moreAvg.toFixed(1)+'/4 on your most active days -- worth noticing what is different on the low-use days.';
+  var status=Math.abs(diff)<0.15?'steady':(diff>0?'positive':'negative');
+  return {status:status,moreAvg:moreAvg,lessAvg:lessAvg,diff:diff};
+}
+function getUsageMoodInsight(rows){
+  var st=_usageMoodStats(rows);
+  if(st.status==='insufficient')return 'Keep logging mood and using Centerpost -- insights unlock after a few more days of data.';
+  if(st.status==='steady')return 'Your mood looks fairly steady regardless of how much you use Centerpost on a given day.';
+  if(st.status==='positive')return 'On your most active days, mood averaged '+st.moreAvg.toFixed(1)+'/4 vs '+st.lessAvg.toFixed(1)+'/4 on your least active days -- more engagement is tracking with a better mood.';
+  return 'On your least active days, mood averaged '+st.lessAvg.toFixed(1)+'/4 vs '+st.moreAvg.toFixed(1)+'/4 on your most active days -- worth noticing what is different on the low-use days.';
 }
 
 function getProductivityTips(rows){
@@ -10016,13 +10049,23 @@ function getProductivityTips(rows){
     tips.push('You are only logging mood/energy on about '+Math.round(loggedDays/rows.length*100)+'% of days shown -- logging daily (even a quick tap) makes these patterns much clearer.');
   }
   if(avgUsage>0&&avgUsage<2){
-    tips.push('Usage is light in this window. Try a single 25-minute focus-timer session on your next task -- it is a quick, low-friction way to re-engage and earn Presence.');
+    // I-7: was "...a quick, low-friction way to re-engage and earn Presence."
+    // The Skeptic's objection to points-framing on tool use applies here --
+    // the reason to start a focus session is the session, not the score.
+    tips.push('Usage is light in this window. Try a single 25-minute focus-timer session on your next task -- a quick, low-friction way to re-engage.');
   }
+  // I-7: this tip used to fire on a bare count of low-usage/low-mood days,
+  // with no reference to whether the overall relationship supported it --
+  // which is how it ended up contradicting the headline insight above. Now
+  // gated on the SAME shared computation, so it can only claim a
+  // usage/mood link when the data actually shows one.
+  var _ums=_usageMoodStats(rows);
   var lowUsageLowMood=rows.filter(function(r){return r.usage<=1&&r.mood!==null&&r.mood<=2;});
-  if(lowUsageLowMood.length>=2){
+  if(lowUsageLowMood.length>=2&&_ums.status==='positive'){
     tips.push('Low-usage days tend to coincide with lower mood -- on tough days, body-doubling (working alongside the app open, even without finishing tasks) can help more than pushing through alone.');
   }
-  if(tips.length<2)tips.push('Breaking work into subtasks earns Presence more often than waiting for one big task to finish -- frequent small wins are proven to help sustain ADHD motivation better than large infrequent ones.');
+  // I-7: was "Breaking work into subtasks earns Presence more often than..."
+  if(tips.length<2)tips.push('Breaking work into subtasks gives you more frequent finish lines than waiting on one big task -- small, frequent wins sustain ADHD motivation better than large infrequent ones.');
   return tips.slice(0,2);
 }
 
