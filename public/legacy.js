@@ -4645,6 +4645,25 @@ function pushWatchSnapshot(){
 // Builds one day's payload. Split out of _computeWidgetSnapshot so the
 // snapshot can carry TODAY *and* TOMORROW -- see the `days` array below for
 // why that matters.
+// A-6 (Stage 8): given a timeline block, what (if anything) the widget's
+// complete button should hand to toggleTaskDone. Returns null for blocks with
+// nothing completable behind them (hand-typed manual blocks, reminders).
+// `source` here is toggleTaskDone's OWN vocabulary ('project'|'standalone'),
+// deliberately not _tlCollectBlocks's block-source vocabulary ('subtask'|
+// 'task'|'manual'|'reminder') -- translating once here beats leaking the
+// mismatch into the Swift side.
+function _widgetCompletionTarget(b){
+  if(!b)return null;
+  if(b.source==='subtask'&&b.itemId)return {taskId:b.itemId,source:'project',projectId:b.projectId||''};
+  if(b.source==='task'&&b.itemId)return {taskId:b.itemId,source:'standalone',projectId:''};
+  // A task that was dragged or "scheduled" becomes a real linked tlBlock and
+  // arrives here as source:'manual' -- still completable via its linkedId.
+  if(b.source==='manual'&&b.linkedId){
+    if(b.linkedType==='subtask')return {taskId:b.linkedId,source:'project',projectId:b.projectId||''};
+    if(b.linkedType==='task')return {taskId:b.linkedId,source:'standalone',projectId:''};
+  }
+  return null;
+}
 function _widgetDayPayload(day){
   var pr={high:0,med:1,low:2};
   // NOTE: pr[x]||1 would be wrong here -- high's rank is 0, which is falsy,
@@ -4671,8 +4690,19 @@ function _widgetDayPayload(day){
   var timeline=blocks.slice().sort(function(a,b){return a.startMin-b.startMin;})
     .map(function(b){
       var hh=Math.floor(b.startMin/60),mm=b.startMin%60;
-      return {name:b.name||'',
-              time:fmtTime((hh<10?'0':'')+hh+':'+(mm<10?'0':'')+mm)};
+      var row={name:b.name||'',
+               time:fmtTime((hh<10?'0':'')+hh+':'+(mm<10?'0':'')+mm)};
+      // A-6 (Stage 8): attach what toggleTaskDone needs, so the widget's
+      // complete button can sit on THESE rows -- the ones actually rendered.
+      // (An earlier version put the button on a separate "due today" items
+      // list instead, which is a different set: it misses anything scheduled
+      // via a linked tlBlock, and rendering it replaced the times the widget
+      // exists to show. Found on-device -- the widget showed the timeline
+      // with no buttons at all.) Manual blocks and reminders have nothing to
+      // complete and simply get no button.
+      var c=_widgetCompletionTarget(b);
+      if(c){row.taskId=c.taskId;row.source=c.source;row.projectId=c.projectId;}
+      return row;
     });
   return {
     date:day,
@@ -13221,7 +13251,13 @@ function _tlCollectBlocks(targetDate){
     if(b.date===today){
       blocks.push({
         id:b.id,name:b.name,startMin:_tlParseTime(b.time),durMin:parseInt(b.duration||60),
-        projectId:b.projectId||'',priority:b.priority||'med',source:'manual'
+        projectId:b.projectId||'',priority:b.priority||'med',source:'manual',
+        // Carried through (additive, Stage 8) so a consumer can tell whether
+        // this manual block stands for a REAL task -- a dragged/scheduled task
+        // materializes into a linked tlBlock and would otherwise look
+        // indistinguishable from a hand-typed block. Used by the widget's
+        // complete button; ignored by the in-app renderers.
+        linkedId:b.linkedId||'',linkedType:b.linkedType||''
       });
     }
   });
@@ -13244,7 +13280,8 @@ function _tlCollectBlocks(targetDate){
         blocks.push({
           id:'st_'+st.id,name:st.name,startMin:_tlParseTime(st.time),
           durMin:parseInt(st.timeEst)||60,
-          projectId:p.id,priority:st.priority||'med',source:'subtask'
+          projectId:p.id,priority:st.priority||'med',source:'subtask',
+          itemId:st.id   // real id, unprefixed (Stage 8) -- see _widgetDayPayload
         });
       }
     });
@@ -13257,7 +13294,8 @@ function _tlCollectBlocks(targetDate){
       blocks.push({
         id:'task_'+t.id,name:t.name,startMin:_tlParseTime(t.time),
         durMin:parseInt(t.timeEst)||60,
-        projectId:projId,priority:t.priority||'med',source:'task'
+        projectId:projId,priority:t.priority||'med',source:'task',
+        itemId:t.id   // real id, unprefixed (Stage 8) -- see _widgetDayPayload
       });
     }
   });
@@ -13296,14 +13334,14 @@ function _tlCollectBlocks(targetDate){
   (state.projects||[]).forEach(function(p){
     (p.subtasks||[]).forEach(function(st){
       if(!st.done&&st.due===today&&!st.time&&!linkedIds[st.id]){
-        untimed.push({id:'st_'+st.id,name:st.name,projectId:p.id,
+        untimed.push({id:'st_'+st.id,name:st.name,projectId:p.id,itemId:st.id,
           priority:st.priority||'med',source:'subtask',durMin:estDur(st.timeEst)});
       }
     });
   });
   (state.tasks||[]).forEach(function(t){
     if(!t.done&&t.due===today&&!t.time&&!linkedIds[t.id]){
-      untimed.push({id:'task_'+t.id,name:t.name,
+      untimed.push({id:'task_'+t.id,name:t.name,itemId:t.id,
         projectId:t.projectId||(t.projectIds&&t.projectIds[0])||'',
         priority:t.priority||'med',source:'task',durMin:estDur(t.timeEst)});
     }
@@ -13328,7 +13366,7 @@ function _tlCollectBlocks(targetDate){
       if(slot>lastStart)slot=UNTIMED_START;
       taken.push([slot,slot+dur]);
       blocks.push({id:u.id,name:u.name,startMin:slot,durMin:dur,
-        projectId:u.projectId,priority:u.priority,source:u.source});
+        projectId:u.projectId,priority:u.priority,source:u.source,itemId:u.itemId});
     });
   }
 
