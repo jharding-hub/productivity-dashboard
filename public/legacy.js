@@ -1361,8 +1361,30 @@ function _checkStateSize(bytes){
 // data we just erased in the window before signOut() completes.
 var _accountDeleted=false;
 
+// Panel survey Stage 6 (A-8). Bulk operations call through the SAME
+// per-item functions the single-item UI uses (toggleTaskDone and friends),
+// which is deliberate -- those carry the archive write, recurrence
+// materialization, points award, tombstone and linked-block cleanup, and
+// re-implementing any of that for the batch path would be a second source
+// of truth waiting to drift. But each of them also ends in save(), so a
+// 100-task bulk complete meant 100 full-state serializations and 100
+// localStorage writes. _withBatch() collapses that: save() records that a
+// write is owed and returns, and exactly one real save runs at the end.
+//
+// try/finally is load-bearing -- if a batch throws halfway, the flag MUST
+// clear or every later save in the session silently no-ops.
+var _batchDepth=0,_batchDirty=false;
+function _withBatch(fn){
+  _batchDepth++;
+  try{fn();}
+  finally{
+    _batchDepth--;
+    if(_batchDepth===0&&_batchDirty){_batchDirty=false;save();}
+  }
+}
 function save(){
   if(_accountDeleted)return;
+  if(_batchDepth>0){_batchDirty=true;return;}
   const uid=currentUser?currentUser.uid:'local';
   // E-1: stamp the state itself so every copy carries the time of the last
   // edit it reflects -- this is what the write guard below compares.
@@ -7110,6 +7132,18 @@ function toggleTaskSelectMode(on){
   if(actions)actions.style.display=_tlSelectMode?'flex':'none';
   var selectAll=document.getElementById('tlSelectAll');
   if(selectAll)selectAll.checked=false;
+  var dateEl=document.getElementById('tlBulkDate');
+  if(dateEl)dateEl.value='';
+  // A-8: rebuild the move-to-project list each time the bar opens, so a
+  // project created since the last open is present.
+  var sel=document.getElementById('tlBulkProject');
+  if(sel){
+    sel.innerHTML='<option value="__none__">Move to project\u2026</option><option value="__clear__">(no project)</option>'
+      +_sortedProjects().map(function(p){return '<option value="'+p.id+'">'+esc(p.name)+'</option>';}).join('');
+    sel.value='__none__';
+  }
+  var tog=document.getElementById('tlSelectToggle');
+  if(tog)tog.classList.toggle('btn-accent',_tlSelectMode);
   renderTaskList();
 }
 function _tlToggleSelect(id,checked){
@@ -7137,33 +7171,136 @@ function _tlBulkComplete(){
   if(!ids.length){toast('No tasks selected');return;}
   var all=getAllTasks();
   var n=0;
-  ids.forEach(function(id){
-    var t=all.find(function(t){return t.id===id;});
-    if(t&&!t.done){toggleTaskDone(t.id,t.source,t.projectId);n++;}
+  // A-8: one save for the whole batch. toggleTaskDone still runs per item --
+  // it owns archiving, recurrence, points and tombstones -- but its save()
+  // is coalesced by _withBatch. See the comment on save().
+  _withBatch(function(){
+    ids.forEach(function(id){
+      var t=all.find(function(t){return t.id===id;});
+      if(t&&!t.done){toggleTaskDone(t.id,t.source,t.projectId);n++;}
+    });
   });
   _tlSelected=Object.create(null);
+  renderTaskList();
   toast('Completed '+n+' task'+(n!==1?'s':''));
+}
+// A-8: bulk reschedule. Routes through the same per-item date setters the
+// panels' click-to-edit fields use, so nothing here bypasses their guards.
+function _tlBulkReschedule(dateStr){
+  var ids=Object.keys(_tlSelected);
+  if(!ids.length){toast('No tasks selected');return;}
+  var all=getAllTasks();
+  var n=0;
+  _withBatch(function(){
+    ids.forEach(function(id){
+      var t=all.find(function(x){return x.id===id;});
+      if(!t)return;
+      if(t.source==='standalone')editStandaloneTaskDue(id,dateStr);
+      else editSubtaskDue(t.projectId,id,dateStr);
+      n++;
+    });
+  });
+  _tlSelected=Object.create(null);
+  renderProjects();renderTaskList();
+  toast('Moved '+n+' task'+(n!==1?'s':'')+' to '+(dateStr?fmtDate(dateStr):'no date'));
+}
+// A-8: bulk move-to-project, standalone tasks only. A SUBTASK already
+// belongs to a project, and relocating one between projects would be a
+// same-id move across arrays -- explicitly the case the sync invariants say
+// must NOT be tombstoned, and a genuine re-parent is more than this batch
+// path should take on. Those are reported as skipped rather than silently
+// ignored or silently mangled.
+function _tlBulkMoveToProject(projectId){
+  var ids=Object.keys(_tlSelected);
+  if(!ids.length){toast('No tasks selected');return;}
+  var all=getAllTasks();
+  var moved=0,skipped=0;
+  _withBatch(function(){
+    ids.forEach(function(id){
+      var meta=all.find(function(x){return x.id===id;});
+      if(!meta){return;}
+      if(meta.source!=='standalone'){skipped++;return;}
+      var t=(state.tasks||[]).find(function(x){return x.id===id;});
+      if(!t){return;}
+      t.projectId=projectId||'';
+      t.projectIds=projectId?[projectId]:[];
+      moved++;
+    });
+    save();
+  });
+  _tlSelected=Object.create(null);
+  renderProjects();renderTaskList();
+  var pname=projectId?((state.projects.find(function(p){return p.id===projectId;})||{}).name||'project'):'no project';
+  var msg='Moved '+moved+' task'+(moved!==1?'s':'')+' to '+pname;
+  if(skipped)msg+=', '+skipped+' skipped (already in a project)';
+  toast(msg);
 }
 function _tlBulkDelete(){
   var ids=Object.keys(_tlSelected);
   if(!ids.length){toast('No tasks selected');return;}
   var all=getAllTasks();
   _confirm('Delete '+ids.length+' selected task'+(ids.length!==1?'s':'')+'?',function(){
-    ids.forEach(function(id){
-      var t=all.find(function(t){return t.id===id;});
-      if(!t)return;
-      _tombstone(id);
-      if(t.source==='standalone'){
-        state.tasks=state.tasks.filter(function(x){return x.id!==id;});
-      }else{
-        var p=state.projects.find(function(p){return p.id===t.projectId;});
-        if(p)p.subtasks=p.subtasks.filter(function(x){return x.id!==id;});
-      }
+    _withBatch(function(){
+      ids.forEach(function(id){
+        var t=all.find(function(t){return t.id===id;});
+        if(!t)return;
+        _tombstone(id);
+        if(t.source==='standalone'){
+          state.tasks=state.tasks.filter(function(x){return x.id!==id;});
+        }else{
+          var p=state.projects.find(function(p){return p.id===t.projectId;});
+          if(p)p.subtasks=p.subtasks.filter(function(x){return x.id!==id;});
+        }
+      });
+      save();
     });
     _tlSelected=Object.create(null);
-    save();renderProjects();renderTaskList();
+    renderProjects();renderTaskList();
     toast('Deleted '+ids.length+' task'+(ids.length!==1?'s':''));
   },{destructive:true,confirmText:'Delete'});
+}
+
+// ── Fresh start (panel survey Stage 6, A-8) ──────────────────────────
+// The second door onto the same batch engine. The ADHD User identified the
+// overdue wall as the single biggest re-entry abandonment risk after a
+// lapse, and pointed out that Reminders already had a bulk-triage popup
+// while Tasks had nothing -- so the backlog could only be cleared one item
+// at a time, which is exactly the moment someone closes the app.
+//
+// Deliberately NOT a new mutation path: each option below drives the same
+// per-item setters the rest of the app uses, wrapped in one _withBatch.
+// Nothing here completes or deletes anything -- an overdue backlog is not
+// a set of failures to erase, it is a set of dates that stopped being true.
+function _overdueTasks(){
+  var today=todayStr();
+  return getAllTasks().filter(function(t){return !t.done&&t.due&&t.due<today;});
+}
+function openFreshStart(){
+  var overdue=_overdueTasks();
+  if(!overdue.length){toast('Nothing overdue -- you are current');return;}
+  var n=overdue.length;
+  _confirm(n+' task'+(n!==1?'s':'')+' slipped past their date. Nothing here is deleted or marked done -- pick where they land.',
+    function(){_freshStartApply('today',overdue);},
+    {confirmText:'Move all to today',icon:'ti-refresh',
+     altText:'Clear their dates',onAlt:function(){_freshStartApply('someday',overdue);}});
+}
+// mode: 'today' -> everything becomes due today.
+//       'someday' -> dates cleared; the tasks stay, they just stop being late.
+function _freshStartApply(mode,overdue){
+  var target=mode==='today'?todayStr():'';
+  var n=0;
+  _withBatch(function(){
+    overdue.forEach(function(t){
+      if(t.source==='standalone')editStandaloneTaskDue(t.id,target);
+      else editSubtaskDue(t.projectId,t.id,target);
+      n++;
+    });
+  });
+  renderProjects();renderTaskList();
+  if(typeof _refreshTodayViewIfVisible==='function')_refreshTodayViewIfVisible();
+  toast(mode==='today'
+    ?('Moved '+n+' task'+(n!==1?'s':'')+' to today')
+    :('Cleared the date on '+n+' task'+(n!==1?'s':'')+' -- still here, no longer late'));
 }
 
 // -- Schedule to timeline: wires existing timeEst data into the existing

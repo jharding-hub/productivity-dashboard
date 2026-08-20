@@ -157,6 +157,27 @@
 </select>
 <label class="upcoming-filter-toggle" onclick="event.stopPropagation();" style="margin-left:4px;"><input type="checkbox" id="taskUpcomingOnly" onchange="renderTaskList()"> <span style="font-size:11px;">Show all tasks</span></label>
 <div class="notes-inline-search" onclick="event.stopPropagation()"><input type="text" class="note-search" id="tlSearch" placeholder="Search tasks..." oninput="renderTaskList()" onclick="event.stopPropagation()"></div>
+<!-- Panel survey Stage 6 (A-8). The multi-select ENGINE already existed in
+     legacy.js (toggleTaskSelectMode/_tlSelected/_tlBulkComplete/_tlBulkDelete)
+     but had no markup anywhere and no caller -- it was unreachable dead code.
+     These are its entry points, plus the two operations the survey asked for
+     that were missing entirely (reschedule, move-to-project). -->
+<button class="btn btn-sm" id="tlSelectToggle" onclick="event.stopPropagation();toggleTaskSelectMode(!_tlSelectMode)" title="Select several tasks to act on at once" style="font-size:11px;padding:3px 8px;">&#9745; Select</button>
+<button class="btn btn-sm" onclick="event.stopPropagation();openFreshStart()" title="Everything overdue, moved in one step -- nothing deleted or completed" style="font-size:11px;padding:3px 8px;">&#8634; Fresh start</button>
+</div>
+<!-- Bulk-action bar: hidden until select mode is on (toggleTaskSelectMode). -->
+<div class="tl-select-actions" id="tlSelectModeActions" style="display:none;flex-wrap:wrap;gap:6px;align-items:center;padding:8px 10px;margin-bottom:6px;background:var(--surface-raised);border:1px solid var(--border);border-radius:var(--radius-sm);">
+  <label style="display:inline-flex;align-items:center;gap:5px;font-size:11px;cursor:pointer;"><input type="checkbox" id="tlSelectAll" onchange="_tlToggleSelectAll(this.checked)"> Select all</label>
+  <button class="btn btn-sm" onclick="_tlBulkComplete()" style="font-size:11px;padding:3px 8px;">&#10003; Complete</button>
+  <label style="display:inline-flex;align-items:center;gap:4px;font-size:11px;">Due
+    <input type="date" id="tlBulkDate" onchange="_tlBulkReschedule(this.value)" style="font-size:11px;padding:2px 4px;">
+  </label>
+  <select id="tlBulkProject" onchange="if(this.value!=='__none__'){_tlBulkMoveToProject(this.value==='__clear__'?'':this.value);this.value='__none__';}" style="font-size:11px;padding:3px 6px;max-width:150px;">
+    <option value="__none__">Move to project…</option>
+    <option value="__clear__">(no project)</option>
+  </select>
+  <button class="btn btn-sm btn-danger" onclick="_tlBulkDelete()" style="font-size:11px;padding:3px 8px;">&#10005; Delete</button>
+  <button class="btn btn-sm" onclick="toggleTaskSelectMode(false)" style="font-size:11px;padding:3px 8px;margin-left:auto;">Done</button>
 </div>
 <div class="panel-content" id="pc_tasklist">
 <div class="tl-list" id="taskListItems"><div class="skel-wrap"><div class="skel-row-item"><div class="skel" style="width:14px;height:14px;border-radius:50%;flex-shrink:0;"></div><div style="flex:1;display:flex;flex-direction:column;gap:4px;"><div class="skel skel-line" style="width:70%"></div><div class="skel skel-line sm" style="width:48%"></div></div><div class="skel skel-line sm" style="width:44px;flex-shrink:0;"></div></div><div class="skel-row-item"><div class="skel" style="width:14px;height:14px;border-radius:50%;flex-shrink:0;"></div><div style="flex:1;display:flex;flex-direction:column;gap:4px;"><div class="skel skel-line" style="width:55%"></div><div class="skel skel-line sm" style="width:33%"></div></div><div class="skel skel-line sm" style="width:44px;flex-shrink:0;"></div></div><div class="skel-row-item"><div class="skel" style="width:14px;height:14px;border-radius:50%;flex-shrink:0;"></div><div style="flex:1;display:flex;flex-direction:column;gap:4px;"><div class="skel skel-line" style="width:80%"></div><div class="skel skel-line sm" style="width:58%"></div></div><div class="skel skel-line sm" style="width:44px;flex-shrink:0;"></div></div><div class="skel-row-item"><div class="skel" style="width:14px;height:14px;border-radius:50%;flex-shrink:0;"></div><div style="flex:1;display:flex;flex-direction:column;gap:4px;"><div class="skel skel-line" style="width:65%"></div><div class="skel skel-line sm" style="width:43%"></div></div><div class="skel skel-line sm" style="width:44px;flex-shrink:0;"></div></div><div class="skel-row-item"><div class="skel" style="width:14px;height:14px;border-radius:50%;flex-shrink:0;"></div><div style="flex:1;display:flex;flex-direction:column;gap:4px;"><div class="skel skel-line" style="width:75%"></div><div class="skel skel-line sm" style="width:53%"></div></div><div class="skel skel-line sm" style="width:44px;flex-shrink:0;"></div></div></div></div>
