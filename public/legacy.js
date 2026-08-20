@@ -4651,7 +4651,15 @@ function _widgetDayPayload(day){
   // so || would silently coerce it to 1 (med) and scramble the sort. Use an
   // explicit undefined check instead.
   var prRank=function(p){var r=pr[p];return r===undefined?1:r;};
-  var tasks=(state.tasks||[]).filter(function(t){return !t.done&&t.due===day;})
+  // getAllTasks(), not state.tasks alone (Stage 8 fix, 2026-08-20): the
+  // original code only ever looked at standalone tasks, so taskCount,
+  // items, and overdueCount all silently undercounted (down to "0 real
+  // items" in the widget) for anyone whose today/overdue tasks are mostly
+  // PROJECT SUBTASKS -- found on-device when the interactive complete
+  // button's `items` list came back empty despite the timeline clearly
+  // showing project-tagged tasks due today. getAllTasks() already unions
+  // both with a consistent {id,name,due,priority,source,projectId} shape.
+  var tasks=getAllTasks().filter(function(t){return !t.done&&t.due===day;})
     .sort(function(a,b){return prRank(a.priority)-prRank(b.priority);});
   var reminders=(state.reminders||[]).filter(function(r){return r.date===day;});
   // Reads _tlCollectBlocks rather than raw state.tlBlocks so the widget shows
@@ -4670,11 +4678,11 @@ function _widgetDayPayload(day){
     date:day,
     taskCount:tasks.length,
     reminderCount:reminders.length,
-    // `id` added for A-6 (panel survey Stage 8): the widget's interactive
-    // complete button needs it to queue a real completion. Only ever
-    // state.tasks here (never project subtasks), so `source` is always
-    // 'standalone' on the native side -- see PendingCompletionQueue.swift.
-    items:tasks.slice(0,4).map(function(t){return {id:t.id,title:t.name,priority:t.priority||'med'};}),
+    // `id`/`source`/`projectId` added for A-6 (panel survey Stage 8): the
+    // widget's interactive complete button needs all three to queue a real
+    // completion through toggleTaskDone, which takes different params for a
+    // standalone task vs. a project subtask -- see PendingCompletionQueue.swift.
+    items:tasks.slice(0,4).map(function(t){return {id:t.id,title:t.name,priority:t.priority||'med',source:t.source,projectId:t.projectId||''};}),
     timeline:timeline.slice(0,6)
   };
 }
@@ -4703,11 +4711,13 @@ function _computeWidgetSnapshot(){
   // Panel survey Stage 8 (A-6): "how many are overdue" for the read-only
   // Shortcuts intent, which answers straight from this snapshot with no web
   // layer -- so the count has to already be sitting here, not derived from
-  // `days` (which only ever covers today/tomorrow, never the past). Same
-  // due-before-today + not-done definition Fresh Start already uses
-  // (_overdueTasks), kept independent rather than imported so this file
-  // doesn't gain a dependency edge into that panel's code for one count.
-  snap.overdueCount=(state.tasks||[]).filter(function(t){return !t.done&&t.due&&t.due<today.date;}).length;
+  // `days` (which only ever covers today/tomorrow, never the past). Reuses
+  // _overdueTasks (Fresh Start, A-8) directly rather than a second filter --
+  // an EARLIER version of this line duplicated it as a state.tasks-only
+  // filter "to avoid a dependency edge," which quietly undercounted anyone
+  // whose overdue items are mostly project subtasks (_overdueTasks already
+  // calls getAllTasks(), which unions both).
+  snap.overdueCount=(typeof _overdueTasks==='function')?_overdueTasks().length:0;
   return snap;
 }
 var _lastWidgetSnapshot=null;
