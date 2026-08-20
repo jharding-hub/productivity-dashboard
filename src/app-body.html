@@ -164,6 +164,9 @@
      that were missing entirely (reschedule, move-to-project). -->
 <button class="btn btn-sm" id="tlSelectToggle" onclick="event.stopPropagation();toggleTaskSelectMode(!_tlSelectMode)" title="Select several tasks to act on at once" style="font-size:11px;padding:3px 8px;">&#9745; Select</button>
 <button class="btn btn-sm" onclick="event.stopPropagation();openFreshStart()" title="Everything overdue, moved in one step -- nothing deleted or completed" style="font-size:11px;padding:3px 8px;">&#8634; Fresh start</button>
+<!-- Panel survey Stage 7 (A-5): paste-a-list / CSV import, no per-service
+     APIs -- see openImportList in legacy.js. -->
+<button class="btn btn-sm" onclick="event.stopPropagation();openImportList()" title="Paste a list or a CSV export -- preview before anything is created" style="font-size:11px;padding:3px 8px;">&#128229; Import</button>
 </div>
 <!-- Bulk-action bar: hidden until select mode is on (toggleTaskSelectMode). -->
 <div class="tl-select-actions" id="tlSelectModeActions" style="display:none;flex-wrap:wrap;gap:6px;align-items:center;padding:8px 10px;margin-bottom:6px;background:var(--surface-raised);border:1px solid var(--border);border-radius:var(--radius-sm);">

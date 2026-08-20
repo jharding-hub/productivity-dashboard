@@ -16,6 +16,13 @@
 // state.projects access); it returns the raw tag text and the caller
 // resolves it against real projects.
 //
+// Panel survey Stage 7 (A-16) extended recurrence itself: a weekly rule can
+// now carry a multi-weekday day-SET ("every mon wed fri", recurrence.days)
+// and an optional end date ("until Dec 12", recurrence.until) instead of
+// only the single-weekday/interval-N shape from R8. Both are additive to the
+// recurrence object's existing {freq, interval} shape, so any code that
+// already reads .freq/.interval is unaffected.
+//
 // Pure and side-effect-free so it's easy to hand-verify in the console and,
 // if a test runner is ever added to this repo, to unit test directly.
 (function () {
@@ -26,6 +33,58 @@
   function addDays(d, n) { var r = new Date(d); r.setDate(r.getDate() + n); return r; }
 
   var WEEKDAYS = ['sunday', 'monday', 'tuesday', 'wednesday', 'thursday', 'friday', 'saturday'];
+  var WEEKDAY_ABBR = { sun: 0, mon: 1, tue: 2, wed: 3, thu: 4, fri: 5, sat: 6 };
+  var WEEKDAY_TOKEN = '(?:sunday|monday|tuesday|wednesday|thursday|friday|saturday|sun|mon|tue|wed|thu|fri|sat)';
+
+  // -- Recurrence: multi-weekday day-sets, "every mon wed fri" (A-16) -------
+  // The Student's actual reality ("MWF 10am") and the one shape the original
+  // engine could not express: it had a single anchored weekday or an N-day/
+  // week/month interval, but no day-SET. Requires at least TWO weekday tokens
+  // -- a single one ("every monday") is left to the existing extractRecurrence
+  // below, unchanged, so nothing that already worked changes shape. Must run
+  // BEFORE extractRecurrence for the same reason: "every monday" is a prefix
+  // of "every monday wednesday" and would otherwise match first and eat only
+  // the first day.
+  function extractDaySetRecurrence(text) {
+    var re = new RegExp('\\bevery\\s+(' + WEEKDAY_TOKEN + '(?:\\s*,?\\s*(?:and\\s+)?' + WEEKDAY_TOKEN + ')+)\\b', 'i');
+    var m = text.match(re);
+    if (!m) return { recurrence: null, text: text };
+    var tokens = m[1].toLowerCase().match(new RegExp(WEEKDAY_TOKEN, 'g'));
+    var seen = {};
+    tokens.forEach(function (t) { seen[WEEKDAY_ABBR[t.slice(0, 3)]] = true; });
+    var days = Object.keys(seen).map(Number).sort(function (a, b) { return a - b; });
+    return { recurrence: { freq: 'weekly', interval: 1, days: days }, text: strip(text, m) };
+  }
+
+  // -- Recurrence end date: "until Dec 12" / "until 2026-12-12" / "until
+  // 12/12" (A-16). Only meaningful attached to a recurrence, so the caller
+  // only invokes this once a recurrence (day-set or the forms below) has
+  // already matched -- keeps a bare "wait until confirmed" task name untouched.
+  var MONTH_ABBR = { jan: 0, feb: 1, mar: 2, apr: 3, may: 4, jun: 5, jul: 6, aug: 7, sep: 8, oct: 9, nov: 10, dec: 11 };
+  function extractUntilDate(text, now) {
+    var m = text.match(/\buntil\s+(\d{4})-(\d{2})-(\d{2})\b/i);
+    if (m) return { until: m[0].replace(/^until\s+/i, ''), text: strip(text, m) };
+    m = text.match(/\buntil\s+(\d{1,2})\/(\d{1,2})(?:\/(\d{2,4}))?\b/i);
+    if (m) {
+      var yr = m[3] ? (m[3].length === 2 ? '20' + m[3] : m[3]) : ('' + now.getFullYear());
+      return { until: yr + '-' + pad(parseInt(m[1], 10)) + '-' + pad(parseInt(m[2], 10)), text: strip(text, m) };
+    }
+    m = text.match(/\buntil\s+([a-z]+)\.?\s+(\d{1,2})(?:st|nd|rd|th)?(?:,?\s+(\d{4}))?\b/i);
+    if (m) {
+      var monIdx = MONTH_ABBR[m[1].toLowerCase().slice(0, 3)];
+      if (monIdx != null) {
+        var day = parseInt(m[2], 10);
+        var year = m[3] ? parseInt(m[3], 10) : now.getFullYear();
+        var d = new Date(year, monIdx, day);
+        // No year typed and the date already passed this year -- assume next.
+        if (!m[3] && d.getTime() < new Date(now.getFullYear(), now.getMonth(), now.getDate()).getTime()) {
+          d = new Date(year + 1, monIdx, day);
+        }
+        return { until: dayKey(d), text: strip(text, m) };
+      }
+    }
+    return { until: null, text: text };
+  }
 
   // -- Recurrence: "every day|week|month", "every N days|weeks|months", or
   // "every <weekday>" (weekly, anchored to that weekday -- weekly recurrence
@@ -181,7 +240,21 @@
     var tp = extractTypePrefix(text); text = tp.text;
     var pt = extractProjectTag(text); text = pt.text;
 
-    var rec = extractRecurrence(text); text = rec.text;
+    // Day-set ("every mon wed fri") takes priority over the single-weekday/
+    // day/week/month form below -- see extractDaySetRecurrence's comment for
+    // why it must run first.
+    var daySet = extractDaySetRecurrence(text);
+    var rec = daySet.recurrence ? daySet : extractRecurrence(text);
+    text = rec.text;
+
+    // "until ..." only ever modifies a recurrence that was just found.
+    var until = null;
+    if (rec.recurrence) {
+      var ut = extractUntilDate(text, now);
+      text = ut.text;
+      until = ut.until;
+    }
+
     var tm = extractTime(text); text = tm.text;
     var dt = extractDate(text, now); text = dt.text;
 
@@ -192,6 +265,7 @@
       var bare = extractBareRecurrence(text);
       if (bare.recurrence) { recurrence = bare.recurrence; text = bare.text; }
     }
+    if (recurrence && until) recurrence.until = until;
 
     // "every <weekday>" with no other date signal: pin the due date to the
     // next occurrence of that weekday so the weekly recurrence actually
@@ -200,6 +274,16 @@
     if (!due && rec.dayOfWeek != null) {
       var delta = ((rec.dayOfWeek - now.getDay() + 7) % 7) || 7;
       due = dayKey(addDays(now, delta));
+    }
+    // Day-set: pin to the nearest day IN THE SET after today (same "not
+    // literally today" convention as the single-weekday case above).
+    if (!due && recurrence && recurrence.days && recurrence.days.length) {
+      var dow = now.getDay(), setDelta = null;
+      for (var i = 0; i < recurrence.days.length; i++) {
+        if (recurrence.days[i] > dow) { setDelta = recurrence.days[i] - dow; break; }
+      }
+      if (setDelta == null) setDelta = (recurrence.days[0] + 7) - dow;
+      due = dayKey(addDays(now, setDelta));
     }
 
     return {

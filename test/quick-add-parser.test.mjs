@@ -46,6 +46,59 @@ test('recurrence: every <weekday> never overrides an explicit date in the same t
   assert.equal(r.due, '2026-09-01');
 });
 
+// ── Recurrence: day-sets + until (A-16, panel survey Stage 7) ──────────────
+test('recurrence: multi-weekday day-set is a weekly rule with a sorted days array', () => {
+  // NOW is Friday 2026-07-17 -- MWF from a Friday lands on next Monday.
+  const r = parseQuickAdd('class every mon wed fri', NOW);
+  assert.deepEqual(r.recurrence, { freq: 'weekly', interval: 1, days: [1, 3, 5] });
+  assert.equal(r.due, '2026-07-20');
+  assert.equal(r.name, 'class');
+});
+test('recurrence: day-set accepts full weekday names, commas, and "and"', () => {
+  const r = parseQuickAdd('gym every Monday, Wednesday and Friday', NOW);
+  assert.deepEqual(r.recurrence, { freq: 'weekly', interval: 1, days: [1, 3, 5] });
+});
+test('recurrence: day-set dedupes and sorts regardless of typed order', () => {
+  const r = parseQuickAdd('shift every fri mon wed mon', NOW);
+  assert.deepEqual(r.recurrence, { freq: 'weekly', interval: 1, days: [1, 3, 5] });
+});
+test('recurrence: a SINGLE weekday still takes the pre-A-16 shape, no days array', () => {
+  const r = parseQuickAdd('trash every monday', NOW);
+  assert.deepEqual(r.recurrence, { freq: 'weekly', interval: 1 });
+  assert.equal(r.recurrence.days, undefined);
+});
+test('recurrence: day-set never overrides an explicit date in the same text', () => {
+  const r = parseQuickAdd('class every mon wed fri 2026-09-01', NOW);
+  assert.deepEqual(r.recurrence, { freq: 'weekly', interval: 1, days: [1, 3, 5] });
+  assert.equal(r.due, '2026-09-01');
+});
+test('recurrence: "until" attaches an end date to a day-set rule, in three formats', () => {
+  assert.equal(parseQuickAdd('class every mon wed fri until Dec 12', NOW).recurrence.until, '2026-12-12');
+  assert.equal(parseQuickAdd('class every mon wed fri until 2026-12-12', NOW).recurrence.until, '2026-12-12');
+  assert.equal(parseQuickAdd('class every mon wed fri until 12/12', NOW).recurrence.until, '2026-12-12');
+});
+test('recurrence: "until <month> <day>" with no year rolls to next year if already past', () => {
+  // NOW is 2026-07-17 -- "until Jan 5" has already passed this year.
+  const r = parseQuickAdd('class every mon wed fri until Jan 5', NOW);
+  assert.equal(r.recurrence.until, '2027-01-05');
+});
+test('recurrence: "until" is a no-op with no preceding recurrence -- ordinary text is untouched', () => {
+  const r = parseQuickAdd('wait until confirmed', NOW);
+  assert.equal(r.recurrence, null);
+  assert.equal(r.name, 'wait until confirmed');
+});
+test('recurrence: "until" also attaches to the pre-A-16 single-weekday and every-N forms', () => {
+  assert.equal(parseQuickAdd('trash every monday until Dec 12', NOW).recurrence.until, '2026-12-12');
+  assert.equal(parseQuickAdd('water plants every 3 days until Dec 12', NOW).recurrence.until, '2026-12-12');
+});
+test('recurrence: day-set composes with type prefix and project tag', () => {
+  const r = parseQuickAdd('task: chem lab every mon wed fri until Dec 12 #school', NOW);
+  assert.equal(r.forcedType, 'task');
+  assert.equal(r.projectTag, 'school');
+  assert.deepEqual(r.recurrence, { freq: 'weekly', interval: 1, days: [1, 3, 5], until: '2026-12-12' });
+  assert.equal(r.name, 'chem lab');
+});
+
 // ── Time ──────────────────────────────────────────────────────────────────
 test('time: 12h with am/pm, 24h with colon, "at N" prefix', () => {
   assert.equal(parseQuickAdd('call at 3pm', NOW).time, '15:00');

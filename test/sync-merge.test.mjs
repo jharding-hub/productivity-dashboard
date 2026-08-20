@@ -370,3 +370,78 @@ test('sweep: lifetime counter is never reduced by trimming the archive array', (
   const afterSweep = reconcileLifetimeCounter(2200, 2200, 3);
   assert.equal(afterSweep, 2200, 'lifetime total survives a sweep down to 3 records');
 });
+
+// ── Large import round-trip (panel survey Stage 7, A-5) ───────────────────
+// _importCommit (legacy.js) writes every imported task straight into
+// state.tasks in one batch, exactly like any other locally-created task --
+// there is no separate import code path in the sync layer. What matters here
+// is that reconcileSync scales cleanly to a large single-device batch: every
+// row survives a reconcile against an empty cloud (first sync after import),
+// and then survives unchanged on the ROUND TRIP once that becomes the new
+// cloud copy and a second device reconciles against it -- the Utilizer's
+// explicit ask ("verify round-trip fidelity at 1,000+ rows").
+function _makeImportBatch(n){
+  const rows = [];
+  for(let i=0;i<n;i++){
+    rows.push({ id:'imp'+i, name:'Imported task '+i, due:'', time:'', priority:'med',
+      timeEst:'', projectId:'', projectIds:[], done:false, recurrence:null });
+  }
+  return rows;
+}
+
+test('large import: 1,000 freshly-created tasks all survive reconciling against an empty cloud', () => {
+  const batch = _makeImportBatch(1000);
+  const local = { tasks: batch, _tombstones: {}, _archiveTombstones: {} };
+  const cloud = { tasks: [], _tombstones: {}, _archiveTombstones: {} };
+
+  const reconciled = reconcileSync(local, cloud);
+
+  assert.equal(reconciled.tasks.length, 1000, 'no rows dropped');
+  const ids = new Set(reconciled.tasks.map(t => t.id));
+  assert.equal(ids.size, 1000, 'no id collisions introduced by the merge');
+  assert.ok(batch.every(t => ids.has(t.id)), 'every imported row is present by id');
+});
+
+test('large import: round trip — the reconciled batch becomes the cloud copy and a second device reconciles against it losslessly', () => {
+  const batch = _makeImportBatch(1000);
+  const local = { tasks: batch, _tombstones: {}, _archiveTombstones: {} };
+  const cloud = { tasks: [], _tombstones: {}, _archiveTombstones: {} };
+
+  // First sync: the importing device pushes its batch up.
+  const afterFirstSync = reconcileSync(local, cloud);
+
+  // Second device had nothing locally, then pulls that as the new cloud copy.
+  const secondDevice = { tasks: [], _tombstones: {}, _archiveTombstones: {} };
+  const roundTrip = reconcileSync(secondDevice, Object.assign({}, cloud, afterFirstSync));
+
+  assert.equal(roundTrip.tasks.length, 1000, 'round trip does not drop rows');
+  // Field-for-field fidelity, not just count/id — a real "did the data
+  // actually survive" check, not merely "did the array stay the same length".
+  const byId = Object.create(null);
+  roundTrip.tasks.forEach(t => { byId[t.id] = t; });
+  batch.forEach(orig => {
+    assert.deepEqual(byId[orig.id], orig, 'row '+orig.id+' is byte-for-byte unchanged after the round trip');
+  });
+});
+
+test('large import: one completed task from the batch tombstones correctly and does not resurrect on a later sync from an untouched device', () => {
+  const batch = _makeImportBatch(1000);
+  const local = { tasks: batch, _tombstones: {}, _archiveTombstones: {} };
+  const cloud = { tasks: [], _tombstones: {}, _archiveTombstones: {} };
+  const afterImportSync = reconcileSync(local, cloud);
+
+  // The importing device completes (removes + tombstones) row 500.
+  const completedLocal = Object.assign({}, afterImportSync, {
+    tasks: afterImportSync.tasks.filter(t => t.id !== 'imp500'),
+    _tombstones: Object.assign({}, afterImportSync._tombstones, { imp500: '2026-08-19T12:00:00.000Z' }),
+  });
+
+  // A second device that only ever saw the ORIGINAL 1000-row import (never
+  // the completion) reconciles against the completing device's cloud write.
+  const staleSecondDevice = { tasks: batch, _tombstones: {}, _archiveTombstones: {} };
+  const finalReconcile = reconcileSync(staleSecondDevice, completedLocal);
+
+  assert.equal(finalReconcile.tasks.length, 999, 'the completed row does not resurrect');
+  assert.ok(!finalReconcile.tasks.some(t => t.id === 'imp500'));
+  assert.ok(finalReconcile._tombstones.imp500, 'tombstone for the completed import row carries forward');
+});

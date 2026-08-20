@@ -7303,6 +7303,142 @@ function _freshStartApply(mode,overdue){
     :('Cleared the date on '+n+' task'+(n!==1?'s':'')+' -- still here, no longer late'));
 }
 
+// ── Import: paste-a-list / CSV (panel survey Stage 7, A-5) ───────────────
+// The High-Functioning User's #1 ask, and the difference between a trial and
+// no trial for anyone arriving with a life already in progress. Deliberately
+// cut per the Skeptic: paste and CSV only, no per-service APIs. Reuses
+// parseQuickAdd per line so dates/times/recurrence typed the same way they'd
+// be typed into the regular quick-add box carry straight over -- this is NOT
+// a second parser. Preview before commit, one save() at the end (_withBatch).
+//
+// Minimal RFC4180-ish splitter: handles quoted fields containing commas/
+// quotes, which is all a Todoist-style export needs (it quotes any CONTENT
+// field containing a comma).
+function _csvSplitLine(line){
+  var out=[],cur='',inQ=false;
+  for(var i=0;i<line.length;i++){
+    var c=line[i];
+    if(inQ){
+      if(c==='"'){ if(line[i+1]==='"'){cur+='"';i++;} else inQ=false; }
+      else cur+=c;
+    }else{
+      if(c==='"')inQ=true;
+      else if(c===','){out.push(cur);cur='';}
+      else cur+=c;
+    }
+  }
+  out.push(cur);
+  return out;
+}
+// CSV detection is deliberately narrow: a comma on line 1 AND a recognizable
+// "content" header, so an ordinary pasted list that happens to contain a
+// comma ("Buy milk, eggs, bread") is never misread as tabular data.
+function _parseImportText(raw){
+  var lines=(raw||'').split(/\r\n|\r|\n/).filter(function(l){return l.trim().length;});
+  if(!lines.length)return {rows:[],isCsv:false};
+  var isCsv=/,/.test(lines[0])&&/content/i.test(lines[0]);
+  var rows=[];
+  if(isCsv){
+    var header=_csvSplitLine(lines[0]).map(function(h){return h.trim().toUpperCase();});
+    var typeIdx=header.indexOf('TYPE');
+    var contentIdx=header.indexOf('CONTENT');
+    if(contentIdx<0)contentIdx=0;
+    var dateIdx=header.indexOf('DATE');
+    for(var i=1;i<lines.length;i++){
+      var cols=_csvSplitLine(lines[i]);
+      // Todoist exports section headers/notes as other TYPE values in the
+      // same file -- only TYPE=task rows are real tasks.
+      if(typeIdx>=0&&cols[typeIdx]&&cols[typeIdx].trim().toLowerCase()!=='task')continue;
+      var content=(cols[contentIdx]||'').trim();
+      if(!content)continue;
+      rows.push({raw:content,columnDate:dateIdx>=0?(cols[dateIdx]||'').trim():''});
+    }
+  }else{
+    rows=lines.map(function(l){return {raw:l.trim(),columnDate:''};}).filter(function(r){return r.raw;});
+  }
+  return {rows:rows,isCsv:isCsv};
+}
+// Builds the structured preview items: name/due/time/recurrence/projectTag
+// per line, via the SAME parser every quick-add field uses. A CSV DATE
+// column only fills in when the line's own text had no date signal of its
+// own (typed "every month" in CONTENT still wins over a one-off DATE value).
+function _importBuildItems(raw){
+  var parsed=_parseImportText(raw);
+  var items=parsed.rows.map(function(r){
+    var p=(typeof window.parseQuickAdd==='function')?window.parseQuickAdd(r.raw):{name:r.raw,due:null,time:null,recurrence:null,projectTag:null};
+    var due=p.due;
+    if(!due&&r.columnDate){
+      var m=r.columnDate.match(/(\d{4}-\d{2}-\d{2})/);
+      if(m)due=m[1];
+    }
+    // A repeat with nothing to repeat FROM never fires (same guard as
+    // _applyQuickAdd/editTaskRecurrence) -- "pay rent every month" pasted
+    // with no other date signal must not silently import as a recurring
+    // task that never recurs.
+    if(p.recurrence&&!due)due=todayStr();
+    return {name:p.name||r.raw,due:due||'',time:p.time||'',recurrence:p.recurrence||null,projectTag:p.projectTag||null};
+  }).filter(function(it){return it.name;});
+  return {items:items,isCsv:parsed.isCsv};
+}
+var _importPreviewItems=null;
+function openImportList(){
+  _importPreviewItems=null;
+  var html='<h3>\u{1F4E5} Import tasks</h3>'+
+    '<p style="font-size:12px;color:var(--text-secondary);margin:2px 0 10px;">Paste a plain list (one task per line) or a CSV export (Todoist-style columns). Nothing is created until you confirm the preview.</p>'+
+    '<textarea id="importText" rows="8" style="width:100%;font-family:ui-monospace,SFMono-Regular,Menlo,monospace;font-size:12px;padding:8px;" placeholder="Pay rent every month\nCall dentist tomorrow 2pm\nEmail Sarah #work"></textarea>'+
+    '<div id="importPreviewArea" style="margin-top:10px;"></div>'+
+    '<div class="modal-actions"><button class="btn btn-accent" onclick="_importRunPreview()">Preview</button><button class="btn" onclick="closeModal()">Cancel</button></div>';
+  document.getElementById('modalContent').innerHTML=html;
+  document.getElementById('modalOverlay').classList.add('show');
+  setTimeout(function(){var t=document.getElementById('importText');if(t)t.focus();},50);
+}
+function _importRunPreview(){
+  var ta=document.getElementById('importText');
+  var built=_importBuildItems(ta?ta.value:'');
+  _importPreviewItems=built.items;
+  var area=document.getElementById('importPreviewArea');
+  if(!_importPreviewItems.length){
+    area.innerHTML='<p style="font-size:12px;color:var(--text-secondary);">Nothing to import yet -- paste a list or CSV above.</p>';
+    return;
+  }
+  var shown=_importPreviewItems.slice(0,50);
+  var rowsHtml=shown.map(function(it){
+    var bits=[];
+    if(it.due)bits.push(fmtDate(it.due));
+    if(it.time)bits.push(fmtTime(it.time));
+    if(it.recurrence&&it.recurrence.freq)bits.push('repeats '+(RECUR_LABEL[it.recurrence.freq]||it.recurrence.freq));
+    if(it.projectTag)bits.push('#'+it.projectTag);
+    return '<div class="tl-pick-item" style="cursor:default;"><strong>'+esc(it.name)+'</strong>'+(bits.length?' <span style="color:var(--text-secondary);font-size:11px;">('+bits.join(', ')+')</span>':'')+'</div>';
+  }).join('');
+  var more=_importPreviewItems.length>50?'<p style="font-size:11px;color:var(--text-secondary);">+ '+(_importPreviewItems.length-50)+' more not shown</p>':'';
+  area.innerHTML='<p style="font-size:12px;font-weight:600;margin-bottom:6px;">'+_importPreviewItems.length+' task'+(_importPreviewItems.length!==1?'s':'')+' will be created'+(built.isCsv?' (CSV detected)':'')+':</p>'+
+    '<div style="max-height:220px;overflow-y:auto;border:1px solid var(--border);border-radius:var(--radius-sm);">'+rowsHtml+'</div>'+more+
+    '<div class="modal-actions" style="margin-top:10px;"><button class="btn btn-accent" onclick="_importCommit()">Import '+_importPreviewItems.length+'</button><button class="btn" onclick="closeModal()">Cancel</button></div>';
+}
+function _importCommit(){
+  if(!_importPreviewItems||!_importPreviewItems.length){closeModal();return;}
+  var n=0;
+  // Pushed straight into state.tasks (no per-item setter to ride along with,
+  // unlike _tlBulkComplete/_freshStartApply) -- so save() has to be called
+  // explicitly here. _withBatch still wraps it for consistency and so a
+  // future per-item setter added to this loop coalesces automatically, but
+  // the explicit call inside is what actually persists the import today.
+  _withBatch(function(){
+    _importPreviewItems.forEach(function(it,idx){
+      var proj=it.projectTag?_resolveProjectTag(it.projectTag):null;
+      state.tasks.push({id:'tk'+Date.now()+'_'+idx+Math.random().toString(36).slice(2,5),name:it.name,due:it.due||'',priority:'med',timeEst:'',time:it.time||'',projectId:proj?proj.id:'',projectIds:proj?[proj.id]:[],done:false,recurrence:it.recurrence});
+      n++;
+    });
+    save();
+  });
+  _importPreviewItems=null;
+  closeModal();
+  renderTaskList();
+  if(typeof renderProjects==='function')renderProjects();
+  if(typeof _refreshTodayViewIfVisible==='function')_refreshTodayViewIfVisible();
+  toast('Imported '+n+' task'+(n!==1?'s':''));
+}
+
 // -- Schedule to timeline: wires existing timeEst data into the existing
 // tlBlocks pipeline. Mirrors _writeBlock's block shape (legacy.js ~9050) and
 // reuses _suggestWorkTime's existing gap-finding so batched items stack
@@ -9265,6 +9401,12 @@ var RECUR_LABEL={daily:'daily',weekly:'weekly',monthly:'monthly'};
 // the generic "weekly".
 function _recurrenceBadgeLabel(t){
   if(!t||!t.recurrence||!t.recurrence.freq)return '';
+  // A-16 day-set ("every mon wed fri"): the due date is only ONE of the set's
+  // days, so showing just that weekday (the single-weekday branch below)
+  // would silently drop the others -- list them all instead.
+  if(t.recurrence.freq==='weekly'&&t.recurrence.days&&t.recurrence.days.length>1){
+    return t.recurrence.days.map(function(i){return WEEKDAY_NAMES[i].slice(0,3);}).join('/');
+  }
   if(t.recurrence.freq==='weekly'&&t.due){
     var dow=new Date(t.due+'T00:00:00').getDay();
     if(!isNaN(dow))return WEEKDAY_NAMES[dow].slice(0,3);
@@ -9795,32 +9937,11 @@ function renderOnboardingStep(){
   if(nextBtn)nextBtn.textContent=_onboardingStep===ONBOARDING_STEPS.length-1?'Get Started':'Next';
 }
 
-// R8: RRULE-lite recurrence -- daily/weekly/monthly, interval N. Returns the
-// next due date (YYYY-MM-DD) or null if recurrence/due is missing/malformed.
-function _nextRecurrenceDate(dueStr,recurrence){
-  if(!dueStr||!recurrence||!recurrence.freq)return null;
-  var d=new Date(dueStr+'T00:00:00');
-  if(isNaN(d.getTime()))return null;
-  // Completed late (due date already in the past): count forward from today
-  // instead of the stale due date, so the next occurrence isn't born overdue.
-  var today=new Date(todayStr()+'T00:00:00');
-  if(d.getTime()<today.getTime())d=today;
-  var n=recurrence.interval||1;
-  var origDay=d.getDate();
-  if(recurrence.freq==='daily')d.setDate(d.getDate()+n);
-  else if(recurrence.freq==='weekly')d.setDate(d.getDate()+7*n);
-  else if(recurrence.freq==='monthly'){
-    // setMonth overflows into the following month when the target month is
-    // shorter (Jan 31 + 1mo -> Mar 3, not Feb 28) -- clamp to the target
-    // month's actual last day instead.
-    d.setDate(1);
-    d.setMonth(d.getMonth()+n);
-    var lastDay=new Date(d.getFullYear(),d.getMonth()+1,0).getDate();
-    d.setDate(Math.min(origDay,lastDay));
-  }
-  else return null;
-  return _dayKey(d);
-}
+// R8: RRULE-lite recurrence -- daily/weekly/monthly, interval N, optional
+// weekly day-set + until-date (A-16). _nextRecurrenceDate itself now lives in
+// recurrence-engine.js (extracted panel-survey Stage 7, 2026-08-19) as a pure,
+// unit-tested module loaded before this file -- this is just the completion
+// hook that calls it.
 // Push the next occurrence of a completed recurring task/subtask. Called from
 // the completion path (never on delete) -- completing IS the "done, schedule
 // the next one" signal; deleting a recurring item just deletes it, no re-spawn.

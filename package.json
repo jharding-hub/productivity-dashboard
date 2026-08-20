@@ -12,7 +12,8 @@
     "test:sync": "node --test test/sync-merge.test.mjs",
     "test:inline": "node --test test/inline-edit.test.mjs",
     "test:sync-e2e": "firebase emulators:exec --only firestore --project demo-centerpost \"node --test test/sync-two-client.test.mjs\"",
-    "test:parser": "node --test test/quick-add-parser.test.mjs"
+    "test:parser": "node --test test/quick-add-parser.test.mjs",
+    "test:recurrence": "node --test test/recurrence-engine.test.mjs"
   },
   "repository": {
     "type": "git",
