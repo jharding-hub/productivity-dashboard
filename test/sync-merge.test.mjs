@@ -11,7 +11,7 @@ import { createRequire } from 'node:module';
 const require = createRequire(import.meta.url);
 
 const { mergeById, mergeTombstones, reconcileSync, _dropTombstoned, reconcileLifetimeCounter } = require('../public/sync-merge.js');
-const { fmtDate } = require('../public/date-utils.js');
+const { fmtDate, _dueCountdownLabel } = require('../public/date-utils.js');
 
 // The OLD reconciliation, copied verbatim in spirit from load() lines 725-731,
 // so each test can show the bug it fixed: "keep whichever array is longer".
@@ -444,4 +444,46 @@ test('large import: one completed task from the batch tombstones correctly and d
   assert.equal(finalReconcile.tasks.length, 999, 'the completed row does not resurrect');
   assert.ok(!finalReconcile.tasks.some(t => t.id === 'imp500'));
   assert.ok(finalReconcile._tombstones.imp500, 'tombstone for the completed import row carries forward');
+});
+
+
+// ── A-13 deadline countdown (panel survey Stage 9) ──────────────────────────
+// TZ is pinned to America/New_York at the top of this file, so every `now`
+// below is an unambiguous local instant.
+const at = (y,mo,d,h,mi,se=0) => new Date(y,mo-1,d,h,mi,se);
+
+test('countdown: no due date -> null', () => {
+  assert.equal(_dueCountdownLabel('', at(2026,8,20,18,0)), null);
+  assert.equal(_dueCountdownLabel(null, at(2026,8,20,18,0)), null);
+});
+
+test('countdown: overdue returns null, never a count-UP', () => {
+  // The no-shame rule, asserted rather than assumed: an item dated yesterday
+  // keeps its plain static date and its existing Fresh Start handling. If this
+  // ever starts returning "3h late" the test fails.
+  assert.equal(_dueCountdownLabel('2026-08-19', at(2026,8,20,18,0)), null);
+  assert.equal(_dueCountdownLabel('2026-01-02', at(2026,8,20,18,0)), null);
+});
+
+test('countdown: tomorrow is always >24h out, so it stays a static date', () => {
+  // Even at 23:00, tomorrow's end-of-day is 25h away -- this is why "within
+  // 24 hours" and "due today" are the same set.
+  assert.equal(_dueCountdownLabel('2026-08-21', at(2026,8,20,23,0)), null);
+  assert.equal(_dueCountdownLabel('2026-08-21', at(2026,8,20,0,1)), null);
+});
+
+test('countdown: hours remaining in the due day', () => {
+  assert.equal(_dueCountdownLabel('2026-08-20', at(2026,8,20,18,0)), 'due in 5h');
+  assert.equal(_dueCountdownLabel('2026-08-20', at(2026,8,20,0,0)),  'due in 23h');
+  assert.equal(_dueCountdownLabel('2026-08-20', at(2026,8,20,22,59)), 'due in 1h');
+});
+
+test('countdown: switches to minutes under the hour', () => {
+  assert.equal(_dueCountdownLabel('2026-08-20', at(2026,8,20,23,30)), 'due in 29m');
+  assert.equal(_dueCountdownLabel('2026-08-20', at(2026,8,20,23,0)),  'due in 59m');
+});
+
+test('countdown: last minute reads "due today", not a zero countdown', () => {
+  // "due in 0m" reads as a buzzer. The calm wording is the point of A-13.
+  assert.equal(_dueCountdownLabel('2026-08-20', at(2026,8,20,23,59,30)), 'due today');
 });

@@ -2759,7 +2759,7 @@ if(linkedTasks.length||linkedNotes.length||linkedReminders.length){
   linkedHtml+='</div>';
 }
 
-return '<div class="project-card"><div class="proj-header" onclick="openProjectModal(\''+p.id+'\')"><span class="proj-expand '+(p.expanded?'open':'')+'">\u25B6</span><div class="proj-info"><div class="proj-name-row"><span class="proj-name editable" id="pn_'+p.id+'">'+esc(p.name)+'</span><button class="proj-edit-btn" onclick="event.stopPropagation();promptEditProject(\''+p.id+'\')" title="Rename project">&#9998;</button></div><div class="proj-meta"><span>'+total+' subtask'+(total!==1?'s':'')+'</span>'+(linkedNotes.length?'<span>'+linkedNotes.length+' note'+(linkedNotes.length!==1?'s':'')+'</span>':'')+''+(linkedReminders.length?'<span>'+linkedReminders.length+' reminder'+(linkedReminders.length!==1?'s':'')+'</span>':'')+'</div></div><div style="display:flex;gap:4px;align-items:center;"><span class="wt-clock-btn '+(_isScheduledToday(p.id)?'scheduled':'')+'" onclick="event.stopPropagation();handleWorkTodayClick(\'project\',\''+p.id+'\',\''+p.id+'\')" title="Work on today" style="width:20px;height:20px;font-size:10px;">\u{1F4C5}</span><span class="st-btn st-cal" onclick="exportProjectICS(\''+p.id+'\')">\u{1F4C5}</span><button class="proj-complete-btn" onclick="event.stopPropagation();markProjectComplete(\''+p.id+'\',this)" title="Mark complete">\u2713</button><span class="proj-delete" onclick="deleteProject(\''+p.id+'\')">\u2715</span></div></div><div class="subtask-area '+(p.expanded?'open':'')+'"><div class="proj-due-display">'+(p.due?'<span class="date-editable" id="pd_'+p.id+'">Ends: '+fmtDate(p.due)+'</span>':'<span class="date-editable" id="pd_'+p.id+'" style="color:var(--text-faint);">+ set end date</span>')+'</div>'+_renderProjSummary(p,total,linkedNotes.length,linkedReminders.length,projCompletedItems)+'<div class="subtask-list">'+(sorted.length===0?'<div class="empty-state" style="padding:10px;">No subtasks yet.</div>':sorted.map(st=>{return '<div class="subtask-item"><div class="st-check" onclick="toggleSubtask(\''+p.id+"','"+st.id+'\')"></div><span class="st-name editable" id="sn_'+st.id+'">'+esc(st.name)+'</span>'+(st.due?'<span class="st-due date-editable" id="sd_'+st.id+'">'+fmtDate(st.due)+'</span>':'<span class="st-due date-editable" id="sd_'+st.id+'" style="color:var(--text-faint);">+ date</span>')+'<div class="st-actions">'+(st.timeEst?'<span class="tl-time-badge">'+fmtTimeEst(st.timeEst)+'</span>':'')+'<span class="wt-clock-btn '+(_isScheduledToday(st.id)?'scheduled':'')+'" onclick="event.stopPropagation();handleWorkTodayClick(\'subtask\',\''+st.id+'\',\''+p.id+'\')" title="Work on today" style="width:18px;height:18px;font-size:9px;">\u{1F4C5}</span><span class="st-btn st-cal" onclick="exportSubtaskICS(\''+p.id+"','"+st.id+'\')">\u{1F4C5}</span><span class="st-btn st-del" onclick="deleteSubtask(\''+p.id+"','"+st.id+'\')">\u2715</span></div></div>';}).join(''))+'</div><div class="subtask-add"><input type="text" id="stN_'+p.id+'" placeholder="Next step..." onkeydown="if(event.key===\'Enter\')addSubtask(\''+p.id+'\')"><button class="mic-btn" id="stMic_'+p.id+'" onclick="toggleMic(\'stN_'+p.id+'\',\'stMic_'+p.id+'\')" title="Voice input">&#127908;</button><select id="stT_'+p.id+'" class="time-est-select"><option value="">Time?</option><option value="30">30m</option><option value="60">1hr</option><option value="90">1.5hr</option><option value="120">2hr</option><option value="180">3hr</option><option value="240">4hr</option><option value="360">6hr</option><option value="480">8hr</option><option value="720">12hr</option></select><input type="date" id="stD_'+p.id+'"><button class="btn btn-accent btn-sm" onclick="addSubtask(\''+p.id+'\')">+</button></div></div></div>';}).join('');
+return '<div class="project-card"><div class="proj-header" onclick="openProjectModal(\''+p.id+'\')"><span class="proj-expand '+(p.expanded?'open':'')+'">\u25B6</span><div class="proj-info"><div class="proj-name-row"><span class="proj-name editable" id="pn_'+p.id+'">'+esc(p.name)+'</span><button class="proj-edit-btn" onclick="event.stopPropagation();promptEditProject(\''+p.id+'\')" title="Rename project">&#9998;</button></div><div class="proj-meta"><span>'+total+' subtask'+(total!==1?'s':'')+'</span>'+(linkedNotes.length?'<span>'+linkedNotes.length+' note'+(linkedNotes.length!==1?'s':'')+'</span>':'')+''+(linkedReminders.length?'<span>'+linkedReminders.length+' reminder'+(linkedReminders.length!==1?'s':'')+'</span>':'')+'</div></div><div style="display:flex;gap:4px;align-items:center;"><span class="wt-clock-btn '+(_isScheduledToday(p.id)?'scheduled':'')+'" onclick="event.stopPropagation();handleWorkTodayClick(\'project\',\''+p.id+'\',\''+p.id+'\')" title="Work on today" style="width:20px;height:20px;font-size:10px;">\u{1F4C5}</span><span class="st-btn st-cal" onclick="exportProjectICS(\''+p.id+'\')">\u{1F4C5}</span><button class="proj-complete-btn" onclick="event.stopPropagation();markProjectComplete(\''+p.id+'\',this)" title="Mark complete">\u2713</button><span class="proj-delete" onclick="deleteProject(\''+p.id+'\')">\u2715</span></div></div><div class="subtask-area '+(p.expanded?'open':'')+'"><div class="proj-due-display">'+(p.due?'<span class="date-editable" id="pd_'+p.id+'">Ends: '+fmtDate(p.due)+'</span>':'<span class="date-editable" id="pd_'+p.id+'" style="color:var(--text-faint);">+ set end date</span>')+'</div>'+_renderProjSummary(p,total,linkedNotes.length,linkedReminders.length,projCompletedItems)+'<div class="subtask-list">'+(sorted.length===0?'<div class="empty-state" style="padding:10px;">No subtasks yet.</div>':sorted.map(st=>{return '<div class="subtask-item"><div class="st-check" onclick="toggleSubtask(\''+p.id+"','"+st.id+'\')"></div><span class="st-name editable" id="sn_'+st.id+'">'+esc(st.name)+'</span>'+(st.due?'<span class="st-due date-editable" id="sd_'+st.id+'"'+_dueCellAttrs(st.due)+'>'+_dueCellText(st.due)+'</span>':'<span class="st-due date-editable" id="sd_'+st.id+'" style="color:var(--text-faint);">+ date</span>')+'<div class="st-actions">'+(st.timeEst?'<span class="tl-time-badge">'+fmtTimeEst(st.timeEst)+'</span>':'')+'<span class="wt-clock-btn '+(_isScheduledToday(st.id)?'scheduled':'')+'" onclick="event.stopPropagation();handleWorkTodayClick(\'subtask\',\''+st.id+'\',\''+p.id+'\')" title="Work on today" style="width:18px;height:18px;font-size:9px;">\u{1F4C5}</span><span class="st-btn st-cal" onclick="exportSubtaskICS(\''+p.id+"','"+st.id+'\')">\u{1F4C5}</span><span class="st-btn st-del" onclick="deleteSubtask(\''+p.id+"','"+st.id+'\')">\u2715</span></div></div>';}).join(''))+'</div><div class="subtask-add"><input type="text" id="stN_'+p.id+'" placeholder="Next step..." onkeydown="if(event.key===\'Enter\')addSubtask(\''+p.id+'\')"><button class="mic-btn" id="stMic_'+p.id+'" onclick="toggleMic(\'stN_'+p.id+'\',\'stMic_'+p.id+'\')" title="Voice input">&#127908;</button><select id="stT_'+p.id+'" class="time-est-select"><option value="">Time?</option><option value="30">30m</option><option value="60">1hr</option><option value="90">1.5hr</option><option value="120">2hr</option><option value="180">3hr</option><option value="240">4hr</option><option value="360">6hr</option><option value="480">8hr</option><option value="720">12hr</option></select><input type="date" id="stD_'+p.id+'"><button class="btn btn-accent btn-sm" onclick="addSubtask(\''+p.id+'\')">+</button></div></div></div>';}).join('');
 document.getElementById('projCount').textContent=state.projects.length;
 // Append "Completed Projects" section at the bottom of the projects list
 el.innerHTML+=_renderCompletedProjectsSection();
@@ -4717,6 +4717,34 @@ function _widgetDayPayload(day){
   };
 }
 
+// A-13 (panel survey Stage 9): the single nearest UPCOMING deadline, for the
+// widget's one calm deadline line. Snapshot-level, not per-day, because the
+// nearest deadline can be any distance out -- the `days` array only ever
+// covers today and tomorrow.
+//
+// getAllTasks(), not state.tasks: the Stage 8 bug that shipped was a widget
+// payload reading standalone tasks only, which silently ignored PROJECT
+// SUBTASKS -- where most real work lives. Same trap, same fix.
+//
+// Overdue items are excluded on purpose (due >= today). They already have
+// their own count in snap.overdueCount, and counting UP from a missed date is
+// the shame this stage is explicitly removing, not adding to a second surface.
+//
+// Sends epoch millis, NOT a pre-formatted string: the widget renders its own
+// live relative countdown from a Date, so it stays correct between snapshot
+// writes without the app being opened and without extra timeline entries.
+// Built from the date's components, never new Date(dueStr) -- the latter parses
+// a bare YYYY-MM-DD as UTC and lands a day early west of Greenwich.
+function _widgetNextDeadline(){
+  var today=todayStr();
+  var upcoming=getAllTasks().filter(function(t){return !t.done&&t.due&&t.due>=today;})
+    .sort(function(a,b){return a.due.localeCompare(b.due);});
+  if(!upcoming.length)return null;
+  var t=upcoming[0];
+  var p=t.due.split('-');
+  var end=new Date(parseInt(p[0],10),parseInt(p[1],10)-1,parseInt(p[2],10),23,59,59,0);
+  return {name:t.name||'',date:t.due,atMs:end.getTime()};
+}
 function _computeWidgetSnapshot(){
   var today=_widgetDayPayload(todayStr());
   // `days` carries today AND tomorrow. This is what fixes the widget being
@@ -4748,6 +4776,10 @@ function _computeWidgetSnapshot(){
   // whose overdue items are mostly project subtasks (_overdueTasks already
   // calls getAllTasks(), which unions both).
   snap.overdueCount=(typeof _overdueTasks==='function')?_overdueTasks().length:0;
+  // A-13: nearest upcoming deadline. Optional on the Swift side, so an older
+  // widget build reading a newer snapshot simply doesn't show the line rather
+  // than failing to decode the whole payload.
+  snap.nextDeadline=_widgetNextDeadline();
   return snap;
 }
 var _lastWidgetSnapshot=null;
@@ -6790,12 +6822,55 @@ function _goMobileHome(){setViewMode(state.viewMode);}
 // Task-row markup, factored out of renderTaskList so the Today view (R2)
 // renders the identical row -- same ids, same editable wiring, same actions.
 // Pure string builder; ids are per-task, so it's safe to mount in any container.
+// A-13 (panel survey Stage 9): every task-row due cell renders through these
+// two so all four sites (Today/Everything via _taskRowHTML, the project card's
+// subtasks, and the project modal's subtasks + linked tasks) stay identical and
+// the 60s tick below can find them all by one selector.
+//
+// The cell keeps its id and its .date-editable class, so makeDateClickable is
+// untouched -- it seeds its <input> from the task's real `due` value, never
+// from the cell's text, so swapping the DISPLAYED text for a countdown cannot
+// affect inline date editing. The real date is still one hover away via title.
+function _dueCellAttrs(due){
+  return ' data-due-cd="'+due+'" title="Due '+esc(fmtDate(due))+'"';
+}
+function _dueCellText(due){
+  return esc(_dueCountdownLabel(due)||fmtDate(due));
+}
+// Re-times the countdown cells in place, once a minute (driven by the existing
+// _dayRolloverTick interval -- no second timer).
+//
+// WRITES TEXT ONLY, NEVER innerHTML, AND NEVER RE-RENDERS A ROW. That is the
+// whole design. Re-rendering task rows on a timer would walk straight into both
+// of this codebase's standing bug classes: the Today and Everything views emit
+// rows with IDENTICAL ids (so a re-render has to be container-scoped or inline
+// editing silently breaks), and a rebuild landing mid-edit is the onSnapshot
+// inline-edit clobber in a new costume. Touching only the text node of one span
+// avoids both entirely.
+//
+// The two guards are not defensive padding -- each is a real destroyed-picker:
+// makeDateClickable replaces the cell's contents with a transient <input>, so
+// writing text into a cell with a picker open would delete the picker
+// mid-interaction, once a minute, exactly the failure the inline-edit layer
+// exists to prevent.
+function _dueCountdownTick(){
+  var els=document.querySelectorAll('[data-due-cd]');
+  for(var i=0;i<els.length;i++){
+    var el=els[i];
+    if(el.querySelector('input'))continue;                 // date picker open
+    if(el.contains(document.activeElement))continue;       // being interacted with
+    var due=el.getAttribute('data-due-cd');
+    if(!due)continue;
+    var txt=_dueCountdownLabel(due)||fmtDate(due);
+    if(el.textContent!==txt)el.textContent=txt;             // no-op when unchanged
+  }
+}
 function _taskRowHTML(t){
   var nameId='tlname_'+t.id;
   var dueId='tldue_'+t.id;
   var dueHTML;
   if(t.due){
-    dueHTML='<span class="date-editable tl-due-edit" id="'+dueId+'">'+fmtDate(t.due)+'</span>';
+    dueHTML='<span class="date-editable tl-due-edit" id="'+dueId+'"'+_dueCellAttrs(t.due)+'>'+_dueCellText(t.due)+'</span>';
   }else{
     dueHTML='<span class="date-editable tl-due-edit" id="'+dueId+'" style="color:var(--text-faint);">+ date</span>';
   }
@@ -8111,7 +8186,7 @@ function openProjectModal(pid){
       var dueId='pmd_stdue_'+st.id;
       var dueHTML;
       if(st.due){
-        dueHTML='<span class="date-editable" id="'+dueId+'" style="font-size:11px;color:var(--text-dim);">'+fmtDate(st.due)+'</span>';
+        dueHTML='<span class="date-editable" id="'+dueId+'"'+_dueCellAttrs(st.due)+' style="font-size:11px;color:var(--text-dim);">'+_dueCellText(st.due)+'</span>';
       }else{
         dueHTML='<span class="date-editable" id="'+dueId+'" style="font-size:11px;color:var(--text-faint);">+ date</span>';
       }
@@ -8134,7 +8209,7 @@ function openProjectModal(pid){
       var nameId='pmd_tname_'+t.id;
       var dueId='pmd_tdue_'+t.id;
       var dueHTML=t.due?
-        '<div class="pmd-item-meta">Due: <span class="date-editable" id="'+dueId+'">'+fmtDate(t.due)+'</span></div>':
+        '<div class="pmd-item-meta">Due: <span class="date-editable" id="'+dueId+'"'+_dueCellAttrs(t.due)+'>'+_dueCellText(t.due)+'</span></div>':
         '<div class="pmd-item-meta">Due: <span class="date-editable" id="'+dueId+'" style="color:var(--text-faint);">+ set</span></div>';
       return '<div class="pmd-item"><div class="pmd-item-label">'
         +'<span class="editable" id="'+nameId+'">'+esc(t.name)+'</span>'+(t.done?' <span style="color:var(--text-faint);font-size:11px;">(done)</span>':'')
@@ -14230,6 +14305,10 @@ _bindPanelUsageTracking();
 // see TodayWidget.swift. This handles app-open, that handles app-closed.)
 function _dayRolloverTick(){
   try { checkDailyRoutineReset(); } catch(e){}
+  // A-13: re-time the due countdowns. Text-only, no row re-render -- see
+  // _dueCountdownTick. Riding this existing 60s interval (which also runs on
+  // window focus) means no second timer and no extra wake-ups.
+  try { if(typeof _dueCountdownTick==='function')_dueCountdownTick(); } catch(e){}
   try { if(typeof _sweepPastReminders==='function')_sweepPastReminders(); } catch(e){}
   try { if(typeof _updateWidgetSnapshot==='function')_updateWidgetSnapshot(); } catch(e){}
 }
