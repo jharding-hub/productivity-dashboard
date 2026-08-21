@@ -157,8 +157,59 @@ function _dateGroupInfo(dateStr,todayS,tomorrowS,weekEndS){
   return {key:'later',label:'Later'};
 }
 
+// ═══════════════════════════════════════════════════════════════════
+// CROSS-DEVICE FOCUS TIMER (2026-08-21)
+//
+// The focus timer used to live entirely as bare in-memory JS variables, so it
+// could not cross devices at all. state.focusTimer syncs it through the same
+// Firestore blob everything else rides.
+//
+// The ONE rule that makes this work, and the same one that fixed the watch
+// bug: the synced record stores `endAt`, an ABSOLUTE instant -- never a
+// countdown value. Every device derives its own remaining time from it, so
+// the timer never has to write on its tick. Only start/pause/reset/preset/
+// complete write, four or five times a session instead of twice a second.
+//
+// This decision function is pure and lives here so it can be unit-tested
+// without a DOM (test/sync-merge.test.mjs). It answers one question: given
+// what this device is currently showing and what just arrived from the cloud,
+// should the local timer be replaced?
+//
+// `local` and `remote` are both state.focusTimer shapes (or null):
+//   { sessionId, running, endAt, total, presetIdx, awardedSessionId }
+function _shouldAdoptRemoteTimer(local, remote){
+  if(!remote || typeof remote!=='object') return false;   // nothing to adopt
+  if(!remote.sessionId) return false;                     // malformed
+  if(!local || typeof local!=='object') return true;      // nothing local -- take it
+  // A different session always wins: whichever device most recently pressed
+  // start/reset defines the current run, and save()'s _updatedAt transaction
+  // guard already stopped a stale write from becoming the cloud copy.
+  if(remote.sessionId !== local.sessionId) return true;
+  // Same session: adopt only if a FIELD THAT MATTERS actually differs.
+  // Without this, every unrelated snapshot echo (a note edit, a task toggle)
+  // would re-apply the timer and restart its interval for nothing.
+  if(!!remote.running !== !!local.running) return true;
+  if((remote.endAt||0) !== (local.endAt||0)) return true;
+  if((remote.total||0) !== (local.total||0)) return true;
+  // awardedSessionId changing means another device already granted the points
+  // for this run -- worth adopting so this device doesn't grant them again.
+  if((remote.awardedSessionId||'') !== (local.awardedSessionId||'')) return true;
+  return false;
+}
+
+// Has this run already finished, as of `now`? Used to land a session that
+// expired while every device was closed on a silent idle state -- no alarm, no
+// points, no "Done!" for something that ended last Tuesday.
+function _timerSessionExpired(t, now){
+  if(!t || !t.running) return false;
+  var end = t.endAt || 0;
+  if(!end) return false;
+  return end <= (now || Date.now());
+}
+
 // Test-only export (no-op in the browser, where `module` is undefined).
 if(typeof module!=='undefined' && module.exports){
   module.exports = { todayStr, fmtDate, fmtTime, _hmToMin, _dayKey, _monthKey, _dateGroupInfo, _dueCountdownLabel,
-                     setDayAnchorMinutes, getDayAnchorMinutes, _anchoredNow, _anchoredDayKey, _anchoredDayEnd, _anchoredDayEndOf };
+                     setDayAnchorMinutes, getDayAnchorMinutes, _anchoredNow, _anchoredDayKey, _anchoredDayEnd, _anchoredDayEndOf,
+                     _shouldAdoptRemoteTimer, _timerSessionExpired };
 }

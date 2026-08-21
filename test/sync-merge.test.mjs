@@ -13,7 +13,8 @@ const require = createRequire(import.meta.url);
 const { mergeById, mergeTombstones, reconcileSync, _dropTombstoned, reconcileLifetimeCounter } = require('../public/sync-merge.js');
 const DU = require('../public/date-utils.js');
 const { fmtDate, _dueCountdownLabel, setDayAnchorMinutes, getDayAnchorMinutes,
-        _anchoredNow, _anchoredDayKey, _anchoredDayEnd, todayStr, _dayKey, _monthKey } = DU;
+        _anchoredNow, _anchoredDayKey, _anchoredDayEnd, todayStr, _dayKey, _monthKey,
+        _shouldAdoptRemoteTimer, _timerSessionExpired } = DU;
 
 // The OLD reconciliation, copied verbatim in spirit from load() lines 725-731,
 // so each test can show the bug it fixed: "keep whichever array is longer".
@@ -606,4 +607,65 @@ test('anchor: a stale device without the field cannot flip an anchored account',
   const cloud = { reminders: [rem('r1')], _tombstones: {} };   // stale build, no field
   const out = reconcileSync(local, cloud);
   assert.ok(!('dayAnchorMin' in out), 'reconcileSync must not own the anchor scalar');
+});
+
+
+// ── Cross-device focus timer (2026-08-21) ──────────────────────────────────
+const ft = (o = {}) => Object.assign({
+  sessionId: 's1', running: false, endAt: 0, total: 1500, presetIdx: 0, awardedSessionId: ''
+}, o);
+
+test('timer sync: nothing to adopt', () => {
+  assert.equal(_shouldAdoptRemoteTimer(ft(), null), false);
+  assert.equal(_shouldAdoptRemoteTimer(ft(), undefined), false);
+  assert.equal(_shouldAdoptRemoteTimer(ft(), 'garbage'), false);
+  assert.equal(_shouldAdoptRemoteTimer(ft(), {}), false, 'a record with no sessionId is malformed');
+});
+
+test('timer sync: no local timer means take the remote one', () => {
+  assert.equal(_shouldAdoptRemoteTimer(null, ft({ running: true, endAt: 123 })), true);
+});
+
+test('timer sync: an identical record is IGNORED', () => {
+  // This is what stops every unrelated snapshot echo (a note edit, a task
+  // toggle) from tearing down and rebuilding the timer interval.
+  assert.equal(_shouldAdoptRemoteTimer(ft({ running: true, endAt: 999 }),
+                                       ft({ running: true, endAt: 999 })), false);
+  assert.equal(_shouldAdoptRemoteTimer(ft(), ft()), false);
+});
+
+test('timer sync: a different session always wins', () => {
+  assert.equal(_shouldAdoptRemoteTimer(ft({ sessionId: 's1' }), ft({ sessionId: 's2' })), true);
+});
+
+test('timer sync: same session, a meaningful field changed', () => {
+  const base = ft({ sessionId: 's1', running: true, endAt: 999 });
+  assert.equal(_shouldAdoptRemoteTimer(base, ft({ sessionId: 's1', running: false, endAt: 999 })), true, 'paused elsewhere');
+  assert.equal(_shouldAdoptRemoteTimer(base, ft({ sessionId: 's1', running: true, endAt: 1500 })), true, 'endAt moved');
+  assert.equal(_shouldAdoptRemoteTimer(base, ft({ sessionId: 's1', running: true, endAt: 999, total: 2700 })), true, 'preset changed');
+});
+
+test('timer sync: adopting when another device already claimed the points', () => {
+  // Otherwise this device would tick to zero and award them a second time.
+  const local = ft({ sessionId: 's1', running: true, endAt: 999 });
+  const remote = ft({ sessionId: 's1', running: true, endAt: 999, awardedSessionId: 's1' });
+  assert.equal(_shouldAdoptRemoteTimer(local, remote), true);
+});
+
+test('timer sync: expired-session detection', () => {
+  const now = 1_000_000;
+  assert.equal(_timerSessionExpired(ft({ running: true, endAt: now + 5000 }), now), false, 'still running');
+  assert.equal(_timerSessionExpired(ft({ running: true, endAt: now - 1 }), now), true, 'ended a moment ago');
+  assert.equal(_timerSessionExpired(ft({ running: false, endAt: 0 }), now), false, 'paused is not expired');
+  assert.equal(_timerSessionExpired(null, now), false);
+  assert.equal(_timerSessionExpired(ft({ running: true, endAt: 0 }), now), false, 'running with no endAt is malformed, not expired');
+});
+
+test('timer sync: reconcileSync does not own focusTimer', () => {
+  // It rides the plain blob spread (last-write-wins via save()'s _updatedAt
+  // transaction guard), exactly like dayAnchorMin. If reconcileSync started
+  // emitting it, it would override the caller's Object.assign ordering.
+  const out = reconcileSync({ focusTimer: ft(), reminders: [], _tombstones: {} },
+                            { reminders: [], _tombstones: {} });
+  assert.ok(!('focusTimer' in out));
 });

@@ -1205,7 +1205,7 @@ try {
 
 // ── SCRIPT 3: APP LOGIC ─────────────────────────────────────────
 // STATE
-var state={projects:[],reminders:[],thoughts:[],notes:[],moodLog:[],tasks:[],completedTasks:[],completedTasksLifetime:undefined,completedProjectSubtasksLifetime:undefined,remindersArchive:[],remindersArchiveLifetime:undefined,journal:[],journalPin:'',workoutLog:{},completedWorkouts:[],focusPlaylistId:null,points:{current:0,monthKey:'',lastTier:'bronze',totalsByDay:{},lastLoginDate:'',lifetimeTotal:0,monthlyTotals:{}},panelUseLog:{},usageMonthlyTotals:{},routines:{morning:[{id:'m1',name:'Hydrate \u2014 glass of water',done:false},{id:'m2',name:"Review today's calendar",done:false},{id:'m3',name:'Pick top 3 priorities',done:false},{id:'m4',name:'Quick workspace tidy',done:false}],evening:[{id:'e1',name:'Review what got done today',done:false},{id:'e2',name:"Brain dump tomorrow's thoughts",done:false},{id:'e3',name:"Set out tomorrow's essentials",done:false},{id:'e4',name:'Wind-down activity',done:false}],custom:[]},currentRoutineTab:'morning',energy:null,mood:null,panelOrder:['projects','reminders','time','tasklist','notes','brain','routines','wellness','decision','admin'],panelsLocked:true,lastRoutineReset:null,visiblePanels:{},knownPanels:[],dayAnchorMin:0};
+var state={projects:[],reminders:[],thoughts:[],notes:[],moodLog:[],tasks:[],completedTasks:[],completedTasksLifetime:undefined,completedProjectSubtasksLifetime:undefined,remindersArchive:[],remindersArchiveLifetime:undefined,journal:[],journalPin:'',workoutLog:{},completedWorkouts:[],focusPlaylistId:null,points:{current:0,monthKey:'',lastTier:'bronze',totalsByDay:{},lastLoginDate:'',lifetimeTotal:0,monthlyTotals:{}},panelUseLog:{},usageMonthlyTotals:{},routines:{morning:[{id:'m1',name:'Hydrate \u2014 glass of water',done:false},{id:'m2',name:"Review today's calendar",done:false},{id:'m3',name:'Pick top 3 priorities',done:false},{id:'m4',name:'Quick workspace tidy',done:false}],evening:[{id:'e1',name:'Review what got done today',done:false},{id:'e2',name:"Brain dump tomorrow's thoughts",done:false},{id:'e3',name:"Set out tomorrow's essentials",done:false},{id:'e4',name:'Wind-down activity',done:false}],custom:[]},currentRoutineTab:'morning',energy:null,mood:null,panelOrder:['projects','reminders','time','tasklist','notes','brain','routines','wellness','decision','admin'],panelsLocked:true,lastRoutineReset:null,visiblePanels:{},knownPanels:[],dayAnchorMin:0,focusTimer:null};
 
 // CROSS-ACCOUNT LEAK, round 3 (Joe, 2026-08-03). `state` is module-level and
 // was NEVER reset when the signed-in account changed: onAuthStateChanged's
@@ -1499,6 +1499,12 @@ async function load(){
         // date-utils BEFORE the boot render runs, so the first paint is
         // already on the right day rather than correcting itself a beat later.
         if(typeof _applyDayAnchor==='function')_applyDayAnchor();
+        // Cross-device timer: a run started on another device (or on this one
+        // before it was closed) is picked up here. Expired sessions land
+        // silently on idle -- see _applyTimerState.
+        if(typeof _adoptRemoteTimerIfNeeded==='function'){
+          try{ _adoptRemoteTimerIfNeeded(state.focusTimer); }catch(e){}
+        }
         setSyncStatus('synced','Synced');
       }else{
         // CROSS-ACCOUNT LEAK, round 2 (Joe, 2026-08-03 -- a fresh dev account
@@ -1727,6 +1733,14 @@ function startRealtimeSync(){
       // A-2: another device may have changed the anchor. Apply it BEFORE the
       // renders below, so they draw the new day rather than the old one.
       if(typeof _applyDayAnchor==='function')_applyDayAnchor();
+      // Cross-device timer: another device started/paused/reset the focus
+      // timer. _shouldAdoptRemoteTimer keeps this cheap -- an unrelated
+      // snapshot echo (a note edit, a task toggle) carries an identical
+      // focusTimer and is ignored, so the interval isn't torn down and
+      // rebuilt on every sync.
+      if(typeof _adoptRemoteTimerIfNeeded==='function'){
+        try{ _adoptRemoteTimerIfNeeded(cloud.focusTimer); }catch(e){}
+      }
       renderProjects();renderReminders();renderThoughts();renderNotes();renderRoutines();renderTaskList();renderTimeline();
       applyPanelVisibility();
       showStateAdvice();updateWellnessVisibility();
@@ -2151,8 +2165,25 @@ function updateTimerDisplay(){
     });
     _liveActivityEnd();
     playAlarm();
-    toast('⏰ Focus session complete! +3 Presence');
-    addPoints('timer',document.getElementById('headerTimerBtn'));
+    // Points are awarded ONCE PER SESSION across every device. Without this
+    // guard a Mac and a phone both open would each tick to zero and each call
+    // addPoints for the same run. Claimed by stamping awardedSessionId, which
+    // rides the same synced record. A true simultaneous finish on two devices
+    // can still double-award within one sync round-trip -- a few points, and
+    // not worth a distributed lock in a single-user app.
+    var _ftSess=(state.focusTimer&&state.focusTimer.sessionId)||'';
+    var _ftAwarded=(state.focusTimer&&state.focusTimer.awardedSessionId)||'';
+    var _claimPoints=!_ftSess||_ftAwarded!==_ftSess;
+    if(_claimPoints){
+      toast('⏰ Focus session complete! +3 Presence');
+      addPoints('timer',document.getElementById('headerTimerBtn'));
+    }else{
+      toast('⏰ Focus session complete');
+    }
+    // Publish the finished state (running:false) and claim the award.
+    if(typeof _writeTimerState==='function'){
+      _writeTimerState(_claimPoints&&_ftSess?{awardedSessionId:_ftSess}:{});
+    }
     // Web (non-native): fire the completion notification now so a backgrounded
     // desktop tab still alerts. Native already scheduled one via the bridge and
     // its JS is suspended in the background, so we skip the web path there.
@@ -2175,6 +2206,110 @@ function _tickTimer(){
   updateTimerDisplay();
 }
 
+// ═══════════════════════════════════════════════════════════════════
+// CROSS-DEVICE FOCUS TIMER (2026-08-21)
+//
+// state.focusTimer is the synced record; the bare timerRunning/timerEndAt/
+// timerTotal/timerLeft/timerCurrentPresetIdx variables remain this device's
+// live view of it. _writeTimerState publishes a change; _applyTimerState
+// consumes one (from another device, or from the native watch bridge).
+//
+// Set while APPLYING a state that arrived from elsewhere, so the mutators
+// below don't immediately publish it straight back out and ping-pong.
+var _applyingTimerState=false;
+var _timerSessionSeq=0;
+
+function _newTimerSessionId(){
+  _timerSessionSeq++;
+  return 'ft'+Date.now().toString(36)+_timerSessionSeq.toString(36);
+}
+
+// Publish the current in-memory timer to state.focusTimer and sync it.
+// `newSession` starts a NEW run (start/preset) rather than updating the
+// current one (pause/reset/complete) -- a new sessionId is what tells other
+// devices "this is a different run, take it" in _shouldAdoptRemoteTimer.
+function _writeTimerState(opts){
+  if(_applyingTimerState)return;   // echoing back what we just adopted
+  opts=opts||{};
+  var prev=state.focusTimer||{};
+  state.focusTimer={
+    sessionId:opts.newSession?_newTimerSessionId():(prev.sessionId||_newTimerSessionId()),
+    running:!!timerRunning,
+    // ALWAYS the absolute instant, never a countdown -- see date-utils.js.
+    endAt:timerRunning?(timerEndAt||0):0,
+    total:timerTotal||0,
+    presetIdx:timerCurrentPresetIdx|0,
+    awardedSessionId:opts.awardedSessionId!==undefined?opts.awardedSessionId:(prev.awardedSessionId||'')
+  };
+  save();
+}
+
+// Apply a timer state that came from somewhere else. Shared by the native
+// watch handoff (window.__adoptNativeTimerState) and by remote sync
+// (_adoptRemoteTimerIfNeeded).
+//
+// opts.scheduleAlerts is the ONE difference between those two callers, and it
+// matters: for the native watch handoff the completion notification and Live
+// Activity were ALREADY set up natively, so re-scheduling them double-fires
+// (a real bug hit in build 99). For a timer started on ANOTHER DEVICE nothing
+// is set up here, so this device must schedule its own.
+function _applyTimerState(dict,opts){
+  opts=opts||{};
+  if(!dict||typeof dict!=='object')return false;
+  _applyingTimerState=true;
+  try{
+    if(typeof dict.presetIdx==='number'&&TIMER_PRESETS[dict.presetIdx])timerCurrentPresetIdx=dict.presetIdx;
+    var total=(typeof dict.total==='number'&&dict.total>0)?dict.total
+             :((typeof dict.totalSec==='number'&&dict.totalSec>0)?dict.totalSec:timerTotal);
+    if(total>0)timerTotal=total;
+    var endAt=(typeof dict.endAt==='number'&&dict.endAt>0)?dict.endAt
+             :((typeof dict.endAtMs==='number'&&dict.endAtMs>0)?dict.endAtMs:0);
+    stopAlarm();
+    clearInterval(timerInterval);timerInterval=null;
+    if(dict.running&&endAt>0){
+      var left=Math.max(0,Math.round((endAt-Date.now())/1000));
+      if(left<=0){
+        // Expired while every device was closed. Land on idle SILENTLY -- no
+        // alarm, no points, no "Done!" for a session that ended long ago.
+        timerRunning=false;timerEndAt=null;timerLeft=timerTotal;
+      }else{
+        timerRunning=true;timerEndAt=endAt;timerLeft=left;
+        timerInterval=setInterval(_tickTimer,500);
+        if(opts.scheduleAlerts){_timerNotifStart();_liveActivityStart();}
+      }
+    }else{
+      timerRunning=false;timerEndAt=null;
+      var leftVal=(typeof dict.left==='number')?dict.left
+                 :((typeof dict.leftSec==='number')?dict.leftSec:timerTotal);
+      timerLeft=leftVal;
+      if(opts.scheduleAlerts){_timerNotifCancel();_liveActivityEnd();}
+    }
+    updateTimerDisplay();
+    if(typeof pushWatchSnapshot==='function')pushWatchSnapshot();
+    return true;
+  }catch(e){console.warn('[timer] applyTimerState failed',e);return false;}
+  finally{_applyingTimerState=false;}
+}
+
+// Called from load() and from the onSnapshot merge: adopt another device's
+// timer when it genuinely differs from what this one is showing.
+function _adoptRemoteTimerIfNeeded(remote){
+  if(typeof _shouldAdoptRemoteTimer!=='function')return false;
+  var localView={
+    sessionId:(state.focusTimer&&state.focusTimer.sessionId)||'',
+    running:!!timerRunning,
+    endAt:timerRunning?(timerEndAt||0):0,
+    total:timerTotal||0,
+    presetIdx:timerCurrentPresetIdx|0,
+    awardedSessionId:(state.focusTimer&&state.focusTimer.awardedSessionId)||''
+  };
+  if(!_shouldAdoptRemoteTimer(localView,remote))return false;
+  state.focusTimer=remote;
+  // scheduleAlerts:true -- this device has nothing scheduled for a run that
+  // started somewhere else.
+  return _applyTimerState(remote,{scheduleAlerts:true});
+}
+
 function startTimer(){
   if(timerRunning)return;
   // Guard: never start an already-expired timer -- endAt would be in the past,
@@ -2190,6 +2325,9 @@ function startTimer(){
   _liveActivityStart();
   updateTimerDisplay();
   if(typeof pushWatchSnapshot==='function')pushWatchSnapshot();
+  // Resuming a paused run keeps its sessionId; only headerTimerSelectPreset
+  // (and a reset) begins a genuinely new one.
+  _writeTimerState();
 }
 
 function pauseTimer(){
@@ -2201,6 +2339,7 @@ function pauseTimer(){
   _liveActivityEnd();
   updateTimerDisplay();
   if(typeof pushWatchSnapshot==='function')pushWatchSnapshot();
+  _writeTimerState();
 }
 
 function resetTimer(){
@@ -2210,6 +2349,9 @@ function resetTimer(){
   _liveActivityEnd();
   updateTimerDisplay();
   if(typeof pushWatchSnapshot==='function')pushWatchSnapshot();
+  // A reset ENDS the run, so the next start is a new session -- otherwise a
+  // device that still holds the old sessionId could resurrect it.
+  _writeTimerState({newSession:true});
 }
 
 function headerTimerClick(){
@@ -2255,6 +2397,9 @@ function headerTimerSelectPreset(idx){
   timerTotal=TIMER_PRESETS[idx].minutes*60;
   timerLeft=timerTotal;timerEndAt=null;
   updateTimerDisplay();
+  // Mark the new run BEFORE starting, so startTimer's own publish carries the
+  // fresh sessionId rather than extending the previous one.
+  _writeTimerState({newSession:true});
   startTimer();
 }
 
@@ -5082,33 +5227,17 @@ window.__watchApplyAction=function(action){
 // WatchActionQueue/CaptureQueue only ever remove ids they got back
 // confirmation for.
 window.__adoptNativeTimerState=function(dict){
-  try{
-    if(!dict||typeof dict!=='object')return {adopted:false};
-    if(typeof dict.presetIdx==='number'&&TIMER_PRESETS[dict.presetIdx])timerCurrentPresetIdx=dict.presetIdx;
-    if(typeof dict.totalSec==='number'&&dict.totalSec>0)timerTotal=dict.totalSec;
-    stopAlarm();
-    clearInterval(timerInterval);timerInterval=null;
-    if(dict.running){
-      timerRunning=true;
-      timerEndAt=(typeof dict.endAtMs==='number'&&dict.endAtMs>0)?dict.endAtMs:null;
-      timerLeft=timerEndAt?Math.max(0,Math.round((timerEndAt-Date.now())/1000)):timerTotal;
-      // If it already finished while the app was closed, land on the same
-      // "done" state _tickTimer would have reached -- not a still-running
-      // display for a session that's actually over.
-      if(timerLeft<=0){
-        timerRunning=false;timerEndAt=null;timerLeft=0;
-      }else{
-        timerInterval=setInterval(_tickTimer,500);
-      }
-    }else{
-      timerRunning=false;
-      timerEndAt=null;
-      timerLeft=(typeof dict.leftSec==='number')?dict.leftSec:timerTotal;
-    }
-    updateTimerDisplay();
-    if(typeof pushWatchSnapshot==='function')pushWatchSnapshot();
-    return {adopted:true};
-  }catch(e){console.warn('[watch] adoptNativeTimerState failed',e);return {adopted:false};}
+  // scheduleAlerts:false -- WatchBridge already scheduled the completion
+  // notification and started the Live Activity natively for this exact
+  // session. Re-scheduling them here double-fires at the end (build 99).
+  var ok=_applyTimerState(dict,{scheduleAlerts:false});
+  // Publish the watch's change to the other devices too, so a timer started
+  // on the watch shows up on the Mac. Keeps this run's sessionId if one
+  // exists; a watch-started run that has none gets a fresh one.
+  if(ok&&typeof _writeTimerState==='function'){
+    try{ _writeTimerState(!(state.focusTimer&&state.focusTimer.sessionId)?{newSession:true}:{}); }catch(e){}
+  }
+  return {adopted:!!ok};
 };
 
 var MOBILE_PANELS=[
