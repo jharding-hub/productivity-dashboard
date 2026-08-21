@@ -5062,9 +5062,28 @@ window.__watchApplyAction=function(action){
 // dict shape mirrors NativeTimerState.Item's Swift field names verbatim
 // (running/endAtMs/totalSec/leftSec/presetIdx) -- a separate, one-off
 // adoption call, not the same shape as _buildWatchSnapshot's `timer` object.
+//
+// MUST return {adopted:true} on success. WatchBridge.adoptNativeTimerStateIfNeeded
+// only clears its NativeTimerState record when it sees that back -- a real bug
+// (found on-device 2026-08-21): the first version cleared the native record
+// UNCONDITIONALLY the instant the call was made, with no confirmation this
+// function had even run yet (legacy.js is injected dynamically by App.jsx,
+// not a static deferred <script>, so its load time is materially less
+// predictable than Capture/PendingCompletion's own scripts). If that first
+// attempt landed even slightly before this function was defined, the
+// short-circuited call evaluated to nothing, the native record was discarded
+// anyway with no way to retry, and the web layer's timerRunning stayed stuck
+// at its idle false forever -- so a later Pause tap silently no-op'd via
+// pauseTimer()'s own `if(!timerRunning)return`, never touching the Live
+// Activity (which is why it kept counting down correctly on the Lock Screen
+// while the watch itself reported back to idle/25:00). Returning an explicit
+// {adopted:true} lets the native side wait for CONFIRMED success before
+// discarding its only copy of the timer state, exactly like
+// WatchActionQueue/CaptureQueue only ever remove ids they got back
+// confirmation for.
 window.__adoptNativeTimerState=function(dict){
   try{
-    if(!dict||typeof dict!=='object')return;
+    if(!dict||typeof dict!=='object')return {adopted:false};
     if(typeof dict.presetIdx==='number'&&TIMER_PRESETS[dict.presetIdx])timerCurrentPresetIdx=dict.presetIdx;
     if(typeof dict.totalSec==='number'&&dict.totalSec>0)timerTotal=dict.totalSec;
     stopAlarm();
@@ -5088,7 +5107,8 @@ window.__adoptNativeTimerState=function(dict){
     }
     updateTimerDisplay();
     if(typeof pushWatchSnapshot==='function')pushWatchSnapshot();
-  }catch(e){console.warn('[watch] adoptNativeTimerState failed',e);}
+    return {adopted:true};
+  }catch(e){console.warn('[watch] adoptNativeTimerState failed',e);return {adopted:false};}
 };
 
 var MOBILE_PANELS=[
