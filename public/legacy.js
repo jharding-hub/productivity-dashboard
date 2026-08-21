@@ -2983,9 +2983,12 @@ function exportReminderICS(id){const r=state.reminders.find(r=>r.id===id);if(!r)
 function _defaultNotifPrefs(){
   return {enabled:false,quietStart:'21:00',quietEnd:'08:00',badges:false,
     routineMorning:{on:false,time:'08:00'},routineEvening:{on:false,time:'20:00'},
-    // R16 Phase B: fixed to Sunday for v1 (no day picker) -- off by default,
-    // same as every other individual nudge type here.
-    weeklyReview:{on:false,time:'18:00'}};
+    // R16 Phase B shipped this fixed to Sunday. Panel survey Stage 9 made the
+    // day configurable: `day` is JS's 0-indexed Date.getDay() (Sunday=0), and
+    // 0 is the default, so every existing account keeps Sunday exactly. It is
+    // a shift day one week in three on a 24/48 rotation, which is why the
+    // Shift Worker dismissed it on scene and never came back.
+    weeklyReview:{on:false,time:'18:00',day:0}};
 }
 function _ensureNotifPrefs(){
   if(!state.notifPrefs)state.notifPrefs=_defaultNotifPrefs();
@@ -2993,7 +2996,11 @@ function _ensureNotifPrefs(){
   for(var k in d){if(state.notifPrefs[k]===undefined)state.notifPrefs[k]=d[k];}
   if(!state.notifPrefs.routineMorning)state.notifPrefs.routineMorning={on:false,time:'08:00'};
   if(!state.notifPrefs.routineEvening)state.notifPrefs.routineEvening={on:false,time:'20:00'};
-  if(!state.notifPrefs.weeklyReview)state.notifPrefs.weeklyReview={on:false,time:'18:00'};
+  if(!state.notifPrefs.weeklyReview)state.notifPrefs.weeklyReview={on:false,time:'18:00',day:0};
+  // Backfill for accounts saved before the day existed -- undefined would make
+  // _weeklyReviewDay fall back to 0 anyway, but persisting it keeps the
+  // Settings <select> and the native payload reading one explicit value.
+  if(state.notifPrefs.weeklyReview.day===undefined)state.notifPrefs.weeklyReview.day=0;
   return state.notifPrefs;
 }
 
@@ -3068,13 +3075,22 @@ function _notifMaybeRoutine(which,time,curMin,today){
   _notifShow(label,undone+' item'+(undone!==1?'s':'')+' left — a gentle nudge, no pressure.','routine-'+which);
 }
 
-// R16 Phase B: fixed to Sunday for v1. Gated on now.getDay()===0 (JS's 0-indexed
-// Date.getDay(); Sunday=0) BEFORE the time check, so this only ever reaches the
-// per-day dedupe on the one day it can fire -- no separate per-week dedupe
-// scheme needed, the existing per-day _notifFired reset already gives weekly
-// semantics once combined with the day-of-week gate.
-function _notifMaybeWeeklyReview(time,curMin,today,now){
-  if(now.getDay()!==0)return;
+// Reads the configured day (JS's 0-indexed Date.getDay(); Sunday=0) BEFORE the
+// time check, so this only ever reaches the per-day dedupe on the one day it
+// can fire -- no separate per-week dedupe scheme needed, the existing per-day
+// _notifFired reset already gives weekly semantics once combined with the
+// day-of-week gate. Panel survey Stage 9 made the day configurable; it was
+// hardcoded to Sunday from R16 Phase B until then.
+//
+// Anything not a whole 0-6 reads as 0, so a corrupted or half-migrated pref
+// degrades to the historical Sunday rather than to a day that never arrives.
+function _weeklyReviewDay(p){
+  var d=p&&p.weeklyReview?p.weeklyReview.day:0;
+  d=parseInt(d,10);
+  return (d>=0&&d<=6)?d:0;
+}
+function _notifMaybeWeeklyReview(time,curMin,today,now,day){
+  if(now.getDay()!==((day>=0&&day<=6)?day:0))return;
   var t=_hmToMin(time||'18:00');
   if(t>curMin)return;                 // not time yet
   if(curMin-t>60)return;              // missed the 60-min nudge window
@@ -3107,7 +3123,7 @@ function _notifTick(){
 
   if(p.routineMorning&&p.routineMorning.on)_notifMaybeRoutine('morning',p.routineMorning.time,curMin,today);
   if(p.routineEvening&&p.routineEvening.on)_notifMaybeRoutine('evening',p.routineEvening.time,curMin,today);
-  if(p.weeklyReview&&p.weeklyReview.on)_notifMaybeWeeklyReview(p.weeklyReview.time,curMin,today,now);
+  if(p.weeklyReview&&p.weeklyReview.on)_notifMaybeWeeklyReview(p.weeklyReview.time,curMin,today,now,_weeklyReviewDay(p));
 
   _notifUpdateBadge();
 }
@@ -3144,6 +3160,14 @@ function toggleNotifEnabled(on){
 }
 function setNotifPref(k,v){_ensureNotifPrefs();state.notifPrefs[k]=v;save();if(k==='badges')_notifUpdateBadge();}
 function setNotifRoutine(group,k,v){_ensureNotifPrefs();if(!state.notifPrefs[group])state.notifPrefs[group]={};state.notifPrefs[group][k]=v;save();}
+// A <select> hands back a STRING; the gate and the native payload both compare
+// numerically, so coerce once here rather than at every read. save() schedules
+// the debounced native reschedule, so changing the day re-registers the iOS
+// notification without a separate call.
+function setWeeklyReviewDay(v){
+  var d=parseInt(v,10);
+  setNotifRoutine('weeklyReview','day',(d>=0&&d<=6)?d:0);
+}
 
 function _renderNotifSettings(){
   var el=document.getElementById('notifSettings');if(!el)return;
@@ -3177,7 +3201,9 @@ function _renderNotifSettings(){
     html+='<div class="notif-row"><label class="notif-check"><input type="checkbox" '+(rm.on?'checked':'')+' onchange="setNotifRoutine(\'routineMorning\',\'on\',this.checked)"> Morning routine nudge</label><input type="time" value="'+(rm.time||'08:00')+'" onchange="setNotifRoutine(\'routineMorning\',\'time\',this.value)"></div>';
     html+='<div class="notif-row"><label class="notif-check"><input type="checkbox" '+(re.on?'checked':'')+' onchange="setNotifRoutine(\'routineEvening\',\'on\',this.checked)"> Evening routine nudge</label><input type="time" value="'+(re.time||'20:00')+'" onchange="setNotifRoutine(\'routineEvening\',\'time\',this.value)"></div>';
     var wr=p.weeklyReview||{on:false,time:'18:00'};
-    html+='<div class="notif-row"><label class="notif-check"><input type="checkbox" '+(wr.on?'checked':'')+' onchange="setNotifRoutine(\'weeklyReview\',\'on\',this.checked)"> Weekly Review, Sundays</label><input type="time" value="'+(wr.time||'18:00')+'" onchange="setNotifRoutine(\'weeklyReview\',\'time\',this.value)"></div>';
+    var wrDay=_weeklyReviewDay(p);
+    var wrOpts=WEEKDAY_NAMES.map(function(n,i){return '<option value="'+i+'"'+(i===wrDay?' selected':'')+'>'+n+'s</option>';}).join('');
+    html+='<div class="notif-row"><label class="notif-check"><input type="checkbox" '+(wr.on?'checked':'')+' onchange="setNotifRoutine(\'weeklyReview\',\'on\',this.checked)"> Weekly Review</label><select onchange="setWeeklyReviewDay(this.value)">'+wrOpts+'</select><input type="time" value="'+(wr.time||'18:00')+'" onchange="setNotifRoutine(\'weeklyReview\',\'time\',this.value)"></div>';
   }
   el.innerHTML=html;
 }
@@ -3270,11 +3296,13 @@ function _notifBuildNativeItems(){
   if(p.routineEvening&&p.routineEvening.on&&!_notifTimeInQuiet(p.routineEvening.time)){
     items.push({id:'routine_evening',title:'🌙 Evening routine',body:'A gentle nudge for your evening routine — no pressure.',at:_notifTodayTimeEpoch(p.routineEvening.time),repeatsDaily:true});
   }
-  // R16 Phase B: fixed to Sunday for v1 -- native derives the weekday from
-  // repeatWeekly alone (hardcoded Sunday on that side too), so no day-of-week
-  // value needs to cross the bridge at all.
+  // The weekday now DOES cross the bridge (panel survey Stage 9). Sent in JS's
+  // 0-indexed convention (Sunday=0); NotificationBridge.swift converts to
+  // Calendar's 1-indexed .weekday, and defaults to Sunday when the field is
+  // absent -- so an older JS bundle against a newer Swift build still gets the
+  // historical behaviour instead of no weekly nudge at all.
   if(p.weeklyReview&&p.weeklyReview.on&&!_notifTimeInQuiet(p.weeklyReview.time)){
-    items.push({id:'weekly_review',title:'📆 Your Weekly Review',body:'Take a moment to look back at your week.',at:_notifTodayTimeEpoch(p.weeklyReview.time),repeatWeekly:true});
+    items.push({id:'weekly_review',title:'📆 Your Weekly Review',body:'Take a moment to look back at your week.',at:_notifTodayTimeEpoch(p.weeklyReview.time),repeatWeekly:true,weekday:_weeklyReviewDay(p)});
   }
   return items.slice(0,60); // iOS caps pending notifications at 64
 }
