@@ -1165,6 +1165,10 @@ function initAuthListener(){
       // now must defer to the next successful sign-in's initApp, not render
       // from the cleared default. (See openWeeklyReview's deferral.)
       _appDataReady=false;
+      // The next account's own-docs have not been read either -- without this
+      // a sign-in could write account B's (empty) archive over account B's
+      // real one using account A's residual readiness.
+      if(typeof _resetOwnDocLoaded==='function')_resetOwnDocLoaded();
       hideApp();
       // G-05: this branch is also where a device lands when its account was
       // deleted from somewhere else (the delete revokes the refresh token).
@@ -1228,6 +1232,10 @@ var _pristineState=JSON.parse(JSON.stringify(state));
 var _lastLoadedUid=null;
 function _resetStateForNewUser(){
   state=JSON.parse(JSON.stringify(_pristineState));
+  // State is now empty. Every own-doc must be re-read before it can be
+  // written, or the first save would overwrite the incoming account's stored
+  // history with this blank slate.
+  if(typeof _resetOwnDocLoaded==='function')_resetOwnDocLoaded();
 }
 
 // SYNC STATUS
@@ -5097,6 +5105,13 @@ function _updateWidgetSnapshot(){
 // of the first tap's real update and visually revert it.
 window.__watchApplyAction=function(action){
   try{
+    // Same guard as the two drains above. The watch's energy/mood/checkin/halt
+    // commands write the checkins and moodLog own-docs, so replaying one
+    // before those have loaded would overwrite that history the same way.
+    // Returning undefined signals "not applied": WatchBridge leaves the action
+    // in WatchActionQueue (drainNext only removes ids it got a result for) and
+    // the live path falls through to handleOffline, which queues it.
+    if(!_appDataReady)return;
     if(!action||!action.cmd)return _buildWatchSnapshot();
     if(action.cmd==='toggle'){
       if(action.kind==='task'){
@@ -8826,18 +8841,73 @@ function _routineConsistencySince(days){
 // every existing read call site (_checkinsSince, _renderStateCard, mood
 // chart, insights) is untouched; only persistence moves.
 // =======================================
+// ═══════════════════════════════════════════════════════════════════
+// OWN-DOC WRITE GUARD (2026-08-21) -- data-loss fix
+//
+// checkins / moodLog / completedTasks / remindersArchive each live in their
+// own Firestore doc, and every one of them persists by a FULL-DOCUMENT
+// OVERWRITE (.set(), not an update or a merge). So writing one BEFORE it has
+// been READ replaces the stored history with whatever little happens to be in
+// memory at that moment.
+//
+// THIS DESTROYED REAL DATA. On 2026-08-20 at 19:27 EDT a widget-queued
+// completion (A-6) replayed through PendingCompletionBridge's drain, which
+// fires on a WALL CLOCK (capacitorDidLoad + 1.5s, and every
+// applicationDidBecomeActive) with no relationship to initApp's boot order.
+// It landed after load() had populated state.tasks -- so toggleTaskDone found
+// the task and archived it -- but BEFORE _loadCompletedTasksDoc() had
+// resolved, so state.completedTasks was still [] and the lifetime counter was
+// still 0. _archiveCompletedTask pushed one record and immediately overwrote
+// the cloud document with an array of one. ~100 archived records and a
+// lifetime count in the 200s were replaced by 1. Diagnosed from the surviving
+// data: archiveTombstones=2 (so the sweep was NOT involved), lifetime exactly
+// equal to arrayLen (so the counter had restarted from zero), and the oldest
+// surviving record timestamped at the moment of the overwrite.
+//
+// Two rules now, and they must both hold for every own-doc:
+//   1. NEVER write a doc that has not been successfully read this session.
+//   2. A read that THREW is not a read. "The document does not exist" is safe
+//      (a new account legitimately has none); "the network failed" is not,
+//      because the doc may be full of history we simply could not see.
+// ═══════════════════════════════════════════════════════════════════
+var _ownDocLoaded={checkins:false,moodLog:false,completedTasks:false,remindersArchive:false};
+function _ownDocWritable(key){
+  if(_ownDocLoaded[key])return true;
+  console.warn('[own-doc] refusing to write '+key+' before it has been read -- this is the guard that stops a full-document overwrite from destroying stored history');
+  return false;
+}
+// Cleared on sign-out/account switch alongside _appDataReady: the next
+// account's docs have not been read yet either.
+function _resetOwnDocLoaded(){
+  _ownDocLoaded={checkins:false,moodLog:false,completedTasks:false,remindersArchive:false};
+}
+
 function _checkinsStorageKey(){return 'cpCheckins_'+(currentUser?currentUser.uid:'local');}
 async function _loadCheckinsDoc(){
   var loaded=null;
+  // cloudReadOk distinguishes "the doc does not exist" (a new account -- safe
+  // to create) from "the read threw" (the doc may be full of history we could
+  // not see -- never overwrite). See the OWN-DOC WRITE GUARD block above.
+  var cloudReadOk=false;
   if(firebaseReady&&db&&currentUser){
     try{
       var snap=await db.collection('users').doc(currentUser.uid).collection('data').doc('checkins').get();
+      cloudReadOk=true;
       if(snap.exists)loaded=snap.data();
     }catch(e){console.log('checkins load (cloud) error:',e);}
+  }else{
+    // Signed-out / local-only mode: localStorage IS the source of truth here,
+    // so there is no unread remote document to protect.
+    cloudReadOk=true;
   }
   if(!loaded){
     try{var s=localStorage.getItem(_checkinsStorageKey());if(s)loaded=JSON.parse(s);}catch(e){}
   }
+  if(!cloudReadOk&&!loaded){
+    console.warn('[own-doc] checkins unreadable this session -- leaving it untouched');
+    return;
+  }
+  _ownDocLoaded.checkins=true;
   if(loaded&&Array.isArray(loaded.items)){
     state.checkins=loaded.items;
   }else if((state.checkins||[]).length){
@@ -8848,6 +8918,7 @@ async function _loadCheckinsDoc(){
   try{localStorage.setItem(_checkinsStorageKey(),JSON.stringify({v:1,items:state.checkins||[]}));}catch(e){}
 }
 async function _saveCheckinsDoc(){
+  if(!_ownDocWritable('checkins'))return;
   var doc={v:1,items:state.checkins||[]};
   try{localStorage.setItem(_checkinsStorageKey(),JSON.stringify(doc));}catch(e){}
   if(firebaseReady&&db&&currentUser){
@@ -8861,15 +8932,29 @@ async function _saveCheckinsDoc(){
 function _moodLogStorageKey(){return 'cpMoodLog_'+(currentUser?currentUser.uid:'local');}
 async function _loadMoodLogDoc(){
   var loaded=null;
+  // cloudReadOk distinguishes "the doc does not exist" (a new account -- safe
+  // to create) from "the read threw" (the doc may be full of history we could
+  // not see -- never overwrite). See the OWN-DOC WRITE GUARD block above.
+  var cloudReadOk=false;
   if(firebaseReady&&db&&currentUser){
     try{
       var snap=await db.collection('users').doc(currentUser.uid).collection('data').doc('moodLog').get();
+      cloudReadOk=true;
       if(snap.exists)loaded=snap.data();
     }catch(e){console.log('moodLog load (cloud) error:',e);}
+  }else{
+    // Signed-out / local-only mode: localStorage IS the source of truth here,
+    // so there is no unread remote document to protect.
+    cloudReadOk=true;
   }
   if(!loaded){
     try{var s=localStorage.getItem(_moodLogStorageKey());if(s)loaded=JSON.parse(s);}catch(e){}
   }
+  if(!cloudReadOk&&!loaded){
+    console.warn('[own-doc] moodLog unreadable this session -- leaving it untouched');
+    return;
+  }
+  _ownDocLoaded.moodLog=true;
   if(loaded&&Array.isArray(loaded.entries)){
     state.moodLog=loaded.entries;
   }else if((state.moodLog||[]).length){
@@ -8879,6 +8964,7 @@ async function _loadMoodLogDoc(){
   try{localStorage.setItem(_moodLogStorageKey(),JSON.stringify({v:1,entries:state.moodLog||[]}));}catch(e){}
 }
 async function _saveMoodLogDoc(){
+  if(!_ownDocWritable('moodLog'))return;
   var doc={v:1,entries:state.moodLog||[]};
   try{localStorage.setItem(_moodLogStorageKey(),JSON.stringify(doc));}catch(e){}
   if(firebaseReady&&db&&currentUser){
@@ -8905,11 +8991,20 @@ async function _saveMoodLogDoc(){
 function _completedTasksStorageKey(){return 'cpCompletedTasks_'+(currentUser?currentUser.uid:'local');}
 async function _loadCompletedTasksDoc(){
   var loaded=null;
+  // cloudReadOk distinguishes "the doc does not exist" (a new account -- safe
+  // to create) from "the read threw" (the doc may be full of history we could
+  // not see -- never overwrite). See the OWN-DOC WRITE GUARD block above.
+  var cloudReadOk=false;
   if(firebaseReady&&db&&currentUser){
     try{
       var snap=await db.collection('users').doc(currentUser.uid).collection('data').doc('completedTasks').get();
+      cloudReadOk=true;
       if(snap.exists)loaded=snap.data();
     }catch(e){console.log('completedTasks load (cloud) error:',e);}
+  }else{
+    // Signed-out / local-only mode: localStorage IS the source of truth here,
+    // so there is no unread remote document to protect.
+    cloudReadOk=true;
   }
   if(!loaded){
     try{var s=localStorage.getItem(_completedTasksStorageKey());if(s)loaded=JSON.parse(s);}catch(e){}
@@ -8920,6 +9015,15 @@ async function _loadCompletedTasksDoc(){
   //    cleared. (When there's no loaded doc but we already hold items from the
   //    old dashboard blob, this leaves them in place for the seed/save below --
   //    the pre-Stage-2b one-time migration.)
+  if(!cloudReadOk&&!loaded){
+    // THE FIX for the 2026-08-20 archive loss: the old code fell through here
+    // and still saved (because `_arr.length` was non-zero from a completion
+    // that had already been archived in memory), overwriting real history
+    // with a single record.
+    console.warn('[own-doc] completedTasks unreadable this session -- leaving it untouched');
+    return;
+  }
+  _ownDocLoaded.completedTasks=true;
   if(loaded&&Array.isArray(loaded.items)){
     state.completedTasks=_dropTombstoned(mergeById(state.completedTasks,loaded.items),state._archiveTombstones||{});
   }
@@ -8953,6 +9057,7 @@ async function _loadCompletedTasksDoc(){
 }
 async function _saveCompletedTasksDoc(){
   if(_accountDeleted)return;
+  if(!_ownDocWritable('completedTasks'))return;
   // Lifetime counters live HERE, in the completedTasks own-doc, not the
   // dashboard blob -- they count this doc's history, so keeping them atomic
   // with it gives one load/save/reconcile path instead of two docs that drift.
@@ -8994,11 +9099,20 @@ function _archiveReminder(r,reason){
 }
 async function _loadRemindersArchiveDoc(){
   var loaded=null;
+  // cloudReadOk distinguishes "the doc does not exist" (a new account -- safe
+  // to create) from "the read threw" (the doc may be full of history we could
+  // not see -- never overwrite). See the OWN-DOC WRITE GUARD block above.
+  var cloudReadOk=false;
   if(firebaseReady&&db&&currentUser){
     try{
       var snap=await db.collection('users').doc(currentUser.uid).collection('data').doc('remindersArchive').get();
+      cloudReadOk=true;
       if(snap.exists)loaded=snap.data();
     }catch(e){console.log('remindersArchive load (cloud) error:',e);}
+  }else{
+    // Signed-out / local-only mode: localStorage IS the source of truth here,
+    // so there is no unread remote document to protect.
+    cloudReadOk=true;
   }
   if(!loaded){
     try{var s=localStorage.getItem(_remindersArchiveStorageKey());if(s)loaded=JSON.parse(s);}catch(e){}
@@ -9006,6 +9120,11 @@ async function _loadRemindersArchiveDoc(){
   // Reconcile the archive array (union by id, drop user-cleared records),
   // then the lifetime counter (max with the array length as floor -- same
   // self-healing recipe as completedTasks, incl. the stale-SW fallback).
+  if(!cloudReadOk&&!loaded){
+    console.warn('[own-doc] remindersArchive unreadable this session -- leaving it untouched');
+    return;
+  }
+  _ownDocLoaded.remindersArchive=true;
   if(loaded&&Array.isArray(loaded.items)){
     state.remindersArchive=_dropTombstoned(mergeById(state.remindersArchive,loaded.items),state._archiveTombstones||{});
   }
@@ -9022,6 +9141,7 @@ async function _loadRemindersArchiveDoc(){
 }
 async function _saveRemindersArchiveDoc(){
   if(_accountDeleted)return;
+  if(!_ownDocWritable('remindersArchive'))return;
   var doc={v:1,items:state.remindersArchive||[],lifetime:state.remindersArchiveLifetime||0};
   try{localStorage.setItem(_remindersArchiveStorageKey(),JSON.stringify(doc));}catch(e){}
   if(firebaseReady&&db&&currentUser){
@@ -10351,6 +10471,9 @@ function submitQuickCapture(){
 // removes exactly those from the queue, so an item appended mid-drain survives.
 // No-ops safely off-shell or on malformed input.
 window.__drainCaptureQueue=function(itemsJson){
+  // Same wall-clock hazard as __drainPendingCompletions -- nothing is removed
+  // from the native queue, so captures survive to the next foreground.
+  if(!_appDataReady)return '[]';
   var items;
   try{items=JSON.parse(itemsJson);}catch(e){return '[]';}
   if(!Array.isArray(items)||items.length===0)return '[]';
@@ -10384,6 +10507,15 @@ window.__drainCaptureQueue=function(itemsJson){
 // Idempotent: an id for a task already completed/removed by another route
 // simply finds nothing in toggleTaskDone's lookup and no-ops.
 window.__drainPendingCompletions=function(itemsJson){
+  // Data-loss guard (2026-08-21): this drain fires on a WALL CLOCK
+  // (capacitorDidLoad + 1.5s, and every applicationDidBecomeActive), with no
+  // relationship to initApp's boot order. Running it after load() but before
+  // the own-docs have loaded is exactly what destroyed the completed-task
+  // archive -- toggleTaskDone found the task, archived it into an empty array,
+  // and the full-document save replaced ~100 records with 1. Returning '[]'
+  // removes NOTHING from the native queue, so the completion is preserved and
+  // replayed on the next foreground, which is what the durable queue is for.
+  if(!_appDataReady)return '[]';
   var items;
   try{items=JSON.parse(itemsJson);}catch(e){return '[]';}
   if(!Array.isArray(items)||items.length===0)return '[]';
