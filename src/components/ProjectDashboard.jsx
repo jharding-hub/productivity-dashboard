@@ -14,8 +14,29 @@ function syncLegacy() {
   if (typeof window.renderNotes === 'function') window.renderNotes();
 }
 
+// Panel survey Stage 9 (2026-08-20). This file used to carry its OWN day
+// resolvers built on new Date().toISOString().split('T')[0] -- a UTC day, the
+// exact pattern the repo's date rules forbid, and a second disagreeing
+// definition of "today" living inside a mounted component.
+//
+// West of Greenwich that rolls over early: after 8pm Eastern, UTC is already
+// tomorrow. So between 8pm and midnight this panel's "schedule for today"
+// wrote a tlBlock dated TOMORROW (it then vanished from today's timeline), and
+// collectTodayBlocks below listed tomorrow's blocks as today's.
+//
+// Now they delegate to the shared helpers in public/date-utils.js. Resolved at
+// CALL time, not module-eval time, because legacy.js is injected dynamically by
+// App.jsx and is not on the page when this module first evaluates. The local
+// fallback is a true LOCAL day (never toISOString) so the bug cannot come back
+// through that path either.
+function pad2(n) { return n < 10 ? '0' + n : '' + n; }
+function localDayKey(d) {
+  return d.getFullYear() + '-' + pad2(d.getMonth() + 1) + '-' + pad2(d.getDate());
+}
+
 function todayStr() {
-  return new Date().toISOString().split('T')[0];
+  if (typeof window.todayStr === 'function') return window.todayStr();
+  return localDayKey(new Date());
 }
 
 function fmtDate(d) {
@@ -60,9 +81,10 @@ function sortNotesByDate(notes) {
 }
 
 function tomorrowStr() {
+  if (typeof window.tomorrowStr === 'function') return window.tomorrowStr();
   const d = new Date();
   d.setDate(d.getDate() + 1);
-  return d.toISOString().split('T')[0];
+  return localDayKey(d);
 }
 
 function findScheduledBlock(itemId) {
