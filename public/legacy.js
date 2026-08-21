@@ -5043,6 +5043,54 @@ window.__watchApplyAction=function(action){
   }catch(e){console.warn('[watch] applyAction failed',e);return _buildWatchSnapshot();}
 };
 
+// Watch-action-delivery-reliability fix, timer half (2026-08-21): timerStart/
+// timerPause/timerReset/timerPreset from the watch are handled NATIVELY AND
+// IMMEDIATELY by WatchBridge.swift when the phone app is woken in the
+// background and evalJS isn't wired yet -- see NativeTimerState.swift. This
+// is the other half: once the web layer boots and evalJS exists,
+// MainViewController hands back whatever native state it wrote, and THIS
+// function ADOPTS it into the bare timerRunning/timerEndAt/timerTotal/
+// timerLeft/timerCurrentPresetIdx variables that own timer state everywhere
+// else in this file.
+//
+// Deliberately does NOT call startTimer()/pauseTimer()/resetTimer() -- those
+// would reset timerEndAt to "now + timerLeft" and re-schedule the completion
+// notification / Live Activity that native ALREADY set up for this exact
+// session, producing a double-fire at the end and a countdown that visibly
+// jumps back to the full duration the moment the app opens.
+//
+// dict shape mirrors NativeTimerState.Item's Swift field names verbatim
+// (running/endAtMs/totalSec/leftSec/presetIdx) -- a separate, one-off
+// adoption call, not the same shape as _buildWatchSnapshot's `timer` object.
+window.__adoptNativeTimerState=function(dict){
+  try{
+    if(!dict||typeof dict!=='object')return;
+    if(typeof dict.presetIdx==='number'&&TIMER_PRESETS[dict.presetIdx])timerCurrentPresetIdx=dict.presetIdx;
+    if(typeof dict.totalSec==='number'&&dict.totalSec>0)timerTotal=dict.totalSec;
+    stopAlarm();
+    clearInterval(timerInterval);timerInterval=null;
+    if(dict.running){
+      timerRunning=true;
+      timerEndAt=(typeof dict.endAtMs==='number'&&dict.endAtMs>0)?dict.endAtMs:null;
+      timerLeft=timerEndAt?Math.max(0,Math.round((timerEndAt-Date.now())/1000)):timerTotal;
+      // If it already finished while the app was closed, land on the same
+      // "done" state _tickTimer would have reached -- not a still-running
+      // display for a session that's actually over.
+      if(timerLeft<=0){
+        timerRunning=false;timerEndAt=null;timerLeft=0;
+      }else{
+        timerInterval=setInterval(_tickTimer,500);
+      }
+    }else{
+      timerRunning=false;
+      timerEndAt=null;
+      timerLeft=(typeof dict.leftSec==='number')?dict.leftSec:timerTotal;
+    }
+    updateTimerDisplay();
+    if(typeof pushWatchSnapshot==='function')pushWatchSnapshot();
+  }catch(e){console.warn('[watch] adoptNativeTimerState failed',e);}
+};
+
 var MOBILE_PANELS=[
   {id:'projects', icon:'<i class="ti ti-folder" aria-hidden="true"></i>',   label:'Projects',   badge:'projCount'},
   {id:'reminders',icon:'<i class="ti ti-bell" aria-hidden="true"></i>',     label:'Reminders',  badge:'remCount'},
