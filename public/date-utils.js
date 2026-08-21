@@ -5,12 +5,102 @@
 // these are already global by the time anything calls them.
 // ═══════════════════════════════════════════════════════════════════
 
-function todayStr(){var d=new Date();var pad=function(n){return n<10?'0'+n:''+n;};return d.getFullYear()+'-'+pad(d.getMonth()+1)+'-'+pad(d.getDate());}
+// ═══════════════════════════════════════════════════════════════════
+// A-2 DAY ANCHOR (panel survey Stage 9, 2026-08-20)
+//
+// The instant a new calendar day begins, as minutes past local midnight.
+//
+// 0 IS THE DEFAULT AND IS EXACTLY THE HISTORICAL BEHAVIOUR -- the arithmetic
+// below subtracts zero, so every resolver returns byte-identical results to
+// the pre-anchor code. This is asserted in test/sync-merge.test.mjs rather
+// than assumed. The anchor is opt-in per account and no existing account moves.
+//
+// Positive = the day starts LATER than midnight. Anchor 240 (4am) means 01:30
+// still belongs to the previous day: the ADHD User's 1am false-overdue shame,
+// and the Student's 11:59pm deadlines. Negative = the day starts the previous
+// evening (anchor -240 = 20:00) for a night-shift worker.
+//
+// Implemented as ONE SUBTRACTION on the instant, not a branch on the hour:
+// the anchored day of an instant is the LOCAL calendar day of (instant minus
+// anchor). Shifting the instant leaves DST to the platform -- the shifted
+// value is still a real instant, and its local Y/M/D is what a wall clock
+// actually read at that moment. A branch-on-hour version would have to
+// special-case the 23- and 25-hour days itself.
+//
+// This file stays PURE: it never reads app state or the DOM. legacy.js pushes
+// state.dayAnchorMin in here via setDayAnchorMinutes() after load() and after
+// every onSnapshot.
+//
+// ANYTHING THAT ASKS "WHAT DAY IS IT RIGHT NOW" MUST START FROM _anchoredNow().
+// A bare new Date() feeding a day comparison will disagree with todayStr() for
+// the length of the offset, every single day -- and the native widget has its
+// own copy of this arithmetic in TodayWidget.swift that must move in lockstep.
+// ═══════════════════════════════════════════════════════════════════
+var _dayAnchorMin = 0;
+function setDayAnchorMinutes(n){
+  n = parseInt(n,10);
+  if(!isFinite(n)) n = 0;
+  // Bounded to +/-12h. Past that the "day" stops being a day, and the widget's
+  // rollover-boundary arithmetic would start wrapping in confusing ways.
+  if(n > 720) n = 720;
+  if(n < -720) n = -720;
+  _dayAnchorMin = n;
+  return _dayAnchorMin;
+}
+function getDayAnchorMinutes(){ return _dayAnchorMin; }
+// "Now", moved into anchored-day space. Returned as a Date because several
+// callers need to do calendar arithmetic on it (a 7-day streak strip, a 90-day
+// cutoff) before formatting.
+function _anchoredNow(){
+  return _dayAnchorMin ? new Date(Date.now() - _dayAnchorMin*60000) : new Date();
+}
+// THE canonical instant -> anchored-day mapping. Everything that answers "which
+// day does this moment belong to" goes through here: todayStr(), the no-arg
+// _dayKey(), the deadline countdown, and the widget-parity harness. It is also
+// the exact function TodayWidget.swift's dayKey() must mirror -- one definition
+// on each side of the bridge, not four copies of the same subtraction.
+// `instant` defaults to now; passing one makes the mapping testable without
+// mocking the clock.
+function _anchoredDayKey(instant){
+  var ms = instant ? instant.getTime() : Date.now();
+  var d = new Date(ms - _dayAnchorMin*60000);
+  var pad = function(n){return n<10?'0'+n:''+n;};
+  return d.getFullYear()+'-'+pad(d.getMonth()+1)+'-'+pad(d.getDate());
+}
+// The real instant at which the anchored day `dayStr` ends. At anchor 0 this
+// is 23:59:59.999 local on that date, unchanged. Under an anchor the day is
+// still 24h long, just displaced -- with a 4am anchor, 2026-08-20 ends at
+// 03:59:59.999 on the 21st.
+//
+// Built from the date's components, never new Date(dayStr): the latter parses
+// a bare YYYY-MM-DD as UTC and lands a day early west of Greenwich.
+function _anchoredDayEndOf(dayStr){
+  var p = (dayStr||'').split('-');
+  var base = new Date(parseInt(p[0],10), parseInt(p[1],10)-1, parseInt(p[2],10), 23, 59, 59, 999);
+  if(isNaN(base.getTime())) return null;
+  return new Date(base.getTime() + _dayAnchorMin*60000);
+}
+// Same thing for the anchored day that CONTAINS `now`. Delegates, so there is
+// one implementation of "when does a day end", not two that can drift.
+function _anchoredDayEnd(now){
+  return _anchoredDayEndOf(_anchoredDayKey(now || new Date()));
+}
+
+function todayStr(){return _anchoredDayKey();}
 function fmtDate(d){return new Date(d+'T00:00:00').toLocaleDateString('en-US',{month:'short',day:'numeric',year:'numeric'});}
 function fmtTime(t){const[h,m]=t.split(':');const hr=parseInt(h);return(hr>12?hr-12:hr||12)+':'+m+(hr>=12?' PM':' AM');}
 function _hmToMin(hm){var a=(hm||'').split(':');return (parseInt(a[0],10)||0)*60+(parseInt(a[1],10)||0);}
-function _dayKey(d){d=d||new Date();return d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')+'-'+String(d.getDate()).padStart(2,'0');}
-function _monthKey(d){d=d||new Date();return d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0');}
+// Called BOTH ways on purpose, and the two meanings are different:
+//   _dayKey()      -> "what day is it now"      -> anchored
+//   _dayKey(aDate) -> "format this Date's day"  -> pure, NEVER shifted
+// Shifting the with-argument form too would be wrong: callers that iterate day
+// buckets pass Dates already sitting at local midnight, and subtracting the
+// anchor from those would slide every bucket into the previous day. Callers
+// that pass a date derived from NOW (a 7-day streak strip, a 90-day cutoff)
+// are the ones that must build that date from _anchoredNow() themselves --
+// see the call sites in legacy.js.
+function _dayKey(d){if(!d)return _anchoredDayKey();return d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')+'-'+String(d.getDate()).padStart(2,'0');}
+function _monthKey(d){d=d||_anchoredNow();return d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0');}
 
 // A-13 (panel survey Stage 9, 2026-08-20): a CALM live countdown for a task
 // whose deadline is inside the next 24 hours, shown in place of the static
@@ -37,8 +127,15 @@ function _dueCountdownLabel(dueStr,now){
   now=now||new Date();
   // _dayKey(now), not a raw comparison: this is the ONE place the countdown
   // decides which day "today" is, so it inherits whatever _dayKey means.
-  if(dueStr!==_dayKey(now))return null;
-  var end=new Date(now.getFullYear(),now.getMonth(),now.getDate(),23,59,59,999);
+  // _dayKey with the SHIFTED instant, and _anchoredDayEnd for the deadline:
+  // under an anchor the due day no longer ends at 23:59 local. With a 4am
+  // anchor, 2026-08-20 runs 04:00 on the 20th to 03:59:59 on the 21st, so at
+  // 01:00 on the 21st this correctly still reads "due in 2h" rather than
+  // having silently gone overdue three hours earlier. At anchor 0 both calls
+  // reduce to the original arithmetic exactly.
+  if(dueStr!==_anchoredDayKey(now))return null;
+  var end=_anchoredDayEndOf(dueStr);
+  if(!end)return null;
   var mins=Math.floor((end.getTime()-now.getTime())/60000);
   if(mins<1)return 'due today';   // last minute of the day -- "due in 0m" reads as a countdown to a buzzer
   if(mins<60)return 'due in '+mins+'m';
@@ -62,5 +159,6 @@ function _dateGroupInfo(dateStr,todayS,tomorrowS,weekEndS){
 
 // Test-only export (no-op in the browser, where `module` is undefined).
 if(typeof module!=='undefined' && module.exports){
-  module.exports = { todayStr, fmtDate, fmtTime, _hmToMin, _dayKey, _monthKey, _dateGroupInfo, _dueCountdownLabel };
+  module.exports = { todayStr, fmtDate, fmtTime, _hmToMin, _dayKey, _monthKey, _dateGroupInfo, _dueCountdownLabel,
+                     setDayAnchorMinutes, getDayAnchorMinutes, _anchoredNow, _anchoredDayKey, _anchoredDayEnd, _anchoredDayEndOf };
 }

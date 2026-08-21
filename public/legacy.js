@@ -1205,7 +1205,7 @@ try {
 
 // ── SCRIPT 3: APP LOGIC ─────────────────────────────────────────
 // STATE
-var state={projects:[],reminders:[],thoughts:[],notes:[],moodLog:[],tasks:[],completedTasks:[],completedTasksLifetime:undefined,completedProjectSubtasksLifetime:undefined,remindersArchive:[],remindersArchiveLifetime:undefined,journal:[],journalPin:'',workoutLog:{},completedWorkouts:[],focusPlaylistId:null,points:{current:0,monthKey:'',lastTier:'bronze',totalsByDay:{},lastLoginDate:'',lifetimeTotal:0,monthlyTotals:{}},panelUseLog:{},usageMonthlyTotals:{},routines:{morning:[{id:'m1',name:'Hydrate \u2014 glass of water',done:false},{id:'m2',name:"Review today's calendar",done:false},{id:'m3',name:'Pick top 3 priorities',done:false},{id:'m4',name:'Quick workspace tidy',done:false}],evening:[{id:'e1',name:'Review what got done today',done:false},{id:'e2',name:"Brain dump tomorrow's thoughts",done:false},{id:'e3',name:"Set out tomorrow's essentials",done:false},{id:'e4',name:'Wind-down activity',done:false}],custom:[]},currentRoutineTab:'morning',energy:null,mood:null,panelOrder:['projects','reminders','time','tasklist','notes','brain','routines','wellness','decision','admin'],panelsLocked:true,lastRoutineReset:null,visiblePanels:{},knownPanels:[]};
+var state={projects:[],reminders:[],thoughts:[],notes:[],moodLog:[],tasks:[],completedTasks:[],completedTasksLifetime:undefined,completedProjectSubtasksLifetime:undefined,remindersArchive:[],remindersArchiveLifetime:undefined,journal:[],journalPin:'',workoutLog:{},completedWorkouts:[],focusPlaylistId:null,points:{current:0,monthKey:'',lastTier:'bronze',totalsByDay:{},lastLoginDate:'',lifetimeTotal:0,monthlyTotals:{}},panelUseLog:{},usageMonthlyTotals:{},routines:{morning:[{id:'m1',name:'Hydrate \u2014 glass of water',done:false},{id:'m2',name:"Review today's calendar",done:false},{id:'m3',name:'Pick top 3 priorities',done:false},{id:'m4',name:'Quick workspace tidy',done:false}],evening:[{id:'e1',name:'Review what got done today',done:false},{id:'e2',name:"Brain dump tomorrow's thoughts",done:false},{id:'e3',name:"Set out tomorrow's essentials",done:false},{id:'e4',name:'Wind-down activity',done:false}],custom:[]},currentRoutineTab:'morning',energy:null,mood:null,panelOrder:['projects','reminders','time','tasklist','notes','brain','routines','wellness','decision','admin'],panelsLocked:true,lastRoutineReset:null,visiblePanels:{},knownPanels:[],dayAnchorMin:0};
 
 // CROSS-ACCOUNT LEAK, round 3 (Joe, 2026-08-03). `state` is module-level and
 // was NEVER reset when the signed-in account changed: onAuthStateChanged's
@@ -1495,6 +1495,10 @@ async function load(){
           });
           state=merged;
         }
+        // A-2: the account's anchor has only just arrived. Push it into
+        // date-utils BEFORE the boot render runs, so the first paint is
+        // already on the right day rather than correcting itself a beat later.
+        if(typeof _applyDayAnchor==='function')_applyDayAnchor();
         setSyncStatus('synced','Synced');
       }else{
         // CROSS-ACCOUNT LEAK, round 2 (Joe, 2026-08-03 -- a fresh dev account
@@ -1534,7 +1538,7 @@ async function load(){
   // renders today/tomorrow, so past-dated blocks are unreachable dead weight
   // (their Google Calendar events, if any, live on in Google untouched).
   if(Array.isArray(state.tlBlocks)){
-    var _tlCut=new Date();_tlCut.setDate(_tlCut.getDate()-14);
+    var _tlCut=_anchoredNow();_tlCut.setDate(_tlCut.getDate()-14);
     var _tlCutKey=_dayKey(_tlCut);
     state.tlBlocks=state.tlBlocks.filter(function(b){return b&&(!b.date||b.date>=_tlCutKey);});
   }
@@ -1720,6 +1724,9 @@ function startRealtimeSync(){
       (state.reminders||[]).forEach(function(r){if(!r.gcalEventId&&_gcalLocal['r:'+r.id])r.gcalEventId=_gcalLocal['r:'+r.id];});
       (state.tlBlocks||[]).forEach(function(b){if(!b.gcalEventId&&_gcalLocal['b:'+b.id])b.gcalEventId=_gcalLocal['b:'+b.id];});
 
+      // A-2: another device may have changed the anchor. Apply it BEFORE the
+      // renders below, so they draw the new day rather than the old one.
+      if(typeof _applyDayAnchor==='function')_applyDayAnchor();
       renderProjects();renderReminders();renderThoughts();renderNotes();renderRoutines();renderTaskList();renderTimeline();
       applyPanelVisibility();
       showStateAdvice();updateWellnessVisibility();
@@ -1842,6 +1849,7 @@ function openCustomize(){
   _renderDevSwitcherInSettings();
   _renderAxisProfileForm();
   _renderSupportLevelSettings();
+  if(typeof _renderDayAnchorSettings==='function')_renderDayAnchorSettings();
   if(typeof _renderNotifSettings==='function')_renderNotifSettings();
   if(typeof _renderBreathHealthSettings==='function')_renderBreathHealthSettings();
   if(typeof _renderPointsSettings==='function')_renderPointsSettings();
@@ -3167,6 +3175,110 @@ function setNotifRoutine(group,k,v){_ensureNotifPrefs();if(!state.notifPrefs[gro
 function setWeeklyReviewDay(v){
   var d=parseInt(v,10);
   setNotifRoutine('weeklyReview','day',(d>=0&&d<=6)?d:0);
+}
+
+// ═══════════════════════════════════════════════════════════════════
+// A-2 DAY ANCHOR plumbing (panel survey Stage 9)
+//
+// MUST STAY AT TOP-LEVEL SCOPE. load() and the onSnapshot handler both call
+// _applyDayAnchor(), and the first attempt put these next to _dayRolloverTick
+// -- which turns out to live inside the async init closure, so the helpers
+// were invisible to their own callers and the anchor would never have been
+// applied at all. Caught in-browser with typeof window._applyDayAnchor, not
+// by reading the file.
+//
+// date-utils.js holds the arithmetic and stays pure; this pushes the account's
+// setting into it. Called after load() and after EVERY onSnapshot, because the
+// anchor arrives asynchronously: date-utils is a plain deferred script that is
+// global long before Firestore answers, so between first paint and load()
+// resolving, every resolver runs at anchor 0. Without re-applying and
+// re-rendering here, an anchored account would render the WRONG day for the
+// first second of every launch and then never correct it.
+// ═══════════════════════════════════════════════════════════════════
+function _dayAnchorPref(){
+  var n=parseInt(state.dayAnchorMin,10);
+  return isFinite(n)?n:0;
+}
+// Returns true when the effective day actually moved, so callers only pay for
+// a re-render when there is something to re-render.
+function _applyDayAnchor(){
+  if(typeof setDayAnchorMinutes!=='function')return false;
+  var before=(typeof todayStr==='function')?todayStr():null;
+  var prev=(typeof getDayAnchorMinutes==='function')?getDayAnchorMinutes():0;
+  var next=setDayAnchorMinutes(_dayAnchorPref());
+  if(next===prev)return false;
+  return before!==todayStr();
+}
+// The same panel set load() and the boot sequence render, plus the surfaces
+// that cache a day: tile summaries, the Today view, and the widget snapshot.
+// Used when the effective day changes under the app's feet -- which is exactly
+// what changing the anchor does.
+function _rerenderForDayChange(){
+  try{ renderProjects();renderReminders();renderThoughts();renderNotes();renderRoutines();renderTaskList();renderTimeline(); }catch(e){}
+  try{ if(typeof renderTodayView==='function')renderTodayView(); }catch(e){}
+  try{ if(typeof updateAllTileSummaries==='function')updateAllTileSummaries(); }catch(e){}
+  try{ if(typeof _dueCountdownTick==='function')_dueCountdownTick(); }catch(e){}
+  // The rollover bookkeeping has to re-run too: the routine reset and the
+  // reminder sweep both key off todayStr(), which just moved. These are the
+  // three globals _dayRolloverTick wraps, called directly because that tick is
+  // itself declared inside the async init closure and is NOT reachable from
+  // top-level scope -- verified in-browser via typeof, not assumed.
+  try{ if(typeof checkDailyRoutineReset==='function')checkDailyRoutineReset(); }catch(e){}
+  try{ if(typeof _sweepPastReminders==='function')_sweepPastReminders(); }catch(e){}
+  try{ if(typeof _updateWidgetSnapshot==='function')_updateWidgetSnapshot(); }catch(e){}
+}
+
+// ── A-2 day anchor, Settings row ───────────────────────────────────────────
+// Opt-in and off by default. The copy deliberately avoids "shift work" framing
+// -- it also serves anyone whose day genuinely ends after midnight, which the
+// survey found in three separate personas, not just the Shift Worker.
+var DAY_ANCHOR_CHOICES=[
+  {v:0,   label:'Midnight (default)'},
+  {v:60,  label:'1:00 AM'},
+  {v:120, label:'2:00 AM'},
+  {v:180, label:'3:00 AM'},
+  {v:240, label:'4:00 AM'},
+  {v:300, label:'5:00 AM'},
+  {v:360, label:'6:00 AM'}
+];
+function _renderDayAnchorSettings(){
+  var el=document.getElementById('dayAnchorSettings');if(!el)return;
+  var cur=_dayAnchorPref();
+  // A saved value that is not one of the presets (set on another build, or
+  // clamped) still needs to show as selected rather than silently reverting
+  // the dropdown to Midnight while the setting is actually something else.
+  var choices=DAY_ANCHOR_CHOICES.slice();
+  if(!choices.some(function(c){return c.v===cur;})){
+    var h=Math.floor(cur/60),m=cur%60;
+    choices.push({v:cur,label:(h<10?'0':'')+h+':'+(m<10?'0':'')+m});
+  }
+  var opts=choices.map(function(c){return '<option value="'+c.v+'"'+(c.v===cur?' selected':'')+'>'+esc(c.label)+'</option>';}).join('');
+  el.innerHTML='<div class="notif-row"><label>My day starts at</label>'+
+    '<select onchange="setDayAnchor(this.value)">'+opts+'</select></div>'+
+    '<p class="cust-sub" style="margin-top:6px;">'+
+    (cur===0
+      ? 'Right now a new day begins at midnight, the usual way.'
+      : 'Anything you do before '+esc(_dayAnchorLabel(cur))+' still counts toward the previous day &mdash; nothing goes overdue while you are still up.')+
+    '</p>';
+}
+function _dayAnchorLabel(min){
+  var m=DAY_ANCHOR_CHOICES.filter(function(c){return c.v===min;})[0];
+  if(m)return m.label;
+  var h=Math.floor(min/60);
+  return ((h%12)||12)+':'+((min%60)<10?'0':'')+(min%60)+(h<12?' AM':' PM');
+}
+function setDayAnchor(v){
+  var n=parseInt(v,10);
+  state.dayAnchorMin=isFinite(n)?n:0;
+  save();
+  // _applyDayAnchor reports whether the EFFECTIVE day moved, so a change made
+  // at 2pm (where a 4am anchor resolves the same day either way) doesn't
+  // repaint the whole app for nothing.
+  var moved=_applyDayAnchor();
+  if(moved)_rerenderForDayChange();
+  else if(typeof _updateWidgetSnapshot==='function')_updateWidgetSnapshot();
+  _renderDayAnchorSettings();
+  if(typeof toast==='function')toast(state.dayAnchorMin===0?'Day starts at midnight':'Day now starts at '+_dayAnchorLabel(state.dayAnchorMin));
 }
 
 function _renderNotifSettings(){
@@ -4769,8 +4881,12 @@ function _widgetNextDeadline(){
     .sort(function(a,b){return a.due.localeCompare(b.due);});
   if(!upcoming.length)return null;
   var t=upcoming[0];
-  var p=t.due.split('-');
-  var end=new Date(parseInt(p[0],10),parseInt(p[1],10)-1,parseInt(p[2],10),23,59,59,0);
+  // _anchoredDayEndOf, not a local 23:59: under an anchor the due day ends at
+  // the anchor time on the FOLLOWING calendar date, and the widget's countdown
+  // has to run to that instant or it reads as overdue while the app still
+  // shows time left.
+  var end=_anchoredDayEndOf(t.due);
+  if(!end)return null;
   return {name:t.name||'',date:t.due,atMs:end.getTime()};
 }
 function _computeWidgetSnapshot(){
@@ -4808,6 +4924,13 @@ function _computeWidgetSnapshot(){
   // widget build reading a newer snapshot simply doesn't show the line rather
   // than failing to decode the whole payload.
   snap.nextDeadline=_widgetNextDeadline();
+  // A-2: THE widget-parity field. TodayWidget.swift's dayKey() subtracts this
+  // exactly as _anchoredDayKey() does, so the extension resolves the same
+  // "today" the app does even though it runs as a separate process with no
+  // access to state. Without it, an anchored account's widget silently renders
+  // a different day -- the specific failure this stage exists to prevent.
+  // Absent/0 on the Swift side means midnight, i.e. today's behaviour.
+  snap.dayAnchorMin=(typeof getDayAnchorMinutes==='function')?getDayAnchorMinutes():0;
   return snap;
 }
 var _lastWidgetSnapshot=null;
@@ -5699,7 +5822,10 @@ function renderMoodHistory(days){
   // user (Joe included) the chart was reading each point against the WRONG
   // DAY's entry for the whole evening. _dayKey() is the local-day helper the
   // rest of the app already uses, and matches how moodLog entries are keyed.
-  var today=new Date();
+  // _anchoredNow(): these buckets are keyed with _dayKey and compared against
+  // moodLog entries written under todayStr(), so the bucket origin has to be
+  // the same "now" those keys were written from.
+  var today=_anchoredNow();
   var labels=[],eData=[],mData=[];
   if(weekly){
     var bucketCount=Math.ceil(days/7);
@@ -8477,7 +8603,7 @@ function _routineConsistencySince(days){
   // "set it up but didn't finish it" (trackedDays>0, completeDays low but
   // real -- show it plainly, no judgment, same as every other state-card row).
   var out={morning:{completeDays:0,trackedDays:0,total:days},evening:{completeDays:0,trackedDays:0,total:days}};
-  var d=new Date();d.setDate(d.getDate()-1);
+  var d=_anchoredNow();d.setDate(d.getDate()-1);
   for(var i=0;i<days;i++){
     var e=byDate[_dayKey(d)];
     ['morning','evening'].forEach(function(tab){
@@ -10232,7 +10358,7 @@ function checkMonthReset(){
     // Trim totalsByDay to last 90 days -- but fold anything falling off the
     // window into a permanent per-month archive first, so the Lifetime view
     // keeps its monthly breakdown instead of losing it to a single running total.
-    var cutoff=new Date();cutoff.setDate(cutoff.getDate()-90);
+    var cutoff=_anchoredNow();cutoff.setDate(cutoff.getDate()-90);
     var cutKey=_dayKey(cutoff);
     Object.keys(state.points.totalsByDay).forEach(function(k){
       if(k<cutKey){
@@ -10417,7 +10543,7 @@ function renderPointsPopup(){
   // Week total = last 7 days including today
   var weekPts=0;
   for(var i=0;i<7;i++){
-    var d=new Date();d.setDate(d.getDate()-i);
+    var d=_anchoredNow();d.setDate(d.getDate()-i);
     weekPts+=(state.points.totalsByDay[_dayKey(d)]||0);
   }
   
@@ -10536,7 +10662,7 @@ function getInsightsSeries(period){
 
   var days=period==='month'?30:7;
   var rows=[];
-  var today=new Date();
+  var today=_anchoredNow();   // buckets keyed by _dayKey -- same origin as the writes
   for(var i=days-1;i>=0;i--){
     var d=new Date(today);d.setDate(d.getDate()-i);
     var dk=_dayKey(d);
@@ -12723,7 +12849,10 @@ var _wtCurrentItem=null; // {type, id, projectId, name, defaultDuration}
 var _wtSelectedDay='today'; // 'today' or 'tomorrow'
 
 function tomorrowStr(){
-  var d=new Date();
+  // _anchoredNow(), not new Date(): "tomorrow" has to mean the day after
+  // whatever todayStr() currently calls today, or the two disagree for the
+  // length of the anchor every day. At anchor 0 this is unchanged.
+  var d=_anchoredNow();
   d.setDate(d.getDate()+1);
   var pad=function(n){return n<10?'0'+n:''+n;};
   return d.getFullYear()+'-'+pad(d.getMonth()+1)+'-'+pad(d.getDate());
@@ -12956,11 +13085,10 @@ function confirmWorkToday(){
 }
 
 function _scheduleForTomorrow(timeVal,durVal){
-  var tomorrow=new Date();
-  tomorrow.setDate(tomorrow.getDate()+1);
-  var pad=function(n){return n<10?'0'+n:''+n;};
-  var tomorrowStr=tomorrow.getFullYear()+'-'+pad(tomorrow.getMonth()+1)+'-'+pad(tomorrow.getDate());
-  _writeBlock(tomorrowStr,timeVal,durVal);
+  // Was a private fourth copy of the tomorrow calculation, which would not
+  // have followed the day anchor. One definition, in date-utils/legacy's
+  // tomorrowStr(), is the whole point of A-2.
+  _writeBlock(tomorrowStr(),timeVal,durVal);
 }
 
 // Single source of truth for a task/subtask-linked tlBlocks entry's shape,
@@ -14731,7 +14859,11 @@ var JARVIS_SYSTEM=function(){
   var today=new Date();
   var dateStr=today.toLocaleDateString('en-US',{weekday:'long',month:'long',day:'numeric',year:'numeric'});
   var timeStr=today.toLocaleTimeString('en-US',{hour:'numeric',minute:'2-digit'});
-  var todayKey=today.toISOString().slice(0,10);
+  // Was today.toISOString().slice(0,10) -- a UTC day. West of Greenwich that
+  // told the assistant it was ALREADY TOMORROW every evening after 8pm
+  // Eastern, so "what's due today" answered for the wrong day. todayStr() is
+  // the local (and now anchored) day the rest of the app agrees on.
+  var todayKey=todayStr();
 
   // -- Build COMPLETE structured context ---------------------------
   // Projects with all subtasks (full detail)
@@ -14851,10 +14983,12 @@ var JARVIS_SYSTEM=function(){
 
   // Timeline blocks -- manually scheduled items (name, date, time, duration, project)
   // Include blocks from the past 24h through the next 14 days so Axis can read today's schedule
-  var tlCutoffPast=new Date();tlCutoffPast.setDate(tlCutoffPast.getDate()-1);
-  var tlCutoffPastStr=tlCutoffPast.toISOString().slice(0,10);
-  var tlCutoffFuture=new Date();tlCutoffFuture.setDate(tlCutoffFuture.getDate()+14);
-  var tlCutoffFutureStr=tlCutoffFuture.toISOString().slice(0,10);
+  // Same UTC bug as todayKey above, and the same fix: _anchoredNow() + _dayKey()
+  // so the window Axis reads is bounded by the app's own days.
+  var tlCutoffPast=_anchoredNow();tlCutoffPast.setDate(tlCutoffPast.getDate()-1);
+  var tlCutoffPastStr=_dayKey(tlCutoffPast);
+  var tlCutoffFuture=_anchoredNow();tlCutoffFuture.setDate(tlCutoffFuture.getDate()+14);
+  var tlCutoffFutureStr=_dayKey(tlCutoffFuture);
   var timelineBlocks=(state.tlBlocks||[])
     .filter(function(b){return b.date&&b.date>=tlCutoffPastStr&&b.date<=tlCutoffFutureStr;})
     .sort(function(a,b){return (a.date+' '+(a.time||'')).localeCompare(b.date+' '+(b.time||''));})
@@ -14929,7 +15063,9 @@ function _jarvisCurrentTier(){
 //   4. Shorter time-estimate first (lowest initiation friction)
 function _jarvisOrderByCompletion(items){
   var PRI={high:0,med:1,medium:1,low:2};
-  var t=new Date();t.setHours(0,0,0,0);
+  // Midnight of the ANCHORED today, so "overdue / today / tomorrow" here means
+  // the same thing it means everywhere else in the app.
+  var t=new Date(todayStr()+'T00:00:00');
   function bucket(dateStr){
     if(!dateStr)return 4;
     var d=new Date(dateStr+'T00:00:00');
@@ -14959,7 +15095,7 @@ function _jarvisFmtDate(d){
   if(!d)return '';
   var dt=new Date(d+'T00:00:00');
   if(isNaN(dt.getTime()))return d;
-  var today=new Date();today.setHours(0,0,0,0);
+  var today=new Date(todayStr()+'T00:00:00');   // anchored today, not raw midnight
   var diff=Math.round((dt-today)/86400000);
   if(diff<0)return 'OVERDUE '+dt.toLocaleDateString('en-US',{month:'short',day:'numeric'});
   if(diff===0)return 'today';

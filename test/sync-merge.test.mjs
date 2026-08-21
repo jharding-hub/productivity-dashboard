@@ -11,7 +11,9 @@ import { createRequire } from 'node:module';
 const require = createRequire(import.meta.url);
 
 const { mergeById, mergeTombstones, reconcileSync, _dropTombstoned, reconcileLifetimeCounter } = require('../public/sync-merge.js');
-const { fmtDate, _dueCountdownLabel } = require('../public/date-utils.js');
+const DU = require('../public/date-utils.js');
+const { fmtDate, _dueCountdownLabel, setDayAnchorMinutes, getDayAnchorMinutes,
+        _anchoredNow, _anchoredDayKey, _anchoredDayEnd, todayStr, _dayKey, _monthKey } = DU;
 
 // The OLD reconciliation, copied verbatim in spirit from load() lines 725-731,
 // so each test can show the bug it fixed: "keep whichever array is longer".
@@ -486,4 +488,122 @@ test('countdown: switches to minutes under the hour', () => {
 test('countdown: last minute reads "due today", not a zero countdown', () => {
   // "due in 0m" reads as a buzzer. The calm wording is the point of A-13.
   assert.equal(_dueCountdownLabel('2026-08-20', at(2026,8,20,23,59,30)), 'due today');
+});
+
+
+// ── A-2 day anchor (panel survey Stage 9) ───────────────────────────────────
+// The single most important property: THE DEFAULT MUST NOT MOVE. Everything
+// else here is secondary to that.
+
+// The pre-anchor implementations, copied verbatim, so "unchanged" is measured
+// against the real old code rather than against the new code's own opinion.
+const OLD_todayStr = (d) => {
+  const pad = n => n < 10 ? '0' + n : '' + n;
+  return d.getFullYear() + '-' + pad(d.getMonth() + 1) + '-' + pad(d.getDate());
+};
+
+test('anchor: default is 0', () => {
+  setDayAnchorMinutes(0);
+  assert.equal(getDayAnchorMinutes(), 0);
+});
+
+test('anchor 0 is byte-identical to the pre-anchor resolver, all day long', () => {
+  setDayAnchorMinutes(0);
+  // Every minute of a full day would be slow; every 7 minutes across 24h is
+  // 206 samples and still crosses every hour boundary including midnight.
+  for (let m = 0; m < 1440; m += 7) {
+    const now = new Date(2026, 7, 20, Math.floor(m / 60), m % 60, 30);
+    assert.equal(_anchoredDayKey(now), OLD_todayStr(now), 'diverged at minute ' + m);
+  }
+});
+
+test('anchor 0: _anchoredNow is a plain now', () => {
+  setDayAnchorMinutes(0);
+  const before = Date.now(), a = _anchoredNow().getTime(), after = Date.now();
+  assert.ok(a >= before && a <= after, 'anchor 0 must not shift the clock');
+});
+
+test('anchor 0: day end is 23:59:59.999 local, as it always was', () => {
+  setDayAnchorMinutes(0);
+  const e = _anchoredDayEnd(new Date(2026, 7, 20, 13, 0));
+  assert.equal(e.getHours(), 23);
+  assert.equal(e.getMinutes(), 59);
+  assert.equal(e.getDate(), 20);
+});
+
+test('anchor 240 (4am): 01:30 still belongs to the PREVIOUS day', () => {
+  // The ADHD User's 1am false-overdue, and half the Shift Worker's breakpoints.
+  setDayAnchorMinutes(240);
+  assert.equal(_anchoredDayKey(new Date(2026, 7, 21, 1, 30)), '2026-08-20');
+  assert.equal(_anchoredDayKey(new Date(2026, 7, 21, 3, 59)), '2026-08-20');
+  assert.equal(_anchoredDayKey(new Date(2026, 7, 21, 4, 0)),  '2026-08-21');
+  assert.equal(_anchoredDayKey(new Date(2026, 7, 21, 12, 0)), '2026-08-21');
+  setDayAnchorMinutes(0);
+});
+
+test('anchor -240 (20:00 the night before): the evening is already tomorrow', () => {
+  setDayAnchorMinutes(-240);
+  assert.equal(_anchoredDayKey(new Date(2026, 7, 20, 19, 59)), '2026-08-20');
+  assert.equal(_anchoredDayKey(new Date(2026, 7, 20, 20, 0)),  '2026-08-21');
+  setDayAnchorMinutes(0);
+});
+
+test('anchor: _dayKey WITH a Date argument is never shifted', () => {
+  // Day-bucket callers pass Dates already at local midnight. Shifting those
+  // would slide every bucket into the previous day.
+  setDayAnchorMinutes(240);
+  const midnight = new Date(2026, 7, 20, 0, 0, 0);
+  assert.equal(_dayKey(midnight), '2026-08-20');
+  setDayAnchorMinutes(0);
+});
+
+test('anchor: input is coerced and clamped to +/-12h', () => {
+  assert.equal(setDayAnchorMinutes('240'), 240);
+  assert.equal(setDayAnchorMinutes(99999), 720);
+  assert.equal(setDayAnchorMinutes(-99999), -720);
+  assert.equal(setDayAnchorMinutes('garbage'), 0);
+  assert.equal(setDayAnchorMinutes(undefined), 0);
+  assert.equal(setDayAnchorMinutes(null), 0);
+  setDayAnchorMinutes(0);
+});
+
+test('anchor: an anchored day is still exactly 24h long', () => {
+  for (const a of [0, 120, 240, 720, -240, -720]) {
+    setDayAnchorMinutes(a);
+    const end = _anchoredDayEnd(new Date(2026, 7, 20, 12, 0));
+    const prevEnd = _anchoredDayEnd(new Date(2026, 7, 19, 12, 0));
+    assert.equal(end.getTime() - prevEnd.getTime(), 86400000, 'anchor ' + a);
+  }
+  setDayAnchorMinutes(0);
+});
+
+test('anchor: the countdown follows the anchored day end, not 23:59', () => {
+  setDayAnchorMinutes(240);
+  // 01:00 on the 21st is still the 20th, with 3h left before the 4am flip.
+  assert.equal(_dueCountdownLabel('2026-08-20', new Date(2026, 7, 21, 1, 0)), 'due in 2h');
+  // Under the OLD midnight rule this item went overdue an hour earlier.
+  setDayAnchorMinutes(0);
+  assert.equal(_dueCountdownLabel('2026-08-20', new Date(2026, 7, 21, 1, 0)), null);
+});
+
+test('anchor: DST spring-forward day still resolves one day per day', () => {
+  // 2026-03-08 is the US spring-forward (2am -> 3am), a 23-hour local day.
+  // Shifting the INSTANT means the platform handles this; a branch-on-hour
+  // implementation would have to special-case it.
+  setDayAnchorMinutes(240);
+  const keys = new Set();
+  for (let h = 0; h < 24; h++) keys.add(_anchoredDayKey(new Date(2026, 2, 8, h, 30)));
+  assert.ok(keys.size <= 2, 'a single local day mapped to ' + keys.size + ' anchored days');
+  assert.ok(keys.has('2026-03-07') && keys.has('2026-03-08'));
+  setDayAnchorMinutes(0);
+});
+
+test('anchor: a stale device without the field cannot flip an anchored account', () => {
+  // The anchor rides the dashboard blob as a plain scalar. reconcileSync owns
+  // only the item arrays and tombstone maps -- it must NOT emit dayAnchorMin,
+  // or it would start overriding the caller's Object.assign ordering.
+  const local = { dayAnchorMin: 240, reminders: [rem('r1')], _tombstones: {} };
+  const cloud = { reminders: [rem('r1')], _tombstones: {} };   // stale build, no field
+  const out = reconcileSync(local, cloud);
+  assert.ok(!('dayAnchorMin' in out), 'reconcileSync must not own the anchor scalar');
 });
