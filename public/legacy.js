@@ -754,7 +754,7 @@ function deleteMyAccount(){
 // deletion, and the other-device purge in _purgeDeletedAccountData. Keeping
 // one list is the point: this wipe has silently drifted out of date twice as
 // new per-account caches were added. ADD NEW uid-SUFFIXED KEYS HERE.
-var UID_SCOPED_LS_PREFIXES=['prodDash_','cpCheckins_','cpMoodLog_','cpJournal_','cpJournalBio_','cpCompletedTasks_','cpRemindersArchive_','cpAxisProfile_','cpBreathStarts_','cpBreathResDismissed_'];
+var UID_SCOPED_LS_PREFIXES=['prodDash_','cpCheckins_','cpMoodLog_','cpJournal_','cpJournalBio_','cpCompletedTasks_','cpRemindersArchive_','cpAxisProfile_','cpBreathStarts_','cpBreathResDismissed_','cpLastGood_checkins_','cpLastGood_moodLog_','cpLastGood_completedTasks_','cpLastGood_remindersArchive_'];
 // Clear every device-local trace of this account. Deleting the cloud copy is
 // not enough on its own: the local mirrors below are what the app reads FIRST
 // on load, and reconcileLifetimeCounter takes a max, so a surviving local
@@ -8882,6 +8882,26 @@ function _resetOwnDocLoaded(){
   _ownDocLoaded={checkins:false,moodLog:false,completedTasks:false,remindersArchive:false};
 }
 
+// LAST-KNOWN-GOOD STASH (layer 2 of the 2026-08-21 backup plan). At the
+// moment an own-doc is successfully read -- and BEFORE this session's
+// reconcile/save touches it -- keep the as-read copy in localStorage under
+// cpLastGood_<doc>_<uid>. Written exactly once per session, at load time,
+// never at save time: it is by construction the state the doc was in before
+// this session could do anything to it. If an overwrite bug ever slips past
+// the write guard again, recovery is "read the stash from the same browser"
+// instead of hunting for an untouched device or a PITR window. This is a
+// third copy of data that already lives in the cloud doc + the mirror key,
+// so a quota failure is harmless -- worst case we just don't have the spare.
+function _stashLastGood(key,loadedDoc){
+  if(!loadedDoc)return; // first run / new account: nothing pre-session to keep
+  try{
+    var raw=JSON.stringify({stashedAt:new Date().toISOString(),doc:loadedDoc});
+    localStorage.setItem('cpLastGood_'+key+'_'+(currentUser?currentUser.uid:'local'),raw);
+    var n=(loadedDoc.items||loadedDoc.entries||[]).length;
+    console.log('[own-doc] '+key+' read OK: '+n+' record(s)'+(loadedDoc.lifetime!==undefined?', lifetime '+loadedDoc.lifetime:'')+' -- last-known-good stashed ('+raw.length+' bytes)');
+  }catch(e){console.warn('[own-doc] last-known-good stash failed for '+key,e);}
+}
+
 function _checkinsStorageKey(){return 'cpCheckins_'+(currentUser?currentUser.uid:'local');}
 async function _loadCheckinsDoc(){
   var loaded=null;
@@ -8908,6 +8928,7 @@ async function _loadCheckinsDoc(){
     return;
   }
   _ownDocLoaded.checkins=true;
+  _stashLastGood('checkins',loaded);
   if(loaded&&Array.isArray(loaded.items)){
     state.checkins=loaded.items;
   }else if((state.checkins||[]).length){
@@ -8955,6 +8976,7 @@ async function _loadMoodLogDoc(){
     return;
   }
   _ownDocLoaded.moodLog=true;
+  _stashLastGood('moodLog',loaded);
   if(loaded&&Array.isArray(loaded.entries)){
     state.moodLog=loaded.entries;
   }else if((state.moodLog||[]).length){
@@ -9024,6 +9046,7 @@ async function _loadCompletedTasksDoc(){
     return;
   }
   _ownDocLoaded.completedTasks=true;
+  _stashLastGood('completedTasks',loaded);
   if(loaded&&Array.isArray(loaded.items)){
     state.completedTasks=_dropTombstoned(mergeById(state.completedTasks,loaded.items),state._archiveTombstones||{});
   }
@@ -9125,6 +9148,7 @@ async function _loadRemindersArchiveDoc(){
     return;
   }
   _ownDocLoaded.remindersArchive=true;
+  _stashLastGood('remindersArchive',loaded);
   if(loaded&&Array.isArray(loaded.items)){
     state.remindersArchive=_dropTombstoned(mergeById(state.remindersArchive,loaded.items),state._archiveTombstones||{});
   }
