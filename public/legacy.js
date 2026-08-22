@@ -4540,7 +4540,12 @@ function renderProjMultiPickerChips(picker){
     ph.textContent=picker.dataset.placeholder||(picker.dataset.allowNew?'+ Projects':'+ Tag projects (optional)');
     picker.appendChild(ph);
   }else{
-    selected.forEach(function(pid){
+    var sortedSelected=selected.slice().sort(function(a,b){
+      var pa=state.projects.find(function(pr){return pr.id===a;});
+      var pb=state.projects.find(function(pr){return pr.id===b;});
+      return ((pa&&pa.name)||'').toLowerCase().localeCompare(((pb&&pb.name)||'').toLowerCase());
+    });
+    sortedSelected.forEach(function(pid){
       var p=state.projects.find(function(pr){return pr.id===pid;});
       if(!p)return;
       var chip=document.createElement('span');
@@ -4585,7 +4590,7 @@ function openProjMultiPicker(ev,picker){
     empty.textContent='No projects yet';
     dropdown.appendChild(empty);
   }else{
-    state.projects.forEach(function(p){
+    _sortedProjects().forEach(function(p){
       var opt=document.createElement('div');
       opt.className='proj-multi-option'+(selected.indexOf(p.id)>=0?' selected':'');
       opt.innerHTML='<span class="check-mark">'+(selected.indexOf(p.id)>=0?'✓':'')+'</span>'+esc(p.name);
@@ -4710,7 +4715,12 @@ function renderNotes(){
   el.innerHTML=notes.map(n=>{
     var pids=noteProjIds(n);
     var hasProjClass=pids.length?'has-proj':'';
-    var projChips=pids.map(function(pid){
+    var sortedPids=pids.slice().sort(function(a,b){
+      var pa=state.projects.find(function(p){return p.id===a;});
+      var pb=state.projects.find(function(p){return p.id===b;});
+      return ((pa&&pa.name)||'').toLowerCase().localeCompare(((pb&&pb.name)||'').toLowerCase());
+    });
+    var projChips=sortedPids.map(function(pid){
       var pr=state.projects.find(function(p){return p.id===pid;});
       return pr?'<span class="proj-multi-chip" style="font-size:10px;padding:1px 5px;">📂 '+esc(pr.name)+'</span>':'';
     }).join('');
@@ -5630,7 +5640,7 @@ function _omniSearchResults(q){
       pushResult('Task','✅',t.name,bits.join(' · '),function(){_revealTask(t.id);},
         {resultType:'task',id:t.id,source:t.source,projectId:t.projectId,due:t.due,done:t.done});
     });
-  (state.projects||[]).filter(function(p){
+  _sortedProjects().filter(function(p){
       if(anyDateFilter)return false; // "overdue project" etc. has no meaning
       if(filters.projectTag){var pr=_resolveProjectTag(filters.projectTag);if(!pr||pr.id!==p.id)return false;}
       return _omniMatch(p.name,terms);
