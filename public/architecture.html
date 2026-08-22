@@ -73,7 +73,7 @@ body{margin:0;background:var(--surface-0);color:var(--text-primary);font-family:
 <div class="page">
 <div class="page-header">
 <h1>Centerpost architecture</h1>
-<p>Client, front end, hosting, security, backend workers, data, and external services. Click any component for details.</p>
+<p>Client, front end, hosting, security, backend workers, data, and external services. Click any component for details. Below the map: a troubleshooting tree and a reference to every outside console Centerpost lives on.</p>
 </div>
 <h2 class="sr-only">Interactive diagram of Centerpost's architecture: the client, front end, hosting, security gate, backend workers, data layer, external services, cross-cutting security practices, and deploy pipeline. Click any component for details.</h2>
 <div class="legend">
@@ -266,6 +266,93 @@ body{margin:0;background:var(--surface-0);color:var(--text-primary);font-family:
 </button>
 </div>
 </div>
+<hr class="divider"/>
+<div class="lane">
+<p class="lane-label">Troubleshooting tree — start with the symptom, try the steps in order</p>
+<div class="lane-grid">
+<button class="node-card" id="card-tr-data-wrong" aria-pressed="false" style="background:var(--cp-data-bg);border-color:var(--cp-data-border)" onclick="showTrouble('tr-data-wrong')">
+<i class="ti ti-alert-triangle" aria-hidden="true" style="color:var(--cp-data-title)"></i>
+<span class="node-title" style="color:var(--cp-data-title)">My data looks wrong or missing</span>
+<span class="node-sub" style="color:var(--cp-data-sub)">Counts dropped, items vanished</span>
+</button>
+<button class="node-card" id="card-tr-came-back" aria-pressed="false" style="background:var(--cp-data-bg);border-color:var(--cp-data-border)" onclick="showTrouble('tr-came-back')">
+<i class="ti ti-history" aria-hidden="true" style="color:var(--cp-data-title)"></i>
+<span class="node-title" style="color:var(--cp-data-title)">Deleted item came back</span>
+<span class="node-sub" style="color:var(--cp-data-sub)">Ghosts & resurrections</span>
+</button>
+<button class="node-card" id="card-tr-blank" aria-pressed="false" style="background:var(--cp-hosting-bg);border-color:var(--cp-hosting-border)" onclick="showTrouble('tr-blank')">
+<i class="ti ti-eye-off" aria-hidden="true" style="color:var(--cp-hosting-title)"></i>
+<span class="node-title" style="color:var(--cp-hosting-title)">App won't load / blank screen</span>
+<span class="node-sub" style="color:var(--cp-hosting-sub)">Outage vs. stale cache</span>
+</button>
+<button class="node-card" id="card-tr-not-showing" aria-pressed="false" style="background:var(--cp-frontend-bg);border-color:var(--cp-frontend-border)" onclick="showTrouble('tr-not-showing')">
+<i class="ti ti-refresh" aria-hidden="true" style="color:var(--cp-frontend-title)"></i>
+<span class="node-title" style="color:var(--cp-frontend-title)">A change isn't showing up</span>
+<span class="node-sub" style="color:var(--cp-frontend-sub)">Web vs. native updates</span>
+</button>
+<button class="node-card" id="card-tr-signin-sync" aria-pressed="false" style="background:var(--cp-security-bg);border-color:var(--cp-security-border)" onclick="showTrouble('tr-signin-sync')">
+<i class="ti ti-key" aria-hidden="true" style="color:var(--cp-security-title)"></i>
+<span class="node-title" style="color:var(--cp-security-title)">Sign-in or sync trouble</span>
+<span class="node-sub" style="color:var(--cp-security-sub)">Passkeys, devices out of step</span>
+</button>
+<button class="node-card" id="card-tr-security" aria-pressed="false" style="background:var(--cp-security-bg);border-color:var(--cp-security-border)" onclick="showTrouble('tr-security')">
+<i class="ti ti-shield-lock" aria-hidden="true" style="color:var(--cp-security-title)"></i>
+<span class="node-title" style="color:var(--cp-security-title)">Security worry</span>
+<span class="node-sub" style="color:var(--cp-security-sub)">Suspicious activity or leaks</span>
+</button>
+</div>
+</div>
+<hr class="divider"/>
+<div class="lane">
+<p class="lane-label">Where Centerpost lives — every console, and what it's called there</p>
+<div class="lane-grid">
+<button class="node-card" id="card-site-github" aria-pressed="false" style="background:var(--cp-structural-bg);border-color:var(--cp-structural-border)" onclick="showSite('site-github')">
+<i class="ti ti-brand-github" aria-hidden="true" style="color:var(--cp-structural-title)"></i>
+<span class="node-title" style="color:var(--cp-structural-title)">GitHub</span>
+<span class="node-sub" style="color:var(--cp-structural-sub)">3 repos under jharding-hub</span>
+</button>
+<button class="node-card" id="card-site-cloudflare" aria-pressed="false" style="background:var(--cp-hosting-bg);border-color:var(--cp-hosting-border)" onclick="showSite('site-cloudflare')">
+<i class="ti ti-cloud" aria-hidden="true" style="color:var(--cp-hosting-title)"></i>
+<span class="node-title" style="color:var(--cp-hosting-title)">Cloudflare dashboard</span>
+<span class="node-sub" style="color:var(--cp-hosting-sub)">Pages, Workers, KV, DNS</span>
+</button>
+<button class="node-card" id="card-site-firebase" aria-pressed="false" style="background:var(--cp-data-bg);border-color:var(--cp-data-border)" onclick="showSite('site-firebase')">
+<i class="ti ti-flame" aria-hidden="true" style="color:var(--cp-data-title)"></i>
+<span class="node-title" style="color:var(--cp-data-title)">Firebase console</span>
+<span class="node-sub" style="color:var(--cp-data-sub)">Auth + Firestore data</span>
+</button>
+<button class="node-card" id="card-site-gcp" aria-pressed="false" style="background:var(--cp-data-bg);border-color:var(--cp-data-border)" onclick="showSite('site-gcp')">
+<i class="ti ti-brand-google" aria-hidden="true" style="color:var(--cp-data-title)"></i>
+<span class="node-title" style="color:var(--cp-data-title)">Google Cloud console</span>
+<span class="node-sub" style="color:var(--cp-data-sub)">Backups & recovery</span>
+</button>
+<button class="node-card" id="card-site-xcode" aria-pressed="false" style="background:var(--cp-structural-bg);border-color:var(--cp-structural-border)" onclick="showSite('site-xcode')">
+<i class="ti ti-hammer" aria-hidden="true" style="color:var(--cp-structural-title)"></i>
+<span class="node-title" style="color:var(--cp-structural-title)">Xcode</span>
+<span class="node-sub" style="color:var(--cp-structural-sub)">Native build & archive</span>
+</button>
+<button class="node-card" id="card-site-asc" aria-pressed="false" style="background:var(--cp-external-bg);border-color:var(--cp-external-border)" onclick="showSite('site-asc')">
+<i class="ti ti-brand-apple" aria-hidden="true" style="color:var(--cp-external-title)"></i>
+<span class="node-title" style="color:var(--cp-external-title)">App Store Connect</span>
+<span class="node-sub" style="color:var(--cp-external-sub)">TestFlight builds</span>
+</button>
+<button class="node-card" id="card-site-sendgrid" aria-pressed="false" style="background:var(--cp-external-bg);border-color:var(--cp-external-border)" onclick="showSite('site-sendgrid')">
+<i class="ti ti-mail" aria-hidden="true" style="color:var(--cp-external-title)"></i>
+<span class="node-title" style="color:var(--cp-external-title)">SendGrid</span>
+<span class="node-sub" style="color:var(--cp-external-sub)">Email delivery</span>
+</button>
+<button class="node-card" id="card-site-twilio" aria-pressed="false" style="background:var(--cp-external-bg);border-color:var(--cp-external-border)" onclick="showSite('site-twilio')">
+<i class="ti ti-message" aria-hidden="true" style="color:var(--cp-external-title)"></i>
+<span class="node-title" style="color:var(--cp-external-title)">Twilio</span>
+<span class="node-sub" style="color:var(--cp-external-sub)">Downtime SMS</span>
+</button>
+<button class="node-card" id="card-site-anthropic" aria-pressed="false" style="background:var(--cp-external-bg);border-color:var(--cp-external-border)" onclick="showSite('site-anthropic')">
+<i class="ti ti-cpu" aria-hidden="true" style="color:var(--cp-external-title)"></i>
+<span class="node-title" style="color:var(--cp-external-title)">Anthropic console</span>
+<span class="node-sub" style="color:var(--cp-external-sub)">AI usage & keys</span>
+</button>
+</div>
+</div>
 <div class="detail-panel" id="detail-panel" aria-live="polite">
 <span class="detail-badge" style="background:var(--cp-structural-bg);color:var(--cp-structural-title)">Core / process</span>
 <p class="detail-title">User's device</p>
@@ -293,7 +380,7 @@ var nodeData={
 "guardian":{cat:"backend",title:"Guardian",what:"A Worker that runs a daily behavioral-monitoring sweep looking for unusual account or usage patterns.",why:"An early-warning system for abuse patterns before they become a bigger problem.",info:["Runs daily at 10:15 UTC","/security-sweep emails an alert; /security-sweep-data returns the same data to the ops console without emailing"]},
 "sentinel":{cat:"backend",title:"Sentinel",what:"A Worker that checks whether Centerpost's services are up and reachable.",why:"Downtime you don't know about is worse than downtime you do; an active check catches an outage before a user has to tell you.",info:["Sends SMS alerts via Twilio when something goes down"]},
 "pulse":{cat:"backend",title:"Pulse",what:"A Worker that sends a daily briefing email each morning.",why:"A regular at-a-glance check-in on the system, without having to open the ops console every day.",info:["Delivered via SendGrid on its own daily schedule"]},
-"firestore":{cat:"data",title:"Firestore",what:"A NoSQL cloud database that stores each user's tasks, projects, journal entries, and settings.",why:"Firestore syncs data across a user's devices automatically and pairs naturally with Firebase Authentication.",info:["Documents cap out at 1MB","Capping unbounded arrays before anyone hits that ceiling is a known follow-up"]},
+"firestore":{cat:"data",title:"Firestore",what:"A NoSQL cloud database that stores each user's tasks, projects, journal entries, and settings.",why:"Firestore syncs data across a user's devices automatically and pairs naturally with Firebase Authentication.",info:["Documents cap out at 1MB","Capping unbounded arrays before anyone hits that ceiling is a known follow-up","Point-in-time recovery (7 days) and daily backups (98-day retention) are enabled — proven in a real recovery, Aug 2026","Since that incident, the per-user archive docs refuse to save before a confirmed read (the own-doc write guard)"]},
 "cf-kv":{cat:"data",title:"Cloudflare KV",what:"A fast key-value store living at Cloudflare's edge, right next to the Workers.",why:"Used for anything that needs a millisecond read during a request, like counting how many times a user has called the AI this hour.",info:["Backs Jarvis's per-user rate-limit counter (20 requests / 60 seconds)"]},
 "anthropic":{cat:"external",title:"Anthropic API",what:"The AI model that powers Centerpost's AI-driven features, like task breakdowns and chat-style assistance.",why:"Building and hosting a comparable model in-house isn't realistic for a solo founder; an API lets Centerpost focus on the product experience.",info:["Called only from the Jarvis Worker","The API key never leaves the server"]},
 "sendgrid":{cat:"external",title:"SendGrid",what:"A transactional email service used to send account and alert emails.",why:"Reliable delivery is hard to build from scratch, since it depends on spam filters and sender reputation; SendGrid specializes in exactly this.",info:["Sends from alerts@centerpost.app","Domain authentication (SPF, DKIM, DMARC) is an open item"]},
@@ -322,6 +409,57 @@ document.getElementById("detail-panel").innerHTML=
 '<p class="detail-section-label">What it is</p><p class="detail-text">'+n.what+'</p>'+
 '<p class="detail-section-label">Why it exists</p><p class="detail-text">'+n.why+'</p>'+
 '<p class="detail-section-label">General info</p><ul class="detail-list">'+infoHtml+'</ul>';
+}
+var troubleData={
+"tr-data-wrong":{cat:"data",title:"My data looks wrong or is missing",looks:"A count badge dropped, tasks or mood entries you know existed are gone, or a panel is suddenly near-empty.",first:["STOP. Do not reload or reopen the app anywhere else — a phone or browser that hasn't opened the app since things looked right holds an untouched local copy, and opening the app there overwrites it.","Take a screenshot and write down exactly what's missing, the numbers you see, and the time you noticed.","Rule out the display cap: the completed list only ever shows the most recent 100 records by design — the ✓ badge number is the real lifetime total.","Do NOT sign out and back in to \"refresh\" — it doesn't help and can complicate recovery."],then:["Real recovery windows exist and are proven: Firestore point-in-time reads cover the last 7 days, and daily backups reach back 98 days. A real recovery in Aug 2026 got effectively everything back. Nothing is \"gone\" until both have been checked.","An untouched device's local copy can also be read safely without booting the app — that technique is documented from the same recovery."],note:["Which panels are affected and which look normal","The exact numbers now vs. what you expected","When it last looked right, and every device that has opened the app since"]},
+"tr-came-back":{cat:"data",title:"Something I deleted or completed came back",looks:"A task, reminder, or project you deleted or completed reappears — sometimes days later, sometimes on one device only.",first:["Confirm both devices show the same account email in the footer.","Hard refresh the device showing the ghost item (browser: hold Shift and click reload; app: fully close and reopen).","Delete it again once, then watch whether it stays gone after both devices have been opened."],then:["Deletion is stored as a synced fact (a tombstone), not just an item missing from a list — a true comeback is a bug worth reporting, not something you did wrong. This bug class has been fixed and has regression tests, so a recurrence is real news."],note:["What the item was and roughly when you first deleted it","Which device resurrected it, and the app version or TestFlight build each device runs"]},
+"tr-blank":{cat:"hosting",title:"The app won't load or shows a blank screen",looks:"centerpost.app opens to an empty page, or the shell appears but nothing fills in.",first:["Hard refresh (hold Shift and click reload).","Reload a SECOND time — right after an update, the first reload often still serves the old cached copy.","Open centerpost.app/howto — if that page loads, the site itself is up and this is an app or cache problem, not an outage."],then:["If /howto also fails it may be a real outage — Sentinel texts an SMS alert when the site is down, so check your messages.","Blank on every device right after a deploy usually means the build itself is bad. That's a chat-session fix (build log, then rollback) — more refreshing won't help."],note:["Which URL and device","Whether /howto loaded","Whether it started right after a deploy"]},
+"tr-not-showing":{cat:"frontend",title:"A shipped change or fix isn't showing up",looks:"Something announced as fixed or added is nowhere to be seen on your device.",first:["On the web: hard refresh twice (same cache behavior as the blank-screen card).","On iPhone or watch: a web deploy NEVER updates the native app. Open TestFlight — if the announced build number isn't installed, update there.","Watch specifically: the watch app installs lazily after the phone updates — keep the watch on its charger, nearby, and give it time."],then:["If the web still shows old behavior after two hard refreshes, the deploy may not have actually gone live. The definitive check — the service-worker version stamp against the latest commit — is a chat-session step."],note:["Web or native, and the TestFlight build number actually installed","What the change was supposed to look like"]},
+"tr-signin-sync":{cat:"security",title:"Sign-in or sync trouble",looks:"Can't sign in, Face ID / passkey isn't offered, or two devices show different data.",first:["Passkeys live in your iCloud Keychain — one enrolled on any Apple device should be offered on all of them. If it isn't, sign in with your password; the passkey button can take a moment to appear.","Devices out of step: open the app on BOTH and leave them open for a minute — sync only moves while an app is open, so a closed phone catches up on its next open.","Watch acting stale: watch actions queue until the phone app is next in the foreground — open the phone app."],then:["If password sign-in itself fails, use the password-reset flow. It also signs out every device, which doubles as the \"log everything out\" lever.","A persistent \"sync error\" in the footer with working internet is worth a chat session — it can point at a token or database-rules issue."],note:["The exact error text","Which sign-in method (password or passkey) and which device"]},
+"tr-security":{cat:"security",title:"Security worry",looks:"A suspicious email about your account, activity you don't recognize, or worry that a password or key leaked.",first:["Change your password FIRST, investigate second — a password change signs out every device immediately.","Don't click links in a suspicious email — type centerpost.app directly.","Open the ops console: Guardian runs a daily behavioral sweep and its findings are viewable there."],then:["API keys live as encrypted secrets on Cloudflare, never in code — a leaked key is rotated in the Cloudflare dashboard, and CI scans every push for accidentally committed secrets.","As a last resort, /account/delete erases the account server-side: every document, quota record, and the sign-in itself."],note:["What triggered the worry — save the suspicious email intact, note times","Any device or sign-in you don't recognize"]}
+};
+var siteData={
+"site-github":{cat:"structural",title:"GitHub — github.com/jharding-hub",what:"Where all three codebases live and every change is recorded.",refs:["productivity-dashboard — the web app (public repo). Pushing to its main branch IS the web deploy.","centerpost-workers — the four backend Workers (private repo).","centerpost-capacitor — the iPhone/watch app (private repo; its local folder on the Mac is Desktop → \"git hub productivity\")."],when:["Checking what shipped and when (commit history)","The Actions tab — secret-scan and build checks that run on every push"]},
+"site-cloudflare":{cat:"hosting",title:"Cloudflare dashboard — dash.cloudflare.com",what:"Hosting, backend, edge storage, DNS, and secrets — all under one account.",refs:["Pages project: productivity-dashboard — builds and serves centerpost.app on every push to main (also answers at productivity-dashboard.pages.dev).","Workers: centerpost-jarvis, centerpost-guardian, centerpost-sentinel, centerpost-pulse.","KV storage (rate limits, tiers) and the centerpost.app DNS zone.","Worker secrets (API keys) are stored and rotated here — never in code."],when:["Did the Pages build succeed after a push?","Purging cache during blank-screen triage","Rotating a leaked key"]},
+"site-firebase":{cat:"data",title:"Firebase console — console.firebase.google.com",what:"Sign-in accounts and the live user data.",refs:["Project: productivity-dashboard-f8488 — the display name says Productivity Dashboard, but it IS Centerpost.","Authentication → the user list; Firestore Database → the actual data (users/{uid}/data/…)."],when:["Confirming an account or document exists","Reviewing Firestore security rules"]},
+"site-gcp":{cat:"data",title:"Google Cloud console — console.cloud.google.com",what:"The infrastructure layer underneath Firebase — same project, deeper controls.",refs:["Same project id: productivity-dashboard-f8488 (every Firebase project is a Google Cloud project underneath).","CAREFUL: an unrelated, empty project literally named \"centerpost\" also exists on this account — the real one is productivity-dashboard-f8488.","Disaster recovery lives here: point-in-time recovery (7 days) and daily backups (98-day retention), both enabled and proven in the Aug 2026 recovery."],when:["Data recovery — always check here before declaring anything unrecoverable","Firestore quotas and billing"]},
+"site-xcode":{cat:"structural",title:"Xcode — on the Mac",what:"Builds and archives the native iPhone/watch app for TestFlight.",refs:["Project: Desktop → \"git hub productivity\" → ios/App (the folder name contains spaces).","Archive from scheme App — never a watch or extension scheme.","Bundle IDs all start app.centerpost.app (app, .watchkitapp, .FocusTimerWidget, .ShareExtension).","Team CN383S6YZK · version 1.0 · the build number must match across ALL targets — centerpost-sync.command sets it; don't touch it by hand."],when:["Product → Archive → Distribute for every native ship","Signing & Capabilities after any target change"]},
+"site-asc":{cat:"external",title:"App Store Connect / TestFlight — appstoreconnect.apple.com",what:"Where uploaded builds process and reach devices.",refs:["App name: Centerpost · bundle ID app.centerpost.app.","Builds go by number (e.g. build 105) — the number in Xcode's upload-complete dialog is the ground truth.","Devices install and update via the TestFlight app on the iPhone; the watch app follows the phone install."],when:["Has an uploaded build finished processing?","Confirming which build a device actually runs"]},
+"site-sendgrid":{cat:"external",title:"SendGrid — app.sendgrid.com",what:"Delivers Centerpost's transactional email.",refs:["Sender: alerts@centerpost.app — used by Guardian (security-sweep alerts) and Pulse (daily briefing)."],when:["A briefing or alert email stops arriving — check delivery and suppression lists here before suspecting the Workers"]},
+"site-twilio":{cat:"external",title:"Twilio — console.twilio.com",what:"Sends the SMS that Sentinel fires when the site goes down.",refs:["Referenced by the Sentinel Worker only — downtime alerts arrive as a text message."],when:["A downtime SMS didn't arrive during a known outage — check account balance and message logs"]},
+"site-anthropic":{cat:"external",title:"Anthropic console — console.anthropic.com",what:"The AI provider behind Axis and every AI feature.",refs:["The API key used by centerpost-jarvis lives only in Cloudflare secrets — this console issues and revokes it.","Usage and spend for all AI features show here."],when:["AI features erroring for everyone — check API status and credits","Reviewing AI spend against the server-side caps"]}
+};
+function _pressCard(id){
+var cards=document.querySelectorAll(".node-card");
+for(var i=0;i<cards.length;i++){cards[i].setAttribute("aria-pressed",cards[i].id==="card-"+id?"true":"false");}
+}
+function _liHtml(arr){var h="";for(var i=0;i<arr.length;i++){h+="<li>"+arr[i]+"</li>";}return h;}
+function showTrouble(id){
+var n=troubleData[id];
+if(!n)return;
+_pressCard(id);
+var bg="var(--cp-"+n.cat+"-bg)";
+var tt="var(--cp-"+n.cat+"-title)";
+document.getElementById("detail-panel").innerHTML=
+'<span class="detail-badge" style="background:'+bg+';color:'+tt+'">Troubleshooting</span>'+
+'<p class="detail-title">'+n.title+'</p>'+
+'<p class="detail-section-label">What it looks like</p><p class="detail-text">'+n.looks+'</p>'+
+'<p class="detail-section-label">Try this first, in order</p><ol class="detail-list">'+_liHtml(n.first)+'</ol>'+
+'<p class="detail-section-label">If that didn\'t fix it</p><ul class="detail-list">'+_liHtml(n.then)+'</ul>'+
+'<p class="detail-section-label">Before you open a chat session, note</p><ul class="detail-list">'+_liHtml(n.note)+'</ul>';
+}
+function showSite(id){
+var n=siteData[id];
+if(!n)return;
+_pressCard(id);
+var bg="var(--cp-"+n.cat+"-bg)";
+var tt="var(--cp-"+n.cat+"-title)";
+document.getElementById("detail-panel").innerHTML=
+'<span class="detail-badge" style="background:'+bg+';color:'+tt+'">Console reference</span>'+
+'<p class="detail-title">'+n.title+'</p>'+
+'<p class="detail-section-label">What it is</p><p class="detail-text">'+n.what+'</p>'+
+'<p class="detail-section-label">How Centerpost is named there</p><ul class="detail-list">'+_liHtml(n.refs)+'</ul>'+
+'<p class="detail-section-label">When you\'d go there</p><ul class="detail-list">'+_liHtml(n.when)+'</ul>';
 }
 </script>
 </body>
