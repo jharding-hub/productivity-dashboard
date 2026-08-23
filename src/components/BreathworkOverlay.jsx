@@ -82,7 +82,7 @@ export default function BreathworkOverlay() {
               words after, both optional. Skip carries no penalty and the
               buttons carry equal weight -- same no-shame rule as everywhere. */}
           <div className="reset-capture-step" id="resetCaptureStep">
-            <div className="rcs-title">Anything to put down before you go back?</div>
+            <div className="rcs-title">Any thoughts to put down before you go back?</div>
             <div className="rcs-row">
               <input type="text" id="resetCaptureInput" placeholder="A thought, a name, a next step&hellip; (optional)"
                 onKeyDown={e => { if (e.key === 'Enter') window.resetCaptureDone(); }} />
