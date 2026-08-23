@@ -2088,7 +2088,7 @@ function applyPanelOrder(){const dash=document.getElementById('dashboard');const
 function initDragDrop(){document.querySelectorAll('.panel').forEach(panel=>{panel.addEventListener('dragstart',e=>{if(state.panelsLocked){e.preventDefault();return;}dragSrcPanel=panel;panel.classList.add('dragging');e.dataTransfer.effectAllowed='move';e.dataTransfer.setData('text/plain',panel.dataset.panel);});panel.addEventListener('dragend',()=>{panel.classList.remove('dragging');document.querySelectorAll('.panel').forEach(p=>p.classList.remove('drag-over'));dragSrcPanel=null;});panel.addEventListener('dragover',e=>{if(state.panelsLocked)return;e.preventDefault();e.dataTransfer.dropEffect='move';if(panel!==dragSrcPanel)panel.classList.add('drag-over');});panel.addEventListener('dragleave',()=>{panel.classList.remove('drag-over');});panel.addEventListener('drop',e=>{e.preventDefault();panel.classList.remove('drag-over');if(!dragSrcPanel||dragSrcPanel===panel)return;const dash=document.getElementById('dashboard');const all=[...dash.querySelectorAll('.panel')];const fi=all.indexOf(dragSrcPanel);const ti=all.indexOf(panel);if(fi<ti)panel.after(dragSrcPanel);else panel.before(dragSrcPanel);state.panelOrder=[...dash.querySelectorAll('.panel')].map(p=>p.dataset.panel);save();toast('Panel moved');});});}
 
 // CLOCK
-function updateClock(){const now=new Date();const t=now.toLocaleTimeString('en-US',{hour12:true});const clk=document.getElementById('clock');if(clk)clk.textContent=t;const cd=document.getElementById('clockDate');if(cd)cd.textContent=now.toLocaleDateString('en-US',{weekday:'long',year:'numeric',month:'long',day:'numeric'});const mhc=document.getElementById('mobileHomeClock');if(mhc)mhc.textContent=t;var timeStr=now.toLocaleTimeString('en-US',{hour:'numeric',minute:'2-digit',hour12:true});if(!timerRunning&&timerLeft===timerTotal){['headerTimerLabel','pdHeaderTimerLabel'].forEach(function(id){var el=document.getElementById(id);if(el)el.innerHTML='<span class="header-timer-idle-icon" aria-hidden="true">&#9654;</span> '+timeStr;});}}
+function updateClock(){const now=new Date();const t=now.toLocaleTimeString('en-US',{hour12:true});const clk=document.getElementById('clock');if(clk)clk.textContent=t;const cd=document.getElementById('clockDate');if(cd)cd.textContent=now.toLocaleDateString('en-US',{weekday:'long',year:'numeric',month:'long',day:'numeric'});const mhc=document.getElementById('mobileHomeClock');if(mhc)mhc.textContent=t;if(!timerRunning&&timerLeft===timerTotal){['headerTimerLabel','pdHeaderTimerLabel'].forEach(function(id){var el=document.getElementById(id);if(el)el.innerHTML='<span class="header-timer-idle-icon" aria-hidden="true">&#9654;</span> Start focus';});}}
 
 // TIMER (with soft alarm)
 // =======================================
@@ -5394,6 +5394,7 @@ function showMobilePanel(panelId){
     // rendered (and CSS-capped) as if they were the small home-tile summary --
     // a 220px scrollbox with a 17,000px+ scrollable interior at real volume.
     target.classList.remove('panel-tile');
+    if(panelId==='time'&&typeof _renderToolkitExplainer==='function')_renderToolkitExplainer();
     // R7 stage 5: start each fresh open back at the first batch rather than
     // silently carrying over a "Show more" expansion from a prior visit.
     if(panelId==='tasklist')_tlRenderLimit=_TL_RENDER_BATCH;
@@ -8293,6 +8294,9 @@ function openPanelOverlay(panelKey){
   overlay.classList.add('open');
   _panelOverlayCurrent=panelKey;
   _trackEvent('panel_view',panelKey,panelKey);
+  // After the move + panel-tile removal above, so the explainer's own guard
+  // sees the expanded panel rather than the tile it used to be.
+  if(panelKey==='time'&&typeof _renderToolkitExplainer==='function')_renderToolkitExplainer();
 
   // R7 stage 5: same fresh-batch reset as the mobile tab-bar path.
   if(panelKey==='tasklist')_tlRenderLimit=_TL_RENDER_BATCH;
@@ -9402,7 +9406,11 @@ function _haltTrendLine(){
 }
 function _renderHalt(){
   var body=document.getElementById('haltBody');
-  var html='<div class="halt-intro"><strong>Physical and environmental factors</strong> tank focus before you notice why. Expand each item, address it, check it off.</div>';
+  // "Physical and environmental factors" until 2026-08-23: the list also
+  // holds Anxious/Activated and Lonely/Disconnected, and calling those
+  // physical or environmental reads as the app filing anxiety under nuisance
+  // (Clinician, panel survey 2026-08-22).
+  var html='<div class="halt-intro"><strong>Body, environment, and state</strong> tank focus before you notice why. Expand each item, address it, check it off.</div>';
   var trend=_haltTrendLine();
   if(trend)html+='<div class="halt-trend">'+esc(trend)+'</div>';
   _visibleHaltItems().forEach(function(item){
@@ -10338,6 +10346,55 @@ function clearStarterTasks(){
   if(typeof renderTodayView==='function')renderTodayView();
   toast('Cleared '+(before-state.tasks.length)+' starter task'+((before-state.tasks.length)!==1?'s':''));
 }
+// ── Tool Kit explainer (panel survey 2026-08-22, J2-1) ──────────────────
+// The tiles are one-word labels: "HALT+", "Urge Log", "Wellness". Subtitles
+// explaining them shipped, clipped the grid, and were pulled back to title=
+// tooltips -- which a phone never shows, so on touch the regulation tools are
+// again unlabelled at exactly the moment someone needs them most.
+//
+// These sentences are not new copy. They are the SAME ones already written on
+// the Settings panel toggles and the tiles' title attributes; the words
+// existed, they were just on a screen nobody in that moment is looking at.
+var TOOLKIT_EXPLAINER=[
+  ['Breathwork','Slow your breathing, fast. 1-3 minutes, guided.'],
+  ['Energy &amp; Mood','Check in on how you’re doing right now.'],
+  ['Journal','A private, encrypted space to write.'],
+  ['Workout','Today’s strength or cardio plan.'],
+  ['HALT+','A body check for when focus tanks — hungry, tired, anxious, and the rest.'],
+  ['Urge Log','Pause before you act on an impulse.'],
+  ['Wellness','Rate how balanced things feel across the week.']
+];
+function _renderToolkitExplainer(){
+  var host=document.getElementById('toolkitExplainer');
+  if(!host)return;
+  if(_jitSeen('toolkitExplainer')){host.innerHTML='';return;}
+  // NEVER in the compact dashboard tile. That tile is height-capped at 629px
+  // and the grid only ever fit inside it by a few dozen pixels -- the tile
+  // subtitles were reverted for exactly this reason, and measuring this card
+  // showed it clips the bottom tile row from 1.25x type upward. So it renders
+  // only in the two EXPANDED contexts, which is where anyone who deliberately
+  // opened the Tool Kit is standing anyway.
+  //
+  // Tested POSITIVELY (am I in an expanded container?) rather than by the
+  // absence of .panel-tile: that class is mobile-only -- the desktop
+  // dashboard panel is plain `panel panel-narrow` and capped in CSS -- so a
+  // not-panel-tile test reads as "expanded" on the one surface that is not.
+  var expanded=!!(host.closest&&(host.closest('#panelOverlayBody')
+                 ||host.closest('.panel.mobile-visible')));
+  if(!expanded){host.innerHTML='';return;}
+  host.innerHTML='<div class="tk-explainer">'
+    +'<div class="tk-explainer-head">What these do'
+    +'<button class="tk-explainer-close" onclick="dismissToolkitExplainer()" aria-label="Dismiss">&#10005;</button></div>'
+    +'<ul class="tk-explainer-list">'
+    +TOOLKIT_EXPLAINER.map(function(r){
+      return '<li><strong>'+r[0]+'</strong> — '+r[1]+'</li>';
+    }).join('')
+    +'</ul></div>';
+}
+function dismissToolkitExplainer(){
+  _markJitSeen('toolkitExplainer');
+  _renderToolkitExplainer();
+}
 function _jitHintToday(){
   if(state.onboardingSeen!==true)return;
   _showJitHint('today','.vms-btn[data-mode="today"]',
@@ -10368,7 +10425,7 @@ function _jitMaybeAskSupportLevel(){
   _markJitSeen('supportLevel');
   _confirm('Centerpost can offer a grounding exercise on its own when your energy or mood dips \u2014 like right now. Want that, or would you rather nothing popped up uninvited?',
     function(){setSupportLevel('full');toast('Support level: Full');},
-    {confirmText:'Offer it',icon:'ti-heart-rate',altText:'Don\u2019t interrupt me',onAlt:function(){setSupportLevel('lean');toast('Support level: Lean');}});
+    {confirmText:'Offer it',icon:'ti-heartbeat',altText:'Don\u2019t interrupt me',onAlt:function(){setSupportLevel('lean');toast('Support level: Lean');}});
 }
 // R3 stage 4 (F11) bug class, found on device in build 60: Quick Capture was
 // the ONE full-screen surface that never got the immersive treatment --
@@ -11163,19 +11220,25 @@ function getUsageMoodInsight(rows){
   return 'On your least active days, mood averaged '+st.lessAvg.toFixed(1)+'/4 vs '+st.moreAvg.toFixed(1)+'/4 on your most active days -- worth noticing what is different on the low-use days.';
 }
 
+// Panel survey 2026-08-22 (I2-9, Skeptic flag 2): each tip now declares where
+// it came from. Some of these are computed from the user's own rows; the
+// fallback is generic advice that fires when nothing data-derived qualified --
+// and rendering both as identical lightbulbs on a screen called "Insights"
+// lent borrowed authority to the generic one. `kind` is 'data' or 'general';
+// the renderer labels them differently.
 function getProductivityTips(rows){
   var tips=[];
   var withUsage=rows.filter(function(r){return r.usage>0;});
   var avgUsage=withUsage.length?withUsage.reduce(function(s,r){return s+r.usage;},0)/rows.length:0;
   var loggedDays=rows.filter(function(r){return r.mood!==null;}).length;
   if(loggedDays<rows.length*0.5){
-    tips.push('You are only logging mood/energy on about '+Math.round(loggedDays/rows.length*100)+'% of days shown -- logging daily (even a quick tap) makes these patterns much clearer.');
+    tips.push({kind:'data',text:'You are only logging mood/energy on about '+Math.round(loggedDays/rows.length*100)+'% of days shown -- logging daily (even a quick tap) makes these patterns much clearer.'});
   }
   if(avgUsage>0&&avgUsage<2){
     // I-7: was "...a quick, low-friction way to re-engage and earn Presence."
     // The Skeptic's objection to points-framing on tool use applies here --
     // the reason to start a focus session is the session, not the score.
-    tips.push('Usage is light in this window. Try a single 25-minute focus-timer session on your next task -- a quick, low-friction way to re-engage.');
+    tips.push({kind:'data',text:'Usage is light in this window. Try a single 25-minute focus-timer session on your next task -- a quick, low-friction way to re-engage.'});
   }
   // I-7: this tip used to fire on a bare count of low-usage/low-mood days,
   // with no reference to whether the overall relationship supported it --
@@ -11185,10 +11248,14 @@ function getProductivityTips(rows){
   var _ums=_usageMoodStats(rows);
   var lowUsageLowMood=rows.filter(function(r){return r.usage<=1&&r.mood!==null&&r.mood<=2;});
   if(lowUsageLowMood.length>=2&&_ums.status==='positive'){
-    tips.push('Low-usage days tend to coincide with lower mood -- on tough days, body-doubling (working alongside the app open, even without finishing tasks) can help more than pushing through alone.');
+    tips.push({kind:'data',text:'Low-usage days tend to coincide with lower mood -- on tough days, body-doubling (working alongside the app open, even without finishing tasks) can help more than pushing through alone.'});
   }
   // I-7: was "Breaking work into subtasks earns Presence more often than..."
-  if(tips.length<2)tips.push('Breaking work into subtasks gives you more frequent finish lines than waiting on one big task -- small, frequent wins sustain ADHD motivation better than large infrequent ones.');
+  // The trailing mechanism claim ("small, frequent wins sustain ADHD
+  // motivation better than large infrequent ones") was cut: it asserted a
+  // research finding with no citation, on the one screen where this app
+  // otherwise cites what it claims.
+  if(tips.length<2)tips.push({kind:'general',text:'Breaking work into subtasks gives you more frequent finish lines than waiting on one big task.'});
   return tips.slice(0,2);
 }
 
@@ -11287,7 +11354,12 @@ function renderPointsInsights(period){
   var tipsEl=document.getElementById('piTips');
   if(tipsEl){
     var tips=getProductivityTips(rows);
-    tipsEl.innerHTML=tips.map(function(t){return '<div class="pi-tip">'+'💡 '+t+'</div>';}).join('');
+    tipsEl.innerHTML=tips.map(function(t){
+      var isData=t.kind==='data';
+      return '<div class="pi-tip'+(isData?' pi-tip-data':' pi-tip-general')+'">'
+        +'<span class="pi-tip-src">'+(isData?'From your data':'General tip')+'</span>'
+        +esc(t.text)+'</div>';
+    }).join('');
   }
 
   var stateEl=document.getElementById('piStateCard');
@@ -11405,7 +11477,14 @@ function _renderWeeklyReview(){
   // underlying points total (see TIER_THRESHOLDS/points comments) -- says so
   // plainly on tap, via toast rather than a nested modal to avoid stacking
   // the Weekly Review overlay under another one.
-  if(totalPoints>0)html+='<div class="wr-row wr-row-presence" onclick="toast(\'Presence is this app\u2019s name for your points total \u2014 small credit for using tools like tasks, routines, and the grounding kit. Separate from Days Shown Up, which just counts whether you opened the app.\',5000)" style="cursor:pointer;" title="What is Presence?"><span class="wr-icon">\ud83c\udfc5</span><strong>'+totalPoints+'</strong> Presence points this week <span style="opacity:0.5;font-size:11px;">(what\u2019s this?)</span></div>';
+  // Panel survey 2026-08-22 (I2-9/P1-S3): built here, rendered at the BOTTOM.
+  // Leading the week's review with a points total makes the score the
+  // headline; the Basic seat wanted the plain facts first ("you showed up
+  // four days, finished six things") and the number as a footnote. Also
+  // fixes "1 Presence points", which read like nobody proofread the most
+  // personal screen in the app.
+  var presenceHtml='';
+  if(totalPoints>0)presenceHtml='<div class="wr-row wr-row-presence" onclick="toast(\'Presence is this app\u2019s name for your points total \u2014 small credit for using tools like tasks, routines, and the grounding kit. Separate from Days Shown Up, which just counts whether you opened the app.\',5000)" style="cursor:pointer;" title="What is Presence?"><span class="wr-icon">\ud83c\udfc5</span><strong>'+totalPoints+'</strong> Presence point'+(totalPoints!==1?'s':'')+' this week <span style="opacity:0.5;font-size:11px;">(what\u2019s this?)</span></div>';
 
   if(tasks.length>0){
     html+='<div class="wr-row"><span class="wr-icon">✅</span><strong>'+tasks.length+'</strong> task'+(tasks.length!==1?'s':'')+' completed'
@@ -11419,6 +11498,8 @@ function _renderWeeklyReview(){
   if(rc.evening.trackedDays>0)html+='<div class="wr-row"><span class="wr-icon">🌙</span>Evening routine: <strong>'+rc.evening.completeDays+'</strong> of '+rc.evening.total+' days</div>';
 
   if(stateCard)html+='<div class="wr-state-wrap">'+stateCard+'</div>';
+
+  html+=presenceHtml;   // the score, after the facts
 
   html+='<div class="wr-journal-cta"><button class="btn" onclick="closeWeeklyReview();openJournal();">📖 Open Journal to reflect</button></div>';
   return html;

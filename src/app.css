@@ -1516,6 +1516,13 @@ body.unlocked .date-editable{border-bottom-color:var(--border);}
 .pi-leg-dot{display:inline-block;width:10px;height:10px;border-radius:50%;}
 .pi-tips{margin-top:14px;display:flex;flex-direction:column;gap:8px;}
 .pi-tip{font-size:calc(12.5px * var(--type-scale,1));line-height:1.6;color:var(--text);background:var(--accent-glow);border:1px solid var(--border);border-radius:8px;padding:10px 12px;}
+/* Provenance label (panel survey 2026-08-22, I2-9). A tip computed from the
+   user's own rows and a generic one used to look identical on a screen called
+   "Insights"; the label is the whole point, so it is not decorative. General
+   tips also drop the accent wash, so the data-derived ones read as primary. */
+.pi-tip-src{display:block;font-size:calc(9.5px * var(--type-scale,1));font-weight:700;letter-spacing:0.7px;text-transform:uppercase;color:var(--text-dim);margin-bottom:4px;}
+.pi-tip-general{background:var(--surface-raised);}
+.pi-tip-general .pi-tip-src{opacity:0.8;}
 .quick-add-preview{font-size:calc(11px * var(--type-scale,1));color:var(--accent);margin:-2px 0 6px 2px;line-height:1.4;}
 .recur-badge{font-size:calc(10px * var(--type-scale,1));color:var(--text-faint);margin-left:4px;}
 .pi-state-card{margin-top:14px;}
@@ -3375,6 +3382,17 @@ body.admin-overlay-open #starryLayer,body.admin-overlay-open #galaxyLayer,body.a
 .tl-triage-btn{padding:5px 10px;min-height:32px;font-size:calc(12px * var(--type-scale,1));border:1px solid var(--border-focus);border-radius:var(--radius-sm);background:var(--surface);color:var(--text);cursor:pointer;font-family:inherit;transition:border-color 0.15s,color 0.15s;}
 .tl-triage-btn:hover{border-color:var(--accent-dim);color:var(--accent);}
 .tl-triage-note a{color:var(--accent);cursor:pointer;text-decoration:underline;}
+/* Tool Kit first-open explainer (panel survey 2026-08-22, J2-1). Sits above
+   the grid inside the panel; shown once, then dismissed for good. Compact on
+   purpose -- it must not push the grid into the clipping it caused before. */
+.tk-explainer{margin:0 0 10px;padding:10px 12px;background:var(--surface-raised);border:1px solid var(--border);border-radius:var(--radius-sm);}
+.tk-explainer-head{display:flex;align-items:center;justify-content:space-between;font-size:calc(11px * var(--type-scale,1));font-weight:700;letter-spacing:0.6px;text-transform:uppercase;color:var(--text-dim);margin-bottom:6px;}
+.tk-explainer-close{background:none;border:none;color:var(--text-dim);cursor:pointer;font-size:calc(13px * var(--type-scale,1));line-height:1;padding:2px 4px;font-family:inherit;}
+.tk-explainer-close:hover{color:var(--text);}
+.tk-explainer-list{list-style:none;margin:0;padding:0;display:flex;flex-direction:column;gap:4px;}
+.tk-explainer-list li{font-size:calc(11.5px * var(--type-scale,1));line-height:1.4;color:var(--text-dim);}
+.tk-explainer-list strong{color:var(--text);font-weight:700;}
+
 /* Lapse card (panel survey 2026-08-22, A2-3). Reuses .tl-triage-btn so the
    buttons are literally the same control as the sweep bar's. Deliberately
    NOT warning-coloured: a soft accent edge, no red, no icon -- coming back

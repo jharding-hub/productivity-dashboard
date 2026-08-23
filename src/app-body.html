@@ -640,7 +640,13 @@
      into the panel (same precedent as Today's "Open Tool Kit" button);
      Settings opens the same sheet the top-bar Settings button does. -->
 <div class="mobile-tab-bar" id="mobileTabBar">
-  <button class="mtb-btn vms-btn" data-mode="everything" onclick="setViewMode('everything')"><i class="ti ti-home-2" aria-hidden="true"></i><span>Home</span></button>
+  <!-- Labelled "Home" until 2026-08-23, while the header toggle above called
+       the very same destination "Everything" -- one place, two names, and the
+       Basic seat tapped the wrong control twice before noticing they landed
+       in the same view. Renamed rather than renaming the header, so the
+       Today/Everything pair stays intact on both surfaces. Grid icon because
+       that is what this view is: all the panels at once. -->
+  <button class="mtb-btn vms-btn" data-mode="everything" onclick="setViewMode('everything')"><i class="ti ti-layout-grid" aria-hidden="true"></i><span>Everything</span></button>
   <button class="mtb-btn vms-btn" data-mode="today" onclick="setViewMode('today')"><i class="ti ti-calendar-event" aria-hidden="true"></i><span>Today</span></button>
   <button class="mtb-btn" onclick="openCommandPalette()" aria-label="Search everything"><i class="ti ti-search" aria-hidden="true"></i><span>Search</span></button>
   <button class="mtb-btn" onclick="showMobilePanel('time')"><i class="ti ti-tool" aria-hidden="true"></i><span>Tool Kit</span></button>

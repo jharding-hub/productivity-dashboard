@@ -17,6 +17,14 @@ export default function ToolKitPanel() {
           and is labelled for it. Points still accrue for regulation actions
           -- awarding and DISPLAYING are separate decisions, and only the
           display was the problem. */}
+      {/* Filled by legacy.js's _renderToolkitExplainer() on first open, then
+          never again. Lives ABOVE the grid, inside the panel, deliberately:
+          the subtitles that used to explain these tiles were removed because
+          they clipped the grid, and their replacement tooltips are invisible
+          on touch -- which is where the dysregulated user actually is. A card
+          here teaches the vocabulary once without pushing on tile layout and
+          without blocking anything. */}
+      <div id="toolkitExplainer"></div>
       <div className="toolkit-grid">
         <div className="toolkit-music-wrap">
           <button
@@ -87,8 +95,12 @@ export default function ToolKitPanel() {
           <i className="ti ti-barbell" aria-hidden="true"></i>
           <span>Workout</span>
         </button>
+        {/* ti-alert-triangle until 2026-08-23: a warning triangle sitting in
+            the regulation toolkit read as "something is wrong with the app"
+            rather than "check your body" -- flagged independently by the
+            Basic, Clinician and Skeptic seats. A heartbeat says body check. */}
         <button className="toolkit-btn toolkit-halt" onClick={() => window.openHaltModal()} title="HALT+ — body check when focus tanks">
-          <i className="ti ti-alert-triangle" aria-hidden="true"></i>
+          <i className="ti ti-heartbeat" aria-hidden="true"></i>
           <span>HALT+</span>
         </button>
         <button className="toolkit-btn toolkit-urge" onClick={() => window.openUrgeModal()} title="Urge Log — pause before you act on impulse">
