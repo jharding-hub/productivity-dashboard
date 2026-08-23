@@ -541,22 +541,16 @@
 <!-- WEEKLY REVIEW (R16 Phase A) -->
 <div id="weekly-review-modal-root"></div>
 
-<!-- BRAIN DUMP ORGANIZER MODAL -->
-<div class="modal-blur-overlay" id="bdOrgModal">
-<div class="modal-blur-backdrop" onclick="bdOrgClose()"></div>
-<div class="modal-blur-panel bd-org-panel">
-  <div class="bd-org-head">
-    <i class="ti ti-sparkles" aria-hidden="true"></i>
-    <div class="bd-org-title">Organize Brain Dump</div>
-    <button class="modal-blur-close" onclick="bdOrgClose()">&#10005;</button>
-  </div>
-  <div class="bd-org-body" id="bdOrgBody"></div>
-  <div class="bd-org-foot" id="bdOrgFoot" style="display:none;">
-    <button class="btn" onclick="bdOrgClose()">Cancel</button>
-    <button class="btn btn-accent-solid" id="bdOrgApplyBtn" onclick="bdOrgApply()">Apply</button>
-  </div>
-</div>
-</div>
+<!-- The Brain Dump organizer modal lives further down as #bdOrganizeModal.
+     A superseded FIRST copy (#bdOrgModal, with #bdOrgBody/#bdOrgFoot and its
+     own bd-org-* markup) sat here until 2026-08-23. Nothing referenced it:
+     legacy.js only ever opened #bdOrganizeModal and only ever filled
+     #bdoBody/#bdoFooter, so the copy could not be reached -- but its buttons
+     called bdOrgClose()/bdOrgApply(), which do not exist either, and that
+     dead pair is what the panel survey found and reported as "the organize
+     modal cannot be closed". Deleted rather than repointed: renaming its
+     handlers would have left an invisible duplicate whose ✕ closed the OTHER
+     modal. The bd-org-* rules in app.css are now unused but harmless. -->
 
 <!-- CONFIRM DIALOG — replaces all native browser confirm() calls -->
 <div class="modal-blur-overlay" id="confirmDialog">

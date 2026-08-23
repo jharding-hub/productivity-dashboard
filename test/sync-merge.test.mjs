@@ -492,6 +492,47 @@ test('countdown: last minute reads "due today", not a zero countdown', () => {
 });
 
 
+// ── I2-1 timed deadlines (panel survey 2026-08-22, candidate C3) ────────────
+// The bug this locks down: a task carrying its own time counted down to the
+// END OF DAY, so a 9:00 task read "due in 14h" at 9:14am. Wrong, not merely
+// imprecise -- and three personas said one wrong chip made them distrust the
+// correct ones.
+
+test('countdown: a timed task counts to ITS time, not to end of day', () => {
+  assert.equal(_dueCountdownLabel('2026-08-20', at(2026,8,20,7,0),  '09:00'), 'due in 2h');
+  assert.equal(_dueCountdownLabel('2026-08-20', at(2026,8,20,8,30), '09:00'), 'due in 30m');
+  // The exact reported case: 9:14am on a 9:00 task. Formerly "due in 14h".
+  assert.equal(_dueCountdownLabel('2026-08-20', at(2026,8,20,9,14), '09:00'), 'past 9a');
+});
+
+test('countdown: past its time stays calm and never counts UP', () => {
+  // Same no-shame rule as the overdue case: state the fact and stop. If this
+  // ever starts returning "3h late" or growing with time, the test fails.
+  assert.equal(_dueCountdownLabel('2026-08-20', at(2026,8,20,12,0), '09:00'), 'past 9a');
+  assert.equal(_dueCountdownLabel('2026-08-20', at(2026,8,20,20,0), '09:00'), 'past 9a');
+  assert.equal(_dueCountdownLabel('2026-08-20', at(2026,8,20,20,0), '12:30'), 'past 12:30p');
+});
+
+test('countdown: the 11:59pm deadline case still works and is exact', () => {
+  // The Student's world. Formerly indistinguishable from a dateless task.
+  assert.equal(_dueCountdownLabel('2026-08-20', at(2026,8,20,18,0),  '23:59'), 'due in 5h');
+  assert.equal(_dueCountdownLabel('2026-08-20', at(2026,8,20,23,30), '23:59'), 'due in 29m');
+  assert.equal(_dueCountdownLabel('2026-08-20', at(2026,8,20,23,59), '23:59'), 'due now');
+});
+
+test('countdown: a dateless task still means "by end of day"', () => {
+  // The original behaviour must be untouched when there is no time.
+  assert.equal(_dueCountdownLabel('2026-08-20', at(2026,8,20,18,0)), 'due in 5h');
+  assert.equal(_dueCountdownLabel('2026-08-20', at(2026,8,20,18,0), ''), 'due in 5h');
+  assert.equal(_dueCountdownLabel('2026-08-20', at(2026,8,20,18,0), null), 'due in 5h');
+});
+
+test('countdown: a timed task on another day is still a static date', () => {
+  assert.equal(_dueCountdownLabel('2026-08-21', at(2026,8,20,23,0), '09:00'), null);
+  assert.equal(_dueCountdownLabel('2026-08-19', at(2026,8,20,10,0), '09:00'), null);
+});
+
+
 // ── A-2 day anchor (panel survey Stage 9) ───────────────────────────────────
 // The single most important property: THE DEFAULT MUST NOT MOVE. Everything
 // else here is secondary to that.
@@ -585,6 +626,20 @@ test('anchor: the countdown follows the anchored day end, not 23:59', () => {
   // Under the OLD midnight rule this item went overdue an hour earlier.
   setDayAnchorMinutes(0);
   assert.equal(_dueCountdownLabel('2026-08-20', new Date(2026, 7, 21, 1, 0)), null);
+});
+
+test('anchor: a timed deadline in the small hours belongs to the day you were awake in', () => {
+  // With a 4am anchor, the day 2026-08-20 runs 04:00 on the 20th to 03:59 on
+  // the 21st, so a 1am deadline on "the 20th" is the 21st at 01:00 -- and at
+  // midnight it is still an hour AWAY, not fifteen hours gone. This is the
+  // interaction that would break if the timed path built its instant from raw
+  // local midnight instead of the anchored day.
+  setDayAnchorMinutes(240);
+  assert.equal(_dueCountdownLabel('2026-08-20', new Date(2026, 7, 21, 0, 0), '01:00'), 'due in 1h');
+  assert.equal(_dueCountdownLabel('2026-08-20', new Date(2026, 7, 21, 2, 0), '01:00'), 'past 1a');
+  // A daytime deadline on the same anchored day is plain local time.
+  assert.equal(_dueCountdownLabel('2026-08-20', new Date(2026, 7, 20, 8, 0), '10:00'), 'due in 2h');
+  setDayAnchorMinutes(0);
 });
 
 test('anchor: DST spring-forward day still resolves one day per day', () => {

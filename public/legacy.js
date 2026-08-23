@@ -2920,7 +2920,7 @@ if(linkedTasks.length||linkedNotes.length||linkedReminders.length){
   linkedHtml+='</div>';
 }
 
-return '<div class="project-card"><div class="proj-header" onclick="openProjectModal(\''+p.id+'\')"><span class="proj-expand '+(p.expanded?'open':'')+'">\u25B6</span><div class="proj-info"><div class="proj-name-row"><span class="proj-name editable" id="pn_'+p.id+'">'+esc(p.name)+'</span><button class="proj-edit-btn" onclick="event.stopPropagation();promptEditProject(\''+p.id+'\')" title="Rename project">&#9998;</button></div><div class="proj-meta"><span>'+total+' subtask'+(total!==1?'s':'')+'</span>'+(linkedNotes.length?'<span>'+linkedNotes.length+' note'+(linkedNotes.length!==1?'s':'')+'</span>':'')+''+(linkedReminders.length?'<span>'+linkedReminders.length+' reminder'+(linkedReminders.length!==1?'s':'')+'</span>':'')+'</div></div><div style="display:flex;gap:4px;align-items:center;"><span class="wt-clock-btn '+(_isScheduledToday(p.id)?'scheduled':'')+'" onclick="event.stopPropagation();handleWorkTodayClick(\'project\',\''+p.id+'\',\''+p.id+'\')" title="Work on today" style="width:20px;height:20px;font-size:10px;">\u{1F4C5}</span><span class="st-btn st-cal" onclick="exportProjectICS(\''+p.id+'\')">\u{1F4C5}</span><button class="proj-complete-btn" onclick="event.stopPropagation();markProjectComplete(\''+p.id+'\',this)" title="Mark complete">\u2713</button><span class="proj-delete" onclick="deleteProject(\''+p.id+'\')">\u2715</span></div></div><div class="subtask-area '+(p.expanded?'open':'')+'"><div class="proj-due-display">'+(p.due?'<span class="date-editable" id="pd_'+p.id+'">Ends: '+fmtDate(p.due)+'</span>':'<span class="date-editable" id="pd_'+p.id+'" style="color:var(--text-faint);">+ set end date</span>')+'</div>'+_renderProjSummary(p,total,linkedNotes.length,linkedReminders.length,projCompletedItems)+'<div class="subtask-list">'+(sorted.length===0?'<div class="empty-state" style="padding:10px;">No subtasks yet.</div>':sorted.map(st=>{return '<div class="subtask-item"><div class="st-check" onclick="toggleSubtask(\''+p.id+"','"+st.id+'\')"></div><span class="st-name editable" id="sn_'+st.id+'">'+esc(st.name)+'</span>'+(st.due?'<span class="st-due date-editable" id="sd_'+st.id+'"'+_dueCellAttrs(st.due)+'>'+_dueCellText(st.due)+'</span>':'<span class="st-due date-editable" id="sd_'+st.id+'" style="color:var(--text-faint);">+ date</span>')+'<div class="st-actions">'+(st.timeEst?'<span class="tl-time-badge">'+fmtTimeEst(st.timeEst)+'</span>':'')+'<span class="wt-clock-btn '+(_isScheduledToday(st.id)?'scheduled':'')+'" onclick="event.stopPropagation();handleWorkTodayClick(\'subtask\',\''+st.id+'\',\''+p.id+'\')" title="Work on today" style="width:18px;height:18px;font-size:9px;">\u{1F4C5}</span><span class="st-btn st-cal" onclick="exportSubtaskICS(\''+p.id+"','"+st.id+'\')">\u{1F4C5}</span><span class="st-btn st-del" onclick="deleteSubtask(\''+p.id+"','"+st.id+'\')">\u2715</span></div></div>';}).join(''))+'</div><div class="subtask-add"><input type="text" id="stN_'+p.id+'" placeholder="Next step..." onkeydown="if(event.key===\'Enter\')addSubtask(\''+p.id+'\')"><button class="mic-btn" id="stMic_'+p.id+'" onclick="toggleMic(\'stN_'+p.id+'\',\'stMic_'+p.id+'\')" title="Voice input">&#127908;</button><select id="stT_'+p.id+'" class="time-est-select"><option value="">Time?</option><option value="30">30m</option><option value="60">1hr</option><option value="90">1.5hr</option><option value="120">2hr</option><option value="180">3hr</option><option value="240">4hr</option><option value="360">6hr</option><option value="480">8hr</option><option value="720">12hr</option></select><input type="date" id="stD_'+p.id+'"><button class="btn btn-accent btn-sm" onclick="addSubtask(\''+p.id+'\')">+</button></div></div></div>';}).join('');
+return '<div class="project-card"><div class="proj-header" onclick="openProjectModal(\''+p.id+'\')"><span class="proj-expand '+(p.expanded?'open':'')+'">\u25B6</span><div class="proj-info"><div class="proj-name-row"><span class="proj-name editable" id="pn_'+p.id+'">'+esc(p.name)+'</span><button class="proj-edit-btn" onclick="event.stopPropagation();promptEditProject(\''+p.id+'\')" title="Rename project">&#9998;</button></div><div class="proj-meta"><span>'+total+' subtask'+(total!==1?'s':'')+'</span>'+(linkedNotes.length?'<span>'+linkedNotes.length+' note'+(linkedNotes.length!==1?'s':'')+'</span>':'')+''+(linkedReminders.length?'<span>'+linkedReminders.length+' reminder'+(linkedReminders.length!==1?'s':'')+'</span>':'')+'</div></div><div style="display:flex;gap:4px;align-items:center;"><span class="wt-clock-btn '+(_isScheduledToday(p.id)?'scheduled':'')+'" onclick="event.stopPropagation();handleWorkTodayClick(\'project\',\''+p.id+'\',\''+p.id+'\')" title="Work on today" style="width:20px;height:20px;font-size:10px;">\u{1F4C5}</span><span class="st-btn st-cal" onclick="exportProjectICS(\''+p.id+'\')">\u{1F4C5}</span><button class="proj-complete-btn" onclick="event.stopPropagation();markProjectComplete(\''+p.id+'\',this)" title="Mark complete">\u2713</button><span class="proj-delete" onclick="deleteProject(\''+p.id+'\')">\u2715</span></div></div><div class="subtask-area '+(p.expanded?'open':'')+'"><div class="proj-due-display">'+(p.due?'<span class="date-editable" id="pd_'+p.id+'">Ends: '+fmtDate(p.due)+'</span>':'<span class="date-editable" id="pd_'+p.id+'" style="color:var(--text-faint);">+ set end date</span>')+'</div>'+_renderProjSummary(p,total,linkedNotes.length,linkedReminders.length,projCompletedItems)+'<div class="subtask-list">'+(sorted.length===0?'<div class="empty-state" style="padding:10px;">No subtasks yet.</div>':sorted.map(st=>{return '<div class="subtask-item"><div class="st-check" onclick="toggleSubtask(\''+p.id+"','"+st.id+'\')"></div><span class="st-name editable" id="sn_'+st.id+'">'+esc(st.name)+'</span>'+(st.due?'<span class="st-due date-editable" id="sd_'+st.id+'"'+_dueCellAttrs(st.due,st.time)+'>'+_dueCellText(st.due,st.time)+'</span>':'<span class="st-due date-editable" id="sd_'+st.id+'" style="color:var(--text-faint);">+ date</span>')+'<div class="st-actions">'+(st.timeEst?'<span class="tl-time-badge">'+fmtTimeEst(st.timeEst)+'</span>':'')+'<span class="wt-clock-btn '+(_isScheduledToday(st.id)?'scheduled':'')+'" onclick="event.stopPropagation();handleWorkTodayClick(\'subtask\',\''+st.id+'\',\''+p.id+'\')" title="Work on today" style="width:18px;height:18px;font-size:9px;">\u{1F4C5}</span><span class="st-btn st-cal" onclick="exportSubtaskICS(\''+p.id+"','"+st.id+'\')">\u{1F4C5}</span><span class="st-btn st-del" onclick="deleteSubtask(\''+p.id+"','"+st.id+'\')">\u2715</span></div></div>';}).join(''))+'</div><div class="subtask-add"><input type="text" id="stN_'+p.id+'" placeholder="Next step..." onkeydown="if(event.key===\'Enter\')addSubtask(\''+p.id+'\')"><button class="mic-btn" id="stMic_'+p.id+'" onclick="toggleMic(\'stN_'+p.id+'\',\'stMic_'+p.id+'\')" title="Voice input">&#127908;</button><select id="stT_'+p.id+'" class="time-est-select"><option value="">Time?</option><option value="30">30m</option><option value="60">1hr</option><option value="90">1.5hr</option><option value="120">2hr</option><option value="180">3hr</option><option value="240">4hr</option><option value="360">6hr</option><option value="480">8hr</option><option value="720">12hr</option></select><input type="date" id="stD_'+p.id+'"><button class="btn btn-accent btn-sm" onclick="addSubtask(\''+p.id+'\')">+</button></div></div></div>';}).join('');
 document.getElementById('projCount').textContent=state.projects.length;
 // Append "Completed Projects" section at the bottom of the projects list
 el.innerHTML+=_renderCompletedProjectsSection();
@@ -4237,7 +4237,7 @@ function updateWellnessVisibility(){
 var wellnessTechniques=[
 {id:'grounding54321',name:'5-4-3-2-1 Grounding',icon:'\u{1F590}\uFE0F',source:'Ackerman, 2017 \u2014 sensory-based anxiety intervention',bestFor:['anxious','scattered'],steps:[{n:'5',t:'Name <strong>5 things you can see</strong>.'},{n:'4',t:'Touch <strong>4 things you can feel</strong>. Notice textures.'},{n:'3',t:'Identify <strong>3 things you can hear</strong>.'},{n:'2',t:'Notice <strong>2 things you can smell</strong>.'},{n:'1',t:'<strong>1 thing you can taste</strong>.'}],guided:true,gd:{phases:['5 things you see','4 things you feel','3 things you hear','2 things you smell','1 thing you taste'],dur:[15,12,9,6,5],cycles:1}},
 {id:'box_breathing',name:'Box Breathing (4-4-4-4)',icon:'\u{1FAC1}',source:'Balban et al., 2023, Cell Reports Medicine \u2014 Navy SEAL protocol',bestFor:['anxious','crashed'],steps:[{n:'1',t:'<strong>Inhale</strong> through nose, 4 sec.'},{n:'2',t:'<strong>Hold</strong> 4 sec.'},{n:'3',t:'<strong>Exhale</strong> through mouth, 4 sec.'},{n:'4',t:'<strong>Hold empty</strong> 4 sec.'},{n:'\u2192',t:'Repeat 4\u20136 cycles. Activates parasympathetic nervous system.'}],guided:true,gd:{phases:['Inhale','Hold','Exhale','Hold'],dur:[4,4,4,4],cycles:5}},
-{id:'physiological_sigh',name:'Physiological Sigh',icon:'\u{1F4A8}',source:'Balban et al., 2023, Cell Reports Medicine \u2014 Stanford/Huberman Lab',bestFor:['anxious','crashed'],steps:[{n:'1',t:'<strong>Deep inhale</strong> through nose.'},{n:'2',t:'<strong>Second short sniff</strong> in through nose (reinflates alveoli).'},{n:'3',t:'<strong>Long slow exhale</strong> through mouth \u2014 2x inhale length.'},{n:'\u2192',t:'Fastest known voluntary method to reduce autonomic arousal. Even 1 cycle works.'}],guided:true,gd:{phases:['Inhale','Second sniff','Long exhale'],dur:[2,1,4],cycles:3}},
+{id:'physiological_sigh',name:'Physiological Sigh',icon:'\u{1F4A8}',source:'Balban et al., 2023, Cell Reports Medicine \u2014 Stanford/Huberman Lab',bestFor:['anxious','crashed'],steps:[{n:'1',t:'<strong>Deep inhale</strong> through nose.'},{n:'2',t:'<strong>Second short sniff</strong> in through nose (reinflates alveoli).'},{n:'3',t:'<strong>Long slow exhale</strong> through mouth \u2014 2x inhale length.'},{n:'\u2192',t:'The long exhale is the part that calms you down. Even 1 cycle helps.'}],guided:true,gd:{phases:['Inhale','Second sniff','Long exhale'],dur:[2,1,4],cycles:3}},
 {id:'pmr',name:'Progressive Muscle Relaxation',icon:'\u{1F4AA}',source:'Jacobson, 1938; Toussaint et al., 2021 systematic review',bestFor:['anxious','low'],steps:[{n:'1',t:'<strong>Feet:</strong> Curl toes tight 5 sec, release.'},{n:'2',t:'<strong>Thighs:</strong> Squeeze 5 sec, release.'},{n:'3',t:'<strong>Fists:</strong> Clench 5 sec, release.'},{n:'4',t:'<strong>Shoulders:</strong> Shrug to ears 5 sec, drop.'},{n:'5',t:'<strong>Face:</strong> Scrunch everything 5 sec, release.'}],guided:true,gd:{phases:['Feet','Thighs','Fists','Shoulders','Face'],dur:[8,8,8,8,8],cycles:1}},
 {id:'breathing_478',name:'4-7-8 Breathing',icon:'\u{1F30A}',source:'Weil, 2015; pranayama \u2014 extended exhale activates vagus nerve',bestFor:['anxious','low','crashed'],steps:[{n:'1',t:'<strong>Inhale</strong> through nose, <strong>4</strong> sec.'},{n:'2',t:'<strong>Hold</strong> <strong>7</strong> sec.'},{n:'3',t:'<strong>Exhale</strong> through mouth, <strong>8</strong> sec.'},{n:'\u2192',t:'Extended exhale shifts to parasympathetic dominance. Do 4 cycles.'}],guided:true,gd:{phases:['Inhale','Hold','Exhale'],dur:[4,7,8],cycles:4}},
 {id:'body_scan',name:'2-Minute Body Scan',icon:'\u{1F9D8}',source:'Kabat-Zinn MBSR; Demarzo et al., 2017 meta-analysis',bestFor:['scattered','low','crashed'],steps:[{n:'1',t:'Close eyes. 3 slow breaths.'},{n:'2',t:'<strong>Scan feet to head.</strong> Notice without judgment.'},{n:'3',t:'Breathe <strong>into</strong> tension spots.'},{n:'4',t:'Open eyes slowly.'}],guided:true,gd:{phases:['Settle: 3 slow breaths','Scan feet to head','Breathe into tension','Open eyes slowly'],dur:[15,60,30,15],cycles:1}}
@@ -6592,7 +6592,11 @@ var breathTechniques={
     name:'Physiological Sigh',
     source:'Balban et al., 2023, Cell Reports Medicine \u2014 Stanford/Huberman Lab',
     evidence:'The strongest-evidence technique here: this exact protocol had the largest effect on mood and physiological arousal in a controlled trial against mindfulness meditation.',
-    desc:'Fastest known voluntary method to reduce autonomic arousal. Double inhale reinflates alveoli, long exhale calms.',
+    // "Fastest known voluntary method..." was cut 2026-08-22: the cited trial
+    // compared four conditions, it did not race the field, and the `evidence`
+    // line above already states exactly what it did show. Every other claim in
+    // this picker is calibrated to its study; one superlative taxed them all.
+    desc:'Double inhale reinflates the alveoli; the long exhale is the part that calms you down.',
     phases:['Deep Inhale','Quick Sniff In','Long Exhale'],
     durations:[3,1,6],
     cycles:6,
@@ -7112,7 +7116,7 @@ function renderTodayView(){
           +'<span class="rem-icon" style="color:'+color+';">●</span>'
           +'<div class="rem-body">'
           +'<div class="rem-text">'+esc(b.name)+'</div>'
-          +'<div class="rem-when">'+_tlFmtTime(b.startMin)+' – '+_tlFmtTime(endMin)+'</div>'
+          +'<div class="rem-when">'+_tlFmtTime(b.startMin)+' – '+_tlFmtEnd(endMin)+'</div>'
           +'</div></div>';
       }).join('')+'</div>';
   html+='</div>';
@@ -7207,11 +7211,15 @@ function _goMobileHome(){setViewMode(state.viewMode);}
 // untouched -- it seeds its <input> from the task's real `due` value, never
 // from the cell's text, so swapping the DISPLAYED text for a countdown cannot
 // affect inline date editing. The real date is still one hover away via title.
-function _dueCellAttrs(due){
-  return ' data-due-cd="'+due+'" title="Due '+esc(fmtDate(due))+'"';
+// `time` is the item's own HH:MM when it has one -- carried in a data
+// attribute so the 60s tick below can re-time the cell without re-rendering
+// the row (see _dueCountdownTick's note on why re-rendering is forbidden).
+function _dueCellAttrs(due,time){
+  return ' data-due-cd="'+due+'"'+(time?' data-due-time="'+esc(time)+'"':'')+
+         ' title="Due '+esc(fmtDate(due))+(time?' at '+esc(fmtTime(time)):'')+'"';
 }
-function _dueCellText(due){
-  return esc(_dueCountdownLabel(due)||fmtDate(due));
+function _dueCellText(due,time){
+  return esc(_dueCountdownLabel(due,null,time)||fmtDate(due));
 }
 // Re-times the countdown cells in place, once a minute (driven by the existing
 // _dayRolloverTick interval -- no second timer).
@@ -7237,7 +7245,7 @@ function _dueCountdownTick(){
     if(el.contains(document.activeElement))continue;       // being interacted with
     var due=el.getAttribute('data-due-cd');
     if(!due)continue;
-    var txt=_dueCountdownLabel(due)||fmtDate(due);
+    var txt=_dueCountdownLabel(due,null,el.getAttribute('data-due-time'))||fmtDate(due);
     if(el.textContent!==txt)el.textContent=txt;             // no-op when unchanged
   }
 }
@@ -7246,7 +7254,7 @@ function _taskRowHTML(t){
   var dueId='tldue_'+t.id;
   var dueHTML;
   if(t.due){
-    dueHTML='<span class="date-editable tl-due-edit" id="'+dueId+'"'+_dueCellAttrs(t.due)+'>'+_dueCellText(t.due)+'</span>';
+    dueHTML='<span class="date-editable tl-due-edit" id="'+dueId+'"'+_dueCellAttrs(t.due,t.time)+'>'+_dueCellText(t.due,t.time)+'</span>';
   }else{
     dueHTML='<span class="date-editable tl-due-edit" id="'+dueId+'" style="color:var(--text-faint);">+ date</span>';
   }
@@ -8562,7 +8570,7 @@ function openProjectModal(pid){
       var dueId='pmd_stdue_'+st.id;
       var dueHTML;
       if(st.due){
-        dueHTML='<span class="date-editable" id="'+dueId+'"'+_dueCellAttrs(st.due)+' style="font-size:11px;color:var(--text-dim);">'+_dueCellText(st.due)+'</span>';
+        dueHTML='<span class="date-editable" id="'+dueId+'"'+_dueCellAttrs(st.due,st.time)+' style="font-size:11px;color:var(--text-dim);">'+_dueCellText(st.due,st.time)+'</span>';
       }else{
         dueHTML='<span class="date-editable" id="'+dueId+'" style="font-size:11px;color:var(--text-faint);">+ date</span>';
       }
@@ -8585,7 +8593,7 @@ function openProjectModal(pid){
       var nameId='pmd_tname_'+t.id;
       var dueId='pmd_tdue_'+t.id;
       var dueHTML=t.due?
-        '<div class="pmd-item-meta">Due: <span class="date-editable" id="'+dueId+'"'+_dueCellAttrs(t.due)+'>'+_dueCellText(t.due)+'</span></div>':
+        '<div class="pmd-item-meta">Due: <span class="date-editable" id="'+dueId+'"'+_dueCellAttrs(t.due,t.time)+'>'+_dueCellText(t.due,t.time)+'</span></div>':
         '<div class="pmd-item-meta">Due: <span class="date-editable" id="'+dueId+'" style="color:var(--text-faint);">+ set</span></div>';
       return '<div class="pmd-item"><div class="pmd-item-label">'
         +'<span class="editable" id="'+nameId+'">'+esc(t.name)+'</span>'+(t.done?' <span style="color:var(--text-faint);font-size:11px;">(done)</span>':'')
@@ -13197,6 +13205,10 @@ function updateCompletedWorkoutsCounter(){
 var TL_DAY_START_H=5;   // 5 AM -- matches day-progress bar
 var TL_DAY_END_H=22;    // 10 PM
 var TL_HOUR_PX=52;      // px per hour
+// A block is never drawn shorter than 24px (.tl-block min-height), so this is
+// the shortest span that can occupy a lane without visually overlapping its
+// neighbour. Derived, not hardcoded, so it follows TL_HOUR_PX if that changes.
+var TL_MIN_BLOCK_MIN=24/TL_HOUR_PX*60;
 var TL_COLOR_COUNT=8;   // palette size
 
 function _tlProjectColor(projectId){
@@ -13435,7 +13447,7 @@ function confirmWorkToday(){
     var endMin=startMin+durVal;
     var END_OF_DAY=20*60; // 8 PM
     if(endMin>END_OF_DAY){
-      var endLabel=_tlFmtTime(endMin);
+      var endLabel=_tlFmtEnd(endMin);
       _confirm('This block would end at '+endLabel+' -- after 8 PM.',
         function(){_writeBlock(targetDate,timeVal,durVal);},
         {confirmText:'Today Anyway',altText:'Push to Tomorrow',onAlt:function(){_scheduleForTomorrow(timeVal,durVal);},icon:'ti-clock-exclamation',warn:true}
@@ -13784,7 +13796,7 @@ function renderBannerBlocks(){
     block.style.left=leftPct+'%';
     block.style.width=widthPct+'%';
     block.style.background=color;
-    block.title=b.name+' -- '+_tlFmtTime(startMin)+' to '+_tlFmtTime(endMin)+' · drag to reschedule';
+    block.title=b.name+' -- '+_tlFmtTime(startMin)+' to '+_tlFmtEnd(endMin)+' · drag to reschedule';
     block.dataset.blockId=b.id;
     _tlAttachDragHandlers(block,b.id,'banner',b,todayStr());
     block.addEventListener('click',function(ev){
@@ -13810,11 +13822,53 @@ function _tlParseTime(hhmm){
   return parseInt(parts[0])*60+parseInt(parts[1]);
 }
 
-function _tlFmtTime(min){
-  var h=Math.floor(min/60),m=min%60;
-  var ap=h<12?'a':'p';
-  var h12=h===0?12:h>12?h-12:h;
-  return h12+(m===0?'':':'+(m<10?'0':'')+m)+ap;
+// Delegates to date-utils' _shortTime so the timeline and the due countdown
+// render a time the same way -- one implementation, not two that can drift.
+// _shortTime wraps past midnight, so a block ending at 1559 minutes now reads
+// "1:59a" instead of the impossible "13:59p" it used to print; the caller adds
+// the "+1" day marker (see _tlFmtEnd).
+function _tlFmtTime(min){return _shortTime(min);}
+// End-of-block label. A block that runs past midnight says so explicitly
+// rather than silently naming a time on a day the user isn't looking at.
+function _tlFmtEnd(min){return _shortTime(min)+(min>=1440?' (+1)':'');}
+
+// Side-by-side lanes for blocks that share a time. Mutates each entry with
+// `lane` (its column) and `lanes` (how many columns its cluster needs).
+//
+// Two steps, and the cluster step is the one that matters: blocks are grouped
+// by TRANSITIVE overlap, so A-overlaps-B and B-overlaps-C puts all three in
+// one cluster and every block in it renders at the same width. Widening each
+// pair independently would make a block change width partway down its own
+// body, which is why the naive version of this looks broken.
+function _tlAssignLanes(items){
+  if(!items||!items.length)return items;
+  // Earliest first; longer first on a tie, so the long block takes lane 0 and
+  // the short ones stack to its right rather than splitting it.
+  var end=function(it){return it.layoutEnd!=null?it.layoutEnd:it.visEnd;};
+  var sorted=items.slice().sort(function(a,b){
+    return (a.visStart-b.visStart)||(b.visEnd-b.visStart)-(a.visEnd-a.visStart);
+  });
+  var cluster=[],clusterEnd=-1;
+  function close(){
+    if(!cluster.length)return;
+    var n=0;
+    cluster.forEach(function(it){if(it.lane+1>n)n=it.lane+1;});
+    cluster.forEach(function(it){it.lanes=n;});
+    cluster=[];
+  }
+  var laneEnds=[];   // last end time occupying each lane, within the cluster
+  sorted.forEach(function(it){
+    if(it.visStart>=clusterEnd&&cluster.length){close();laneEnds=[];}
+    var lane=0;
+    while(lane<laneEnds.length&&laneEnds[lane]>it.visStart)lane++;
+    it.lane=lane;
+    it.lanes=1;
+    laneEnds[lane]=end(it);
+    cluster.push(it);
+    if(end(it)>clusterEnd)clusterEnd=end(it);
+  });
+  close();
+  return items;
 }
 
 function _tlFmtHour(h){
@@ -14047,6 +14101,13 @@ function renderTimeline(){
   var blocks=_tlCollectBlocks(viewDate);
   var winStart=TL_DAY_START_H*60;   // 5am in minutes
   var winEnd=TL_DAY_END_H*60;       // 10pm in minutes
+  // Two passes on purpose: measure every visible block FIRST, assign
+  // side-by-side lanes to the ones that overlap, and only then draw. A single
+  // pass cannot do this -- a block's width depends on blocks it hasn't met yet.
+  // Before this, concurrent blocks were all drawn full width on top of each
+  // other and the text became an unreadable pile (panel survey 2026-08-22,
+  // candidate C2); the busier the day, the worse the timeline got.
+  var placed=[];
   blocks.forEach(function(b){
     var blockEnd=b.startMin+b.durMin;
     // Skip if block is entirely outside the visible window
@@ -14054,6 +14115,18 @@ function renderTimeline(){
     // Clip to visible window (block may start before 5am or end after 10pm)
     var visStart=Math.max(b.startMin,winStart);
     var visEnd=Math.min(blockEnd,winEnd);
+    // Lane overlap is decided on the block's DRAWN extent, not its duration.
+    // A block is never painted shorter than 24px, which at 52px/hour is ~28
+    // minutes, so a 15-minute stand-up physically covers the 9:15 block that
+    // starts after it ends. Judging lanes on duration alone would call those
+    // two "not overlapping" and let them collide anyway -- which is most of
+    // what the unreadable 9am pile actually was.
+    placed.push({b:b,blockEnd:blockEnd,visStart:visStart,visEnd:visEnd,
+                 layoutEnd:visStart+Math.max(visEnd-visStart,TL_MIN_BLOCK_MIN)});
+  });
+  _tlAssignLanes(placed);
+  placed.forEach(function(pl){
+    var b=pl.b, blockEnd=pl.blockEnd, visStart=pl.visStart, visEnd=pl.visEnd;
     var visDur=visEnd-visStart;
     var clippedStart=visStart>b.startMin;  // true if start was clipped
     var clippedEnd=visEnd<blockEnd;        // true if end was clipped
@@ -14067,6 +14140,14 @@ function renderTimeline(){
     div.className='tl-block '+colorClass+(clippedStart?' tl-block-clipped-top':'')+(clippedEnd?' tl-block-clipped-bottom':'');
     div.style.top=y+'px';
     div.style.height=height+'px';
+    // Lane geometry. The CSS default (left:54px;right:6px) still describes a
+    // lone block exactly, so untouched days render byte-identically -- only a
+    // block sharing its time with another gets narrowed.
+    if(pl.lanes>1){
+      div.style.left='calc(54px + (100% - 60px) * '+(pl.lane/pl.lanes)+')';
+      div.style.width='calc((100% - 60px) / '+pl.lanes+' - 3px)';
+      div.style.right='auto';
+    }
     if(clippedStart){
       // Show a visual cue that this block started earlier
       div.style.borderTop='2px dashed rgba(255,255,255,0.4)';
@@ -14082,7 +14163,7 @@ function renderTimeline(){
       '<div class="tl-block-title">'+esc(b.name)
       +(clippedStart?' <span style="font-size:9px;opacity:0.7">← started '+_tlFmtTime(b.startMin)+'</span>':'')
       +'</div>'
-      +'<div class="tl-block-meta">'+_tlFmtTime(b.startMin)+' – '+_tlFmtTime(endMin)+' · '+b.durMin+'m</div>'
+      +'<div class="tl-block-meta">'+_tlFmtTime(b.startMin)+' – '+_tlFmtEnd(endMin)+' · '+b.durMin+'m</div>'
       +(projName?'<div class="tl-block-proj">'+esc(projName)+'</div>':'')
       +(b.source==='manual'?'<div class="tl-block-del" onclick="event.stopPropagation();deleteTimelineBlock(\''+b.id+'\')" title="Delete block">&#10005;</div>':'');
     if(b.source==='manual'){

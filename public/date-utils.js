@@ -85,10 +85,38 @@ function _anchoredDayEndOf(dayStr){
 function _anchoredDayEnd(now){
   return _anchoredDayEndOf(_anchoredDayKey(now || new Date()));
 }
+// The instant at which wall-clock time `min` (minutes since midnight) falls
+// INSIDE the anchored day `dayStr`. Same rule _anchoredDayEndOf encodes, for a
+// general time rather than the day's last second: under a 4am anchor the day
+// 2026-08-20 runs 04:00 on the 20th to 03:59 on the 21st, so 10a is the 20th
+// at 10:00 but 1a is the TWENTY-FIRST at 01:00 -- the small hours belong to
+// the day you were still awake in. At anchor 0 this is plain local time.
+function _anchoredInstantOf(dayStr,min){
+  var p=(dayStr||'').split('-');
+  var base=new Date(parseInt(p[0],10), parseInt(p[1],10)-1, parseInt(p[2],10), 0, 0, 0, 0);
+  if(isNaN(base.getTime()))return null;
+  var t=base.getTime()+min*60000;
+  if(min<_dayAnchorMin)t+=86400000;
+  return new Date(t);
+}
 
 function todayStr(){return _anchoredDayKey();}
 function fmtDate(d){return new Date(d+'T00:00:00').toLocaleDateString('en-US',{month:'short',day:'numeric',year:'numeric'});}
 function fmtTime(t){const[h,m]=t.split(':');const hr=parseInt(h);return(hr>12?hr-12:hr||12)+':'+m+(hr>=12?' PM':' AM');}
+// Compact wall-clock label ("9a", "12:30p") from minutes-since-midnight. The
+// timeline has always rendered times this way; it lives here now so the due
+// countdown can speak the SAME dialect as the timeline row above it rather
+// than inventing a second one (legacy.js's _tlFmtTime delegates to this).
+// Minutes are normalised into a real clock time first: a block ending 2h after
+// 11:59pm is 1559 minutes, and the old arithmetic printed that as "13:59p" --
+// not a time at all. Wrapping is the formatter's job; naming the day is the
+// caller's (legacy.js's _tlFmtEnd appends "(+1)").
+function _shortTime(min){
+  min=((Math.floor(min)%1440)+1440)%1440;
+  var h=Math.floor(min/60),m=min%60;
+  var h12=h===0?12:h>12?h-12:h;
+  return h12+(m===0?'':':'+(m<10?'0':'')+m)+(h<12?'a':'p');
+}
 function _hmToMin(hm){var a=(hm||'').split(':');return (parseInt(a[0],10)||0)*60+(parseInt(a[1],10)||0);}
 // Called BOTH ways on purpose, and the two meanings are different:
 //   _dayKey()      -> "what day is it now"      -> anchored
@@ -122,7 +150,7 @@ function _monthKey(d){d=d||_anchoredNow();return d.getFullYear()+'-'+String(d.ge
 // `now` is an optional Date override for tests -- same convention as
 // quick-add-parser's parseQuickAdd(text, now) and recurrence-engine's
 // _nextRecurrenceDate(due, rec, now). Production call sites pass nothing.
-function _dueCountdownLabel(dueStr,now){
+function _dueCountdownLabel(dueStr,now,timeStr){
   if(!dueStr)return null;
   now=now||new Date();
   // _dayKey(now), not a raw comparison: this is the ONE place the countdown
@@ -134,7 +162,27 @@ function _dueCountdownLabel(dueStr,now){
   // having silently gone overdue three hours earlier. At anchor 0 both calls
   // reduce to the original arithmetic exactly.
   if(dueStr!==_anchoredDayKey(now))return null;
-  var end=_anchoredDayEndOf(dueStr);
+  // A task that carries its OWN time counts down to THAT instant, not to the
+  // end of the day (panel survey 2026-08-22, C3/I2-1). Counting a 9:00 task to
+  // 23:59 produced "due in 14h" at 9:14am -- a number that was not merely
+  // useless but false, and three personas said one wrong chip made them
+  // distrust the correct ones. Only the dateless case means "by end of day".
+  var end, deadlineMin=(timeStr&&timeStr.indexOf(':')>=0)?_hmToMin(timeStr):null;
+  if(deadlineMin!=null){
+    end=_anchoredInstantOf(dueStr,deadlineMin);
+    if(!end)return null;
+    var tmins=Math.floor((end.getTime()-now.getTime())/60000);
+    // Past its time but still today: state the fact, calmly, and STOP. No
+    // count-up of how late it is, no colour, no "overdue" -- the same rule
+    // that makes a missed day return null below. "past 9a" is true and still
+    // implies the day is not over; "3h LATE" is the pressure this app exists
+    // not to apply.
+    if(tmins<0)return 'past '+_shortTime(deadlineMin);
+    if(tmins<1)return 'due now';
+    if(tmins<60)return 'due in '+tmins+'m';
+    return 'due in '+Math.floor(tmins/60)+'h';
+  }
+  end=_anchoredDayEndOf(dueStr);
   if(!end)return null;
   var mins=Math.floor((end.getTime()-now.getTime())/60000);
   if(mins<1)return 'due today';   // last minute of the day -- "due in 0m" reads as a countdown to a buzzer
@@ -209,7 +257,7 @@ function _timerSessionExpired(t, now){
 
 // Test-only export (no-op in the browser, where `module` is undefined).
 if(typeof module!=='undefined' && module.exports){
-  module.exports = { todayStr, fmtDate, fmtTime, _hmToMin, _dayKey, _monthKey, _dateGroupInfo, _dueCountdownLabel,
+  module.exports = { todayStr, fmtDate, fmtTime, _shortTime, _hmToMin, _dayKey, _monthKey, _dateGroupInfo, _dueCountdownLabel,
                      setDayAnchorMinutes, getDayAnchorMinutes, _anchoredNow, _anchoredDayKey, _anchoredDayEnd, _anchoredDayEndOf,
-                     _shouldAdoptRemoteTimer, _timerSessionExpired };
+                     _anchoredInstantOf, _shouldAdoptRemoteTimer, _timerSessionExpired };
 }
