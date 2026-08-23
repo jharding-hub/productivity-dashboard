@@ -111,6 +111,15 @@ export default function ToolKitPanel() {
           <i className="ti ti-heart" aria-hidden="true"></i>
           <span>Wellness</span>
         </button>
+        {/* Reset chain (panel survey 2026-08-22, A2-7). Pairs into the grid
+            slot Wellness used to span alone, so the grid gains a tool without
+            gaining a row -- the 629px tile clips anything taller (the
+            subtitle lesson). Named generically per the panel's resolution:
+            the Shift Worker's "after a call" is flavor, not the gate. */}
+        <button className="toolkit-btn toolkit-reset" onClick={() => window.startResetChain('toolkit')} title="Reset — 2 minutes: guided breath, then put a thought down. After a call, a class, a hard hour.">
+          <i className="ti ti-rotate-2" aria-hidden="true"></i>
+          <span>Reset</span>
+        </button>
       </div>
       {/* YouTube player host (rendered by PointsFocusMusic component) */}
     </>

@@ -1571,6 +1571,27 @@ body.unlocked .date-editable{border-bottom-color:var(--border);}
 /* HALT BUTTON */
 .toolkit-halt:hover{border-color:#e53935;color:#e53935;background:rgba(229,57,53,0.12);}
 .toolkit-wellness:hover{border-color:#7fb3a0;color:#7fb3a0;background:rgba(127,179,160,0.12);}
+.toolkit-reset:hover{border-color:#8fb8d8;color:#8fb8d8;background:rgba(143,184,216,0.12);}
+.state-advice-reset{display:block;margin-top:8px;}
+/* Start-picker additions (I2-10). */
+.tl-pick-sep{font-size:9.5px;font-weight:700;letter-spacing:0.6px;text-transform:uppercase;color:var(--text-faint);padding:7px 10px 3px;border-top:1px solid var(--border);margin-top:4px;}
+.tl-pick-current{color:var(--accent);font-weight:700;}
+/* Lock-screen setup card (J2-10). Native only, once; same calm card
+   language as the lapse card. */
+.today-glance-card{margin:0 0 14px;padding:12px 14px;background:var(--surface-raised);border:1px solid var(--border);border-left:3px solid var(--accent-dim,var(--accent));border-radius:var(--radius-sm);}
+.today-glance-card .tgc-title{font-weight:700;font-size:calc(13px * var(--type-scale,1));color:var(--text);margin-bottom:6px;}
+.today-glance-card ol{margin:0 0 10px;padding-left:18px;color:var(--text-dim);font-size:calc(12.5px * var(--type-scale,1));line-height:1.55;}
+.today-glance-card .tgc-actions{display:flex;justify-content:flex-end;}
+
+/* Reset chain capture step (A2-7): lives inside the immersive breath overlay,
+   hidden until the chain's session completes. Calm by construction -- no
+   countdown, no required field, equal-weight Skip. */
+.reset-capture-step{display:none;margin-top:18px;padding:14px 16px;background:var(--surface-raised);border:1px solid var(--border);border-radius:var(--radius-sm);max-width:340px;width:92%;}
+.reset-capture-step.active{display:block;}
+.rcs-title{font-size:calc(13px * var(--type-scale,1));color:var(--text);margin-bottom:10px;}
+.rcs-row{display:flex;gap:6px;align-items:center;margin-bottom:10px;}
+.rcs-row input{flex:1;min-width:0;padding:8px 10px;font-family:inherit;font-size:calc(13px * var(--type-scale,1));background:var(--surface);border:1px solid var(--border);border-radius:var(--radius-sm);color:var(--text);}
+.rcs-actions{display:flex;gap:6px;justify-content:flex-end;}
 .toolkit-urge:hover{border-color:var(--blue);color:var(--blue);background:var(--blue-dim);}
 
 /* ═══ JARVIS FLOATING BUTTON — Arc Reactor style ═══ */
@@ -3199,8 +3220,8 @@ body[data-theme="storm-dark"] .tl-hour-label{
    toggled once in showApp() -- see the comment there. Streaming itself
    stays display:none regardless (separate, existing gate); order here only
    matters for whichever tiles ARE visible. */
-.toolkit-music-wrap{order:8;}
-.toolkit-streaming{order:9;}
+.toolkit-music-wrap{order:9;}
+.toolkit-streaming{order:10;}
 .toolkit-breath{order:1;}
 .toolkit-mood{order:2;}
 .toolkit-journal{order:3;}
@@ -3208,6 +3229,11 @@ body[data-theme="storm-dark"] .tl-hour-label{
 .toolkit-halt{order:5;}
 .toolkit-urge{order:6;}
 .toolkit-wellness{order:7;}
+/* Reset chain (A2-7): pairs with Wellness, which stops spanning alone --
+   the :last-child:nth-child(odd) widener below keys off DOM parity, and the
+   new tile makes the count even, so total grid rows are unchanged (the
+   629px-tile constraint that killed the subtitles). */
+.toolkit-reset{order:8;}
 body.is-owner .toolkit-music-wrap{order:1;}
 body.is-owner .toolkit-streaming{order:2;}
 body.is-owner .toolkit-breath{order:3;}
@@ -3217,6 +3243,7 @@ body.is-owner .toolkit-workout{order:6;}
 body.is-owner .toolkit-halt{order:7;}
 body.is-owner .toolkit-urge{order:8;}
 body.is-owner .toolkit-wellness{order:9;}
+body.is-owner .toolkit-reset{order:10;}
 .toolkit-grid .toolkit-btn:last-child:nth-child(odd){grid-column:1/-1;}
 /* padding/gap tightened 18->13 / 7->6 alongside the subtitle removal
    (2026-08-19): the old values were sized for a three-line tile (icon,

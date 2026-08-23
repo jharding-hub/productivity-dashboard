@@ -76,6 +76,23 @@ export default function BreathworkOverlay() {
             <button className="breath-mute muted" id="breathMuteBtn" onClick={() => window.toggleBreathMute()} title="Toggle voice guidance">&#128263; Voice Off</button>
             <button className="breath-stop" onClick={() => window.stopBreathwork()}>&#9209; End Session</button>
           </div>
+
+          {/* Reset chain capture step (panel survey 2026-08-22, A2-7). Shown
+              only when a chain-started session completes: breathing first,
+              words after, both optional. Skip carries no penalty and the
+              buttons carry equal weight -- same no-shame rule as everywhere. */}
+          <div className="reset-capture-step" id="resetCaptureStep">
+            <div className="rcs-title">Anything to put down before you go back?</div>
+            <div className="rcs-row">
+              <input type="text" id="resetCaptureInput" placeholder="A thought, a name, a next step&hellip; (optional)"
+                onKeyDown={e => { if (e.key === 'Enter') window.resetCaptureDone(); }} />
+              <button className="mic-btn" id="resetCaptureMic" onClick={() => window.toggleMic('resetCaptureInput','resetCaptureMic')} title="Speak it instead">&#127908;</button>
+            </div>
+            <div className="rcs-actions">
+              <button className="btn" onClick={() => window.resetCaptureSkip()}>Skip</button>
+              <button className="btn btn-accent" onClick={() => window.resetCaptureDone()}>Done</button>
+            </div>
+          </div>
         </div>
       </div>
 

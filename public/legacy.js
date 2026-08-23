@@ -3054,7 +3054,37 @@ function showTaskStartPicker(taskId,source,projectId,el){
     opts.push({v:(hh<10?'0':'')+hh+':'+(mm<10?'0':'')+mm,l:_tlFmtTime(m)});
   }
   var html=opts.map(function(o){return '<div class="tl-pick-item" onclick="event.stopPropagation();editTaskStartTime(\''+taskId+'\',\''+source+'\',\''+projectId+'\',\''+o.v+'\')">'+o.l+'</div>';}).join('');
+  // I2-10: the alert options live in the same picker as the time they hang
+  // off -- a reminder about a timed deadline is a property of that time, not
+  // a separate concept to hunt for. Only offered once a time is SET: an
+  // alert with no instant to count from has no meaning.
+  var t=getAllTasks().find(function(x){return x.id===taskId;});
+  if(t&&t.time){
+    var cur=t.alertBefore||0;
+    html+='<div class="tl-pick-sep">Remind me before</div>';
+    html+=[[0,'No reminder'],[30,'30 minutes before'],[120,'2 hours before']].map(function(o){
+      return '<div class="tl-pick-item'+(cur===o[0]?' tl-pick-current':'')+'" onclick="event.stopPropagation();editTaskAlert(\''+taskId+'\',\''+source+'\',\''+projectId+'\','+o[0]+')">'+o[1]+'</div>';
+    }).join('');
+  }
   _showInlinePicker(el,html);
+}
+// I2-10: persists through the normal save path, which also debounce-triggers
+// the native notification resync -- no separate scheduling call to forget.
+function editTaskAlert(taskId,source,projectId,mins){
+  mins=parseInt(mins,10)||0;
+  var target;
+  if(source==='standalone'){
+    target=(state.tasks||[]).find(function(x){return x.id===taskId;});
+  }else{
+    var p=state.projects.find(function(x){return x.id===projectId;});
+    target=p&&p.subtasks.find(function(x){return x.id===taskId;});
+  }
+  if(!target)return;
+  if(mins)target.alertBefore=mins;else delete target.alertBefore;
+  save();
+  var pk=document.querySelector('.tl-inline-picker');
+  if(pk){if(pk.parentElement)pk.parentElement.classList.remove('tl-picker-open');pk.remove();}
+  toast(mins?('Will remind you '+(mins>=120?'2 hours':mins+' minutes')+' before'):'Reminder removed');
 }
 function editTaskStartTime(taskId,source,projectId,val){
   _dateEditActive=null;
@@ -3620,6 +3650,23 @@ function _notifTick(){
   if(p.routineEvening&&p.routineEvening.on)_notifMaybeRoutine('evening',p.routineEvening.time,curMin,today);
   if(p.weeklyReview&&p.weeklyReview.on)_notifMaybeWeeklyReview(p.weeklyReview.time,curMin,today,now,_weeklyReviewDay(p));
 
+  // I2-10: the while-open half of task deadline alerts (native covers the
+  // app-closed case). Same fired-once-per-day key + 30-min staleness window
+  // as reminders above.
+  getAllTasks().forEach(function(t){
+    if(t.done||!t.due||!t.time||!t.alertBefore)return;
+    if(t.due!==today)return;
+    var alertMin=_hmToMin(t.time)-t.alertBefore;
+    if(alertMin<0)return;               // alert would land yesterday; native handles via epoch math
+    if(alertMin>curMin)return;
+    if(curMin-alertMin>30)return;
+    var key='talert:'+t.id+':'+today;
+    if(_notifAlreadyFired(key))return;
+    _notifMarkFired(key);
+    var lead=t.alertBefore>=120?'2 hours':t.alertBefore+' minutes';
+    _notifShow('\u23f1 '+t.name,'Due at '+((typeof fmtTime==='function')?fmtTime(t.time):t.time)+' \u2014 '+lead+' from now','talert-'+t.id);
+  });
+
   _notifUpdateBadge();
 }
 
@@ -3927,10 +3974,41 @@ function _notifSchedulableCount(){
   var scheduledReminders=fullSet.filter(function(it){return it.id&&it.id.indexOf('rem_')===0;}).length;
   return {total:reminderTotal,scheduled:scheduledReminders};
 }
+// ── Task deadline alerts (panel survey 2026-08-22, I2-10) ────────────────
+// "For an 11:59pm assignment I need '2 hours left' tied to the task's actual
+// time." Opt-in PER TASK (alertBefore: minutes), only meaningful when the
+// task has both a due date and a time. Same calm register as everything
+// else: it names the deadline, it does not alarm about it.
+function _notifTaskAlertItems(){
+  var p=state.notifPrefs;if(!p||!p.enabled)return [];
+  var items=[];
+  var nowMs=Date.now();
+  getAllTasks().forEach(function(t){
+    if(t.done||!t.due||!t.time||!t.alertBefore)return;
+    var dueAt=_notifDateTimeToEpoch(t.due,t.time);
+    if(dueAt===null)return;
+    var at=dueAt-(t.alertBefore*60000);
+    if(at<=nowMs)return;
+    // Quiet hours judged at the ALERT's own clock time, not the task's.
+    var d=new Date(at);
+    var hm=(d.getHours()<10?'0':'')+d.getHours()+':'+(d.getMinutes()<10?'0':'')+d.getMinutes();
+    if(_notifTimeInQuiet(hm))return;
+    var lead=t.alertBefore>=120?'2 hours':t.alertBefore+' minutes';
+    items.push({id:'talert_'+t.id,title:'\u23f1 '+(t.name||'Task'),
+      body:'Due at '+((typeof fmtTime==='function')?fmtTime(t.time):t.time)+' \u2014 '+lead+' from now',
+      at:at,repeatsDaily:false});
+  });
+  return items;
+}
 // Build the full desired notification set (native replaces everything each sync).
 function _notifBuildNativeItems(){
   var p=state.notifPrefs;if(!p||!p.enabled)return [];
-  var items=_notifReminderItems();
+  // Reminders and task alerts are both one-shot, time-ordered items; merged
+  // and re-sorted soonest-first BEFORE the cap, so the 60-slot ceiling still
+  // drops the farthest-out items regardless of which kind they are (the I-6
+  // disclosure math counts rem_ ids only and is unaffected).
+  var items=_notifReminderItems().concat(_notifTaskAlertItems());
+  items.sort(function(a,b){return a.at-b.at;});
   if(p.routineMorning&&p.routineMorning.on&&!_notifTimeInQuiet(p.routineMorning.time)){
     items.push({id:'routine_morning',title:'☀ Morning routine',body:'A gentle nudge for your morning routine — no pressure.',at:_notifTodayTimeEpoch(p.routineMorning.time),repeatsDaily:true});
   }
@@ -4575,7 +4653,14 @@ var adviceMap={'high-focused':{t:'\u{1F525} Peak state \u2014 tackle your hardes
 // all (no MOBILE_PANELS row, no direct-jump caller): the app named its own
 // remedy in its worst states and then dead-ended. Detected by text match so
 // any future adviceMap copy that mentions the toolkit is automatically live.
-function showStateAdvice(){const el=document.getElementById('stateAdvice');if(!state.energy||!state.mood){el.innerHTML='';return;}const k=state.energy+'-'+state.mood;const a=adviceMap[k];if(!a)return;var gt=/Grounding Session/.test(a.t);el.innerHTML='<div class="decision-prompt state-advice '+(a.cls||'')+'"'+(gt?' role="button" tabindex="0" aria-label="Open the Grounding Session" style="cursor:pointer;" onclick="openGroundingToolkit()" onkeydown="if(event.key===\'Enter\'||event.key===\' \'){event.preventDefault();openGroundingToolkit();}"':'')+'>'+a.t+(gt?' <span style="text-decoration:underline;">Open</span>':'')+'</div>';}
+function showStateAdvice(){const el=document.getElementById('stateAdvice');if(!state.energy||!state.mood){el.innerHTML='';return;}const k=state.energy+'-'+state.mood;const a=adviceMap[k];if(!a)return;var gt=/Grounding Session/.test(a.t);var html='<div class="decision-prompt state-advice '+(a.cls||'')+'"'+(gt?' role="button" tabindex="0" aria-label="Open the Grounding Session" style="cursor:pointer;" onclick="openGroundingToolkit()" onkeydown="if(event.key===\'Enter\'||event.key===\' \'){event.preventDefault();openGroundingToolkit();}"':'')+'>'+a.t+(gt?' <span style="text-decoration:underline;">Open</span>':'')+'</div>';
+// A2-7: the detection->regulation bridge on the phone. Crashed or Anxious
+// just got logged -- one of the few moments the app KNOWS things are rough.
+// A quiet button, never a popup, same passive rule as the crisis links.
+if(state.energy==='crashed'||state.mood==='anxious'){
+  html+='<button class="btn btn-sm state-advice-reset" onclick="startResetChain(\'checkin\')">\u21ba Reset \u2014 2 minutes</button>';
+}
+el.innerHTML=html;}
 
 // The one door that always opens. An explicit tap is an invitation, so this
 // intentionally overrides the 'lean' Support Level -- R12's contract is that
@@ -5586,6 +5671,27 @@ window.__watchApplyAction=function(action){
     }else if(action.cmd==='breath'){
       if(typeof addPoints==='function')addPoints('breathwork',null);
       save();
+    }else if(action.cmd==='checkinCtx'){
+      // Stage 9 (J2-10): the optional context tag, sent as its own tiny
+      // message right after the grid check-in rather than delaying the
+      // check-in itself -- the one-tap log must never wait on a maybe.
+      // "High Anxious tapped four minutes after a pedi arrest means
+      // something different than at breakfast" -- the Shift Worker.
+      if(typeof _logCheckIn==='function'){
+        _logCheckIn('context',{ctx:String(action.ctx||'post-call'),energy:state.energy||'',mood:state.mood||''});
+      }
+    }else if(action.cmd==='startReset'){
+      // Stage 9 (A2-7): the watch handoff. Fresh request (the app was open
+      // or came alive within the window) -> start the session now. A STALE
+      // replay from the offline queue must NOT hijack the next app open
+      // with an unexpected full-screen breathing session -- it becomes an
+      // offer instead, which the user can take or ignore.
+      var _rrTs=Number(action.ts)||0;
+      if(_rrTs&&(Date.now()-_rrTs)>120000){
+        toast('Your watch asked for a reset earlier',8000,{label:'Start it',onClick:function(){startResetChain('watch');}});
+      }else{
+        startResetChain('watch');
+      }
     }else if(action.cmd==='add'){
       var name=(action.text||'').trim();
       if(name){
@@ -7391,11 +7497,20 @@ function startBreathwork(){
     speak('Well done. Take a moment.');
     _breathHaptic('complete');
     addPoints('breathwork');
-    if(typeof _logCheckIn==='function')_logCheckIn('breath',{techniqueId:id,techniqueName:t.name,cycles:t.cycles});
+    // A2-7: one record either way. A chain-run session tags the SAME breath
+    // check-in (chain:'reset' + where it started) rather than logging a
+    // second record -- the reset ran, the evidence is this row, and counts
+    // stay honest.
+    if(typeof _logCheckIn==='function')_logCheckIn('breath',Object.assign({techniqueId:id,techniqueName:t.name,cycles:t.cycles},
+      _resetChainSource?{chain:'reset',source:_resetChainSource}:{}));
     // R15 tier 2: log the finished session to Apple Health (Mindful Minutes),
     // only if the user opted in. Full-session span from the wall-clock start.
     if(typeof _healthLogMindful==='function'&&_breathSessionStartMs)_healthLogMindful(_breathSessionStartMs,Date.now());
-    setTimeout(()=>{if(breathActive)stopBreathwork();},6000);
+    if(_resetChainSource){
+      setTimeout(function(){if(breathActive)_resetChainCaptureStep();},1500);
+    }else{
+      setTimeout(()=>{if(breathActive)stopBreathwork();},6000);
+    }
   }
 
   const sessionStart=performance.now();
@@ -7469,7 +7584,70 @@ function stopBreathwork(){
   document.getElementById('bodyScanWrap').style.display='none';
   document.querySelectorAll('.scan-part').forEach(p=>p.classList.remove('scan-lit','scan-glow'));
   _unblurDashboard();
+  var _rcStep=document.getElementById('resetCaptureStep');
+  if(_rcStep)_rcStep.classList.remove('active');
 }
+
+// ═══════════════════════════════════════════════════════════════════
+// RESET CHAIN (panel survey 2026-08-22, A2-7)
+//
+// "The feature only this builder could ship, and it's weirdly absent" -- the
+// Shift Worker. One guided physiological sigh (the strongest-evidence
+// technique in the picker), then an OPTIONAL ten-second brain dump, then
+// done -- assembled from parts that already exist and are already cited.
+// Nothing new therapeutically: the chain is a sequence, and only its PARTS
+// carry evidence claims (the Skeptic's condition).
+//
+// The watch side is a HANDOFF, not a pacer. Watch breathwork was built once
+// and deliberately removed (R15, 2026-07-15): a crude on-wrist toggle
+// duplicating Apple's own Breathe app, unverifiable from here. That call
+// stands. The wrist detects ("Crashed / Anxious") and requests; the phone
+// -- whose engine has voice, real technique timing, and device-confirmed
+// haptics -- runs the session. The watch is phone-tethered anyway, so the
+// phone is by definition nearby.
+// ═══════════════════════════════════════════════════════════════════
+var _resetChainSource=null;   // 'toolkit' | 'checkin' | 'watch' | null
+function startResetChain(source){
+  _resetChainSource=source||'toolkit';
+  // Close whatever the user was in (energy modal, tool kit overlay) -- the
+  // session is full-screen and the chain returns them to where the toast is.
+  if(typeof closeEnergyModal==='function')try{closeEnergyModal();}catch(e){}
+  document.querySelectorAll('.modal-blur-overlay.open').forEach(function(m){m.classList.remove('open');});
+  var sel=document.getElementById('breathSelect');
+  if(!sel)return;
+  sel.value='sigh';
+  startBreathwork();
+  _trackEvent('tool_use','reset_chain','Reset chain');
+}
+// Called from onBreathComplete when a chain is active: the optional capture
+// step. Deliberately AFTER the breathing, not before -- the point of the
+// chain is that regulation comes first and words come out easier after.
+function _resetChainCaptureStep(){
+  var step=document.getElementById('resetCaptureStep');
+  if(!step){_resetChainFinish('');return;}
+  var inp=document.getElementById('resetCaptureInput');
+  if(inp)inp.value='';
+  step.classList.add('active');
+}
+function _resetChainFinish(text){
+  var step=document.getElementById('resetCaptureStep');
+  if(step)step.classList.remove('active');
+  text=(text||'').trim();
+  if(text){
+    if(!state.thoughts)state.thoughts=[];
+    state.thoughts.push({id:'th'+Date.now(),text:text,created:new Date().toISOString()});
+    save();
+    if(typeof renderThoughts==='function')renderThoughts();
+  }
+  _resetChainSource=null;
+  if(breathActive)stopBreathwork();
+  toast(text?'Reset logged \u00b7 thought saved to Brain Dump':'Reset logged');
+}
+function resetCaptureDone(){
+  var inp=document.getElementById('resetCaptureInput');
+  _resetChainFinish(inp?inp.value:'');
+}
+function resetCaptureSkip(){_resetChainFinish('');}
 
 
 
@@ -7485,14 +7663,14 @@ function getAllTasks(){
   // Pull subtasks from all projects
   state.projects.forEach(function(p){
     p.subtasks.forEach(function(st){
-      tasks.push({id:st.id,name:st.name,done:st.done,priority:st.priority||'med',timeEst:st.timeEst||'',time:st.time||'',due:st.due||'',recurrence:st.recurrence||null,projectId:p.id,projectName:p.name,source:'project'});
+      tasks.push({id:st.id,name:st.name,done:st.done,priority:st.priority||'med',timeEst:st.timeEst||'',time:st.time||'',due:st.due||'',recurrence:st.recurrence||null,alertBefore:st.alertBefore||0,projectId:p.id,projectName:p.name,source:'project'});
     });
   });
   // Add standalone tasks
   (state.tasks||[]).forEach(function(t){
     var pName='';
     if(t.projectId){var pr=state.projects.find(function(p){return p.id===t.projectId;});if(pr)pName=pr.name;}
-    tasks.push({id:t.id,name:t.name,done:t.done,priority:t.priority||'med',timeEst:t.timeEst||'',time:t.time||'',due:t.due||'',recurrence:t.recurrence||null,projectId:t.projectId||'',projectName:pName,source:'standalone'});
+    tasks.push({id:t.id,name:t.name,done:t.done,priority:t.priority||'med',timeEst:t.timeEst||'',time:t.time||'',due:t.due||'',recurrence:t.recurrence||null,alertBefore:t.alertBefore||0,projectId:t.projectId||'',projectName:pName,source:'standalone'});
   });
   return tasks;
 }
@@ -7538,6 +7716,24 @@ function renderTodayView(){
   // Deliberately states the gap without counting it AT the user ("It's been a
   // few days", never "you missed 5 days"), and the decline is a real option
   // with equal weight, not a grey afterthought.
+  // J2-10 (panel survey 2026-08-22): the glance surfaces exist -- next-block
+  // lock-screen widget, watch complications, the timer Live Activity -- and
+  // are invisible unless you already know iOS hides them in the widget
+  // gallery. One card, native only, once ever: "no firefighter is
+  // spelunking the iOS widget gallery" (Shift Worker). Also the Skeptic's
+  // condition for the glance layer: discoverability ships before any further
+  // complication investment.
+  if(typeof _notifNative==='function'&&_notifNative()&&!_jitSeen('lockScreenSetup')){
+    html+='<div class="today-glance-card">'
+      +'<div class="tgc-title">Put Centerpost on your Lock Screen</div>'
+      +'<ol>'
+      +'<li>Press and hold your Lock Screen, tap <strong>Customize</strong>, then <strong>Lock Screen</strong>.</li>'
+      +'<li>Tap the widget strip under the clock and add <strong>Centerpost \u2014 Next block</strong>.</li>'
+      +'<li>On your watch: press and hold the watch face \u2192 <strong>Edit</strong> \u2192 pick a complication slot \u2192 <strong>Centerpost</strong>.</li>'
+      +'</ol>'
+      +'<div class="tgc-actions"><button class="btn btn-sm" onclick="_markJitSeen(\'lockScreenSetup\');renderTodayView();">Got it</button></div>'
+      +'</div>';
+  }
   var lapseOverdue=_overdueTasks();
   if(_lapseGapDays>=3&&lapseOverdue.length){
     html+='<div class="today-lapse-card">'
@@ -11137,7 +11333,8 @@ var TOOLKIT_EXPLAINER=[
   ['Workout','Today’s strength or cardio plan.'],
   ['HALT+','A body check for when focus tanks — hungry, tired, anxious, and the rest.'],
   ['Urge Log','Pause before you act on an impulse.'],
-  ['Wellness','Rate how balanced things feel across the week.']
+  ['Wellness','Rate how balanced things feel across the week.'],
+  ['Reset','Two minutes: guided breath, then put a thought down. After a call, a class, a hard hour.']
 ];
 function _renderToolkitExplainer(){
   var host=document.getElementById('toolkitExplainer');
