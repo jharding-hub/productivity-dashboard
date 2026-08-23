@@ -3382,6 +3382,14 @@ body.admin-overlay-open #starryLayer,body.admin-overlay-open #galaxyLayer,body.a
 .tl-triage-btn{padding:5px 10px;min-height:32px;font-size:calc(12px * var(--type-scale,1));border:1px solid var(--border-focus);border-radius:var(--radius-sm);background:var(--surface);color:var(--text);cursor:pointer;font-family:inherit;transition:border-color 0.15s,color 0.15s;}
 .tl-triage-btn:hover{border-color:var(--accent-dim);color:var(--accent);}
 .tl-triage-note a{color:var(--accent);cursor:pointer;text-decoration:underline;}
+/* Quiet crisis link at the foot of a regulation modal. The class was already
+   on four buttons but carried no rules -- each one re-declared the same six
+   inline styles, so the fifth and sixth (Journal, Energy & Mood, added
+   2026-08-23) would have copied them a fifth and sixth time. Passive by
+   design: never a popup, never coloured, just always findable. */
+.modal-footer-link{background:none;border:none;color:var(--text-faint);font-size:calc(11px * var(--type-scale,1));margin-top:14px;cursor:pointer;text-decoration:underline;padding:0;font-family:inherit;display:block;}
+.modal-footer-link:hover{color:var(--text-dim);}
+
 /* Content-first tile defaults (panel survey 2026-08-22, J2-3). A live count
    over an empty body read as data loss to most of the panel; these give the
    count something to point at without expanding the tile. */

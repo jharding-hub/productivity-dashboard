@@ -56,6 +56,11 @@ export default function EnergyMoodModal() {
                 {'📊'} <span>Mood History</span>
               </button>
             </div>
+            {/* Crisis-link parity (panel survey 2026-08-22, P7-S1). A check-in
+                logged at Crash is one of the few moments the app knows things
+                are bad; the link is passive and always here, never triggered
+                by what was selected. */}
+            <button className="modal-footer-link" onClick={() => window.openCrisisResources()}>Crisis resources</button>
           </div>
         </div>
       </div>

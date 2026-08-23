@@ -138,6 +138,12 @@ export default function JournalOverlay() {
               <span className="journal-char-count" id="journalCharCount">0 characters</span>
               <button className="btn btn-accent" onClick={() => window.saveJournalEntry()}>{'💾'} Save Entry</button>
             </div>
+            {/* Crisis-link parity (panel survey 2026-08-22, P7-S1). Breathwork
+                and the Urge Log already carried this; the Clinician's point
+                was that the journal is where distress actually gets written
+                down, so it was missing from the surface that needs it most.
+                Same passive pattern -- quiet, never a popup. */}
+            <button className="modal-footer-link" onClick={() => window.openCrisisResources()}>Crisis resources</button>
           </div>
 
           <div className="journal-entries-view" id="journalEntriesView" style={{ display: 'none' }}>
