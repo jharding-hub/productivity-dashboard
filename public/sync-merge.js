@@ -106,6 +106,38 @@ var SYNC_ACTIVE_ARRAYS = ['reminders','tasks','notes','thoughts'];
 // stay here until their own split, so _archiveTombstones is still in use.
 var SYNC_UNION_ARRAYS = ['completedProjects','completedWorkouts'];
 
+// ── Device heartbeats (panel survey 2026-08-22, I2-8) ────────────────────
+// state._devices = { deviceId: { n: "Mac · Chrome", t: lastSeenMs } } rides
+// in the dashboard blob so the sync popover can answer "which of my devices
+// was here last, and when". The blob as a whole is last-writer-wins, which
+// for THIS map would make heartbeats run backwards: device B saving with a
+// stale copy would erase the fresher timestamp A just wrote. So it merges
+// like the tombstone maps do — union by key, and on a shared key the LATEST
+// heartbeat wins (the opposite tie-break from tombstones, where earliest is
+// the truth; a heartbeat's truth is the most recent sighting).
+//
+// Pruned to the newest DEVICE_HEARTBEAT_MAX entries so a lifetime of
+// browsers can't grow the map forever — the popover is about "my devices",
+// not a permanent audit log.
+var DEVICE_HEARTBEAT_MAX = 8;
+function mergeDeviceHeartbeats(a, b){
+  var out = Object.create(null), k;
+  a = a || {}; b = b || {};
+  for(k in a){ if(Object.prototype.hasOwnProperty.call(a,k) && a[k]) out[k]=a[k]; }
+  for(k in b){
+    if(!Object.prototype.hasOwnProperty.call(b,k) || !b[k]) continue;
+    if(!(k in out) || (b[k].t||0) > (out[k].t||0)) out[k]=b[k];
+  }
+  var ids = Object.keys(out);
+  if(ids.length > DEVICE_HEARTBEAT_MAX){
+    ids.sort(function(x,y){ return (out[y].t||0)-(out[x].t||0); });
+    var pruned = Object.create(null);
+    ids.slice(0, DEVICE_HEARTBEAT_MAX).forEach(function(id){ pruned[id]=out[id]; });
+    out = pruned;
+  }
+  return out;
+}
+
 // Reconcile a local state snapshot against a cloud snapshot. Returns ONLY the
 // fields it owns (the synced arrays + both merged tombstone maps) for the
 // caller to Object.assign onto state. Pure — never mutates its inputs.
@@ -118,7 +150,8 @@ function reconcileSync(local, cloud){
   // reused entry there would be indistinguishable and couldn't represent
   // "the user cleared this history entry".
   var archiveTomb = mergeTombstones(local._archiveTombstones, cloud._archiveTombstones);
-  var out = { _tombstones: tomb, _archiveTombstones: archiveTomb };
+  var out = { _tombstones: tomb, _archiveTombstones: archiveTomb,
+              _devices: mergeDeviceHeartbeats(local._devices, cloud._devices) };
   SYNC_ACTIVE_ARRAYS.forEach(function(k){
     out[k] = _dropTombstoned(mergeById(local[k], cloud[k]), tomb);
   });
@@ -160,5 +193,5 @@ function reconcileLifetimeCounter(inMemory, loadedValue, arrayFloor){
 // there; under Node's CommonJS loader it exposes the pure functions for
 // test/sync-merge.test.mjs.
 if(typeof module!=='undefined' && module.exports){
-  module.exports = { _syncItemTime, mergeById, mergeTombstones, _dropTombstoned, mergeProjects, reconcileSync, reconcileLifetimeCounter, SYNC_ACTIVE_ARRAYS, SYNC_UNION_ARRAYS };
+  module.exports = { _syncItemTime, mergeById, mergeTombstones, _dropTombstoned, mergeProjects, reconcileSync, reconcileLifetimeCounter, mergeDeviceHeartbeats, DEVICE_HEARTBEAT_MAX, SYNC_ACTIVE_ARRAYS, SYNC_UNION_ARRAYS };
 }

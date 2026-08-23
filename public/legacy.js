@@ -735,8 +735,111 @@ async function exportMyData(){
     a.href=u;a.download='centerpost-export-'+todayStr()+'.json';
     document.body.appendChild(a);a.click();document.body.removeChild(a);
     URL.revokeObjectURL(u);
+    // A2-5: the export time is a synced fact -- any device's export counts,
+    // so the monthly nudge and the Your Data row read one truth everywhere.
+    state.lastExportAt=Date.now();
+    save();
     toast('✓ Export downloaded');
+    if(typeof _renderYourData==='function'&&document.getElementById('yourDataModal')&&document.getElementById('yourDataModal').classList.contains('open'))_renderYourData();
   }catch(e){toast('Export failed: '+(e.message||e.code||'unknown error'));}
+}
+
+// ═══════════════════════════════════════════════════════════════════
+// YOUR DATA (panel survey 2026-08-22, A2-5 / P4-S1 / P7-S2)
+//
+// The 2026-08-20 incident had a working backup story -- PITR and daily
+// backups were already on, and everything came back -- but every part of
+// that story was invisible to the user it protected. The sync popover would
+// have said "fine" while the app ate an archive doc, because it reports
+// transport, not custody. This page is the custody report: where the data
+// lives, when it was last backed up, who can see what, and the export the
+// user holds themselves. Facts only; the renderer computes, the markup in
+// app-body.html carries the copy.
+// ═══════════════════════════════════════════════════════════════════
+var _lastCloudCheckAt=null;   // stamped in load() when the cloud doc read OK
+function openYourData(){
+  document.getElementById('yourDataModal').classList.add('open');
+  _blurDashboard();
+  _renderYourData();
+}
+function closeYourData(){
+  document.getElementById('yourDataModal').classList.remove('open');
+  _unblurDashboard();
+}
+function _ydRow(label,value){
+  return '<div class="yd-row"><span class="yd-row-label">'+esc(label)+'</span><span class="yd-row-value">'+esc(value)+'</span></div>';
+}
+function _ydCount(n,label){
+  return '<div class="yd-count"><div class="yd-count-n">'+esc(String(n))+'</div><div class="yd-count-label">'+esc(label)+'</div></div>';
+}
+function _renderYourData(){
+  var rows=document.getElementById('ydBackupRows');
+  if(rows){
+    var html='';
+    html+=_ydRow('Saved on this device',_lastLocalSaveAt?_relTimeAgo(_lastLocalSaveAt):'No changes this session');
+    html+=_ydRow('Backed up to cloud',_lastSyncedAt?_relTimeAgo(_lastSyncedAt):(currentUser?'No changes this session':'Signed out — this device only'));
+    if(_lastCloudCheckAt)html+=_ydRow('Cloud copy checked',_relTimeAgo(_lastCloudCheckAt));
+    html+=_ydRow('Your last export',state.lastExportAt?_relTimeAgo(state.lastExportAt):'Never — a copy you hold is the best backup');
+    html+='<div class="yd-row" id="ydJournalSnapRow"><span class="yd-row-label">Journal snapshots (encrypted)</span><span class="yd-row-value">'+(currentUser?'Checking…':'Sign in to keep these')+'</span></div>';
+    rows.innerHTML=html;
+    if(currentUser)_ydFillJournalSnapshotRow();
+  }
+  var counts=document.getElementById('ydCounts');
+  if(counts){
+    var openTasks=getAllTasks().filter(function(t){return !t.done;}).length;
+    var journalN='—';
+    try{
+      var jd=localStorage.getItem(_journalStorageKey());
+      if(jd){var jp=JSON.parse(jd);journalN=(jp.entries||[]).length;}
+      else journalN=0;
+    }catch(e){}
+    counts.innerHTML=
+      _ydCount(openTasks,'open tasks')+
+      _ydCount((state.projects||[]).length,'projects')+
+      _ydCount((state.reminders||[]).length,'reminders')+
+      _ydCount((state.thoughts||[]).length,'thoughts')+
+      _ydCount((state.notes||[]).length,'notes')+
+      _ydCount(journalN,'journal entries (encrypted)')+
+      _ydCount((state.checkins||[]).length,'check-ins kept')+
+      _ydCount((state.moodLog||[]).length,'days of mood data')+
+      _ydCount(state.completedTasksLifetime||0,'tasks completed, lifetime')+
+      _ydCount(state.remindersArchiveLifetime||0,'reminders archived, lifetime');
+  }
+  _renderYourDataSweepLine();
+}
+// Async fill: one read of the journalBackup doc, only while the page is open.
+async function _ydFillJournalSnapshotRow(){
+  var row=document.getElementById('ydJournalSnapRow');
+  if(!row)return;
+  var setVal=function(v){var el=row.querySelector('.yd-row-value');if(el)el.textContent=v;};
+  if(!(firebaseReady&&db&&currentUser)){setVal('Sign in to keep these');return;}
+  try{
+    var snap=await db.collection('users').doc(currentUser.uid).collection('data').doc('journalBackup').get();
+    if(!snap.exists){setVal('None yet — one is kept each week you write');return;}
+    var d=snap.data()||{};
+    var keys=Object.keys(d.versions||{}).sort();
+    if(!keys.length){setVal('None yet — one is kept each week you write');return;}
+    var latest=(d.versions[keys[keys.length-1]]||{}).savedAt;
+    setVal(keys.length+' kept · latest '+(latest?_relTimeAgo(Date.parse(latest)):keys[keys.length-1]));
+  }catch(e){setVal('Could not check right now');}
+}
+function _renderYourDataSweepLine(){
+  var line=document.getElementById('ydSweepPreview');
+  var sel=document.getElementById('ydSweepAge');
+  if(!line||!sel)return;
+  var days=parseInt(sel.value,10)||90;
+  var pv=_sweepPreview(days);
+  var parts=[];
+  if(pv.thoughts.length)parts.push(pv.thoughts.length+' thought'+(pv.thoughts.length!==1?'s':''));
+  if(pv.completed.length)parts.push(pv.completed.length+' completed record'+(pv.completed.length!==1?'s':''));
+  if(pv.checkins.length)parts.push(pv.checkins.length+' check-in'+(pv.checkins.length!==1?'s':''));
+  line.textContent=parts.length
+    ?('Right now that would clear '+parts.join(', ')+'.')
+    :('Nothing older than '+days+' days — you are current.');
+}
+function runArchiveSweepFromYourData(){
+  var sel=document.getElementById('ydSweepAge');
+  runArchiveSweep(parseInt(sel&&sel.value,10)||90);
 }
 
 // Deletion is done server-side (the Worker verifies the ID token, then
@@ -754,7 +857,7 @@ function deleteMyAccount(){
 // deletion, and the other-device purge in _purgeDeletedAccountData. Keeping
 // one list is the point: this wipe has silently drifted out of date twice as
 // new per-account caches were added. ADD NEW uid-SUFFIXED KEYS HERE.
-var UID_SCOPED_LS_PREFIXES=['prodDash_','cpCheckins_','cpMoodLog_','cpJournal_','cpJournalBio_','cpCompletedTasks_','cpRemindersArchive_','cpAxisProfile_','cpBreathStarts_','cpBreathResDismissed_','cpLastGood_checkins_','cpLastGood_moodLog_','cpLastGood_completedTasks_','cpLastGood_remindersArchive_'];
+var UID_SCOPED_LS_PREFIXES=['prodDash_','cpCheckins_','cpMoodLog_','cpJournal_','cpJournalBio_','cpCompletedTasks_','cpRemindersArchive_','cpAxisProfile_','cpBreathStarts_','cpBreathResDismissed_','cpLastGood_checkins_','cpLastGood_moodLog_','cpLastGood_completedTasks_','cpLastGood_remindersArchive_','cpJournalBackupAt_','cpExportNudgeAt_'];
 // Clear every device-local trace of this account. Deleting the cloud copy is
 // not enough on its own: the local mirrors below are what the app reads FIRST
 // on load, and reconcileLifetimeCounter takes a max, so a surviving local
@@ -816,6 +919,14 @@ async function _performAccountDeletion(){
   var uid=currentUser?currentUser.uid:null;
   if(!uid){toast('Sign in first');return;}
   try{
+    // journalBackup (P5-S3) is newer than the Worker's fixed USER_DATA_DOCS
+    // list, so until the redeployed Worker knows the name, "delete
+    // everything" would leave the encrypted snapshots behind -- ciphertext,
+    // but still this account's data outliving the account. Best-effort
+    // client-side delete first (the /data/{doc} rules allow the owner to);
+    // the Worker list gains the name too, and deleting a missing doc there
+    // is a no-op, so doing both is idempotent, not a race.
+    try{await db.collection('users').doc(uid).collection('data').doc('journalBackup').delete();}catch(e){}
     var idToken=await currentUser.getIdToken(true);
     var resp=await fetch(JARVIS_PROXY_URL+'/account/delete',{
       method:'POST',
@@ -1248,6 +1359,49 @@ function _resetStateForNewUser(){
 // the popover says so plainly rather than leaving that to be inferred.
 var _lastSyncedAt=null;
 var _syncDetail={status:'offline',label:'Local'};
+// ── Device heartbeats (panel survey 2026-08-22, I2-8) ────────────────────
+// Who else has been here, and when. state._devices rides the dashboard blob
+// and merges via mergeDeviceHeartbeats (sync-merge.js) so a stale writer
+// can't roll another device's sighting backwards. Writes PIGGYBACK on saves
+// that were happening anyway -- the heartbeat itself never schedules one.
+var DEVICE_HEARTBEAT_MIN_GAP=30*60000;   // refresh at most every 30 min
+function _deviceId(){
+  try{
+    var id=localStorage.getItem('cpDeviceId');
+    if(!id){id='dev_'+Math.random().toString(36).slice(2,10)+Date.now().toString(36);localStorage.setItem('cpDeviceId',id);}
+    return id;
+  }catch(e){return 'dev_unknown';}
+}
+function _deviceLabel(){
+  // Native shells first -- the WWW bundle runs inside Capacitor there.
+  var native=(typeof _notifNative==='function')&&_notifNative();
+  var ua=navigator.userAgent||'';
+  if(native)return /iPad/i.test(ua)?'iPad app':'iPhone app';
+  var os=/iPhone|iPod/i.test(ua)?'iPhone':/iPad/i.test(ua)?'iPad':/Android/i.test(ua)?'Android'
+        :/Mac/i.test(ua)?'Mac':/Win/i.test(ua)?'Windows':/Linux/i.test(ua)?'Linux':'Device';
+  var br=/Edg\//.test(ua)?'Edge':/Firefox\//.test(ua)?'Firefox':/Chrome\//.test(ua)?'Chrome'
+        :/Safari\//.test(ua)?'Safari':'browser';
+  return os+' \u00b7 '+br;
+}
+function _touchDeviceHeartbeat(){
+  try{
+    if(!currentUser)return;                      // local-only mode has no fleet to report
+    if(!state._devices)state._devices={};
+    var id=_deviceId(),now=Date.now();
+    var cur=state._devices[id];
+    if(cur&&cur.t&&(now-cur.t)<DEVICE_HEARTBEAT_MIN_GAP&&cur.n===_deviceLabel())return;
+    state._devices[id]={n:_deviceLabel(),t:now};
+    // Prune with the SAME rule the merge uses, so what this device persists
+    // is already in canonical shape.
+    if(typeof mergeDeviceHeartbeats==='function')state._devices=mergeDeviceHeartbeats(state._devices,{});
+  }catch(e){}
+}
+// When THIS device last wrote its local copy vs when the cloud last confirmed
+// one -- the pair the popover uses to say, honestly, whether anything here is
+// still waiting to be backed up. (The 2026-08-20 incident taught that
+// "transport OK" and "your data is where you think it is" are different
+// claims; these two stamps keep the popover from conflating them.)
+var _lastLocalSaveAt=null;
 function setSyncStatus(status,label){
   const el=document.getElementById('syncStatus');
   _syncDetail={status:status,label:label};
@@ -1311,9 +1465,31 @@ function _renderSyncPopover(){
   if(!pop)return;
   var d=_syncDetail;
   var lastSynced=_lastSyncedAt?_relTimeAgo(_lastSyncedAt):(d.status==='offline'?'Not yet synced':'Unknown');
-  var html='<div class="sync-popover-status">'+esc(d.label)+'</div>'
-    +'<div class="sync-popover-row"><span class="sync-popover-label">Last synced</span><span class="sync-popover-value">'+esc(lastSynced)+'</span></div>'
-    +'<div class="sync-popover-safety">'+esc(_syncSafetyLine(d.status))+'</div>';
+  var html='<div class="sync-popover-status">'+esc(d.label)+'</div>';
+  // I2-8: "saved" and "backed up" are different claims, shown as different
+  // rows. The 2026-08-20 incident happened while the transport said fine;
+  // multi-device users deserve the two timestamps, not one word for both.
+  html+='<div class="sync-popover-row"><span class="sync-popover-label">Saved on this device</span><span class="sync-popover-value">'+esc(_lastLocalSaveAt?_relTimeAgo(_lastLocalSaveAt):'No changes yet')+'</span></div>';
+  html+='<div class="sync-popover-row"><span class="sync-popover-label">Backed up to cloud</span><span class="sync-popover-value">'+esc(lastSynced)+'</span></div>';
+  if(_lastLocalSaveAt&&d.status!=='synced'&&d.status!=='syncing'
+     &&(!_lastSyncedAt||_lastLocalSaveAt-_lastSyncedAt>120000)){
+    html+='<div class="sync-popover-pending">Changes made here are still waiting to reach the cloud.</div>';
+  }
+  html+='<div class="sync-popover-safety">'+esc(_syncSafetyLine(d.status))+'</div>';
+  // Other devices, from the merged heartbeat map. This device is excluded --
+  // its story is the two rows above.
+  if(currentUser&&state._devices){
+    var me=_deviceId();
+    var others=Object.keys(state._devices).filter(function(k){return k!==me&&state._devices[k];})
+      .sort(function(a,b){return (state._devices[b].t||0)-(state._devices[a].t||0);});
+    if(others.length){
+      html+='<div class="sync-popover-devices-head">Your other devices</div>';
+      others.forEach(function(k){
+        var dev=state._devices[k];
+        html+='<div class="sync-popover-row"><span class="sync-popover-label">'+esc(dev.n||'Device')+'</span><span class="sync-popover-value">'+esc(dev.t?_relTimeAgo(dev.t):'—')+'</span></div>';
+      });
+    }
+  }
   if(d.status==='error'){
     html+='<button class="btn btn-sm sync-popover-retry" onclick="_retrySyncNow()">Retry sync</button>';
   }
@@ -1394,6 +1570,8 @@ function save(){
   if(_accountDeleted)return;
   if(_batchDepth>0){_batchDirty=true;return;}
   const uid=currentUser?currentUser.uid:'local';
+  // I2-8: refresh this device's heartbeat while a save is happening anyway.
+  if(typeof _touchDeviceHeartbeat==='function')_touchDeviceHeartbeat();
   // E-1: stamp the state itself so every copy carries the time of the last
   // edit it reflects -- this is what the write guard below compares.
   state._updatedAt=Date.now();
@@ -1402,7 +1580,7 @@ function save(){
   // along in every dashboard-doc write. JSON.stringify drops keys whose
   // value is undefined, so this omits them without deep-cloning the rest.
   const blob=JSON.stringify(Object.assign({},state,{checkins:undefined,moodLog:undefined,completedTasks:undefined,completedTasksLifetime:undefined,completedProjectSubtasksLifetime:undefined,remindersArchive:undefined,remindersArchiveLifetime:undefined}));
-  try{localStorage.setItem('prodDash_'+uid,blob);}catch(e){}
+  try{localStorage.setItem('prodDash_'+uid,blob);_lastLocalSaveAt=Date.now();}catch(e){}
   _checkStateSize(blob.length);
   if(typeof pushWatchSnapshot==='function')pushWatchSnapshot(); // mirror to Apple Watch
   if(typeof _notifScheduleNativeSync==='function')_notifScheduleNativeSync(); // reschedule iOS local notifications (debounced)
@@ -1471,6 +1649,7 @@ async function load(){
     try{
       setSyncStatus('syncing','Loading...');
       const doc=await db.collection('users').doc(currentUser.uid).collection('data').doc('dashboard').get();
+      _lastCloudCheckAt=Date.now();
       if(doc.exists&&doc.data().state){
         const cloud=JSON.parse(doc.data().state);
         if(cloud.projects||cloud.reminders||cloud.notes){
@@ -8941,17 +9120,35 @@ function _sweepPreview(days){
   var oldCompleted=(state.completedTasks||[]).filter(function(t){
     return t.archivedAt&&new Date(t.archivedAt).getTime()<cutoff;
   });
-  return {thoughts:oldThoughts,completed:oldCompleted};
+  // Panel survey 2026-08-22 (I2-7): check-ins joined the sweep -- the
+  // fastest-growing history (the cap already trims them silently; this is
+  // the deliberate version). moodLog deliberately did NOT: one entry per
+  // day, a few KB a year, and it feeds the 90-day chart and the seasonal
+  // patterns the same panel asked to EXTEND -- sweeping it would quietly
+  // contradict I-13. The guard check matters here too: if the checkins doc
+  // was unreadable this session, the save would refuse the write, so the
+  // PREVIEW must not promise what the save will refuse -- an unreadable doc
+  // simply contributes zero sweepable check-ins.
+  var oldCheckins=(typeof _ownDocLoaded!=='undefined'&&_ownDocLoaded.checkins)
+    ?(state.checkins||[]).filter(function(c){
+        var ms=c&&c.ts?new Date(c.ts).getTime():NaN;
+        return !isNaN(ms)&&ms<cutoff;
+      })
+    :[];
+  return {thoughts:oldThoughts,completed:oldCompleted,checkins:oldCheckins};
 }
 function runArchiveSweep(days){
   days=days||ARCHIVE_SWEEP_DEFAULT_DAYS;
   var pv=_sweepPreview(days);
-  var nT=pv.thoughts.length,nC=pv.completed.length;
-  if(nT+nC===0){toast('Nothing older than '+days+' days to clear');return;}
+  var nT=pv.thoughts.length,nC=pv.completed.length,nK=(pv.checkins||[]).length;
+  if(nT+nC+nK===0){toast('Nothing older than '+days+' days to clear');return;}
   var parts=[];
   if(nT)parts.push(nT+' Brain Dump thought'+(nT!==1?'s':''));
   if(nC)parts.push(nC+' completed-task record'+(nC!==1?'s':''));
-  _confirm('Clear '+parts.join(' and ')+' older than '+days+' days? Your lifetime counts are not affected.',
+  if(nK)parts.push(nK+' check-in'+(nK!==1?'s':''));
+  // I2-7: the semantics, stated where the decision happens -- what leaves,
+  // what stays, and that the door to a copy is behind them, not gone.
+  _confirm('Clear '+parts.join(', ')+' older than '+days+' days? Removed from the app on every device. Your lifetime counts and the mood chart are untouched. (Want a copy first? Your data has exports.)',
     function(){
       pv.thoughts.forEach(function(t){_tombstone(t.id);});
       pv.completed.forEach(function(t){_archiveTombstone(t.id);});
@@ -8960,6 +9157,17 @@ function runArchiveSweep(days){
       pv.completed.forEach(function(t){cIds[t.id]=1;});
       state.thoughts=(state.thoughts||[]).filter(function(t){return !tIds[t.id];});
       state.completedTasks=(state.completedTasks||[]).filter(function(t){return !cIds[t.id];});
+      // Check-ins have no tombstone map on purpose: their own-doc replaces
+      // wholesale on load (no union), so filtering + one guarded save IS the
+      // durable removal. _sweepPreview already returned zero of them if the
+      // doc wasn't readable this session, so this save cannot be refused
+      // into silently keeping what the confirm just promised to clear.
+      if(nK){
+        var kIds={};
+        pv.checkins.forEach(function(c){if(c&&c.ts)kIds[c.ts]=1;});
+        state.checkins=(state.checkins||[]).filter(function(c){return !(c&&kIds[c.ts]);});
+        if(typeof _saveCheckinsDoc==='function')_saveCheckinsDoc();
+      }
       // Lifetime counters are deliberately NOT decremented -- they count
       // everything ever completed, and the archive array has always been a
       // capped recent subset of that (see reconcileLifetimeCounter). A sweep
@@ -8968,7 +9176,8 @@ function runArchiveSweep(days){
       save();
       if(typeof renderThoughts==='function')renderThoughts();
       if(typeof renderTaskList==='function')renderTaskList();
-      toast('Cleared '+(nT+nC)+' old item'+((nT+nC)!==1?'s':''));
+      if(typeof _renderYourDataSweepLine==='function')_renderYourDataSweepLine();
+      toast('Cleared '+(nT+nC+nK)+' old item'+((nT+nC+nK)!==1?'s':''));
     },
     {confirmText:'Clear them',icon:'ti-archive'});
 }
@@ -10983,7 +11192,32 @@ function lapseCardTriage(mode){
   _lapseGapDays=0;
   tlTriage(mode);
 }
+// ── Monthly export nudge (panel survey 2026-08-22, P4-S3) ────────────────
+// "Backup as a possession, not a promise." Once per 30 days, only for
+// accounts with enough data to be worth holding, and never twice in a month
+// even across sign-in cycles (device-local stamp) or devices (the synced
+// state.lastExportAt is the primary gate). A toast, not a dialog -- this is
+// an invitation, not a chore with a deadline.
+function _maybeExportNudge(){
+  try{
+    if(!currentUser)return;
+    var recordCount=getAllTasks().length+(state.thoughts||[]).length+(state.checkins||[]).length+(state.moodLog||[]).length;
+    if(recordCount<30)return;   // a nearly-empty account has nothing to lose yet
+    var THIRTY_D=30*86400000;
+    if(state.lastExportAt&&Date.now()-state.lastExportAt<THIRTY_D)return;
+    var k='cpExportNudgeAt_'+currentUser.uid,last=0;
+    try{last=parseInt(localStorage.getItem(k),10)||0;}catch(e){}
+    if(Date.now()-last<THIRTY_D)return;
+    try{localStorage.setItem(k,String(Date.now()));}catch(e){}
+    setTimeout(function(){
+      if(typeof toast==='function')toast(state.lastExportAt
+        ?'It\u2019s been a month since your last export \u2014 a fresh copy you hold takes one tap: Settings \u2192 Your data.'
+        :'Worth a monthly habit: Settings \u2192 Your data \u2192 export a copy you hold. Backups on our side are real, but the copy in your hands depends on nobody.',7000);
+    },6000);
+  }catch(e){}
+}
 function awardDailyLogin(){
+  _maybeExportNudge();
   var today=_dayKey();
   if(state.points.lastLoginDate!==today){
     var prevDate=state.points.lastLoginDate;
@@ -11940,8 +12174,83 @@ async function _saveJournalDoc(){
       var cloud={};for(var k in doc)cloud[k]=doc[k];
       cloud.updated=firebase.firestore.FieldValue.serverTimestamp();
       await db.collection('users').doc(currentUser.uid).collection('data').doc('journal').set(cloud);
+      // P5-S3: only after the PRIMARY write succeeded -- a backup taken from
+      // a state the primary refused would enshrine exactly the wrong copy.
+      _maybeBackupJournalDoc(doc);
     }catch(e){console.log('journal save (cloud) error:',e);if(typeof toast==='function')toast('Journal saved locally (cloud sync failed)');}
   }
+}
+
+// ═══════════════════════════════════════════════════════════════════
+// JOURNAL SNAPSHOTS (panel survey 2026-08-22, P5-S3 / Skeptic flag 4)
+//
+// The journal is the one store support can never restore: ciphertext whose
+// key exists only in the user's head. This codebase has a DEMONSTRATED
+// full-document-overwrite bug class (2026-08-20), and the journal doc has no
+// tombstones, no union merge, and no second copy beyond a localStorage
+// mirror on whatever device wrote last. One bad write = gone, by design.
+//
+// So: a rolling weekly snapshot of the ENCRYPTED doc, in a sibling own-doc
+// (users/{uid}/data/journalBackup -- the /data/{doc} wildcard rule already
+// covers it, no rules change). Ciphertext only; the key story is untouched
+// and this file never sees a decrypted byte.
+//
+// Written AFTER a successful primary save, at most once a day, and only
+// after READING the backup doc itself in the same breath -- the own-doc
+// guard rule applied locally: a read that threw means skip, because the doc
+// may hold versions we could not see. Versions are keyed by ISO week and
+// only ever ADDED or age-pruned; a bug overwriting the primary would have
+// to also run this path -- after a read, on a different doc -- to reach
+// last week's copy.
+//
+// Size: Firestore caps docs at 1 MiB. Versions are pruned oldest-first to
+// stay under JOURNAL_BACKUP_BUDGET; if even a single copy exceeds it, skip
+// with a warning rather than fail the primary save's caller.
+// ═══════════════════════════════════════════════════════════════════
+var JOURNAL_BACKUP_KEEP=8;               // weekly, ~2 months of history
+var JOURNAL_BACKUP_BUDGET=700000;        // chars of JSON, well under 1 MiB
+function _isoWeekKey(d){
+  // ISO-8601 week number, UTC math (a backup label does not need the day
+  // anchor's precision -- it needs to be stable across devices).
+  var t=new Date(Date.UTC(d.getFullYear(),d.getMonth(),d.getDate()));
+  var day=t.getUTCDay()||7;
+  t.setUTCDate(t.getUTCDate()+4-day);
+  var yearStart=new Date(Date.UTC(t.getUTCFullYear(),0,1));
+  var week=Math.ceil(((t-yearStart)/86400000+1)/7);
+  return t.getUTCFullYear()+'-W'+(week<10?'0':'')+week;
+}
+function _journalBackupAtKey(){return 'cpJournalBackupAt_'+(currentUser?currentUser.uid:'local');}
+async function _maybeBackupJournalDoc(doc){
+  try{
+    if(!(firebaseReady&&db&&currentUser))return;
+    if(!doc||!Array.isArray(doc.entries)||!doc.entries.length)return;  // nothing worth snapshotting
+    var last=0;
+    try{last=parseInt(localStorage.getItem(_journalBackupAtKey()),10)||0;}catch(e){}
+    if(Date.now()-last<20*3600000)return;   // at most ~daily
+    var ref=db.collection('users').doc(currentUser.uid).collection('data').doc('journalBackup');
+    var versions={};
+    try{
+      var snap=await ref.get();
+      if(snap.exists&&snap.data()&&snap.data().versions)versions=snap.data().versions;
+    }catch(e){
+      // The guard rule: a read that threw is not a read. The doc may hold
+      // versions we simply could not see; writing now could destroy them.
+      console.warn('[journal-backup] backup doc unreadable this session -- skipping',e);
+      return;
+    }
+    var copy={savedAt:new Date().toISOString(),salt:doc.salt,iterations:doc.iterations,verifier:doc.verifier,entries:doc.entries};
+    if(JSON.stringify(copy).length>JOURNAL_BACKUP_BUDGET){
+      console.warn('[journal-backup] single snapshot exceeds the size budget -- skipping');
+      return;
+    }
+    versions[_isoWeekKey(new Date())]=copy;   // this week's slot updates in place
+    var keys=Object.keys(versions).sort();    // ISO week keys sort chronologically
+    while(keys.length>JOURNAL_BACKUP_KEEP){delete versions[keys.shift()];}
+    while(keys.length>1&&JSON.stringify(versions).length>JOURNAL_BACKUP_BUDGET){delete versions[keys.shift()];}
+    await ref.set({v:1,versions:versions,updated:firebase.firestore.FieldValue.serverTimestamp()});
+    try{localStorage.setItem(_journalBackupAtKey(),String(Date.now()));}catch(e){}
+    console.log('[journal-backup] snapshot kept ('+Object.keys(versions).length+' version(s))');
+  }catch(e){console.warn('[journal-backup] failed (primary save unaffected)',e);}
 }
 
 async function _decryptAllEntries(){

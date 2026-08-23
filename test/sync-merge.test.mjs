@@ -10,7 +10,8 @@ import assert from 'node:assert/strict';
 import { createRequire } from 'node:module';
 const require = createRequire(import.meta.url);
 
-const { mergeById, mergeTombstones, reconcileSync, _dropTombstoned, reconcileLifetimeCounter } = require('../public/sync-merge.js');
+const { mergeById, mergeTombstones, reconcileSync, _dropTombstoned, reconcileLifetimeCounter,
+        mergeDeviceHeartbeats, DEVICE_HEARTBEAT_MAX } = require('../public/sync-merge.js');
 const DU = require('../public/date-utils.js');
 const { fmtDate, _dueCountdownLabel, setDayAnchorMinutes, getDayAnchorMinutes,
         _anchoredNow, _anchoredDayKey, _anchoredDayEnd, todayStr, _dayKey, _monthKey,
@@ -723,4 +724,54 @@ test('timer sync: reconcileSync does not own focusTimer', () => {
   const out = reconcileSync({ focusTimer: ft(), reminders: [], _tombstones: {} },
                             { reminders: [], _tombstones: {} });
   assert.ok(!('focusTimer' in out));
+});
+
+
+// ── I2-8 device heartbeats (panel survey 2026-08-22) ────────────────────────
+// The blob is last-writer-wins; this map must not be, or heartbeats regress.
+
+test('heartbeats: union by device, latest sighting wins', () => {
+  const local = { mac:  { n: 'Mac · Chrome',  t: 2000 },
+                  phone:{ n: 'iPhone app',    t:  500 } };
+  const cloud = { mac:  { n: 'Mac · Chrome',  t: 1000 },   // stale copy of mac
+                  ipad: { n: 'iPad · Safari', t: 3000 } };  // device local never met
+  const out = mergeDeviceHeartbeats(local, cloud);
+  assert.equal(out.mac.t, 2000);        // fresher local sighting survives the stale cloud one
+  assert.equal(out.phone.t, 500);       // local-only device survives
+  assert.equal(out.ipad.t, 3000);       // cloud-only device survives
+});
+
+test('heartbeats: a stale writer cannot erase a fresher sighting (the regression this exists for)', () => {
+  // Device B saves the whole blob holding an OLD copy of A's heartbeat.
+  // Under plain spread, A would appear last-seen an hour ago forever.
+  const afterAWrote = { A: { n: 'Mac · Chrome', t: 10_000 }, B: { n: 'iPhone app', t: 9_000 } };
+  const staleB      = { A: { n: 'Mac · Chrome', t:  1_000 }, B: { n: 'iPhone app', t: 9_500 } };
+  const out = mergeDeviceHeartbeats(afterAWrote, staleB);
+  assert.equal(out.A.t, 10_000);
+  assert.equal(out.B.t, 9_500);
+});
+
+test('heartbeats: pruned to the newest DEVICE_HEARTBEAT_MAX', () => {
+  const many = {};
+  for (let i = 0; i < DEVICE_HEARTBEAT_MAX + 4; i++) many['d' + i] = { n: 'Dev ' + i, t: i };
+  const out = mergeDeviceHeartbeats(many, {});
+  const ids = Object.keys(out);
+  assert.equal(ids.length, DEVICE_HEARTBEAT_MAX);
+  // the OLDEST ones are the ones dropped
+  assert.ok(!out.d0 && !out.d1 && !out.d2 && !out.d3);
+  assert.ok(out['d' + (DEVICE_HEARTBEAT_MAX + 3)]);
+});
+
+test('heartbeats: reconcileSync owns _devices at both apply sites', () => {
+  const out = reconcileSync(
+    { _devices: { mac: { n: 'Mac', t: 2 } }, tasks: [], reminders: [], notes: [], thoughts: [] },
+    { _devices: { mac: { n: 'Mac', t: 1 }, ipad: { n: 'iPad', t: 3 } } }
+  );
+  assert.equal(out._devices.mac.t, 2);
+  assert.equal(out._devices.ipad.t, 3);
+});
+
+test('heartbeats: absent on both sides stays an empty map, never a crash', () => {
+  const out = reconcileSync({ tasks: [] }, {});
+  assert.deepEqual(Object.keys(out._devices), []);
 });

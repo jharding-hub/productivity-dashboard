@@ -384,10 +384,10 @@
 <!-- Panel survey Stage 4 (A-15): one-tap removal of the optional starter
      tasks, so saying yes to the template is never a mess to undo by hand. -->
 <button class="btn" onclick="clearStarterTasks()">Clear starter tasks</button>
-<!-- Panel survey Stage 6 (A-9): retire old Brain Dump thoughts and
-     completed-task history. Archives via the tombstone path, never a raw
-     splice -- see runArchiveSweep in legacy.js. -->
-<button class="btn" onclick="runArchiveSweep(90)">Clear items older than 90 days</button>
+<!-- Panel survey 2026-08-22 (A2-5): the single sweep button grew into the
+     Your Data page -- backup story, counts, trust copy, exports, and the
+     sweep (now with an age choice and a preview) all live there. -->
+<button class="btn" onclick="openYourData()">&#128737;&#65039; Your data &amp; backups</button>
 <button class="btn btn-danger" onclick="deleteMyAccount()">Delete my account</button>
 </div>
 <div style="border-bottom:1px solid var(--border);margin:16px 0;"></div>
@@ -526,6 +526,61 @@
     <p style="margin:0 0 6px;color:var(--text-dim);">Please close the app and reach out to a real person &mdash; that matters far more than anything in here.</p>
     <p style="margin:0 0 14px;color:var(--text-faint);font-size:12px;">Centerpost is a general wellness and productivity tool. The breathing, grounding, HALT+, and Urge Log tools here are self-directed skill practice, not therapy or treatment, and there is no monitoring, assessment, or crisis response behind them.</p>
     <button class="btn btn-sm" onclick="openLegalDoc('/disclaimer')" style="width:100%;">Read the full Medical &amp; Crisis Disclaimer</button>
+  </div>
+</div>
+</div>
+
+<!-- YOUR DATA (panel survey 2026-08-22, A2-5 / P4-S1 / P7-S2). One page that
+     answers, in plain language: where does my data live, when was it last
+     backed up, who can see what, how do I hold my own copy, and how do I
+     retire old volume. Exists because the 2026-08-20 own-doc incident proved
+     the backup story was REAL but entirely invisible to the person whose
+     data it protected. Static skeleton; _renderYourData() fills the facts. -->
+<div class="modal-blur-overlay" id="yourDataModal" role="dialog" aria-modal="true" aria-labelledby="yourDataTitle">
+<div class="modal-blur-backdrop" onclick="closeYourData()"></div>
+<div class="modal-blur-panel" style="width:min(560px,95vw);max-height:88vh;display:flex;flex-direction:column;">
+  <div class="modal-blur-header">
+    <div class="modal-blur-title" id="yourDataTitle">&#128737;&#65039; Your data</div>
+    <button class="modal-blur-close" onclick="closeYourData()" aria-label="Close">&#10005;</button>
+  </div>
+  <div class="modal-blur-body" style="padding:16px 20px;font-size:13px;line-height:1.55;overflow-y:auto;">
+
+    <p style="margin:0 0 10px;color:var(--text-dim);">Every change saves to this device first, then backs up to your account in the cloud. Behind the scenes the database also keeps daily backups with point-in-time recovery, so an accident on our side is usually repairable. The export below is the copy <em>you</em> hold &mdash; the only one that depends on nobody.</p>
+
+    <div class="yd-rows" id="ydBackupRows"></div>
+
+    <div class="yd-section-head">What&rsquo;s in your account</div>
+    <div class="yd-counts" id="ydCounts"></div>
+
+    <div class="yd-section-head">Your copy</div>
+    <div style="display:flex;flex-wrap:wrap;gap:6px;margin-bottom:4px;">
+      <button class="btn btn-sm" onclick="exportMyData()">&#11015; Export everything (JSON)</button>
+      <button class="btn btn-sm" onclick="_exportCheckinsCSV()">Check-ins CSV</button>
+      <button class="btn btn-sm" onclick="_exportMoodLogCSV()">Mood CSV</button>
+    </div>
+    <p style="margin:0 0 12px;color:var(--text-faint);font-size:11.5px;">The everything-export includes your encrypted journal as ciphertext. A readable journal export lives inside the Journal itself, while it&rsquo;s unlocked.</p>
+
+    <div class="yd-section-head">Who can see what</div>
+    <ul class="yd-trust-list">
+      <li><strong>Journal:</strong> encrypted on your device. The key comes from your PIN and is never stored or sent anywhere &mdash; nobody, including support, can read or reset it. A weekly snapshot of the <em>encrypted</em> journal is kept automatically in your account as a second copy.</li>
+      <li><strong>Axis (the AI):</strong> cannot see your journal, mood log, urge log, or check-ins. It reads tasks, projects, reminders, and the timeline &mdash; nothing from the regulation tools.</li>
+      <li><strong>Everything else:</strong> lives in your account, readable only by you. No ads, no tracking, no sale of data.</li>
+      <li><strong>Leaving:</strong> export everything above, then delete your account in Settings &mdash; deletion removes the cloud data, this device&rsquo;s copies, and the account itself.</li>
+    </ul>
+
+    <div class="yd-section-head">Clear old items</div>
+    <p style="margin:0 0 8px;color:var(--text-dim);">Retire old Brain Dump thoughts, completed-task records, and check-ins. Removed on every device; your lifetime counts and the mood chart are untouched. Export first if you want a copy.</p>
+    <div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap;">
+      <label for="ydSweepAge" style="color:var(--text-dim);">Older than</label>
+      <select id="ydSweepAge" onchange="_renderYourDataSweepLine()">
+        <option value="30">30 days</option>
+        <option value="90" selected>90 days</option>
+        <option value="180">180 days</option>
+      </select>
+      <button class="btn btn-sm" onclick="runArchiveSweepFromYourData()">Preview &amp; clear&hellip;</button>
+    </div>
+    <p id="ydSweepPreview" style="margin:8px 0 0;color:var(--text-faint);font-size:11.5px;"></p>
+
   </div>
 </div>
 </div>

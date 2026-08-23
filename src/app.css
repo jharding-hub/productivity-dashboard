@@ -2862,6 +2862,11 @@ body[data-theme="storm-dark"] .tl-hour-label{
 .sync-popover-row{display:flex;justify-content:space-between;gap:12px;color:var(--text-dim);margin-bottom:6px;}
 .sync-popover-safety{color:var(--text-dim);line-height:1.4;padding-top:6px;border-top:1px solid var(--border);}
 .sync-popover-retry{margin-top:10px;width:100%;}
+/* I2-8: the honest middle state -- local has changes the cloud hasn't
+   confirmed. Amber-ish via the warn color if the theme has one; NOT red,
+   because the safety line right below it explains the data is not at risk. */
+.sync-popover-pending{color:var(--warn,#d4a853);font-size:11px;line-height:1.4;margin:2px 0 6px;}
+.sync-popover-devices-head{font-size:10px;font-weight:700;letter-spacing:0.6px;text-transform:uppercase;color:var(--text-faint);margin:8px 0 4px;padding-top:6px;border-top:1px solid var(--border);}
 /* ── JOURNAL BUTTON ── */
 .journal-btn{background:var(--accent-glow);border:1.5px solid var(--accent-dim);color:var(--accent);padding:7px 16px;border-radius:var(--radius-sm);cursor:pointer;font-size:calc(14px * var(--type-scale,1));font-weight:600;font-family:'Fraunces',serif;letter-spacing:0.3px;transition:all 0.2s;}
 .journal-btn:hover{background:var(--accent);color:var(--bg);}
@@ -3382,6 +3387,20 @@ body.admin-overlay-open #starryLayer,body.admin-overlay-open #galaxyLayer,body.a
 .tl-triage-btn{padding:5px 10px;min-height:32px;font-size:calc(12px * var(--type-scale,1));border:1px solid var(--border-focus);border-radius:var(--radius-sm);background:var(--surface);color:var(--text);cursor:pointer;font-family:inherit;transition:border-color 0.15s,color 0.15s;}
 .tl-triage-btn:hover{border-color:var(--accent-dim);color:var(--accent);}
 .tl-triage-note a{color:var(--accent);cursor:pointer;text-decoration:underline;}
+/* Your Data page (panel survey 2026-08-22, A2-5). */
+.yd-section-head{font-size:calc(11px * var(--type-scale,1));font-weight:700;letter-spacing:0.6px;text-transform:uppercase;color:var(--text-dim);margin:14px 0 6px;padding-top:10px;border-top:1px solid var(--border);}
+.yd-rows{display:flex;flex-direction:column;gap:4px;margin-bottom:2px;}
+.yd-row{display:flex;justify-content:space-between;gap:12px;font-size:calc(12.5px * var(--type-scale,1));}
+.yd-row-label{color:var(--text-dim);}
+.yd-row-value{color:var(--text);text-align:right;}
+.yd-counts{display:grid;grid-template-columns:repeat(auto-fill,minmax(150px,1fr));gap:6px;}
+.yd-count{background:var(--surface-raised);border:1px solid var(--border);border-radius:var(--radius-sm);padding:7px 10px;}
+.yd-count-n{font-size:calc(15px * var(--type-scale,1));font-weight:700;color:var(--text);}
+.yd-count-label{font-size:calc(10.5px * var(--type-scale,1));color:var(--text-dim);}
+.yd-trust-list{list-style:none;margin:0;padding:0;display:flex;flex-direction:column;gap:7px;}
+.yd-trust-list li{font-size:calc(12px * var(--type-scale,1));line-height:1.5;color:var(--text-dim);padding-left:10px;border-left:2px solid var(--border);}
+.yd-trust-list strong{color:var(--text);}
+
 /* Quiet crisis link at the foot of a regulation modal. The class was already
    on four buttons but carried no rules -- each one re-declared the same six
    inline styles, so the fifth and sixth (Journal, Energy & Mood, added
