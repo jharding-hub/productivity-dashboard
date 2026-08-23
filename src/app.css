@@ -3375,6 +3375,14 @@ body.admin-overlay-open #starryLayer,body.admin-overlay-open #galaxyLayer,body.a
 .tl-triage-btn{padding:5px 10px;min-height:32px;font-size:calc(12px * var(--type-scale,1));border:1px solid var(--border-focus);border-radius:var(--radius-sm);background:var(--surface);color:var(--text);cursor:pointer;font-family:inherit;transition:border-color 0.15s,color 0.15s;}
 .tl-triage-btn:hover{border-color:var(--accent-dim);color:var(--accent);}
 .tl-triage-note a{color:var(--accent);cursor:pointer;text-decoration:underline;}
+/* Lapse card (panel survey 2026-08-22, A2-3). Reuses .tl-triage-btn so the
+   buttons are literally the same control as the sweep bar's. Deliberately
+   NOT warning-coloured: a soft accent edge, no red, no icon -- coming back
+   after a gap is the behaviour this app wants to reward, not flag. */
+.today-lapse-card{margin:0 0 14px;padding:12px 14px;background:var(--surface-raised);border:1px solid var(--border);border-left:3px solid var(--accent-dim,var(--accent));border-radius:var(--radius-sm);}
+.today-lapse-text{font-size:calc(13px * var(--type-scale,1));color:var(--text);line-height:1.45;margin-bottom:10px;}
+.today-lapse-actions{display:flex;flex-wrap:wrap;gap:6px;}
+.today-lapse-dismiss{border-color:var(--border);color:var(--text-dim);}
 /* R7 stage 4: jump chips + group headers for the full-list Tasks/Reminders
    view (F10 -- this is what actually makes a 380-item list navigable, stage
    1 only made it reachable). Shared classes, used by both panels. */

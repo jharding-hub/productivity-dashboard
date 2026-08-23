@@ -5278,6 +5278,30 @@ var MOBILE_PANELS=[
   {id:'admin',    icon:'<i class="ti ti-shield" aria-hidden="true"></i>',   label:'Admin',       badge:null, adminOnly:true, route:'#/admin'}
 ];
 
+// Panel survey 2026-08-22 (J2-8): what the home screen counts.
+//
+// These badges mirrored the desktop panel totals, so the first thing anyone
+// saw on opening the app was "Tasks 98" -- a number that is true, unchanging,
+// and useless, and which the ADHD seat described as "the overdue wall wearing
+// a smaller costume" on every single launch. A home screen should answer
+// "what needs me today", so the two time-bearing panels now count today's
+// slice and say the word "today"; the totals still live inside the panel.
+//
+// Zero today renders NO badge, deliberately, even with hundreds of open
+// items: an absent badge is the calm state, and inventing "0" would be a
+// scoreboard reading zero.
+function _mobileTodayBadge(id){
+  var today=todayStr();
+  if(id==='tasklist'){
+    var n=getAllTasks().filter(function(t){return !t.done&&t.due&&t.due<=today;}).length;
+    return n?n+' today':'';
+  }
+  if(id==='reminders'){
+    var r=(state.reminders||[]).filter(function(x){return x.date&&x.date<=today;}).length;
+    return r?r+' today':'';
+  }
+  return null;   // null = this panel has no time dimension; use its total
+}
 function buildMobileHome(){
   var grid=document.getElementById('mobilePanelGrid');
   if(!grid)return;
@@ -5286,7 +5310,10 @@ function buildMobileHome(){
     if(p.adminOnly&&!isAdmin)return;
     if(state.visiblePanels&&state.visiblePanels[p.id]===false)return;
     var badgeVal='';
-    if(p.badge){
+    var todayVal=_mobileTodayBadge(p.id);
+    if(todayVal!==null){
+      badgeVal=todayVal;
+    }else if(p.badge){
       var el=document.getElementById(p.badge);
       if(el)badgeVal=el.textContent||'';
     }
@@ -7097,6 +7124,25 @@ function renderTodayView(){
 
   var html='<div class="today-header"><div class="today-greeting">'+greeting+'</div><div class="today-date">'+dateLine+'</div></div>';
 
+  // Lapse card. Shown only when the user has been away >=3 days AND there is
+  // actually a backlog to sweep -- offering a "fresh start" to someone whose
+  // list is already clean is noise, and worse, invents a problem.
+  // Deliberately states the gap without counting it AT the user ("It's been a
+  // few days", never "you missed 5 days"), and the decline is a real option
+  // with equal weight, not a grey afterthought.
+  var lapseOverdue=_overdueTasks();
+  if(_lapseGapDays>=3&&lapseOverdue.length){
+    html+='<div class="today-lapse-card">'
+      +'<div class="today-lapse-text">It’s been a few days. Your list is exactly where you left it — '
+      +lapseOverdue.length+' item'+(lapseOverdue.length!==1?'s':'')+' slipped past their date while you were gone.</div>'
+      +'<div class="today-lapse-actions">'
+      +'<button class="tl-triage-btn" onclick="lapseCardTriage(\'all\')">Move them to today</button>'
+      +(lapseOverdue.length>=4?'<button class="tl-triage-btn" onclick="lapseCardTriage(\'top3\')">Top 3 today, snooze rest</button>':'')
+      +'<button class="tl-triage-btn" onclick="lapseCardTriage(\'snooze\')">Snooze a week</button>'
+      +'<button class="tl-triage-btn today-lapse-dismiss" onclick="dismissLapseCard()">Leave them</button>'
+      +'</div></div>';
+  }
+
   // Timeline: reuses _tlCollectBlocks (same composite the desktop day-progress
   // banner draws from -- manual blocks + reminders/subtasks/tasks that have a
   // specific time set, deduped so a scheduled item doesn't double up). A timed
@@ -7122,6 +7168,15 @@ function renderTodayView(){
   html+='</div>';
 
   html+='<div class="today-section"><div class="today-section-title">Today &amp; overdue</div>';
+  // Panel survey 2026-08-22 (A2-3): the sweep now stands at the wall.
+  // It shipped in the Task List toolbar -- which is in the OTHER view. After
+  // a lapse people land here, because this is the view the app tells them is
+  // home; they met the overdue pile with no way out of it and closed the app.
+  // Same bar, same tlTriage() actions, no second mutation path: the builder is
+  // a pure string with no ids, so mounting it in a second container cannot
+  // collide with the Task List copy (the duplicate-id bug class this file
+  // keeps re-learning).
+  html+=_tlTriageBarHTML(getAllTasks(),slice.today);
   html+=slice.tasks.length===0
     ?'<div class="empty-state">Nothing due today.</div>'
     :'<div id="todayTaskList">'+slice.tasks.map(_taskRowHTML).join('')+'</div>';
@@ -7577,10 +7632,15 @@ function tlTriage(mode){
   save();
   renderProjects(); // subtask due dates show in the Projects panel too
   renderTaskList();
+  // The bar renders in BOTH views now (A2-3), so both have to be re-drawn --
+  // otherwise sweeping from Today leaves the wall on screen and the undo
+  // note appears only in the view the user isn't looking at.
+  if(typeof _refreshTodayViewIfVisible==='function')_refreshTodayViewIfVisible();
   if(_tlTriageNoteTimer)clearTimeout(_tlTriageNoteTimer);
   _tlTriageNoteTimer=setTimeout(function(){
     _tlTriageNote='';_tlTriageUndo=null;_tlTriageNoteTimer=null;
     renderTaskList();
+    if(typeof _refreshTodayViewIfVisible==='function')_refreshTodayViewIfVisible();
   },8000);
 }
 function tlTriageUndo(){
@@ -7591,6 +7651,7 @@ function tlTriageUndo(){
   save();
   renderProjects();
   renderTaskList();
+  if(typeof _refreshTodayViewIfVisible==='function')_refreshTodayViewIfVisible();
   toast('Restored previous due dates');
 }
 
@@ -10752,6 +10813,19 @@ function checkMonthReset(){
   }
 }
 
+// Days since the last open, when that gap was >=3. Session-only (never saved,
+// never synced) and cleared the moment the user acts on or dismisses the card.
+var _lapseGapDays=0;
+function dismissLapseCard(){
+  _lapseGapDays=0;
+  if(typeof _refreshTodayViewIfVisible==='function')_refreshTodayViewIfVisible();
+}
+// The sweep, reached from the lapse card. Clearing the gap first means the
+// card does not survive the re-render that tlTriage triggers.
+function lapseCardTriage(mode){
+  _lapseGapDays=0;
+  tlTriage(mode);
+}
 function awardDailyLogin(){
   var today=_dayKey();
   if(state.points.lastLoginDate!==today){
@@ -10771,6 +10845,12 @@ function awardDailyLogin(){
         // Slight delay so this doesn't collide with/get clipped by other
         // startup toasts (e.g. initPanelVisibility's "New panels available!").
         setTimeout(function(){toast('Welcome back');},1500);
+        // Panel survey 2026-08-22 (A2-3, second half): remember the gap so the
+        // Today view can OFFER the sweep before the overdue wall is scrolled
+        // to, rather than only standing next to it. A toast says hello; this
+        // hands back the shovel. Session-scoped on purpose -- it must not
+        // persist or sync, or a second device would re-offer it forever.
+        _lapseGapDays=daysSince;
       }
     }
   }
