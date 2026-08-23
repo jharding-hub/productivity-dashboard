@@ -2634,7 +2634,98 @@ function stopAlarm(){
 
 // PROJECTS
 function addProject(){const n=document.getElementById('newProjName').value.trim();if(!n)return;state.projects.push({id:'p'+Date.now(),name:n,due:document.getElementById('newProjDue').value,expanded:true,subtasks:[]});document.getElementById('newProjName').value='';document.getElementById('newProjDue').value='';save();renderProjects();renderTaskList();_trackEvent('tool_use','add_project','Add Project');}
-function deleteProject(id){_confirm('Delete project and all subtasks?',function(){state.projects=state.projects.filter(p=>p.id!==id);save();renderProjects();renderTaskList();},{destructive:true,confirmText:'Delete'});}
+// ═══════════════════════════════════════════════════════════════════
+// UNDO (panel survey 2026-08-22, A2-4 / P2-S2)
+//
+// "Batch-deleting 20 tasks with no undo in an app whose own history includes
+// a real data-loss incident is a trust problem, not a UX nit."
+//
+// The mechanism is DEFERRED COMMIT, not tombstone removal, and that choice is
+// the whole design. Tombstones are grow-only and mergeTombstones UNIONS both
+// sides -- so "restore" implemented as deleting a tombstone key is not
+// durable: any device still holding the key merges it straight back and the
+// undone deletion re-deletes itself across the fleet. (A timestamped
+// resurrection map could beat that, but every stale client -- including the
+// bundled native build until its next TestFlight ship -- would keep the old
+// union rule and corrupt restored items on contact.)
+//
+// So instead, nothing durable happens until the undo window closes:
+//   apply   -- remove from the in-memory array, re-render. NO tombstone, NO
+//              save. If the tab dies mid-window the delete simply never
+//              happened, which is the safe direction to fail.
+//   commit  -- on window end (or when the next undoable op starts, or on
+//              pagehide): tombstone, re-filter (a sync merge during the
+//              window may have re-added the item -- fine and expected),
+//              save. Deletion becomes the durable synced fact it always was.
+//   revert  -- put the items back, re-render. Nothing to un-persist, because
+//              nothing was persisted.
+//
+// One pending op at a time: starting a new one flushes the previous, so
+// "delete, delete, undo" undoes exactly the second delete -- matching what
+// the toast on screen says, which is the only contract the user can see.
+// Field edits (bulk reschedule/move) don't need the deferral -- they commit
+// immediately and undo by writing the OLD values back through the same
+// setters, which is sync-safe by construction.
+// ═══════════════════════════════════════════════════════════════════
+var UNDO_WINDOW_MS=8000;
+var _pendingOp=null;
+function _flushPendingOp(){
+  if(!_pendingOp)return;
+  var op=_pendingOp;_pendingOp=null;
+  clearTimeout(op.timer);
+  try{op.commit();}catch(e){console.warn('[undo] commit failed',e);}
+}
+function _startUndoableOp(label,commitFn,revertFn){
+  _flushPendingOp();
+  var op={commit:commitFn,revert:revertFn};
+  op.timer=setTimeout(function(){
+    if(_pendingOp===op){_pendingOp=null;try{op.commit();}catch(e){console.warn('[undo] commit failed',e);}}
+  },UNDO_WINDOW_MS);
+  _pendingOp=op;
+  toast(label,UNDO_WINDOW_MS,{label:'Undo',onClick:undoLastAction});
+}
+function undoLastAction(){
+  if(!_pendingOp)return false;
+  var op=_pendingOp;_pendingOp=null;
+  clearTimeout(op.timer);
+  try{op.revert();}catch(e){console.warn('[undo] revert failed',e);}
+  toast('Restored');
+  return true;
+}
+// A pending delete must not evaporate because the tab closed: commit it
+// synchronously on the way out. pagehide covers close/navigate/bfreeze;
+// the commit path is synchronous state mutation + save(), both tab-safe.
+window.addEventListener('pagehide',_flushPendingOp);
+
+// Shared helpers for the deferred-delete shape.
+function _undoableArrayDelete(opts){
+  // opts: {label, items:[...], removeNow(), commitTombstones(), restore()}
+  opts.removeNow();
+  _startUndoableOp(opts.label,function(){
+    opts.commitTombstones();
+    opts.removeNow();   // re-filter: a mid-window merge may have re-added them
+    save();
+    if(opts.afterCommit)opts.afterCommit();
+  },function(){
+    opts.restore();
+    if(opts.afterRevert)opts.afterRevert();
+  });
+}
+
+function deleteProject(id){_confirm('Delete project and all subtasks?',function(){
+  var snapshot=state.projects.find(function(p){return p.id===id;});
+  if(!snapshot)return;
+  _undoableArrayDelete({
+    label:'Deleted \u201c'+(snapshot.name||'project')+'\u201d',
+    removeNow:function(){state.projects=state.projects.filter(function(p){return p.id!==id;});renderProjects();renderTaskList();},
+    // The project-level tombstone is NEW here (2026-08-23): deleteProject
+    // used to filter the array and nothing else, which mergeProjects\'
+    // union quietly reversed -- a deleted project resurrected from any
+    // stale device. Durable now (see mergeProjects + its test).
+    commitTombstones:function(){_tombstone(id);},
+    restore:function(){state.projects.push(snapshot);renderProjects();renderTaskList();}
+  });
+},{destructive:true,confirmText:'Delete'});}
 function toggleProjectExpand(id){
   const p=state.projects.find(p=>p.id===id);
   if(!p)return;
@@ -2841,7 +2932,23 @@ function toggleSubtask(pid,sid){
   addPoints('subtask',srcEl);
   save();renderProjects();renderTaskList();
 }
-function deleteSubtask(pid,sid){_confirm('Delete this subtask?',function(){_tombstone(sid);const p=state.projects.find(p=>p.id===pid);if(p)p.subtasks=p.subtasks.filter(s=>s.id!==sid);save();renderProjects();renderTaskList();},{destructive:true,confirmText:'Delete'});}
+// Single-item deletes act immediately and offer Undo instead of asking
+// "are you sure" first (A2-4). The confirm survives only where the blast
+// radius is large (project, bulk) -- for one item, undo is strictly kinder
+// than interrogation: no dialog to dismiss, and the mistake is reversible
+// for 8 seconds instead of guarded by a reflex-click.
+function deleteSubtask(pid,sid){
+  const p=state.projects.find(p=>p.id===pid);
+  const snap=p&&p.subtasks.find(s=>s.id===sid);
+  if(!p||!snap)return;
+  const idx=p.subtasks.indexOf(snap);
+  _undoableArrayDelete({
+    label:'Deleted \u201c'+(snap.name||'subtask')+'\u201d',
+    removeNow:function(){var pr=state.projects.find(x=>x.id===pid);if(pr)pr.subtasks=pr.subtasks.filter(s=>s.id!==sid);renderProjects();renderTaskList();},
+    commitTombstones:function(){_tombstone(sid);},
+    restore:function(){var pr=state.projects.find(x=>x.id===pid);if(pr&&!pr.subtasks.some(s=>s.id===sid))pr.subtasks.splice(Math.min(idx,pr.subtasks.length),0,snap);renderProjects();renderTaskList();}
+  });
+}
 
 function editProjectName(pid,v){if(!v)return;const p=state.projects.find(p=>p.id===pid);if(p)p.name=v;save();}
 function editSubtaskName(pid,sid,v){if(!v)return;const p=state.projects.find(p=>p.id===pid);const s=p&&p.subtasks.find(s=>s.id===sid);if(s)s.name=v;save();renderTaskList();}
@@ -3166,7 +3273,17 @@ function promptEditProject(pid){
 
 // REMINDERS
 function addReminder(){const t=document.getElementById('newRemText').value.trim();if(!t)return;const projVal=document.getElementById('newRemProject').value;const projIds=projVal?projVal.split(',').filter(Boolean):[];const q=_applyQuickAdd(t,{due:document.getElementById('newRemDate').value,time:document.getElementById('newRemTime').value},{date:true,time:true});state.reminders.push({id:'rem'+Date.now(),text:q.name,date:q.due,time:q.time,projectId:projIds[0]||'',projectIds:projIds});document.getElementById('newRemText').value='';document.getElementById('newRemDate').value='';document.getElementById('newRemTime').value='';document.getElementById('newRemProject').value='';renderProjMultiPickerChips(document.getElementById('newRemProjectPicker'));save();renderReminders();renderProjects();if(projIds.length>1)toast('Reminder added to '+projIds.length+' projects');}
-function deleteReminder(id){_confirm('Delete this reminder?',function(){_tombstone(id);state.reminders=state.reminders.filter(r=>r.id!==id);save();renderReminders();},{destructive:true,confirmText:'Delete'});}
+function deleteReminder(id){
+  const snap=state.reminders.find(r=>r.id===id);
+  if(!snap)return;
+  const idx=state.reminders.indexOf(snap);
+  _undoableArrayDelete({
+    label:'Deleted \u201c'+(snap.text||'reminder')+'\u201d',
+    removeNow:function(){state.reminders=state.reminders.filter(r=>r.id!==id);renderReminders();},
+    commitTombstones:function(){_tombstone(id);},
+    restore:function(){if(!state.reminders.some(r=>r.id===id))state.reminders.splice(Math.min(idx,state.reminders.length),0,snap);renderReminders();}
+  });
+}
 // R7 archive stage 2: ✓ on a reminder row -- the completed-task lifecycle
 // applied to reminders. No confirm: unlike delete, this is non-destructive
 // and reversible from the Archived section below.
@@ -3875,7 +3992,17 @@ window.__notifPermissionResult=function(granted){
 
 // BRAIN DUMP
 function handleDumpKey(e){if(e.key==='Enter'&&!e.shiftKey){e.preventDefault();const t=document.getElementById('brainDump').value.trim();if(!t)return;state.thoughts.push({id:'th'+Date.now(),text:t,created:new Date().toISOString()});document.getElementById('brainDump').value='';save();renderThoughts();_trackEvent('tool_use','brain_dump','Brain Dump');}}
-function deleteThought(id){_confirm('Delete this thought?',function(){_tombstone(id);state.thoughts=state.thoughts.filter(t=>t.id!==id);save();renderThoughts();},{destructive:true,confirmText:'Delete'});}
+function deleteThought(id){
+  const snap=state.thoughts.find(t=>t.id===id);
+  if(!snap)return;
+  const idx=state.thoughts.indexOf(snap);
+  _undoableArrayDelete({
+    label:'Deleted thought',
+    removeNow:function(){state.thoughts=state.thoughts.filter(t=>t.id!==id);renderThoughts();},
+    commitTombstones:function(){_tombstone(id);},
+    restore:function(){if(!state.thoughts.some(t=>t.id===id))state.thoughts.splice(Math.min(idx,state.thoughts.length),0,snap);renderThoughts();}
+  });
+}
 function promoteThought(id){const th=state.thoughts.find(t=>t.id===id);if(!th)return;if(state.projects.length>0){const sp=_sortedProjects();const c=prompt('Promote to which project?\n\n'+sp.map((p,i)=>(i+1)+'. '+p.name).join('\n')+'\n\n(0 = reminders)','1');if(c===null)return;const idx=parseInt(c)-1;if(idx>=0&&idx<sp.length){sp[idx].subtasks.push({id:'st'+Date.now(),name:th.text,due:'',priority:'med',timeEst:'',done:false});deleteThought(id);renderProjects();renderTaskList();toast('Added to '+sp[idx].name);return;}}state.reminders.push({id:'rem'+Date.now(),text:th.text,date:'',time:''});deleteThought(id);renderReminders();toast('Moved to reminders');}
 function editThought(id,v){if(!v)return;const t=state.thoughts.find(t=>t.id===id);if(t)t.text=v;save();}
 
@@ -4650,7 +4777,17 @@ function _noteToolbarHtml(targetId,extraId){
 }
 
 function addNote(){const label=document.getElementById('newNoteLabel').value.trim();const bodyEl=document.getElementById('newNoteBody');const body=_sanitizeNoteHtml(bodyEl?bodyEl.innerHTML:'');const bodyText=_stripHtml(body);if(!label&&!bodyText)return;const projVal=document.getElementById('newNoteProject').value;const projIds=projVal?projVal.split(',').filter(Boolean):[];const now=new Date();state.notes.push({id:'n'+Date.now(),label:label||'Untitled',body:body,rich:true,projectId:projIds[0]||'',projectIds:projIds,created:now.toISOString(),date:now.toLocaleDateString('en-US',{month:'short',day:'numeric',year:'numeric'}),time:now.toLocaleTimeString('en-US',{hour:'numeric',minute:'2-digit'})});document.getElementById('newNoteLabel').value='';if(bodyEl)bodyEl.innerHTML='';document.getElementById('newNoteProject').value='';renderProjMultiPickerChips(document.getElementById('newNoteProjectPicker'));save();renderNotes();renderProjects();if(projIds.length>1)toast('Note added to '+projIds.length+' projects');_trackEvent('tool_use','add_note','Add Note');}
-function deleteNote(id){_confirm('Delete this note?',function(){_tombstone(id);state.notes=state.notes.filter(n=>n.id!==id);save();renderNotes();},{destructive:true,confirmText:'Delete'});}
+function deleteNote(id){
+  const snap=state.notes.find(n=>n.id===id);
+  if(!snap)return;
+  const idx=state.notes.indexOf(snap);
+  _undoableArrayDelete({
+    label:'Deleted note',
+    removeNow:function(){state.notes=state.notes.filter(n=>n.id!==id);renderNotes();},
+    commitTombstones:function(){_tombstone(id);},
+    restore:function(){if(!state.notes.some(n=>n.id===id))state.notes.splice(Math.min(idx,state.notes.length),0,snap);renderNotes();}
+  });
+}
 function editNoteLabel(id,v){if(!v)return;const n=state.notes.find(n=>n.id===id);if(n){n.label=v;save();}}
 function editNoteBody(id,v){const n=state.notes.find(n=>n.id===id);if(n){n.body=v;save();}}
 
@@ -5850,14 +5987,23 @@ function _omniMatch(haystack,terms){
 // substring match runs, so "overdue lease" still requires "lease" to match
 // too -- tokens narrow, they don't replace, free-text search.
 function _omniParseTokens(terms){
-  var filters={overdue:false,week:false,nodate:false,projectTag:null};
+  var filters={overdue:false,week:false,nodate:false,today:false,tomorrow:false,projectTag:null};
   var remaining=[];
   terms.forEach(function(t){
     if(t==='overdue'){filters.overdue=true;return;}
     if(t==='week'||t==='due:week'){filters.week=true;return;}
     if(t==='nodate'||t==='no-date'){filters.nodate=true;return;}
+    // Stage 7 (P2-S1): the two most-asked missing tokens. "today" includes
+    // the overdue backlog on purpose -- the question behind the query is
+    // "what needs me today", and the Today VIEW answers it the same way.
+    if(t==='today'){filters.today=true;return;}
+    if(t==='tomorrow'){filters.tomorrow=true;return;}
     var pm=t.match(/^project:(.+)$/);
     if(pm){filters.projectTag=pm[1];return;}
+    // #kitchen as shorthand for project:kitchen -- the same tag syntax
+    // Quick Capture already parses, so the two surfaces speak one language.
+    var hm=t.match(/^#(.+)$/);
+    if(hm){filters.projectTag=hm[1];return;}
     remaining.push(t);
   });
   return {filters:filters,terms:remaining};
@@ -5867,11 +6013,13 @@ function _omniParseTokens(terms){
 // date field at all (Notes, Brain Dump, Journal) are never wrongly excluded
 // by a filter that doesn't apply to them.
 function _omniPassesDateFilters(dateStr,filters){
-  if(!filters.overdue&&!filters.week&&!filters.nodate)return true;
+  if(!filters.overdue&&!filters.week&&!filters.nodate&&!filters.today&&!filters.tomorrow)return true;
   if(filters.nodate)return !dateStr;
   if(!dateStr)return false;
   var today=todayStr();
   if(filters.overdue)return dateStr<today;
+  if(filters.today)return dateStr<=today;   // due today OR already overdue
+  if(filters.tomorrow)return dateStr===_tlPlusDays(today,1);
   if(filters.week)return dateStr>=today&&dateStr<=_tlPlusDays(today,7);
   return true;
 }
@@ -5900,7 +6048,7 @@ function _omniSearchResults(q){
   var parsed=_omniParseTokens(rawTerms);
   var terms=parsed.terms; // token words removed; free-text match uses only what's left
   var filters=parsed.filters;
-  var anyDateFilter=filters.overdue||filters.week||filters.nodate;
+  var anyDateFilter=filters.overdue||filters.week||filters.nodate||filters.today||filters.tomorrow;
   // A bare token query ("overdue" alone) must still find results even
   // though `terms` is now empty -- _omniMatch with zero terms is vacuously
   // true for every item, which is exactly what we want here.
@@ -8059,11 +8207,16 @@ function _tlBulkReschedule(dateStr){
   var ids=Object.keys(_tlSelected);
   if(!ids.length){toast('No tasks selected');return;}
   var all=getAllTasks();
+  // A2-4: field edits don't need the deferred-commit machinery -- undo just
+  // writes the OLD dates back through the same guarded setters, which is
+  // sync-safe by construction (it's an ordinary edit, not a resurrection).
+  var prev=[];
   var n=0;
   _withBatch(function(){
     ids.forEach(function(id){
       var t=all.find(function(x){return x.id===id;});
       if(!t)return;
+      prev.push({id:id,source:t.source,projectId:t.projectId,oldDue:t.due});
       if(t.source==='standalone')editStandaloneTaskDue(id,dateStr);
       else editSubtaskDue(t.projectId,id,dateStr);
       n++;
@@ -8071,7 +8224,17 @@ function _tlBulkReschedule(dateStr){
   });
   _tlSelected=Object.create(null);
   renderProjects();renderTaskList();
-  toast('Moved '+n+' task'+(n!==1?'s':'')+' to '+(dateStr?fmtDate(dateStr):'no date'));
+  _startUndoableOp('Moved '+n+' task'+(n!==1?'s':'')+' to '+(dateStr?fmtDate(dateStr):'no date'),
+    function(){},   // already persisted; nothing to commit
+    function(){
+      _withBatch(function(){
+        prev.forEach(function(r){
+          if(r.source==='standalone')editStandaloneTaskDue(r.id,r.oldDue);
+          else editSubtaskDue(r.projectId,r.id,r.oldDue);
+        });
+      });
+      renderProjects();renderTaskList();
+    });
 }
 // A-8: bulk move-to-project, standalone tasks only. A SUBTASK already
 // belongs to a project, and relocating one between projects would be a
@@ -8083,7 +8246,7 @@ function _tlBulkMoveToProject(projectId){
   var ids=Object.keys(_tlSelected);
   if(!ids.length){toast('No tasks selected');return;}
   var all=getAllTasks();
-  var moved=0,skipped=0;
+  var moved=0,skipped=0,prevAssign=[];
   _withBatch(function(){
     ids.forEach(function(id){
       var meta=all.find(function(x){return x.id===id;});
@@ -8091,6 +8254,7 @@ function _tlBulkMoveToProject(projectId){
       if(meta.source!=='standalone'){skipped++;return;}
       var t=(state.tasks||[]).find(function(x){return x.id===id;});
       if(!t){return;}
+      prevAssign.push({id:id,oldProjectId:t.projectId,oldProjectIds:t.projectIds});
       t.projectId=projectId||'';
       t.projectIds=projectId?[projectId]:[];
       moved++;
@@ -8102,32 +8266,220 @@ function _tlBulkMoveToProject(projectId){
   var pname=projectId?((state.projects.find(function(p){return p.id===projectId;})||{}).name||'project'):'no project';
   var msg='Moved '+moved+' task'+(moved!==1?'s':'')+' to '+pname;
   if(skipped)msg+=', '+skipped+' skipped (already in a project)';
-  toast(msg);
+  _startUndoableOp(msg,
+    function(){},
+    function(){
+      _withBatch(function(){
+        prevAssign.forEach(function(r){
+          var t=(state.tasks||[]).find(function(x){return x.id===r.id;});
+          if(t){t.projectId=r.oldProjectId;t.projectIds=r.oldProjectIds;}
+        });
+        save();
+      });
+      renderProjects();renderTaskList();
+    });
 }
 function _tlBulkDelete(){
   var ids=Object.keys(_tlSelected);
   if(!ids.length){toast('No tasks selected');return;}
   var all=getAllTasks();
   _confirm('Delete '+ids.length+' selected task'+(ids.length!==1?'s':'')+'?',function(){
-    _withBatch(function(){
-      ids.forEach(function(id){
-        var t=all.find(function(t){return t.id===id;});
-        if(!t)return;
-        _tombstone(id);
-        if(t.source==='standalone'){
-          state.tasks=state.tasks.filter(function(x){return x.id!==id;});
-        }else{
-          var p=state.projects.find(function(p){return p.id===t.projectId;});
-          if(p)p.subtasks=p.subtasks.filter(function(x){return x.id!==id;});
-        }
-      });
-      save();
+    // A2-4: snapshot the real objects (not the getAllTasks copies) so revert
+    // can put back the exact items, standalone or subtask.
+    var snaps=[];
+    ids.forEach(function(id){
+      var meta=all.find(function(t){return t.id===id;});
+      if(!meta)return;
+      if(meta.source==='standalone'){
+        var t=(state.tasks||[]).find(function(x){return x.id===id;});
+        if(t)snaps.push({kind:'standalone',item:t});
+      }else{
+        var p=state.projects.find(function(p){return p.id===meta.projectId;});
+        var st=p&&p.subtasks.find(function(x){return x.id===id;});
+        if(st)snaps.push({kind:'subtask',projectId:meta.projectId,item:st});
+      }
     });
+    if(!snaps.length)return;
     _tlSelected=Object.create(null);
-    renderProjects();renderTaskList();
-    toast('Deleted '+ids.length+' task'+(ids.length!==1?'s':''));
+    _undoableArrayDelete({
+      label:'Deleted '+snaps.length+' task'+(snaps.length!==1?'s':''),
+      removeNow:function(){
+        var byId={};snaps.forEach(function(sn){byId[sn.item.id]=1;});
+        state.tasks=(state.tasks||[]).filter(function(x){return !byId[x.id];});
+        state.projects.forEach(function(p){p.subtasks=p.subtasks.filter(function(x){return !byId[x.id];});});
+        renderProjects();renderTaskList();
+        if(typeof _refreshTodayViewIfVisible==='function')_refreshTodayViewIfVisible();
+      },
+      commitTombstones:function(){snaps.forEach(function(sn){_tombstone(sn.item.id);});},
+      restore:function(){
+        snaps.forEach(function(sn){
+          if(sn.kind==='standalone'){
+            if(!state.tasks.some(function(x){return x.id===sn.item.id;}))state.tasks.push(sn.item);
+          }else{
+            var p=state.projects.find(function(x){return x.id===sn.projectId;});
+            if(p&&!p.subtasks.some(function(x){return x.id===sn.item.id;}))p.subtasks.push(sn.item);
+          }
+        });
+        renderProjects();renderTaskList();
+        if(typeof _refreshTodayViewIfVisible==='function')_refreshTodayViewIfVisible();
+      }
+    });
   },{destructive:true,confirmText:'Delete'});
 }
+
+
+// ═══════════════════════════════════════════════════════════════════
+// TASK LIST KEYBOARD LAYER (panel survey 2026-08-22, I2-5 / P2-S3)
+//
+// "The palette is keyboard-first but the list it acts on is mouse-only."
+// j/k move a cursor through the Task List rows, x selects, e completes,
+// d opens the date editor, Cmd/Ctrl-Z undoes, ? (or Cmd-/) shows the map.
+//
+// Scoped HARD to #taskListItems: task rows render with identical ids in the
+// Today view too (the duplicate-id bug class), so the cursor lives in exactly
+// one container -- the Task List panel, wherever that panel currently is
+// (dashboard tile or expanded overlay: it is the same moved DOM node).
+// The cursor is an index, not a stored element: renders rebuild rows freely
+// and the next keypress re-resolves against whatever is on screen.
+// ═══════════════════════════════════════════════════════════════════
+var _kbCursorIdx=-1;
+var _kbRangeAnchor=-1;   // last plainly-clicked checkbox index, for shift-click ranges
+function _kbRows(){
+  var host=document.getElementById('taskListItems');
+  if(!host||!host.offsetParent)return [];
+  return [].slice.call(host.querySelectorAll('.tl-item'));
+}
+function _kbRowTaskId(row){
+  var el=row&&row.querySelector('[id^="tlname_"]');
+  return el?el.id.substring(7):null;
+}
+function _kbApplyCursor(rows){
+  rows.forEach(function(r,i){r.classList.toggle('kb-cursor',i===_kbCursorIdx);});
+  var cur=rows[_kbCursorIdx];
+  if(cur)cur.scrollIntoView({block:'nearest'});
+}
+function _kbMove(delta){
+  var rows=_kbRows();
+  if(!rows.length)return;
+  if(_kbCursorIdx<0)_kbCursorIdx=delta>0?0:rows.length-1;
+  else _kbCursorIdx=Math.max(0,Math.min(rows.length-1,_kbCursorIdx+delta));
+  _kbApplyCursor(rows);
+}
+function _kbCursorTask(){
+  var rows=_kbRows();
+  var id=_kbRowTaskId(rows[_kbCursorIdx]);
+  if(!id)return null;
+  return getAllTasks().find(function(t){return t.id===id;})||null;
+}
+function _kbTyping(e){
+  var t=e.target;
+  if(!t)return false;
+  var tag=(t.tagName||'').toLowerCase();
+  return tag==='input'||tag==='textarea'||tag==='select'||t.isContentEditable;
+}
+function _kbModalOpen(){
+  return !!document.querySelector('.modal-blur-overlay.open')
+    ||!!(document.getElementById('customizeOverlay')&&document.getElementById('customizeOverlay').classList.contains('show'))
+    ||!!(document.getElementById('modalOverlay')&&document.getElementById('modalOverlay').classList.contains('show'));
+}
+function toggleKbHelp(){
+  var m=document.getElementById('kbHelpModal');
+  if(!m)return;
+  m.classList.toggle('open');
+}
+document.addEventListener('keydown',function(e){
+  // Cmd/Ctrl-Z first: it works even mid-list-navigation, but never steals
+  // undo from a focused text field (the browser owns typing undo there).
+  if((e.metaKey||e.ctrlKey)&&!e.shiftKey&&e.key.toLowerCase()==='z'&&!_kbTyping(e)){
+    if(typeof undoLastAction==='function'&&undoLastAction())e.preventDefault();
+    return;
+  }
+  if((e.metaKey||e.ctrlKey)&&e.key==='/'){e.preventDefault();toggleKbHelp();return;}
+  if(e.metaKey||e.ctrlKey||e.altKey)return;
+  // The help card is itself a .modal-blur-overlay, so it must claim Escape
+  // and ? BEFORE the modal-open guard below -- otherwise the guard that
+  // exists to silence list keys while a modal is up also swallows the only
+  // keys that close this one, and the card can't be dismissed from the
+  // keyboard that opened it.
+  var _helpEl=document.getElementById('kbHelpModal');
+  if(_helpEl&&_helpEl.classList.contains('open')){
+    if(e.key==='Escape'||e.key==='?'){toggleKbHelp();e.preventDefault();}
+    return;
+  }
+  if(_kbTyping(e)||_kbModalOpen())return;
+  var rows;
+  switch(e.key){
+    case 'j': _kbMove(1); e.preventDefault(); break;
+    case 'k': _kbMove(-1); e.preventDefault(); break;
+    case 'x': {
+      var t=_kbCursorTask();
+      if(!t)break;
+      if(!_tlSelectMode){
+        toggleTaskSelectMode(true);   // clears selection + re-renders; cursor index survives
+      }
+      _tlSelected[t.id]=!_tlSelected[t.id];
+      if(!_tlSelected[t.id])delete _tlSelected[t.id];
+      rows=_kbRows();
+      var cb=rows[_kbCursorIdx]&&rows[_kbCursorIdx].querySelector('.tl-select-check');
+      if(cb)cb.checked=!!_tlSelected[t.id];
+      _kbApplyCursor(rows);
+      e.preventDefault();
+      break;
+    }
+    case 'e': {
+      var ct=_kbCursorTask();
+      if(!ct||ct.done)break;
+      toggleTaskDone(ct.id,ct.source,ct.projectId);
+      // The completed row leaves the list; keep the cursor on the row that
+      // slid into its place rather than letting it fall off the end.
+      rows=_kbRows();
+      _kbCursorIdx=Math.min(_kbCursorIdx,rows.length-1);
+      _kbApplyCursor(rows);
+      e.preventDefault();
+      break;
+    }
+    case 'd': {
+      rows=_kbRows();
+      var id=_kbRowTaskId(rows[_kbCursorIdx]);
+      var cell=id&&document.getElementById('tldue_'+id);
+      // Same caveat as the cursor itself: getElementById here is safe ONLY
+      // because the Task List panel is the single visible #taskListItems
+      // ancestor -- the cell is resolved from the row we hold, not globally.
+      if(cell&&rows[_kbCursorIdx].contains(cell)){cell.click();e.preventDefault();}
+      break;
+    }
+    case '?': toggleKbHelp(); e.preventDefault(); break;
+  }
+});
+// Shift-click range select (P2-S3). Delegated: the checkboxes re-render
+// constantly, a listener per box would leak. Plain clicks set the anchor;
+// a shift-click selects the whole span between anchor and target, matching
+// every file manager the switcher demographic already knows.
+//
+// CAPTURE phase, not bubble, and that is load-bearing: each checkbox's
+// inline onclick starts with event.stopPropagation() (it has to -- a
+// bubbled click on the row would open the task), so a bubble-phase document
+// listener never hears these clicks at all. Capture runs on the way DOWN,
+// before the target's own handler can stop anything. The checkbox's checked
+// state is already updated by activation before dispatch, so reading and
+// writing .checked here is safe in either phase.
+document.addEventListener('click',function(e){
+  var cb=e.target;
+  if(!cb.classList||!cb.classList.contains('tl-select-check'))return;
+  var host=document.getElementById('taskListItems');
+  if(!host||!host.contains(cb))return;
+  var boxes=[].slice.call(host.querySelectorAll('.tl-select-check'));
+  var idx=boxes.indexOf(cb);
+  if(e.shiftKey&&_kbRangeAnchor>=0&&_kbRangeAnchor<boxes.length&&idx>=0){
+    var lo=Math.min(_kbRangeAnchor,idx),hi=Math.max(_kbRangeAnchor,idx);
+    for(var i=lo;i<=hi;i++){
+      boxes[i].checked=true;
+      _tlToggleSelect(boxes[i].dataset.id,true);
+    }
+  }else if(idx>=0){
+    _kbRangeAnchor=idx;
+  }
+},true);
 
 // ── Fresh start (panel survey Stage 6, A-8) ──────────────────────────
 // The second door onto the same batch engine. The ADHD User identified the
@@ -8207,12 +8559,18 @@ function _parseImportText(raw){
   if(!lines.length)return {rows:[],isCsv:false};
   var isCsv=/,/.test(lines[0])&&/content/i.test(lines[0]);
   var rows=[];
+  var hasProjectCol=false;
   if(isCsv){
     var header=_csvSplitLine(lines[0]).map(function(h){return h.trim().toUpperCase();});
     var typeIdx=header.indexOf('TYPE');
     var contentIdx=header.indexOf('CONTENT');
     if(contentIdx<0)contentIdx=0;
     var dateIdx=header.indexOf('DATE');
+    // Stage 7 (P2-S4): our own exports carry a PROJECT column with the FULL
+    // project name -- Todoist files don't (their projects are separate
+    // files), so this column doubles as the signature of a round-trip file.
+    var projIdx=header.indexOf('PROJECT');
+    hasProjectCol=projIdx>=0;
     for(var i=1;i<lines.length;i++){
       var cols=_csvSplitLine(lines[i]);
       // Todoist exports section headers/notes as other TYPE values in the
@@ -8220,12 +8578,13 @@ function _parseImportText(raw){
       if(typeIdx>=0&&cols[typeIdx]&&cols[typeIdx].trim().toLowerCase()!=='task')continue;
       var content=(cols[contentIdx]||'').trim();
       if(!content)continue;
-      rows.push({raw:content,columnDate:dateIdx>=0?(cols[dateIdx]||'').trim():''});
+      rows.push({raw:content,columnDate:dateIdx>=0?(cols[dateIdx]||'').trim():'',
+                 columnProject:projIdx>=0?(cols[projIdx]||'').trim():''});
     }
   }else{
-    rows=lines.map(function(l){return {raw:l.trim(),columnDate:''};}).filter(function(r){return r.raw;});
+    rows=lines.map(function(l){return {raw:l.trim(),columnDate:'',columnProject:''};}).filter(function(r){return r.raw;});
   }
-  return {rows:rows,isCsv:isCsv};
+  return {rows:rows,isCsv:isCsv,hasProjectCol:hasProjectCol};
 }
 // Builds the structured preview items: name/due/time/recurrence/projectTag
 // per line, via the SAME parser every quick-add field uses. A CSV DATE
@@ -8236,18 +8595,37 @@ function _importBuildItems(raw){
   var items=parsed.rows.map(function(r){
     var p=(typeof window.parseQuickAdd==='function')?window.parseQuickAdd(r.raw):{name:r.raw,due:null,time:null,recurrence:null,projectTag:null};
     var due=p.due;
-    if(!due&&r.columnDate){
+    var colDue='';
+    if(r.columnDate){
       var m=r.columnDate.match(/(\d{4}-\d{2}-\d{2})/);
-      if(m)due=m[1];
+      if(m)colDue=m[1];
     }
+    // In a ROUND-TRIP file (our PROJECT column present) the DATE column is
+    // the truth: the parser re-deriving a due from recurrence text ("every
+    // mon wed fri" implies next Monday) must not drift the date on a task
+    // that already had one. For foreign files the old rule stands: typed
+    // date signal in CONTENT wins over a one-off DATE value.
+    if(parsed.hasProjectCol&&colDue)due=colDue;
+    else if(!due&&colDue)due=colDue;
     // A repeat with nothing to repeat FROM never fires (same guard as
     // _applyQuickAdd/editTaskRecurrence) -- "pay rent every month" pasted
     // with no other date signal must not silently import as a recurring
     // task that never recurs.
     if(p.recurrence&&!due)due=todayStr();
-    return {name:p.name||r.raw,due:due||'',time:p.time||'',recurrence:p.recurrence||null,projectTag:p.projectTag||null};
+    return {name:p.name||r.raw,due:due||'',time:p.time||'',recurrence:p.recurrence||null,
+            projectTag:p.projectTag||r.columnProject||null};
   }).filter(function(it){return it.name;});
-  return {items:items,isCsv:parsed.isCsv};
+  // Stage 7 (P2-S5): dedupe against what already exists. The first migration
+  // gets pasted twice by everyone eventually; the second paste must not
+  // double the list. Same name (case-insensitive) + same due = same task.
+  var existing=Object.create(null);
+  getAllTasks().forEach(function(t){
+    if(!t.done)existing[(t.name||'').toLowerCase()+'\u0000'+(t.due||'')]=1;
+  });
+  items.forEach(function(it){
+    it.dupe=!!existing[(it.name||'').toLowerCase()+'\u0000'+(it.due||'')];
+  });
+  return {items:items,isCsv:parsed.isCsv,hasProjectCol:parsed.hasProjectCol};
 }
 var _importPreviewItems=null;
 function openImportList(){
@@ -8276,13 +8654,30 @@ function _importRunPreview(){
     if(it.due)bits.push(fmtDate(it.due));
     if(it.time)bits.push(fmtTime(it.time));
     if(it.recurrence&&it.recurrence.freq)bits.push('repeats '+(RECUR_LABEL[it.recurrence.freq]||it.recurrence.freq));
-    if(it.projectTag)bits.push('#'+it.projectTag);
+    // Stage 7 (P2-S5): say where the tag actually LANDS, not just that one
+    // was typed -- '#work' resolving to nothing imported silently without a
+    // project before, which is the black-box behaviour this preview exists
+    // to kill.
+    if(it.projectTag){
+      var proj=_resolveProjectTag(it.projectTag);
+      bits.push(proj?('\u2192 '+proj.name):('#'+it.projectTag+' \u2014 no matching project'));
+    }
+    if(it.dupe){
+      return '<div class="tl-pick-item" style="cursor:default;opacity:0.5;"><strong>'+esc(it.name)+'</strong> <span style="font-size:11px;">already exists \u2014 will be skipped</span></div>';
+    }
     return '<div class="tl-pick-item" style="cursor:default;"><strong>'+esc(it.name)+'</strong>'+(bits.length?' <span style="color:var(--text-secondary);font-size:11px;">('+bits.join(', ')+')</span>':'')+'</div>';
   }).join('');
   var more=_importPreviewItems.length>50?'<p style="font-size:11px;color:var(--text-secondary);">+ '+(_importPreviewItems.length-50)+' more not shown</p>':'';
-  area.innerHTML='<p style="font-size:12px;font-weight:600;margin-bottom:6px;">'+_importPreviewItems.length+' task'+(_importPreviewItems.length!==1?'s':'')+' will be created'+(built.isCsv?' (CSV detected)':'')+':</p>'+
+  var fresh=_importPreviewItems.filter(function(it){return !it.dupe;}).length;
+  var dupes=_importPreviewItems.length-fresh;
+  var headline=fresh+' task'+(fresh!==1?'s':'')+' will be created'
+    +(dupes?' \u00b7 '+dupes+' already exist'+(dupes===1?'s':'')+' (skipped)':'')
+    +(built.isCsv?' (CSV detected)':'');
+  area.innerHTML='<p style="font-size:12px;font-weight:600;margin-bottom:6px;">'+headline+':</p>'+
     '<div style="max-height:220px;overflow-y:auto;border:1px solid var(--border);border-radius:var(--radius-sm);">'+rowsHtml+'</div>'+more+
-    '<div class="modal-actions" style="margin-top:10px;"><button class="btn btn-accent" onclick="_importCommit()">Import '+_importPreviewItems.length+'</button><button class="btn" onclick="closeModal()">Cancel</button></div>';
+    '<div class="modal-actions" style="margin-top:10px;">'
+    +(fresh?'<button class="btn btn-accent" onclick="_importCommit()">Import '+fresh+'</button>':'')
+    +'<button class="btn" onclick="closeModal()">'+(fresh?'Cancel':'Close')+'</button></div>';
 }
 function _importCommit(){
   if(!_importPreviewItems||!_importPreviewItems.length){closeModal();return;}
@@ -8294,6 +8689,7 @@ function _importCommit(){
   // the explicit call inside is what actually persists the import today.
   _withBatch(function(){
     _importPreviewItems.forEach(function(it,idx){
+      if(it.dupe)return;   // P2-S5: the preview said skipped; skipped it is
       var proj=it.projectTag?_resolveProjectTag(it.projectTag):null;
       state.tasks.push({id:'tk'+Date.now()+'_'+idx+Math.random().toString(36).slice(2,5),name:it.name,due:it.due||'',priority:'med',timeEst:'',time:it.time||'',projectId:proj?proj.id:'',projectIds:proj?[proj.id]:[],done:false,recurrence:it.recurrence});
       n++;
@@ -8306,6 +8702,66 @@ function _importCommit(){
   if(typeof renderProjects==='function')renderProjects();
   if(typeof _refreshTodayViewIfVisible==='function')_refreshTodayViewIfVisible();
   toast('Imported '+n+' task'+(n!==1?'s':''));
+}
+
+// ── Symmetric export (Stage 7, P2-S4) ────────────────────────────────────
+// "Import without symmetric export is a one-way valve, and switchers can
+// smell those." One CSV, in the exact columns the importer reads
+// (TYPE,CONTENT,DATE,PROJECT), covering every OPEN task -- standalone and
+// subtask alike. CONTENT embeds time and recurrence as the same quick-add
+// text the parser produces them from, so export -> import round-trips: the
+// verification suite literally feeds this file back through
+// _importBuildItems and asserts every row comes back structurally identical
+// and dedupe-skipped.
+var _RECUR_UNIT={daily:'day',weekly:'week',monthly:'month'};
+var _DAY_SHORT=['sun','mon','tue','wed','thu','fri','sat'];
+function _recurrenceToText(rec){
+  if(!rec||!rec.freq)return '';
+  var t;
+  if(rec.days&&rec.days.length>1){
+    t='every '+rec.days.map(function(d){return _DAY_SHORT[d]||'';}).filter(Boolean).join(' ');
+  }else{
+    var unit=_RECUR_UNIT[rec.freq]||rec.freq;
+    t=(rec.interval&&rec.interval>1)?('every '+rec.interval+' '+unit+'s'):('every '+unit);
+  }
+  if(rec.until)t+=' until '+rec.until;
+  return t;
+}
+function _timeToText(hhmm){
+  if(!hhmm||hhmm.indexOf(':')<0)return '';
+  var parts=hhmm.split(':');
+  var h=parseInt(parts[0],10),m=parts[1];
+  var h12=h===0?12:h>12?h-12:h;
+  return h12+(m!=='00'?(':'+m):'')+(h<12?'am':'pm');
+}
+// One row's CONTENT, SELF-CHECKED: the importer runs parseQuickAdd on it, so
+// a name that itself contains parseable text ("Essay draft due 11:59pm")
+// would come back altered -- the parser strips what looks like a time token
+// out of the NAME. For such names, fall back to the bare name (due survives
+// in the DATE column; embedded time/recurrence text is dropped rather than
+// let the round trip corrupt the name). Names the parser still mutates BARE
+// are exported as-is and flagged false, so the caller can count them.
+function _taskToCsvContent(t){
+  var full=t.name;
+  var timeTxt=_timeToText(t.time);
+  if(timeTxt)full+=' '+timeTxt;
+  var recTxt=_recurrenceToText(t.recurrence);
+  if(recTxt)full+=' '+recTxt;
+  if(typeof window.parseQuickAdd==='function'){
+    var rt=window.parseQuickAdd(full);
+    if(rt.name===t.name)return {content:full,stable:true};
+    var bare=window.parseQuickAdd(t.name);
+    return {content:t.name,stable:bare.name===t.name};
+  }
+  return {content:full,stable:true};
+}
+function exportTasksCSV(){
+  var rows=[['TYPE','CONTENT','DATE','PROJECT']];
+  getAllTasks().filter(function(t){return !t.done;}).forEach(function(t){
+    rows.push(['task',_taskToCsvContent(t).content,t.due||'',t.projectName||'']);
+  });
+  downloadCSV('centerpost-tasks-'+todayStr()+'.csv',_csvRows(rows));
+  toast('Exported '+(rows.length-1)+' open task'+((rows.length-1)!==1?'s':'')+' \u2014 the importer reads this file back');
 }
 
 // -- Schedule to timeline: wires existing timeEst data into the existing
@@ -8444,11 +8900,15 @@ function addStandaloneTask(){
 }
 
 function deleteStandaloneTask(id){
-  _confirm('Delete this task?',function(){
-    _tombstone(id);
-    state.tasks=state.tasks.filter(function(t){return t.id!==id;});
-    save();renderTaskList();
-  },{destructive:true,confirmText:'Delete'});
+  var snap=state.tasks.find(function(t){return t.id===id;});
+  if(!snap)return;
+  var idx=state.tasks.indexOf(snap);
+  _undoableArrayDelete({
+    label:'Deleted \u201c'+(snap.name||'task')+'\u201d',
+    removeNow:function(){state.tasks=state.tasks.filter(function(t){return t.id!==id;});renderTaskList();if(typeof _refreshTodayViewIfVisible==='function')_refreshTodayViewIfVisible();},
+    commitTombstones:function(){_tombstone(id);},
+    restore:function(){if(!state.tasks.some(function(t){return t.id===id;}))state.tasks.splice(Math.min(idx,state.tasks.length),0,snap);renderTaskList();if(typeof _refreshTodayViewIfVisible==='function')_refreshTodayViewIfVisible();}
+  });
 }
 
 function clearDoneTasks(){
@@ -8866,12 +9326,18 @@ function toggleCompletedFolder(header){
 }
 
 function removeCompleted(id){
-  _archiveTombstone(id); // durable removal -- a stale device can't re-add it
-  state.completedTasks=state.completedTasks.filter(function(t){return t.id!==id;});
-  // F3: completedTasks persists to its own doc; save() still runs for the
-  // _archiveTombstones map (which stays in the blob) and the UI.
-  if(typeof _saveCompletedTasksDoc==='function')_saveCompletedTasksDoc();
-  save();renderTaskList();
+  var snap=state.completedTasks.find(function(t){return t.id===id;});
+  if(!snap)return;
+  var idx=state.completedTasks.indexOf(snap);
+  // A2-4: same deferred shape as live deletes, with the ARCHIVE tombstone map
+  // and the own-doc save at commit instead of the blob-only path.
+  _undoableArrayDelete({
+    label:'Removed from history',
+    removeNow:function(){state.completedTasks=state.completedTasks.filter(function(t){return t.id!==id;});renderTaskList();},
+    commitTombstones:function(){_archiveTombstone(id);},
+    restore:function(){if(!state.completedTasks.some(function(t){return t.id===id;}))state.completedTasks.splice(Math.min(idx,state.completedTasks.length),0,snap);renderTaskList();},
+    afterCommit:function(){if(typeof _saveCompletedTasksDoc==='function')_saveCompletedTasksDoc();}
+  });
 }
 
 // =======================================

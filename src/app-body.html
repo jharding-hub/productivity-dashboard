@@ -167,6 +167,8 @@
 <!-- Panel survey Stage 7 (A-5): paste-a-list / CSV import, no per-service
      APIs -- see openImportList in legacy.js. -->
 <button class="btn btn-sm" onclick="event.stopPropagation();openImportList()" title="Paste a list or a CSV export -- preview before anything is created" style="font-size:11px;padding:3px 8px;">&#128229; Import</button>
+<!-- Stage 7 (P2-S4): the reverse valve, in the importer's exact columns. -->
+<button class="btn btn-sm" onclick="event.stopPropagation();exportTasksCSV()" title="Every open task as a CSV the importer reads back -- proof your data isn't locked in" style="font-size:11px;padding:3px 8px;">&#128228; Export</button>
 </div>
 <!-- Bulk-action bar: hidden until select mode is on (toggleTaskSelectMode). -->
 <div class="tl-select-actions" id="tlSelectModeActions" style="display:none;flex-wrap:wrap;gap:6px;align-items:center;padding:8px 10px;margin-bottom:6px;background:var(--surface-raised);border:1px solid var(--border);border-radius:var(--radius-sm);">
@@ -530,6 +532,30 @@
 </div>
 </div>
 
+<!-- KEYBOARD MAP (panel survey 2026-08-22, I2-5). Discoverable via ? or
+     Cmd-/; deliberately tiny -- a reference card, not a tutorial. -->
+<div class="modal-blur-overlay" id="kbHelpModal" role="dialog" aria-modal="true" aria-labelledby="kbHelpTitle">
+<div class="modal-blur-backdrop" onclick="toggleKbHelp()"></div>
+<div class="modal-blur-panel" style="width:min(420px,92vw);">
+  <div class="modal-blur-header">
+    <div class="modal-blur-title" id="kbHelpTitle">&#9000;&#65039; Keyboard</div>
+    <button class="modal-blur-close" onclick="toggleKbHelp()" aria-label="Close">&#10005;</button>
+  </div>
+  <div class="modal-blur-body" style="padding:14px 20px;">
+    <div class="kb-help-grid">
+      <kbd>j</kbd><span>/</span><kbd>k</kbd><span class="kbh-desc">move through the Task List</span>
+      <kbd>x</kbd><span class="kbh-desc kbh-span">select the current task (opens select mode)</span>
+      <kbd>e</kbd><span class="kbh-desc kbh-span">complete the current task</span>
+      <kbd>d</kbd><span class="kbh-desc kbh-span">edit its due date</span>
+      <kbd>&#8984;Z</kbd><span class="kbh-desc kbh-span">undo the last delete or bulk change</span>
+      <kbd>&#8984;K</kbd><span class="kbh-desc kbh-span">search everything / commands</span>
+      <kbd>?</kbd><span class="kbh-desc kbh-span">this card</span>
+    </div>
+    <p style="margin:12px 0 0;font-size:11px;color:var(--text-faint);">In select mode, shift-click a checkbox to select the whole range. Search understands <code>overdue</code>, <code>today</code>, <code>tomorrow</code>, <code>week</code>, <code>nodate</code>, and <code>#project</code> &mdash; they combine.</p>
+  </div>
+</div>
+</div>
+
 <!-- YOUR DATA (panel survey 2026-08-22, A2-5 / P4-S1 / P7-S2). One page that
      answers, in plain language: where does my data live, when was it last
      backed up, who can see what, how do I hold my own copy, and how do I
@@ -557,6 +583,7 @@
       <button class="btn btn-sm" onclick="exportMyData()">&#11015; Export everything (JSON)</button>
       <button class="btn btn-sm" onclick="_exportCheckinsCSV()">Check-ins CSV</button>
       <button class="btn btn-sm" onclick="_exportMoodLogCSV()">Mood CSV</button>
+      <button class="btn btn-sm" onclick="exportTasksCSV()">Tasks CSV</button>
     </div>
     <p style="margin:0 0 12px;color:var(--text-faint);font-size:11.5px;">The everything-export includes your encrypted journal as ciphertext. A readable journal export lives inside the Journal itself, while it&rsquo;s unlocked.</p>
 
@@ -636,7 +663,7 @@
 <div class="modal-blur-backdrop" onclick="closeCommandPalette()"></div>
 <div class="modal-blur-panel" style="width:min(480px,92vw);padding:0;">
   <div style="padding:12px 14px;border-bottom:1px solid var(--border,rgba(255,255,255,0.08));">
-    <input type="text" id="cmdPaletteInput" placeholder="Search everything, or type a command… try overdue, week, nodate, project:name" autocomplete="off" style="width:100%;font-size:14px;background:transparent;border:none;outline:none;" oninput="_cmdPaletteFilter()" onkeydown="_cmdPaletteKeydown(event)">
+    <input type="text" id="cmdPaletteInput" placeholder="Search everything, or type a command… try today, overdue, #project — they combine" autocomplete="off" style="width:100%;font-size:14px;background:transparent;border:none;outline:none;" oninput="_cmdPaletteFilter()" onkeydown="_cmdPaletteKeydown(event)">
   </div>
   <!-- Panel survey 2026-08-18 (A-10): pinned saved filters, shown on the
        empty-query state alongside recents. -->

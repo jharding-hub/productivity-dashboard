@@ -775,3 +775,20 @@ test('heartbeats: absent on both sides stays an empty map, never a crash', () =>
   const out = reconcileSync({ tasks: [] }, {});
   assert.deepEqual(Object.keys(out._devices), []);
 });
+
+
+// ── Stage 7: project-level deletion is a durable fact too ───────────────────
+test('deleted project stays deleted when a stale client writes', () => {
+  // Found during the undo work: deleteProject never tombstoned and
+  // mergeProjects never dropped project-level tombstones, so a deleted
+  // project came back -- subtasks and all -- from any stale device.
+  const proj = { id:'p9', name:'Old project', subtasks:[{id:'s1',name:'a',done:false}] };
+  const A = { projects: [], _tombstones: { p9: '2026-08-23T12:00:00.000Z' } };
+  const staleB = { projects: [ JSON.parse(JSON.stringify(proj)) ] };
+  const reconciled = reconcileSync(staleB, A);
+  assert.deepEqual(reconciled.projects, [], 'p9 does not resurrect');
+  // And the same round-trip as reminders: B saves, A reloads -- still gone.
+  const bAfter = Object.assign({}, staleB, reconciled);
+  const roundTrip = reconcileSync(A, bAfter);
+  assert.deepEqual(roundTrip.projects, []);
+});

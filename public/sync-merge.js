@@ -84,7 +84,12 @@ function mergeProjects(localArr, cloudArr, tomb){
   var localById = Object.create(null), cloudById = Object.create(null);
   (Array.isArray(localArr)?localArr:[]).forEach(function(p){ if(p&&p.id!=null) localById[p.id]=p; });
   (Array.isArray(cloudArr)?cloudArr:[]).forEach(function(p){ if(p&&p.id!=null) cloudById[p.id]=p; });
-  return mergeById(localArr, cloudArr).map(function(p){
+  // The PROJECT-level drop was missing until 2026-08-23 (found in the Stage 7
+  // undo work): subtasks were tombstone-filtered but the project array itself
+  // was a bare union, and deleteProject never tombstoned -- so a deleted
+  // project resurrected, subtasks and all, from any stale device. The same
+  // structural bug this module exists to prevent, one level up.
+  return _dropTombstoned(mergeById(localArr, cloudArr), tomb).map(function(p){
     var lp = localById[p.id], cp = cloudById[p.id];
     var subs = (lp && cp) ? mergeById(lp.subtasks, cp.subtasks) : (p.subtasks || []);
     return Object.assign({}, p, { subtasks: _dropTombstoned(subs, tomb) });
