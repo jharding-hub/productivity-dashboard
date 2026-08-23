@@ -3382,6 +3382,21 @@ body.admin-overlay-open #starryLayer,body.admin-overlay-open #galaxyLayer,body.a
 .tl-triage-btn{padding:5px 10px;min-height:32px;font-size:calc(12px * var(--type-scale,1));border:1px solid var(--border-focus);border-radius:var(--radius-sm);background:var(--surface);color:var(--text);cursor:pointer;font-family:inherit;transition:border-color 0.15s,color 0.15s;}
 .tl-triage-btn:hover{border-color:var(--accent-dim);color:var(--accent);}
 .tl-triage-note a{color:var(--accent);cursor:pointer;text-decoration:underline;}
+/* Content-first tile defaults (panel survey 2026-08-22, J2-3). A live count
+   over an empty body read as data loss to most of the panel; these give the
+   count something to point at without expanding the tile. */
+.proj-preview{display:flex;flex-direction:column;gap:4px;padding:2px 0 0;}
+.proj-preview-row{display:flex;align-items:baseline;justify-content:space-between;gap:8px;padding:6px 8px;border-radius:var(--radius-sm);background:var(--surface-raised);cursor:pointer;transition:border-color 0.15s;border:1px solid transparent;}
+.proj-preview-row:hover{border-color:var(--border-focus);}
+.ppr-name{font-size:calc(12.5px * var(--type-scale,1));color:var(--text);font-weight:600;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
+.ppr-meta{font-size:calc(10.5px * var(--type-scale,1));color:var(--text-dim);white-space:nowrap;flex-shrink:0;}
+.proj-preview-more{font-size:calc(11px * var(--type-scale,1));color:var(--text-dim);cursor:pointer;padding:4px 8px;text-decoration:underline;}
+.proj-preview-more:hover{color:var(--accent);}
+.tile-summary-peek{display:flex;flex-direction:column;gap:3px;margin-top:7px;width:100%;}
+.tsp-row{display:flex;align-items:baseline;justify-content:space-between;gap:8px;font-size:calc(11px * var(--type-scale,1));}
+.tsp-text{color:var(--text-dim);overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
+.tsp-when{color:var(--text-faint);white-space:nowrap;flex-shrink:0;}
+
 /* Tool Kit first-open explainer (panel survey 2026-08-22, J2-1). Sits above
    the grid inside the panel; shown once, then dismissed for good. Compact on
    purpose -- it must not push the grid into the clipping it caused before. */

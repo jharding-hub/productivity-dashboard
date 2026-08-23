@@ -2847,6 +2847,32 @@ function _sortedProjects(){
   });
 }
 
+// Compact, id-free preview rows for the Projects dashboard tile (J2-3).
+// Nearest due date first, undated last -- "what needs me" ordering, matching
+// how the rest of the app sorts.
+var PROJ_PREVIEW_N=3;
+function _projPreviewHTML(projects,today){
+  var sorted=projects.slice().sort(function(a,b){
+    if(!a.due&&!b.due)return (a.name||'').localeCompare(b.name||'');
+    if(!a.due)return 1;
+    if(!b.due)return -1;
+    return a.due.localeCompare(b.due);
+  });
+  var shown=sorted.slice(0,PROJ_PREVIEW_N);
+  var rest=sorted.length-shown.length;
+  var html='<div class="proj-preview">'+shown.map(function(p){
+    var open=(p.subtasks||[]).filter(function(st){return !st.done;}).length;
+    var dueTxt=p.due?(_dueCountdownLabel(p.due)||fmtDate(p.due)):'no end date';
+    return '<div class="proj-preview-row" onclick="openProjectModal(\''+p.id+'\')">'
+      +'<span class="ppr-name">'+esc(p.name)+'</span>'
+      +'<span class="ppr-meta">'+open+' open \u00b7 '+esc(dueTxt)+'</span>'
+      +'</div>';
+  }).join('');
+  html+='<div class="proj-preview-more" onclick="var cb=document.getElementById(\'projUpcomingOnly\');if(cb){cb.checked=true;renderProjects();}">'
+    +(rest>0?('Show all '+sorted.length+' projects'):'Show full cards')
+    +'</div>';
+  return html+'</div>';
+}
 function renderProjects(){
 if(_isEditingInPanel('projectList')){_deferPanelRender('projectList');return;}
 const el=document.getElementById('projectList');const today=todayStr();
@@ -2872,8 +2898,20 @@ var pcpEl=document.getElementById('pc_projects');
 // the empty space now says plainly that the filter, not a missing project,
 // is why nothing is showing, with a one-tap way to reveal them.
 if(!inOverlay&&!showAll){
+  // Panel survey 2026-08-22 (J2-3): the notice became a PREVIEW. Explaining an
+  // empty body was an improvement on an empty body, but seven of eight seats
+  // still said a dashboard should render its data -- "a click-tax on every
+  // single load". So the tile now shows the few nearest projects and offers
+  // the rest, which keeps the compact tile and the bottom-anchored add form
+  // (the original reasons for this branch) while never showing a count over
+  // nothing.
+  //
+  // Rows are deliberately ID-FREE: the full cards below emit pn_/pd_/sn_ ids
+  // and this preview renders at the same time in the same document, so
+  // reusing them would be the duplicate-id bug class this file keeps
+  // re-learning.
   el.innerHTML=visibleProjects.length>0
-    ?'<div class="empty-state proj-filtered-state" onclick="var cb=document.getElementById(\'projUpcomingOnly\');if(cb){cb.checked=true;renderProjects();}" style="cursor:pointer;"><p style="margin:0;color:var(--text-dim);">'+visibleProjects.length+' project'+(visibleProjects.length!==1?'s':'')+' hidden by the filter above \u2014 tap here or check &ldquo;Show all projects&rdquo; to see '+(visibleProjects.length!==1?'them':'it')+'.</p></div>'
+    ?_projPreviewHTML(visibleProjects,today)
     :'';
   if(pcpEl){pcpEl.style.flex='none';pcpEl.style.minHeight='0';}
   document.getElementById('projCount').textContent=state.projects.length;
@@ -3385,15 +3423,52 @@ function _rerenderForDayChange(){
 // Opt-in and off by default. The copy deliberately avoids "shift work" framing
 // -- it also serves anyone whose day genuinely ends after midnight, which the
 // survey found in three separate personas, not just the Shift Worker.
+// Panel survey 2026-08-22 (J2-4): the same offsets, but named for the lives
+// they fit. Four seats found this setting only because the surveyor pointed
+// at it -- a bare list of hours does not tell a night owl that one of these
+// rows is about them. The Shift Worker's ask specifically: name "rotating
+// shift" even though a single anchor only partly serves a rotation, because
+// a schedule that goes unnamed reads as a schedule the app has not heard of.
+// The honest limit is stated in the help text below, not hidden.
 var DAY_ANCHOR_CHOICES=[
   {v:0,   label:'Midnight (default)'},
   {v:60,  label:'1:00 AM'},
-  {v:120, label:'2:00 AM'},
-  {v:180, label:'3:00 AM'},
-  {v:240, label:'4:00 AM'},
-  {v:300, label:'5:00 AM'},
-  {v:360, label:'6:00 AM'}
+  {v:120, label:'2:00 AM \u2014 night owl'},
+  {v:180, label:'3:00 AM \u2014 night owl'},
+  {v:240, label:'4:00 AM \u2014 late shift'},
+  {v:300, label:'5:00 AM \u2014 rotating shift'},
+  {v:360, label:'6:00 AM \u2014 early riser'}
 ];
+// Lives here, at TOP LEVEL, with the rest of the day-anchor code rather than
+// beside its caller: everything after initApp() is inside that async closure,
+// so a function declared down there is not global and any typeof-guarded
+// caller elsewhere would skip it in silence. Known trap in this file.
+// Panel survey 2026-08-22 (J2-4): the day-anchor setting has the best copy in
+// the app and lives where nobody finds it. The Skeptic's mechanism, taken over
+// the alternative of an onboarding step: offer it at the ONE moment its
+// problem is visible -- the user is still working, the clock passes midnight,
+// and things they are actively doing turn "overdue" under their hands.
+// Once ever, and never for someone who has already set an anchor.
+var _lastRolloverDayKey=null;
+function _maybeOfferDayAnchor(){
+  if(_dayAnchorPref()!==0)return;              // already tuned; nothing to offer
+  if(_jitSeen('dayAnchorOffer'))return;
+  if(state.onboardingSeen!==true)return;
+  var h=new Date().getHours();
+  if(h>=4)return;                              // only in the small hours
+  // Only if the rollover actually cost them something they can see.
+  var t=todayStr();
+  var justWentOverdue=getAllTasks().filter(function(x){return !x.done&&x.due&&x.due<t;}).length;
+  if(!justWentOverdue)return;
+  _markJitSeen('dayAnchorOffer');
+  _confirm('It just turned midnight and '+justWentOverdue+' thing'+(justWentOverdue!==1?'s':'')+
+    ' rolled over to overdue while you were still up. If your day genuinely runs past midnight, Centerpost can start your day later so late nights stop counting as late.',
+    function(){openCustomize();setTimeout(function(){
+      var el=document.getElementById('dayAnchorSettings');
+      if(el)el.scrollIntoView({block:'center'});
+    },300);},
+    {confirmText:'Change when my day starts',altText:'Midnight is right for me',icon:'ti-moon'});
+}
 function _renderDayAnchorSettings(){
   var el=document.getElementById('dayAnchorSettings');if(!el)return;
   var cur=_dayAnchorPref();
@@ -3412,7 +3487,12 @@ function _renderDayAnchorSettings(){
     (cur===0
       ? 'Right now a new day begins at midnight, the usual way.'
       : 'Anything you do before '+esc(_dayAnchorLabel(cur))+' still counts toward the previous day &mdash; nothing goes overdue while you are still up.')+
-    '</p>';
+    '</p>'+
+    // Said plainly rather than implied by a preset name: one anchor describes
+    // one kind of day, so a rotation gets the late-night half of the fix and
+    // not the rest. Better that the setting admits its limit than that the
+    // word "rotating" promises a rotation model that does not exist.
+    '<p class="cust-sub" style="margin-top:4px;opacity:0.75;">On a rotating schedule this shifts every day by the same amount &mdash; it stops late nights counting as late, but Centerpost does not yet model shift days and off days separately.</p>';
 }
 function _dayAnchorLabel(min){
   var m=DAY_ANCHOR_CHOICES.filter(function(c){return c.v===min;})[0];
@@ -8370,6 +8450,8 @@ function _updateTileSummaryProjects(){
   el.innerHTML=html;
 }
 
+// How many reminders the collapsed tile shows under its count pills.
+var REM_SUMMARY_PEEK_N=3;
 function _updateTileSummaryReminders(){
   var el=document.getElementById('tile-summary-reminders');
   if(!el)return;
@@ -8397,6 +8479,24 @@ function _updateTileSummaryReminders(){
     }
   }
   if(!html)html='<span style="color:var(--text-faint);font-style:italic;">No reminders</span>';
+  // Panel survey 2026-08-22 (J2-3): counts, then the actual next few items.
+  // The collapsed summary is KEPT -- the ADHD seat was the one voice against
+  // expanding it by default ("hiding 25 reminders behind chips lowers my
+  // dread on entry"), and they were right; the objection everyone shared was
+  // a live count sitting over nothing. So the pills stay and the soonest
+  // items now show underneath them, which is what the counts were describing
+  // all along. Text only, no ids -- the full rows below own rt_/rd_/rt2_.
+  var soon=rems.filter(function(r){return r.date&&r.date<=todayKey;})
+    .concat(rems.filter(function(r){return r.date&&r.date>todayKey;}))
+    .slice(0,REM_SUMMARY_PEEK_N);
+  if(soon.length){
+    html+='<div class="tile-summary-peek">'+soon.map(function(r){
+      var when=r.date===todayKey?(r.time?fmtTime(r.time):'today')
+             :(r.date<todayKey?'overdue':fmtDate(r.date));
+      return '<div class="tsp-row"><span class="tsp-text">'+esc(r.text)+'</span>'
+        +'<span class="tsp-when">'+esc(when)+'</span></div>';
+    }).join('')+'</div>';
+  }
   el.innerHTML=html;
 }
 
@@ -15066,6 +15166,11 @@ _bindPanelUsageTracking();
 // see TodayWidget.swift. This handles app-open, that handles app-closed.)
 function _dayRolloverTick(){
   try { checkDailyRoutineReset(); } catch(e){}
+  try {
+    var _dk=todayStr();
+    if(_lastRolloverDayKey&&_lastRolloverDayKey!==_dk)_maybeOfferDayAnchor();
+    _lastRolloverDayKey=_dk;
+  } catch(e){}
   // A-13: re-time the due countdowns. Text-only, no row re-render -- see
   // _dueCountdownTick. Riding this existing 60s interval (which also runs on
   // window focus) means no second timer and no extra wake-ups.
