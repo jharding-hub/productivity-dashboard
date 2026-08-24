@@ -985,7 +985,14 @@ body.cp-stop-motion .jarvis-fab{animation:none !important;}
    outside the mobile media query, same pattern as .mobile-home above; the
    .active toggle that shows it lives in the mobile media block below. */
 .mobile-pager{display:none;flex-direction:column;}
-.pager-rail{display:flex;justify-content:center;align-items:center;gap:5px;padding:12px 8px 8px;}
+/* flex-start, NOT center: a centered flex row that overflows puts its first
+   items in negative scroll space, where they can't be reached by scrolling at
+   all. With eight buttons the rail is essentially full-width anyway, so the
+   centering is not missed. Scrollbar hidden -- the rail auto-scrolls the
+   active button into view (_pagerEnsureRailVisible), so it's not the user's
+   job to find it. */
+.pager-rail{display:flex;justify-content:flex-start;align-items:center;gap:5px;padding:12px 8px 8px;overflow-x:auto;scroll-behavior:smooth;scrollbar-width:none;-webkit-overflow-scrolling:touch;}
+.pager-rail::-webkit-scrollbar{display:none;}
 .pager-rail-btn{
   position:relative;display:flex;align-items:center;justify-content:center;gap:6px;
   width:40px;height:44px;flex-shrink:0;overflow:hidden;
@@ -1009,7 +1016,13 @@ body.cp-stop-motion .jarvis-fab{animation:none !important;}
 .pager-rail-btn:not(.active).has-count .prb-dot{display:block;}
 .pager-title{text-align:center;font-family:'Fraunces',serif;font-weight:600;font-size:calc(22px * var(--type-scale,1));color:var(--text);padding:2px 14px 4px;}
 .pager-track{display:flex;overflow-x:auto;scroll-snap-type:x mandatory;-webkit-overflow-scrolling:touch;}
-.pager-page{flex:0 0 100%;scroll-snap-align:start;padding:4px 18px 16px;display:flex;flex-direction:column;gap:12px;min-height:1px;}
+/* min-width:0 is load-bearing, not boilerplate. Flex items default to
+   min-width:auto, so a page whose panel has a wide intrinsic minimum (Notes
+   did: 475px) grows PAST its flex-basis -- that page rendered 511px wide in a
+   375px viewport, and the uneven page widths also skew the scroll-offset ->
+   active-index math the rail depends on. Same fix, same reason, as the
+   .panel{min-width:0} rule the dashboard grid already needed. */
+.pager-page{flex:0 0 100%;min-width:0;scroll-snap-align:start;padding:4px 18px 16px;display:flex;flex-direction:column;gap:12px;min-height:1px;}
 /* Step 3: the pre-existing .panel.mobile-visible{touch-action:pan-y} rule
    (app.css, mobile media block) exists so the OLD single-panel-open swipe-
    right-to-close JS handler gets first crack at horizontal touches instead of

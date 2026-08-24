@@ -5786,15 +5786,28 @@ var MOBILE_PANELS=[
 // PAGER_ENABLED; step 4 flips the default so it replaces the tile grid for
 // everyone. Dev-only toggle until then: ?pager=1 in the URL, or
 // localStorage.setItem('cp_pager','1').
-var PAGER_PANELS=['projects','tasklist','timeline','notes','time','reminders'];
+// Rail membership (Joe, 2026-08-24): Tool Kit dropped -- it already has its
+// own slot in the bottom tab bar, so a second entry here was redundant --
+// and Routines/Brain Dump/Stuck? Help added. That makes every mobile panel
+// reachable without the tile grid (Tool Kit + Search + Settings via the tab
+// bar, Admin via #/admin), which is what the tile grid was still needed for.
+// Eight buttons overflow 375px once one expands, so the rail scrolls
+// horizontally now -- design-handoff variant 2a, which anticipated exactly
+// this. Wellness is deliberately absent: it isn't in MOBILE_PANELS at all,
+// it lives inside the Tool Kit's grounding component.
+var PAGER_PANELS=['projects','tasklist','timeline','notes','reminders','routines','brain','decision'];
 var PAGER_ENABLED=/[?&]pager=1(&|$)/.test(location.search)||localStorage.getItem('cp_pager')==='1';
 
-// Step 4: restores the last panel viewed instead of always Projects. Clamped
-// defensively in case PAGER_PANELS' length ever changes under a stale saved
-// index (e.g. after a future edit to the rail's panel list).
+// Step 4: restores the last panel viewed instead of always Projects.
+//
+// Stores the panel ID, not its index. The first cut stored an index, and
+// editing the rail's membership (dropping Tool Kit, adding three) instantly
+// proved why that's wrong: every saved index silently pointed at a DIFFERENT
+// panel than the one the user left on. IDs survive reordering. A stale ID
+// that's no longer in the rail simply falls back to the first panel.
 function _pagerInitialIndex(){
-  var idx=state.everythingPagerIndex|0;
-  return Math.max(0,Math.min(PAGER_PANELS.length-1,idx));
+  var i=PAGER_PANELS.indexOf(state.everythingPagerPanel);
+  return i<0?0:i;
 }
 function buildMobilePager(){
   var rail=document.getElementById('pagerRail');
@@ -5827,7 +5840,20 @@ function buildMobilePager(){
   // scroll position still defaults to 0 on a freshly-built element and needs
   // setting explicitly -- instant, not smooth, since this is restoring where
   // the user left off, not an animated navigation.
-  if(startIdx>0)track.scrollLeft=startIdx*track.clientWidth;
+}
+// Restoring the scroll position has to happen AFTER _pagerMoveOut() puts the
+// panels in, not inside buildMobilePager(): at build time the pages are still
+// empty shells, so any position set then is measured against the wrong
+// layout. Uses the target page's own offset rather than index*width, for the
+// same reason _pagerSyncActive does.
+function _pagerRestoreScroll(){
+  var track=document.getElementById('pagerTrack');
+  if(!track)return;
+  var idx=_pagerInitialIndex();
+  var kids=track.children;
+  if(idx<=0||!kids.length)return;
+  track.scrollLeft=kids[idx].offsetLeft-kids[0].offsetLeft;
+  _pagerEnsureRailVisible(idx);          // restored panel may be off-rail too
 }
 
 // Step 2: fills the pager pages with the SAME .panel[data-panel] nodes the
@@ -5856,9 +5882,16 @@ function _pagerMoveOut(){
     else if(id==='notes'&&typeof renderNotes==='function')renderNotes();
     else if(id==='tasklist'&&typeof renderTaskList==='function')renderTaskList();
     else if(id==='reminders'&&typeof renderReminders==='function')renderReminders();
-    else if(id==='time'&&typeof _renderToolkitExplainer==='function')_renderToolkitExplainer();
-    // timeline needs no explicit call -- renderTimeline() self-refreshes via
-    // its own 60s tick + mutation call sites (legacy.js ~15358,15673).
+    else if(id==='brain'&&typeof renderThoughts==='function')renderThoughts();
+    // Three panels deliberately get NO call here:
+    //   timeline  -- renderTimeline() self-refreshes on its own 60s tick and
+    //                from every mutation call site (legacy.js ~15358,15673).
+    //   routines  -- #routines-panel-root is a React portal target; the
+    //                component owns its own rendering, same as Tool Kit did.
+    //   decision  -- newDecisionPrompt() picks a RANDOM prompt, so calling it
+    //                here would reshuffle the user's prompt every time they
+    //                return to the home surface. init already seeded it and
+    //                reparenting preserves the DOM, so it stays put.
   });
 }
 // Restores every panel moved out by _pagerMoveOut() to its original spot in
@@ -5892,7 +5925,20 @@ function _pagerSyncActive(){
   var rail=document.getElementById('pagerRail');
   var title=document.getElementById('pagerTitle');
   if(!track||!rail||!title||!track.clientWidth)return;
-  var idx=Math.round(track.scrollLeft/track.clientWidth);
+  // Derive the index from the pages' REAL offsets rather than assuming every
+  // page is exactly one viewport wide. Uniform-width math (scrollLeft /
+  // clientWidth) silently desyncs the rail from the content the moment any
+  // page renders wider than the viewport -- which is not hypothetical: the
+  // Notes page did exactly that until the min-width:0 fix in app.css, and the
+  // resulting drift was already 136px, over a third of the way to picking the
+  // wrong panel. Offsets are measured, so this stays correct either way.
+  var kids=track.children;
+  var origin=kids.length?kids[0].offsetLeft:0;
+  var idx=0,best=Infinity;
+  for(var k=0;k<kids.length;k++){
+    var d=Math.abs((kids[k].offsetLeft-origin)-track.scrollLeft);
+    if(d<best){best=d;idx=k;}
+  }
   idx=Math.max(0,Math.min(PAGER_PANELS.length-1,idx));
   var id=PAGER_PANELS[idx];
   var p=null;
@@ -5903,10 +5949,28 @@ function _pagerSyncActive(){
   // (and now on every rail tap too), and save() writes to Firestore, not
   // just localStorage; re-saving an unchanged index on every tick would be
   // pure waste.
-  if(state.everythingPagerIndex!==idx){
-    state.everythingPagerIndex=idx;
+  if(state.everythingPagerPanel!==id){
+    state.everythingPagerPanel=id;
     save();
   }
+  _pagerEnsureRailVisible(idx);
+}
+// With eight buttons the rail overflows 375px (and more so once the active
+// one expands to 108px), so the active button can sit off-screen after a
+// swipe. Scroll the RAIL ONLY -- never scrollIntoView(), which would also
+// scroll the page vertically and yank the panel content around under the
+// user's thumb. Deferred past the .2s width transition so the expanded
+// width is measured, not the collapsed one.
+function _pagerEnsureRailVisible(idx){
+  setTimeout(function(){
+    var rail=document.getElementById('pagerRail');
+    if(!rail)return;
+    var btn=rail.children[idx];
+    if(!btn)return;
+    var rb=rail.getBoundingClientRect(),bb=btn.getBoundingClientRect();
+    if(bb.left<rb.left)rail.scrollLeft+=(bb.left-rb.left)-8;
+    else if(bb.right>rb.right)rail.scrollLeft+=(bb.right-rb.right)+8;
+  },220);
 }
 // Timer debounce, not rAF -- rAF can be throttled/skipped in backgrounded or
 // non-compositing contexts (confirmed while testing this: scrollTo() fired
@@ -6013,7 +6077,7 @@ function showMobileHome(){
   if(pagerEl){
     pagerEl.classList.toggle('active',PAGER_ENABLED);
     document.body.classList.toggle('cp-pager-preview',PAGER_ENABLED);
-    if(PAGER_ENABLED){buildMobilePager();_pagerMoveOut();_pagerWireGestures();}
+    if(PAGER_ENABLED){buildMobilePager();_pagerMoveOut();_pagerWireGestures();_pagerRestoreScroll();}
     else if(Object.keys(_pagerHome).length)_pagerMoveHome();
   }
   window.scrollTo(0,0);
