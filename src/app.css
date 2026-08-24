@@ -979,6 +979,38 @@ body.cp-stop-motion .jarvis-fab{animation:none !important;}
    Markup stays (mobileHomeClock is still updated by updateClock). */
 .mobile-home-header{display:none;}
 
+/* ═══ MOBILE PAGER (icon-rail pager, design handoff 2026-08-24, variant 2b) ═══
+   Replaces .mobile-panel-grid. Dev-flagged inert until step 4 -- see
+   PAGER_ENABLED/buildMobilePager() in legacy.js. Base rule stays display:none
+   outside the mobile media query, same pattern as .mobile-home above; the
+   .active toggle that shows it lives in the mobile media block below. */
+.mobile-pager{display:none;flex-direction:column;}
+.pager-rail{display:flex;justify-content:center;align-items:center;gap:5px;padding:12px 8px 8px;}
+.pager-rail-btn{
+  position:relative;display:flex;align-items:center;justify-content:center;gap:6px;
+  width:40px;height:44px;flex-shrink:0;overflow:hidden;
+  background:var(--surface);border:1px solid var(--border);border-radius:13px;
+  font-family:inherit;cursor:pointer;-webkit-tap-highlight-color:transparent;
+  transition:width 0.2s ease,background 0.15s,border-color 0.15s;
+}
+.pager-rail-btn .prb-icon{display:flex;align-items:center;justify-content:center;flex-shrink:0;}
+.pager-rail-btn .prb-icon .ti{font-size:calc(20px * var(--type-scale,1));font-style:normal;color:var(--text-faint);}
+.pager-rail-btn .prb-label{
+  font-size:calc(12px * var(--type-scale,1));font-weight:600;color:var(--accent);
+  white-space:nowrap;overflow:hidden;max-width:0;transition:max-width 0.2s ease;
+}
+.pager-rail-btn.active{width:108px;background:var(--accent-glow);border-color:var(--border-focus);}
+.pager-rail-btn.active .prb-icon .ti{color:var(--accent);}
+.pager-rail-btn.active .prb-label{max-width:70px;}
+.pager-rail-btn .prb-dot{
+  display:none;position:absolute;top:5px;right:5px;width:6px;height:6px;
+  border-radius:50%;background:var(--accent);
+}
+.pager-rail-btn:not(.active).has-count .prb-dot{display:block;}
+.pager-title{text-align:center;font-family:'Fraunces',serif;font-weight:600;font-size:calc(22px * var(--type-scale,1));color:var(--text);padding:2px 14px 4px;}
+.pager-track{display:flex;overflow-x:auto;scroll-snap-type:x mandatory;-webkit-overflow-scrolling:touch;}
+.pager-page{flex:0 0 100%;scroll-snap-align:start;padding:4px 18px 16px;display:flex;flex-direction:column;gap:12px;min-height:1px;}
+
 /* Mobile nav rows — full-width rungs hanging off a spine */
 .mobile-panel-grid{position:relative;display:flex;flex-direction:column;gap:9px;padding-left:18px;}
 .mobile-panel-grid::before{
@@ -2508,6 +2540,8 @@ body[data-theme="storm-dark"] .tl-hour-label{
   .dynamic-panels{padding:0 14px 16px;}
   /* Mobile home screen active */
   .mobile-home.active{display:block;}
+  .mobile-pager.active{display:flex;}
+  body.cp-pager-preview .mobile-panel-grid{display:none;}
   /* On the home screen (no panel open) the dashboard is empty — collapse it
      so its padding doesn't leave a dead gap between the header and the rows */
   .app-wrap:not(.panel-open) .dashboard{display:none;}

@@ -5780,6 +5780,47 @@ var MOBILE_PANELS=[
   {id:'admin',    icon:'<i class="ti ti-shield" aria-hidden="true"></i>',   label:'Admin',       badge:null, adminOnly:true, route:'#/admin'}
 ];
 
+// Icon-rail pager (design handoff 2026-08-24, "Panel Display Options" variant
+// 2b) -- replaces the mobile-panel-grid tile launcher with a swipeable pager
+// over these 6 panels. Staged rollout: steps 1-3 build it inert behind
+// PAGER_ENABLED; step 4 flips the default so it replaces the tile grid for
+// everyone. Dev-only toggle until then: ?pager=1 in the URL, or
+// localStorage.setItem('cp_pager','1').
+var PAGER_PANELS=['projects','tasklist','timeline','notes','time','reminders'];
+var PAGER_ENABLED=/[?&]pager=1(&|$)/.test(location.search)||localStorage.getItem('cp_pager')==='1';
+
+// Step 1: rail + empty page shells only. First panel marked active so the
+// expand/label CSS is visible for review; no tap/swipe wiring yet (that's
+// step 3) -- pages are intentionally blank (step 2 fills them with the real
+// panel content).
+function buildMobilePager(){
+  var rail=document.getElementById('pagerRail');
+  var track=document.getElementById('pagerTrack');
+  var title=document.getElementById('pagerTitle');
+  if(!rail||!track||!title)return;
+  var railHtml='',trackHtml='';
+  PAGER_PANELS.forEach(function(id,i){
+    var p=null;
+    for(var j=0;j<MOBILE_PANELS.length;j++){if(MOBILE_PANELS[j].id===id){p=MOBILE_PANELS[j];break;}}
+    if(!p)return;
+    var badgeVal='';
+    var todayVal=_mobileTodayBadge(p.id);
+    if(todayVal!==null){badgeVal=todayVal;}
+    else if(p.badge){var el=document.getElementById(p.badge);if(el)badgeVal=el.textContent||'';}
+    var hasCount=!!(badgeVal&&badgeVal!=='0');
+    var active=i===0;
+    railHtml+='<button type="button" class="pager-rail-btn'+(active?' active':'')+(hasCount?' has-count':'')+'" data-pager-id="'+p.id+'">'
+      +'<span class="prb-icon">'+p.icon+'</span>'
+      +'<span class="prb-label">'+p.label+'</span>'
+      +'<span class="prb-dot"></span>'
+      +'</button>';
+    trackHtml+='<div class="pager-page" data-pager-page="'+p.id+'"></div>';
+    if(active)title.textContent=p.label;
+  });
+  rail.innerHTML=railHtml;
+  track.innerHTML=trackHtml;
+}
+
 // Panel survey 2026-08-22 (J2-8): what the home screen counts.
 //
 // These badges mirrored the desktop panel totals, so the first thing anyone
@@ -5849,6 +5890,14 @@ function showMobileHome(){
   document.querySelectorAll('.panel').forEach(function(p){p.classList.remove('mobile-visible');});
   // Rebuild rows so badge counts are fresh
   buildMobileHome();
+  // Icon-rail pager preview (dev-flagged; see PAGER_ENABLED above). No-op for
+  // everyone until PAGER_ENABLED defaults on in step 4.
+  var pagerEl=document.getElementById('mobilePager');
+  if(pagerEl){
+    pagerEl.classList.toggle('active',PAGER_ENABLED);
+    document.body.classList.toggle('cp-pager-preview',PAGER_ENABLED);
+    if(PAGER_ENABLED)buildMobilePager();
+  }
   window.scrollTo(0,0);
 }
 
@@ -5856,6 +5905,8 @@ function showMobilePanel(panelId){
   if(!_isMobile()){return;}
   // Hide home; the banner stays as the top chrome (back bar retired)
   document.getElementById('mobileHome').classList.remove('active');
+  var pagerElHide=document.getElementById('mobilePager');
+  if(pagerElHide)pagerElHide.classList.remove('active');
   document.querySelector('.app-wrap').classList.add('panel-open');
   // Bug: in Today view, setViewMode('today') sets #dashboard{display:none}
   // as an inline style -- EVERY .panel, Tool Kit included, lives inside
@@ -7836,6 +7887,7 @@ function setViewMode(mode){
     dashEl.style.display='none';
     if(_isMobile()){
       document.getElementById('mobileHome').classList.remove('active');
+      var pagerElToday=document.getElementById('mobilePager');if(pagerElToday)pagerElToday.classList.remove('active');
       var mbb=document.getElementById('mobileBackBar');if(mbb)mbb.classList.remove('active');
       var aw=document.querySelector('.app-wrap');if(aw)aw.classList.remove('panel-open');
       document.querySelectorAll('.panel').forEach(function(p){p.classList.remove('mobile-visible');});
