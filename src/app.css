@@ -909,6 +909,22 @@ body.cp-stop-motion .jarvis-fab{animation:none !important;}
   .task-timer-wrap{display:none !important;}
   .header-timer-btn{font-size:calc(16px * var(--type-scale,1)) !important;padding:5px 10px !important;}
   .header-timer-arrow{padding:5px 6px !important;}
+  /* Top chrome tightening (Joe, 2026-08-24) -- both of these are MOBILE-ONLY
+     hides, deliberately not deletions from app-body.html.
+
+     The Today/Everything switch is redundant on phone: the bottom tab bar
+     carries both as its first two slots. It is NOT redundant on desktop --
+     the desktop status bar is Menu/Settings/Tour/Lock/Sign out with no view
+     switch at all, so this control is desktop's only way to change views.
+     Hiding rather than removing also keeps setViewMode()'s querySelectorAll
+     ('.vms-btn') sync working untouched; the tab-bar buttons carry the same
+     .vms-btn + data-mode, so the active state still lands where it should.
+
+     The "Focus" tag above the timer costs a whole stacked row in
+     .header-timer-outer (column flex) to label a control that already reads
+     "Start focus". */
+  .view-mode-switch{display:none !important;}
+  .header-timer-label-tag{display:none !important;}
   /* F24: the badge now lives in the HEADER, not the Tool Kit panel, so it has
      to earn its vertical space against scarce phone chrome -- at the panel's
      "-lg" sizing it added 69px to the mobile header. Compact here: smaller
@@ -2601,12 +2617,26 @@ body[data-theme="storm-dark"] .tl-hour-label{
   .panel{min-width:0;max-width:100%;overflow-wrap:break-word;}
   .panel-header{flex-wrap:wrap;}
   /* Push the day-progress bar + points/clock below the camera dead-zone.
-     Uses the real safe-area inset when the device reports one, with a 46px
-     floor so it still clears the camera when the inset is reported as 0
-     (common in installed PWAs / Android). The header owns this clearance so
-     the bar stays below the camera even when the sticky header is pinned. */
-  .header{padding:max(env(safe-area-inset-top),46px) 0 8px !important;top:0 !important;}
+     Uses the real safe-area inset when the device reports one.
+
+     The 46px floor that used to live here unconditionally has moved to the
+     standalone/native rules below (Joe, 2026-08-24). It exists for contexts
+     that genuinely render under the camera while reporting an inset of 0 --
+     installed PWAs, the Capacitor shell, some Android browsers. In an
+     ORDINARY browser tab none of that applies: the browser's own chrome
+     already sits between the notch and the viewport, so the floor was 46px
+     of dead black band above the banner and nothing else. 8px keeps the
+     wordmark off the address bar without pretending there's a notch. */
+  .header{padding:max(env(safe-area-inset-top),8px) 0 8px !important;top:0 !important;}
 }
+/* Restore the full camera clearance ONLY where the page really can sit under
+   the notch. Placed after the rule above so it wins on equal specificity;
+   the body.capacitor-native selector outdoes it on specificity alone. */
+@media(max-width:768px) and (display-mode:standalone),
+       (orientation:landscape) and (max-height:600px) and (display-mode:standalone){
+  .header{padding-top:max(env(safe-area-inset-top),46px) !important;}
+}
+body.capacitor-native .header{padding-top:max(env(safe-area-inset-top),46px) !important;}
 /* Hide the header subtitle(s) when a phone is in landscape (short viewport),
    where the header is too cramped to show them. Covers BOTH the on-bar subtitle
    "Productivity Dashboard" (wide landscape ⇒ desktop header) AND the compact
