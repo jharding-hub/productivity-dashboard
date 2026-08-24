@@ -49,9 +49,22 @@
   Referrer-Policy: strict-origin-when-cross-origin
   Content-Security-Policy-Report-Only: default-src 'self'; script-src 'self' 'unsafe-inline' https://www.gstatic.com https://accounts.google.com https://www.youtube.com; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com https://cdn.jsdelivr.net; font-src 'self' https://fonts.gstatic.com https://cdn.jsdelivr.net; img-src 'self' data: blob:; media-src 'self' blob:; connect-src 'self' https://centerpost-jarvis.medicjth.workers.dev https://centerpost-guardian.medicjth.workers.dev https://centerpost-sentinel.medicjth.workers.dev https://centerpost-pulse.medicjth.workers.dev https://*.googleapis.com https://accounts.google.com https://www.gstatic.com https://fonts.googleapis.com https://fonts.gstatic.com https://cdn.jsdelivr.net https://www.youtube.com https://o4511667943505920.ingest.us.sentry.io; frame-src https://accounts.google.com https://www.youtube.com; worker-src 'self'; manifest-src 'self'; object-src 'none'; base-uri 'self'; report-uri https://o4511667943505920.ingest.us.sentry.io/api/4511668027129856/security/?sentry_key=fa11403c0d7a9449b1749d199dc90395
 
-# Hashed, content-addressed build output — safe to cache forever.
+# Hashed, content-addressed build output. NOT immutable/long-cached, despite
+# the filename hash normally making that safe: Cloudflare Pages answers ANY
+# missing path under here with a 200 + index.html (its SPA fallback), not a
+# 404 -- an asset that hasn't reached this edge yet mid-deploy, or a hashed
+# filename that's rolled off since the last redeploy, gets that HTML back
+# with a real 200 status. "immutable, max-age=31536000" told browsers to
+# trust whatever they got under that URL for a year with no revalidation --
+# so a browser unlucky enough to ask at exactly the wrong instant got stuck
+# permanently serving index.html as its CSS (2026-08-23 report: Chrome
+# broken, Safari fine, purely because of when each one asked). no-cache
+# still lets browsers reuse the file via a fast conditional 304 (an ETag is
+# already present) -- it just makes every load re-check with the edge
+# instead of trusting a local copy unconditionally for a year. See sw.js's
+# isPoisonedHTML for the matching guard in the service worker's own cache.
 /assets/*
-  Cache-Control: public, max-age=31536000, immutable
+  Cache-Control: public, no-cache
 
 # Non-hashed files the Service Worker relies on for update delivery —
 # must always revalidate so a new deploy is picked up.

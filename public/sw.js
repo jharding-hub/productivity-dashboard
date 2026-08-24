@@ -74,6 +74,25 @@ const HTML_PATH = /\.html?$|\/$/;
 // init -- a real prod crash (reconcileLifetimeCounter ReferenceError, cc0eee5).
 const APP_SCRIPT_PATH = /\/(legacy|config|journal-crypto|quick-add-parser|sync-merge|date-utils)\.js$/;
 
+// A same-origin script/style/asset response whose Content-Type is text/html
+// is Cloudflare Pages' SPA fallback wearing that URL -- it answers ANY path
+// it can't find (an asset mid-deploy, a hashed filename that's rolled off
+// since the last redeploy) with index.html and a 200, not a 404. _headers
+// marks /assets/* immutable for a year, so a browser (or this SW's own Cache
+// Storage, before this check existed) that happened to ask at exactly the
+// wrong instant would trust that HTML as the real CSS/JS forever -- root
+// cause of the 2026-08-23 report: Chrome stuck permanently unstyled while
+// Safari, which asked at a different moment, was fine. Never treat one of
+// these as the real file, and never let it into a cache.
+function isPoisonedHTML(req, resp) {
+  if (!resp) return false;
+  // HTML is the CORRECT content type for navigations and real HTML paths --
+  // don't flag those.
+  if (req.destination === 'document' || HTML_PATH.test(new URL(req.url).pathname)) return false;
+  const ct = resp.headers.get('content-type') || '';
+  return ct.includes('text/html');
+}
+
 // ─── Install ────────────────────────────────────────────────────────────
 self.addEventListener('install', e => {
   e.waitUntil(
@@ -142,7 +161,7 @@ async function networkFirst(req) {
     // navigation and fails as ERR_FAILED.) Opaqueredirects have no readable
     // body, so don't try to cache them.
     if (resp && resp.type === 'opaqueredirect') return resp;
-    if (resp && resp.ok) cache.put(req, resp.clone()).catch(() => {});
+    if (resp && resp.ok && !isPoisonedHTML(req, resp)) cache.put(req, resp.clone()).catch(() => {});
     return resp;
   });
   try {
@@ -151,13 +170,16 @@ async function networkFirst(req) {
       netFetch,
       new Promise((_, rej) => setTimeout(() => rej(new Error('sw-timeout')), 4000))
     ]);
-    if (fresh && (fresh.ok || fresh.type === 'opaqueredirect')) return fresh;
+    if (fresh && fresh.type === 'opaqueredirect') return fresh;
+    if (fresh && fresh.ok && !isPoisonedHTML(req, fresh)) return fresh;
     throw new Error('sw-bad-response');
   } catch (err) {
-    // Network slow/failed — serve cache now; netFetch keeps running and
-    // refreshes the cache in the background for the next load.
+    // Network slow/failed, or the fallback-HTML poison above — serve cache
+    // now; netFetch keeps running and refreshes the cache in the background
+    // for the next load (unless IT was poisoned too, in which case it was
+    // never written above, so this stays on the last known-good copy).
     const cached = await cache.match(req);
-    if (cached) return cached;
+    if (cached && !isPoisonedHTML(req, cached)) return cached;
     // Last resort for navigations: only fall back to cached root for
     // root-level requests — don't silently swap ops.html or other pages
     // with the main dashboard
@@ -180,9 +202,18 @@ async function networkFirst(req) {
 
 async function staleWhileRevalidate(req) {
   const cache = await caches.open(CACHE_VERSION);
-  const cached = await cache.match(req);
+  let cached = await cache.match(req);
+  if (cached && isPoisonedHTML(req, cached)) {
+    // A poisoned entry cached before this check existed (or one that slipped
+    // in some other way) -- drop it so it can't keep being served as the
+    // real file, and treat this load as if nothing were cached.
+    await cache.delete(req);
+    cached = undefined;
+  }
   const fetchPromise = fetch(req).then(response => {
-    if (response && response.ok) cache.put(req, response.clone()).catch(() => {});
+    if (response && response.ok && !isPoisonedHTML(req, response)) {
+      cache.put(req, response.clone()).catch(() => {});
+    }
     return response;
   }).catch(() => cached);
   // Serve from cache instantly; fetchPromise updates cache for next time
