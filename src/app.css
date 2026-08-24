@@ -1010,6 +1010,16 @@ body.cp-stop-motion .jarvis-fab{animation:none !important;}
 .pager-title{text-align:center;font-family:'Fraunces',serif;font-weight:600;font-size:calc(22px * var(--type-scale,1));color:var(--text);padding:2px 14px 4px;}
 .pager-track{display:flex;overflow-x:auto;scroll-snap-type:x mandatory;-webkit-overflow-scrolling:touch;}
 .pager-page{flex:0 0 100%;scroll-snap-align:start;padding:4px 18px 16px;display:flex;flex-direction:column;gap:12px;min-height:1px;}
+/* Step 3: the pre-existing .panel.mobile-visible{touch-action:pan-y} rule
+   (app.css, mobile media block) exists so the OLD single-panel-open swipe-
+   right-to-close JS handler gets first crack at horizontal touches instead of
+   the browser scrolling natively. That handler is inert here (it gates on
+   .app-wrap.panel-open, which pager mode never sets), but the pan-y-only
+   restriction would still block the browser's native horizontal swipe-to-
+   page on this container. Re-allow pan-x for any panel living inside a
+   pager page; higher specificity wins over the plain .panel.mobile-visible
+   rule regardless of source order. */
+.pager-page .panel.mobile-visible{touch-action:pan-x pan-y;}
 
 /* Mobile nav rows — full-width rungs hanging off a spine */
 .mobile-panel-grid{position:relative;display:flex;flex-direction:column;gap:9px;padding-left:18px;}

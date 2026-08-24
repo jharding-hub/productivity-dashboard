@@ -5869,6 +5869,58 @@ function _pagerMoveHome(){
   });
 }
 
+// Step 3: gesture + rail-sync. The swipe itself rides the .pager-track's own
+// CSS scroll-snap (no touchmove math needed, and no wrap at either end for
+// free) -- this just derives the active page from scroll position, and
+// makes rail taps drive the same scroll position programmatically. Wired
+// ONCE: #pagerRail/#pagerTrack are stable elements across rebuilds (only
+// their children are replaced by buildMobilePager's innerHTML writes), so
+// listening on the stable parent survives every rebuild via delegation.
+var _pagerWired=false;
+var _pagerScrollTimer=null;
+function _pagerSyncActive(){
+  var track=document.getElementById('pagerTrack');
+  var rail=document.getElementById('pagerRail');
+  var title=document.getElementById('pagerTitle');
+  if(!track||!rail||!title||!track.clientWidth)return;
+  var idx=Math.round(track.scrollLeft/track.clientWidth);
+  idx=Math.max(0,Math.min(PAGER_PANELS.length-1,idx));
+  var id=PAGER_PANELS[idx];
+  var p=null;
+  for(var j=0;j<MOBILE_PANELS.length;j++){if(MOBILE_PANELS[j].id===id){p=MOBILE_PANELS[j];break;}}
+  if(p)title.textContent=p.label;
+  Array.prototype.forEach.call(rail.children,function(btn,i){btn.classList.toggle('active',i===idx);});
+}
+// Timer debounce, not rAF -- rAF can be throttled/skipped in backgrounded or
+// non-compositing contexts (confirmed while testing this: scrollTo() fired
+// the 'scroll' event fine but the queued rAF callback never ran), and a
+// dropped sync here silently leaves the rail/title pointing at the wrong
+// page. A plain timer has no such dependency on the render pipeline.
+function _pagerOnTrackScroll(){
+  clearTimeout(_pagerScrollTimer);
+  _pagerScrollTimer=setTimeout(_pagerSyncActive,60);
+}
+function _pagerWireGestures(){
+  if(_pagerWired)return;
+  _pagerWired=true;
+  var rail=document.getElementById('pagerRail');
+  var track=document.getElementById('pagerTrack');
+  if(rail){
+    rail.addEventListener('click',function(e){
+      var btn=e.target.closest&&e.target.closest('.pager-rail-btn');
+      if(!btn||!track)return;
+      var idx=PAGER_PANELS.indexOf(btn.dataset.pagerId);
+      if(idx<0)return;
+      track.scrollTo({left:idx*track.clientWidth,behavior:'smooth'});
+      // Don't wait on the scroll animation's own 'scroll' events to update the
+      // rail/title -- update immediately so a tap feels instant rather than
+      // trailing the (slower, animated) page transition.
+      _pagerSyncActive();
+    });
+  }
+  if(track)track.addEventListener('scroll',_pagerOnTrackScroll,{passive:true});
+}
+
 // Panel survey 2026-08-22 (J2-8): what the home screen counts.
 //
 // These badges mirrored the desktop panel totals, so the first thing anyone
@@ -5944,7 +5996,7 @@ function showMobileHome(){
   if(pagerEl){
     pagerEl.classList.toggle('active',PAGER_ENABLED);
     document.body.classList.toggle('cp-pager-preview',PAGER_ENABLED);
-    if(PAGER_ENABLED){buildMobilePager();_pagerMoveOut();}
+    if(PAGER_ENABLED){buildMobilePager();_pagerMoveOut();_pagerWireGestures();}
     else if(Object.keys(_pagerHome).length)_pagerMoveHome();
   }
   window.scrollTo(0,0);
