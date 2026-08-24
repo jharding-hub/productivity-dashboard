@@ -5789,15 +5789,19 @@ var MOBILE_PANELS=[
 var PAGER_PANELS=['projects','tasklist','timeline','notes','time','reminders'];
 var PAGER_ENABLED=/[?&]pager=1(&|$)/.test(location.search)||localStorage.getItem('cp_pager')==='1';
 
-// Step 1: rail + empty page shells only. First panel marked active so the
-// expand/label CSS is visible for review; no tap/swipe wiring yet (that's
-// step 3) -- pages are intentionally blank (step 2 fills them with the real
-// panel content).
+// Step 4: restores the last panel viewed instead of always Projects. Clamped
+// defensively in case PAGER_PANELS' length ever changes under a stale saved
+// index (e.g. after a future edit to the rail's panel list).
+function _pagerInitialIndex(){
+  var idx=state.everythingPagerIndex|0;
+  return Math.max(0,Math.min(PAGER_PANELS.length-1,idx));
+}
 function buildMobilePager(){
   var rail=document.getElementById('pagerRail');
   var track=document.getElementById('pagerTrack');
   var title=document.getElementById('pagerTitle');
   if(!rail||!track||!title)return;
+  var startIdx=_pagerInitialIndex();
   var railHtml='',trackHtml='';
   PAGER_PANELS.forEach(function(id,i){
     var p=null;
@@ -5808,7 +5812,7 @@ function buildMobilePager(){
     if(todayVal!==null){badgeVal=todayVal;}
     else if(p.badge){var el=document.getElementById(p.badge);if(el)badgeVal=el.textContent||'';}
     var hasCount=!!(badgeVal&&badgeVal!=='0');
-    var active=i===0;
+    var active=i===startIdx;
     railHtml+='<button type="button" class="pager-rail-btn'+(active?' active':'')+(hasCount?' has-count':'')+'" data-pager-id="'+p.id+'">'
       +'<span class="prb-icon">'+p.icon+'</span>'
       +'<span class="prb-label">'+p.label+'</span>'
@@ -5819,6 +5823,11 @@ function buildMobilePager(){
   });
   rail.innerHTML=railHtml;
   track.innerHTML=trackHtml;
+  // Rail markup/labels reflect startIdx already (above); the track's actual
+  // scroll position still defaults to 0 on a freshly-built element and needs
+  // setting explicitly -- instant, not smooth, since this is restoring where
+  // the user left off, not an animated navigation.
+  if(startIdx>0)track.scrollLeft=startIdx*track.clientWidth;
 }
 
 // Step 2: fills the pager pages with the SAME .panel[data-panel] nodes the
@@ -5890,6 +5899,14 @@ function _pagerSyncActive(){
   for(var j=0;j<MOBILE_PANELS.length;j++){if(MOBILE_PANELS[j].id===id){p=MOBILE_PANELS[j];break;}}
   if(p)title.textContent=p.label;
   Array.prototype.forEach.call(rail.children,function(btn,i){btn.classList.toggle('active',i===idx);});
+  // Persist only on actual change -- this runs on every scroll-settle tick
+  // (and now on every rail tap too), and save() writes to Firestore, not
+  // just localStorage; re-saving an unchanged index on every tick would be
+  // pure waste.
+  if(state.everythingPagerIndex!==idx){
+    state.everythingPagerIndex=idx;
+    save();
+  }
 }
 // Timer debounce, not rAF -- rAF can be throttled/skipped in backgrounded or
 // non-compositing contexts (confirmed while testing this: scrollTo() fired
