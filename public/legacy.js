@@ -5821,6 +5821,54 @@ function buildMobilePager(){
   track.innerHTML=trackHtml;
 }
 
+// Step 2: fills the pager pages with the SAME .panel[data-panel] nodes the
+// rest of the app uses (desktop grid + showMobilePanel), moved -- not cloned
+// -- into the matching .pager-page slot. Reusing the live node means every
+// existing render fn, editable-cell wiring, and id stays intact; the
+// alternative (re-rendering panel content into new markup) would recreate
+// the exact duplicate-id hazard _wireTaskRowEditable's container-scoping
+// exists to avoid. Each panel's original {parent,next} is remembered so
+// _pagerMoveHome() can put it back into #dashboard's exact original spot
+// (not just appended at the end, which would silently reorder the desktop
+// grid the next time a panel comes home).
+var _pagerHome={};
+function _pagerMoveOut(){
+  PAGER_PANELS.forEach(function(id){
+    var el=document.querySelector('.panel[data-panel="'+id+'"]');
+    var page=document.querySelector('.pager-page[data-pager-page="'+id+'"]');
+    if(!el||!page)return;
+    if(!_pagerHome[id])_pagerHome[id]={parent:el.parentNode,next:el.nextSibling};
+    page.appendChild(el);
+    el.classList.add('mobile-visible');
+    el.classList.remove('panel-tile');
+    if(id==='tasklist')_tlRenderLimit=_TL_RENDER_BATCH;
+    else if(id==='reminders')_remRenderLimit=_TL_RENDER_BATCH;
+    if(id==='projects'&&typeof renderProjects==='function')renderProjects();
+    else if(id==='notes'&&typeof renderNotes==='function')renderNotes();
+    else if(id==='tasklist'&&typeof renderTaskList==='function')renderTaskList();
+    else if(id==='reminders'&&typeof renderReminders==='function')renderReminders();
+    else if(id==='time'&&typeof _renderToolkitExplainer==='function')_renderToolkitExplainer();
+    // timeline needs no explicit call -- renderTimeline() self-refreshes via
+    // its own 60s tick + mutation call sites (legacy.js ~15358,15673).
+  });
+}
+// Restores every panel moved out by _pagerMoveOut() to its original spot in
+// #dashboard. MUST run before any code path that expects to find these
+// panels inside #dashboard again -- showMobilePanel (direct-jump callers
+// like Today's "Open Tool Kit" button), leaving to Today view, and resizing
+// past the desktop breakpoint all call this before doing anything else, so a
+// panel can never be left stranded inside the (now-hidden) pager and
+// silently vanish from the desktop grid or Today's direct-open buttons.
+function _pagerMoveHome(){
+  Object.keys(_pagerHome).forEach(function(id){
+    var el=document.querySelector('.panel[data-panel="'+id+'"]');
+    var slot=_pagerHome[id];
+    if(!el||!slot||!slot.parent)return;
+    if(slot.next&&slot.next.parentNode===slot.parent)slot.parent.insertBefore(el,slot.next);
+    else slot.parent.appendChild(el);
+  });
+}
+
 // Panel survey 2026-08-22 (J2-8): what the home screen counts.
 //
 // These badges mirrored the desktop panel totals, so the first thing anyone
@@ -5896,13 +5944,19 @@ function showMobileHome(){
   if(pagerEl){
     pagerEl.classList.toggle('active',PAGER_ENABLED);
     document.body.classList.toggle('cp-pager-preview',PAGER_ENABLED);
-    if(PAGER_ENABLED)buildMobilePager();
+    if(PAGER_ENABLED){buildMobilePager();_pagerMoveOut();}
+    else if(Object.keys(_pagerHome).length)_pagerMoveHome();
   }
   window.scrollTo(0,0);
 }
 
 function showMobilePanel(panelId){
   if(!_isMobile()){return;}
+  // Bring any panel currently living inside the pager back to #dashboard
+  // FIRST -- direct-jump callers (e.g. Today's "Open Tool Kit" button) look
+  // for the panel there, and it would otherwise still be parented inside the
+  // (about to be hidden) pager and silently fail to show.
+  if(Object.keys(_pagerHome).length)_pagerMoveHome();
   // Hide home; the banner stays as the top chrome (back bar retired)
   document.getElementById('mobileHome').classList.remove('active');
   var pagerElHide=document.getElementById('mobilePager');
@@ -6021,7 +6075,11 @@ function _ensurePanelBackBtn(panelEl){
 // On resize: if going to desktop, clean up mobile state
 window.addEventListener('resize',function(){
   if(!_isMobile()){
+    // Pager only ever exists on mobile -- crossing to desktop must bring any
+    // pager-parented panel back to #dashboard or the grid renders one short.
+    if(Object.keys(_pagerHome).length)_pagerMoveHome();
     document.getElementById('mobileHome').classList.remove('active');
+    var pagerElResize=document.getElementById('mobilePager');if(pagerElResize)pagerElResize.classList.remove('active');
     document.getElementById('mobileBackBar').classList.remove('active');
     document.querySelector('.app-wrap')&&document.querySelector('.app-wrap').classList.remove('panel-open');
     var hdr=document.querySelector('.header');
@@ -7886,6 +7944,9 @@ function setViewMode(mode){
     todayEl.style.display='';
     dashEl.style.display='none';
     if(_isMobile()){
+      // Same reason as showMobilePanel(): bring any pager-parented panel
+      // home before this branch's own cleanup runs.
+      if(Object.keys(_pagerHome).length)_pagerMoveHome();
       document.getElementById('mobileHome').classList.remove('active');
       var pagerElToday=document.getElementById('mobilePager');if(pagerElToday)pagerElToday.classList.remove('active');
       var mbb=document.getElementById('mobileBackBar');if(mbb)mbb.classList.remove('active');
