@@ -620,30 +620,21 @@ export default function ProjectDashboard({ open, onClose }) {
           padding: '8px 20px 6px',
           paddingTop: 'max(env(safe-area-inset-top), 8px)',
         }}>
+          {/* Banner owns the full row. The timer used to share it, which
+              compressed the banner into ~half the width (Joe, 2026-08-25) --
+              it now lives on the nav row below, beside Dashboard/Projects. */}
           <div style={{ flex: 1, minWidth: 0 }}>
             <ProjectBanner tick={tick} />
           </div>
-          <div className="header-right" style={{ flexShrink: 0 }}>
-            <div className="header-timer-outer">
-              <span className="header-timer-label-tag">Timer</span>
-              <div className="header-timer-wrap">
-                <button className="header-timer-btn"
-                  onClick={() => { if (typeof window.headerTimerClick === 'function') window.headerTimerClick(); }}
-                  title="Focus timer">
-                  <span className="header-timer-label" id="pdHeaderTimerLabel">{clock}</span>
-                </button>
-                <button className="header-timer-arrow"
-                  onClick={() => { if (typeof window.headerTimerToggleDropdown === 'function') window.headerTimerToggleDropdown('pd'); }}
-                  title="Pick duration">▾</button>
-                <div className="header-timer-dropdown" id="pdHeaderTimerDropdown" style={{ display: 'none' }}></div>
-              </div>
-            </div>
-          </div>
         </div>
 
-        {/* Nav row */}
+        {/* Nav row. flexWrap is load-bearing: with the timer living here,
+            Dashboard + dropdown + timer measure ~430px -- wider than a
+            375px phone -- so without wrap the timer hangs off-screen
+            (measured right edge 433px in a 375px viewport). On desktop
+            everything fits on one line and the wrap never engages. */}
         <div style={{
-          display: 'flex', alignItems: 'center', gap: 12,
+          display: 'flex', alignItems: 'center', gap: 12, flexWrap: 'wrap',
           padding: '4px 20px 8px',
         }}>
           <button onClick={onClose} style={{
@@ -680,6 +671,26 @@ export default function ProjectDashboard({ open, onClose }) {
               </span>
             </div>
           )}
+
+          {/* Timer, moved down from the banner row so the banner keeps the
+              full width. marginLeft:auto right-aligns it whether or not the
+              selected-project info block (flex:1) is rendered. */}
+          <div className="header-right" style={{ flexShrink: 0, marginLeft: 'auto' }}>
+            <div className="header-timer-outer">
+              <span className="header-timer-label-tag">Timer</span>
+              <div className="header-timer-wrap">
+                <button className="header-timer-btn"
+                  onClick={() => { if (typeof window.headerTimerClick === 'function') window.headerTimerClick(); }}
+                  title="Focus timer">
+                  <span className="header-timer-label" id="pdHeaderTimerLabel">{clock}</span>
+                </button>
+                <button className="header-timer-arrow"
+                  onClick={() => { if (typeof window.headerTimerToggleDropdown === 'function') window.headerTimerToggleDropdown('pd'); }}
+                  title="Pick duration">▾</button>
+                <div className="header-timer-dropdown" id="pdHeaderTimerDropdown" style={{ display: 'none' }}></div>
+              </div>
+            </div>
+          </div>
         </div>
       </div>
 

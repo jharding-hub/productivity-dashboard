@@ -2004,10 +2004,22 @@ function applyPanelVisibility(){
 function _pagerRefresh(){
   var pagerEl=document.getElementById('mobilePager');
   if(!pagerEl||!pagerEl.classList.contains('active'))return;
+  // No-op when rail membership is UNCHANGED. This is not an optimization:
+  // applyPanelVisibility (our caller) also runs from the realtime-sync
+  // snapshot handler after every save() -- and the pager itself saves on
+  // every page change -- so an unconditional rebuild here tore the panels
+  // out and re-inserted them moments after each swipe (on device, build
+  // 112: "panel disappears showing the full background then reloads").
+  // Only a genuine membership change (a Customize toggle, here or echoed
+  // from another device) is worth a rebuild.
+  var rail=document.getElementById('pagerRail');
+  var current=rail?Array.prototype.map.call(rail.children,function(b){return b.dataset.pagerId;}):[];
+  var next=_pagerComputeVisible();
+  if(next.length===current.length&&next.every(function(id,i){return id===current[i];}))return;
   // Same panels-first ordering as showMobileHome, and for the same reason:
   // the live panels are inside the pages this rebuild is about to replace.
   _pagerMoveHome();
-  var usePager=PAGER_ENABLED&&_pagerComputeVisible().length>0;
+  var usePager=PAGER_ENABLED&&next.length>0;
   pagerEl.classList.toggle('active',usePager);
   document.body.classList.toggle('cp-pager-on',usePager);
   if(usePager){buildMobilePager();_pagerMoveOut();_pagerSizeTrack();_pagerRestoreScroll();}
