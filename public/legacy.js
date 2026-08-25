@@ -5781,11 +5781,15 @@ var MOBILE_PANELS=[
 ];
 
 // Icon-rail pager (design handoff 2026-08-24, "Panel Display Options" variant
-// 2b) -- replaces the mobile-panel-grid tile launcher with a swipeable pager
-// over these 6 panels. Staged rollout: steps 1-3 build it inert behind
-// PAGER_ENABLED; step 4 flips the default so it replaces the tile grid for
-// everyone. Dev-only toggle until then: ?pager=1 in the URL, or
-// localStorage.setItem('cp_pager','1').
+// 2b) -- replaces the mobile-panel-grid tile launcher with a swipeable pager.
+// LIVE BY DEFAULT as of 2026-08-24, after on-device confirmation of the swipe,
+// the rail sync, the rail tap-to-jump, and per-page scrolling.
+//
+// The tile grid's markup and buildMobileHome() are deliberately KEPT (the grid
+// is hidden by CSS, not removed), so ?pager=0 -- or
+// localStorage.setItem('cp_pager','0') for a sticky opt-out -- restores the
+// old launcher intact without a deploy. That's the rollback path if something
+// only shows up on someone else's device.
 // Rail membership (Joe, 2026-08-24): Tool Kit dropped -- it already has its
 // own slot in the bottom tab bar, so a second entry here was redundant --
 // and Routines/Brain Dump/Stuck? Help added. That makes every mobile panel
@@ -5796,7 +5800,7 @@ var MOBILE_PANELS=[
 // this. Wellness is deliberately absent: it isn't in MOBILE_PANELS at all,
 // it lives inside the Tool Kit's grounding component.
 var PAGER_PANELS=['projects','tasklist','timeline','notes','reminders','routines','brain','decision'];
-var PAGER_ENABLED=/[?&]pager=1(&|$)/.test(location.search)||localStorage.getItem('cp_pager')==='1';
+var PAGER_ENABLED=!(/[?&]pager=0(&|$)/.test(location.search)||localStorage.getItem('cp_pager')==='0');
 
 // Step 4: restores the last panel viewed instead of always Projects.
 //
@@ -6095,12 +6099,12 @@ function showMobileHome(){
   document.querySelectorAll('.panel').forEach(function(p){p.classList.remove('mobile-visible');});
   // Rebuild rows so badge counts are fresh
   buildMobileHome();
-  // Icon-rail pager preview (dev-flagged; see PAGER_ENABLED above). No-op for
-  // everyone until PAGER_ENABLED defaults on in step 4.
+  // Icon-rail pager -- the default mobile Everything surface (see
+  // PAGER_ENABLED above); the cp-pager-on body class hides the old tile grid.
   var pagerEl=document.getElementById('mobilePager');
   if(pagerEl){
     pagerEl.classList.toggle('active',PAGER_ENABLED);
-    document.body.classList.toggle('cp-pager-preview',PAGER_ENABLED);
+    document.body.classList.toggle('cp-pager-on',PAGER_ENABLED);
     if(PAGER_ENABLED){buildMobilePager();_pagerMoveOut();_pagerSizeTrack();_pagerWireGestures();_pagerRestoreScroll();}
     else if(Object.keys(_pagerHome).length)_pagerMoveHome();
   }

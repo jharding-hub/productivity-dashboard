@@ -996,10 +996,10 @@ body.cp-stop-motion .jarvis-fab{animation:none !important;}
 .mobile-home-header{display:none;}
 
 /* ═══ MOBILE PAGER (icon-rail pager, design handoff 2026-08-24, variant 2b) ═══
-   Replaces .mobile-panel-grid. Dev-flagged inert until step 4 -- see
-   PAGER_ENABLED/buildMobilePager() in legacy.js. Base rule stays display:none
-   outside the mobile media query, same pattern as .mobile-home above; the
-   .active toggle that shows it lives in the mobile media block below. */
+   The default mobile Everything surface, replacing .mobile-panel-grid --
+   see PAGER_ENABLED/buildMobilePager() in legacy.js. Base rule stays
+   display:none outside the mobile media query, same pattern as .mobile-home
+   above; the .active toggle that shows it lives in the mobile media block. */
 .mobile-pager{display:none;flex-direction:column;}
 /* flex-start, NOT center: a centered flex row that overflows puts its first
    items in negative scroll space, where they can't be reached by scrolling at
@@ -2605,7 +2605,9 @@ body[data-theme="storm-dark"] .tl-hour-label{
   /* Mobile home screen active */
   .mobile-home.active{display:block;}
   .mobile-pager.active{display:flex;}
-  body.cp-pager-preview .mobile-panel-grid{display:none;}
+  /* The tile grid is HIDDEN, not deleted -- ?pager=0 / localStorage
+     cp_pager='0' brings the old launcher back without a deploy. */
+  body.cp-pager-on .mobile-panel-grid{display:none;}
   /* On the home screen (no panel open) the dashboard is empty — collapse it
      so its padding doesn't leave a dead gap between the header and the rows */
   .app-wrap:not(.panel-open) .dashboard{display:none;}
