@@ -5810,17 +5810,40 @@ var PAGER_ENABLED=!(/[?&]pager=0(&|$)/.test(location.search)||localStorage.getIt
 // panel than the one the user left on. IDs survive reordering. A stale ID
 // that's no longer in the rail simply falls back to the first panel.
 function _pagerInitialIndex(){
-  var i=PAGER_PANELS.indexOf(state.everythingPagerPanel);
+  var i=_pagerVisiblePanels.indexOf(state.everythingPagerPanel);
   return i<0?0:i;
+}
+// The rail's ACTUAL contents, which is not always PAGER_PANELS.
+//
+// On device 2026-08-24: Stuck? Help opened to an empty page. Cause -- a panel
+// switched off in Customize gets .user-hidden (display:none !important) from
+// applyPanelVisibility(), and buildMobilePager was the only builder that
+// didn't filter for that (buildMobileHome always has). The rail offered a
+// button for a panel that could never render, so the page was simply blank.
+//
+// Everything downstream must read THIS list, never PAGER_PANELS: with a panel
+// filtered out, position 5 in the rail is no longer PAGER_PANELS[5], so mixing
+// the two would point the title and the saved panel at the wrong thing.
+var _pagerVisiblePanels=[];
+function _pagerComputeVisible(){
+  _pagerVisiblePanels=PAGER_PANELS.filter(function(id){
+    if(state.visiblePanels&&state.visiblePanels[id]===false)return false;
+    var el=document.querySelector('.panel[data-panel="'+id+'"]');
+    // hidden-panel is the admin/tier gate; a tier-LOCKED panel still renders
+    // (it shows its own upgrade badge), so that one stays in the rail.
+    return !!el&&!el.classList.contains('hidden-panel');
+  });
+  return _pagerVisiblePanels;
 }
 function buildMobilePager(){
   var rail=document.getElementById('pagerRail');
   var track=document.getElementById('pagerTrack');
   var title=document.getElementById('pagerTitle');
   if(!rail||!track||!title)return;
+  _pagerComputeVisible();
   var startIdx=_pagerInitialIndex();
   var railHtml='',trackHtml='';
-  PAGER_PANELS.forEach(function(id,i){
+  _pagerVisiblePanels.forEach(function(id,i){
     var p=null;
     for(var j=0;j<MOBILE_PANELS.length;j++){if(MOBILE_PANELS[j].id===id){p=MOBILE_PANELS[j];break;}}
     if(!p)return;
@@ -5893,7 +5916,7 @@ function _pagerRestoreScroll(){
 // grid the next time a panel comes home).
 var _pagerHome={};
 function _pagerMoveOut(){
-  PAGER_PANELS.forEach(function(id){
+  _pagerVisiblePanels.forEach(function(id){
     var el=document.querySelector('.panel[data-panel="'+id+'"]');
     var page=document.querySelector('.pager-page[data-pager-page="'+id+'"]');
     if(!el||!page)return;
@@ -5964,8 +5987,8 @@ function _pagerSyncActive(){
     var d=Math.abs((kids[k].offsetLeft-origin)-track.scrollLeft);
     if(d<best){best=d;idx=k;}
   }
-  idx=Math.max(0,Math.min(PAGER_PANELS.length-1,idx));
-  var id=PAGER_PANELS[idx];
+  idx=Math.max(0,Math.min(_pagerVisiblePanels.length-1,idx));
+  var id=_pagerVisiblePanels[idx];
   var p=null;
   for(var j=0;j<MOBILE_PANELS.length;j++){if(MOBILE_PANELS[j].id===id){p=MOBILE_PANELS[j];break;}}
   if(p)title.textContent=p.label;
@@ -6015,7 +6038,7 @@ function _pagerWireGestures(){
     rail.addEventListener('click',function(e){
       var btn=e.target.closest&&e.target.closest('.pager-rail-btn');
       if(!btn||!track)return;
-      var idx=PAGER_PANELS.indexOf(btn.dataset.pagerId);
+      var idx=_pagerVisiblePanels.indexOf(btn.dataset.pagerId);
       if(idx<0)return;
       track.scrollTo({left:idx*track.clientWidth,behavior:'smooth'});
       // Don't wait on the scroll animation's own 'scroll' events to update the
@@ -6103,9 +6126,14 @@ function showMobileHome(){
   // PAGER_ENABLED above); the cp-pager-on body class hides the old tile grid.
   var pagerEl=document.getElementById('mobilePager');
   if(pagerEl){
-    pagerEl.classList.toggle('active',PAGER_ENABLED);
-    document.body.classList.toggle('cp-pager-on',PAGER_ENABLED);
-    if(PAGER_ENABLED){buildMobilePager();_pagerMoveOut();_pagerSizeTrack();_pagerWireGestures();_pagerRestoreScroll();}
+    // Fall back to the tile launcher if every rail panel is switched off in
+    // Customize -- an empty rail over an empty page would strand the user
+    // with no way to reach anything, and the grid still lists whatever they
+    // left visible.
+    var usePager=PAGER_ENABLED&&_pagerComputeVisible().length>0;
+    pagerEl.classList.toggle('active',usePager);
+    document.body.classList.toggle('cp-pager-on',usePager);
+    if(usePager){buildMobilePager();_pagerMoveOut();_pagerSizeTrack();_pagerWireGestures();_pagerRestoreScroll();}
     else if(Object.keys(_pagerHome).length)_pagerMoveHome();
   }
   window.scrollTo(0,0);
@@ -6669,6 +6697,24 @@ function closeCommandPalette(){
   var modal=document.getElementById('cmdPaletteModal');if(!modal)return;
   modal.classList.remove('open');
 }
+// On device 2026-08-24: with Search open, tapping another tab-bar button ran
+// that button's action UNDERNEATH the still-open palette -- the view changed
+// invisibly and the palette looked stuck. None of the tab-bar handlers
+// (setViewMode / showMobilePanel / openCustomize) close it, and there's no
+// reason each should have to know about the palette.
+//
+// One capture-phase listener on the bar instead: capture runs before the
+// button's own inline onclick, so the palette is always gone before the new
+// surface paints. Tapping Search itself simply re-opens it (with the query
+// cleared), which is the behaviour you'd want anyway.
+(function(){
+  var bar=document.getElementById('mobileTabBar');
+  if(!bar)return;
+  bar.addEventListener('click',function(){
+    var modal=document.getElementById('cmdPaletteModal');
+    if(modal&&modal.classList.contains('open'))closeCommandPalette();
+  },true);
+})();
 function _cmdPaletteFilter(){
   _cmdPaletteDateEditIdx=-1;
   var input=document.getElementById('cmdPaletteInput');

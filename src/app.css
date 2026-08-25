@@ -2664,6 +2664,9 @@ body[data-theme="storm-dark"] .tl-hour-label{
   .header{padding-top:max(env(safe-area-inset-top),46px) !important;}
 }
 body.capacitor-native .header{padding-top:max(env(safe-area-inset-top),46px) !important;}
+/* Same notch floor for the Project Dashboard's fixed full-screen overlay,
+   which sits above .header and so can't inherit its clearance. */
+body.capacitor-native .pd-topbar{padding-top:max(env(safe-area-inset-top),46px) !important;}
 /* Hide the header subtitle(s) when a phone is in landscape (short viewport),
    where the header is too cramped to show them. Covers BOTH the on-bar subtitle
    "Productivity Dashboard" (wide landscape ⇒ desktop header) AND the compact

@@ -601,10 +601,17 @@ export default function ProjectDashboard({ open, onClose }) {
         background: 'var(--surface)',
         borderBottom: '1px solid var(--border)',
       }}>
-        {/* Banner + clock row */}
-        <div style={{
+        {/* Banner + clock row.
+            paddingTop clears the camera notch. This overlay is position:fixed
+            inset:0, so unlike in-flow content it gets NO clearance from the
+            app header above it -- with a flat 8px the banner rendered into
+            the Dynamic Island on device (reported 2026-08-24). max() keeps
+            the 8px on hardware with no inset; .pd-topbar carries the native
+            floor for shells that report an inset of 0 (see app.css). */}
+        <div className="pd-topbar" style={{
           display: 'flex', alignItems: 'center', gap: 12,
           padding: '8px 20px 6px',
+          paddingTop: 'max(env(safe-area-inset-top), 8px)',
         }}>
           <div style={{ flex: 1, minWidth: 0 }}>
             <ProjectBanner tick={tick} />
