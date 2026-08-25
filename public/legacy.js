@@ -5841,6 +5841,27 @@ function buildMobilePager(){
   // setting explicitly -- instant, not smooth, since this is restoring where
   // the user left off, not an animated navigation.
 }
+// Sizes the track to the gap between the panel title and the tab bar, which
+// is what lets each page scroll inside itself instead of all 8 sharing the
+// window's scroll (see the .pager-track comment in app.css).
+//
+// Measured, not hardcoded: the header's height is not a constant -- it just
+// went 191px -> 104px, it changes again with Dynamic Type, and it differs
+// between a browser tab and the notch-clearing native shell. Deriving it from
+// the track's own top offset means this keeps working through all of that.
+// Measurement must happen at scroll 0 or the rect is off by the scroll.
+function _pagerSizeTrack(){
+  var pager=document.getElementById('mobilePager');
+  var track=document.getElementById('pagerTrack');
+  if(!pager||!track||!pager.classList.contains('active'))return;
+  if(window.scrollY)window.scrollTo(0,0);
+  var tab=document.querySelector('.mobile-tab-bar');
+  var tabH=tab?tab.getBoundingClientRect().height:52;
+  var h=window.innerHeight-track.getBoundingClientRect().top-tabH;
+  // Floor guard: a bogus measurement (mid-layout, hidden ancestor) must not
+  // collapse the pager to a sliver -- better to leave the previous height.
+  if(h>160)track.style.height=Math.round(h)+'px';
+}
 // Restoring the scroll position has to happen AFTER _pagerMoveOut() puts the
 // panels in, not inside buildMobilePager(): at build time the pages are still
 // empty shells, so any position set then is measured against the wrong
@@ -6000,6 +6021,9 @@ function _pagerWireGestures(){
     });
   }
   if(track)track.addEventListener('scroll',_pagerOnTrackScroll,{passive:true});
+  // Re-measure when the viewport changes: rotation, and on iOS the URL bar
+  // collapsing/expanding, both change innerHeight out from under the track.
+  window.addEventListener('resize',_pagerSizeTrack);
 }
 
 // Panel survey 2026-08-22 (J2-8): what the home screen counts.
@@ -6077,7 +6101,7 @@ function showMobileHome(){
   if(pagerEl){
     pagerEl.classList.toggle('active',PAGER_ENABLED);
     document.body.classList.toggle('cp-pager-preview',PAGER_ENABLED);
-    if(PAGER_ENABLED){buildMobilePager();_pagerMoveOut();_pagerWireGestures();_pagerRestoreScroll();}
+    if(PAGER_ENABLED){buildMobilePager();_pagerMoveOut();_pagerSizeTrack();_pagerWireGestures();_pagerRestoreScroll();}
     else if(Object.keys(_pagerHome).length)_pagerMoveHome();
   }
   window.scrollTo(0,0);

@@ -1031,14 +1031,39 @@ body.cp-stop-motion .jarvis-fab{animation:none !important;}
 }
 .pager-rail-btn:not(.active).has-count .prb-dot{display:block;}
 .pager-title{text-align:center;font-family:'Fraunces',serif;font-weight:600;font-size:calc(22px * var(--type-scale,1));color:var(--text);padding:2px 14px 4px;}
-.pager-track{display:flex;overflow-x:auto;scroll-snap-type:x mandatory;-webkit-overflow-scrolling:touch;}
+/* overflow-y:hidden + a JS-measured height (see _pagerSizeTrack) makes the
+   track own exactly the space between the title and the tab bar, so the
+   WINDOW never scrolls in pager mode and each page scrolls inside itself.
+   Before this, vertical scroll was the window's and shared by all 8 pages,
+   while flex's default align-items:stretch made every page as tall as the
+   TALLEST one -- so scrolling down in Projects (2079px) and swiping to
+   Stuck? Help (192px of content) left its content 771px above the viewport
+   and showed nothing but background. Per-page scrolling also means each
+   panel keeps its own position when you swipe away and back. */
+.pager-track{display:flex;overflow-x:auto;overflow-y:hidden;scroll-snap-type:x mandatory;-webkit-overflow-scrolling:touch;}
 /* min-width:0 is load-bearing, not boilerplate. Flex items default to
    min-width:auto, so a page whose panel has a wide intrinsic minimum (Notes
    did: 475px) grows PAST its flex-basis -- that page rendered 511px wide in a
    375px viewport, and the uneven page widths also skew the scroll-offset ->
    active-index math the rail depends on. Same fix, same reason, as the
    .panel{min-width:0} rule the dashboard grid already needed. */
-.pager-page{flex:0 0 100%;min-width:0;scroll-snap-align:start;padding:4px 18px 16px;display:flex;flex-direction:column;gap:12px;min-height:1px;}
+.pager-page{flex:0 0 100%;min-width:0;scroll-snap-align:start;padding:4px 18px 16px;display:flex;flex-direction:column;gap:12px;min-height:0;overflow-y:auto;-webkit-overflow-scrolling:touch;}
+/* The app-wrap's bottom padding exists to lift scrolling content clear of the
+   tab bar. In pager mode the track is already sized to stop exactly at the
+   tab bar, so that padding is the one thing left that could still scroll the
+   window. Scoped via :has() to the pager surface only -- an opened panel or
+   the Today view still needs its clearance. Where :has() is unsupported the
+   rule simply doesn't apply, which costs a few px of window scroll and
+   nothing else. */
+.app-wrap:has(#mobilePager.active){padding-bottom:0 !important;}
+/* The page is a fixed-height column flex container, so its panel child would
+   otherwise SHRINK to fit (flex-shrink defaults to 1) rather than overflow
+   and let the page scroll. Combined with the panel's own overflow-y:hidden
+   that silently clipped content instead of scrolling it: Projects' 1980px
+   list squashed into 500px with the remainder unreachable -- a worse failure
+   than the scroll bug this whole change is fixing. Natural height, page
+   scrolls. */
+.pager-page>.panel{flex:0 0 auto;}
 /* Step 3: the pre-existing .panel.mobile-visible{touch-action:pan-y} rule
    (app.css, mobile media block) exists so the OLD single-panel-open swipe-
    right-to-close JS handler gets first crack at horizontal touches instead of
