@@ -881,6 +881,25 @@ body.cmd-palette-open .mobile-tab-bar{z-index:1150;}
   .header .day-progress-marker[style*="left:73.33%"] .day-progress-marker-label{
     display:block !important;font-size:calc(9px * var(--type-scale,1)) !important;top:1px !important;font-weight:600 !important;
   }
+  /* The Project Dashboard's banner (ProjectBanner in ProjectDashboard.jsx)
+     renders the SAME banner classes -- title-on-bar, subtitle, every hour
+     label -- but sits outside .header, so none of the mobile overrides above
+     reached it. On a phone it drew the full desktop treatment (41px wordmark
+     over the "Productivity" subtitle, 15 hour labels) crushed into its small
+     flex cell: the garbled banner reported on device against builds 108 and
+     111. Mirror the same trims for that surface. */
+  .pd-topbar .header-title-on-bar{font-size:calc(20px * var(--type-scale,1)) !important;}
+  .pd-topbar .header-subtitle{display:none !important;}
+  .pd-topbar .day-progress-marker-label{display:none !important;}
+  .pd-topbar .day-progress-edge-label{font-size:calc(9px * var(--type-scale,1)) !important;top:1px !important;font-weight:600 !important;}
+  /* Keep the three quarter-point labels, via the pd-marker-key class the JSX
+     sets -- NOT the [style*="left:20%"] attribute match the .header rules
+     use, which can never match here: React serializes inline styles with a
+     space ("left: 20%"). Found because the first cut of this rule left 0 of
+     14 labels visible. */
+  .pd-topbar .pd-marker-key .day-progress-marker-label{
+    display:block !important;font-size:calc(9px * var(--type-scale,1)) !important;top:1px !important;font-weight:600 !important;
+  }
   /* Row 2: timer on the right. The Presence badge no longer lives in the
      header (moved into the Tool Kit panel), so this row is just the timer. */
   /* The presence badge sits on row 2, to the LEFT of the Today/Everything

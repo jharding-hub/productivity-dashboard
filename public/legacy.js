@@ -1988,7 +1988,29 @@ function applyPanelVisibility(){
   });
   // Rebuild mobile home tiles to reflect visibility changes
   if(_isMobile())buildMobileHome();
+  // The pager rail is a THIRD surface reflecting visibility, and it was the
+  // only one not refreshed here (on device 2026-08-24: toggling Stuck? Help
+  // off in Customize left its button in the rail over an empty page for the
+  // rest of the session -- the filter in buildMobilePager only ran on the
+  // next full app launch).
+  _pagerRefresh();
   updateFocusBanner();
+}
+
+// Rebuild the rail/pages in place when panel visibility changes while the
+// pager is showing. No-op everywhere else -- desktop, Today view, an open
+// panel -- where the pager isn't the active surface; those paths already
+// rebuild it on their way back in (showMobileHome).
+function _pagerRefresh(){
+  var pagerEl=document.getElementById('mobilePager');
+  if(!pagerEl||!pagerEl.classList.contains('active'))return;
+  // Same panels-first ordering as showMobileHome, and for the same reason:
+  // the live panels are inside the pages this rebuild is about to replace.
+  _pagerMoveHome();
+  var usePager=PAGER_ENABLED&&_pagerComputeVisible().length>0;
+  pagerEl.classList.toggle('active',usePager);
+  document.body.classList.toggle('cp-pager-on',usePager);
+  if(usePager){buildMobilePager();_pagerMoveOut();_pagerSizeTrack();_pagerRestoreScroll();}
 }
 
 // F6: hide-toggle only -- points still accrue in the background either way
@@ -6130,11 +6152,19 @@ function showMobileHome(){
     // Customize -- an empty rail over an empty page would strand the user
     // with no way to reach anything, and the grid still lists whatever they
     // left visible.
+    // Panels FIRST, rebuild SECOND -- this ordering is load-bearing. If the
+    // pager is already showing (tapping Everything while in Everything, or a
+    // rail refresh after a Customize toggle), the live .panel nodes are still
+    // parented inside the pager pages, and buildMobilePager's
+    // track.innerHTML= rewrite would detach them with the old pages --
+    // destroying real panels, unrecoverable without a reload. _pagerMoveOut
+    // can't save them after the fact: it queries the document, and a detached
+    // node isn't in the document any more.
+    if(Object.keys(_pagerHome).length)_pagerMoveHome();
     var usePager=PAGER_ENABLED&&_pagerComputeVisible().length>0;
     pagerEl.classList.toggle('active',usePager);
     document.body.classList.toggle('cp-pager-on',usePager);
     if(usePager){buildMobilePager();_pagerMoveOut();_pagerSizeTrack();_pagerWireGestures();_pagerRestoreScroll();}
-    else if(Object.keys(_pagerHome).length)_pagerMoveHome();
   }
   window.scrollTo(0,0);
 }

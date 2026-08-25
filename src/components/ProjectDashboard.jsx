@@ -416,7 +416,14 @@ function ProjectBanner({ tick }) {
       <span className="day-progress-edge-label start">5a</span>
       <span className="day-progress-edge-label end">8p</span>
       {BANNER_HOUR_MARKERS.map(({ pct, label }) => (
-        <div key={label} className="day-progress-marker" style={{ left: pct }}>
+        // pd-marker-key tags the quarter-point markers (20/46.67/73.33%) so the
+        // mobile CSS can keep just those three labels. A class, not the
+        // [style*="left:20%"] attribute match the .header rules use: React
+        // serializes inline styles as "left: 20%" (with a space), so the
+        // header's attribute selectors can never match this copy.
+        <div key={label}
+          className={'day-progress-marker' + (['20%', '46.67%', '73.33%'].includes(pct) ? ' pd-marker-key' : '')}
+          style={{ left: pct }}>
           <span className="day-progress-marker-label">{label}</span>
         </div>
       ))}
