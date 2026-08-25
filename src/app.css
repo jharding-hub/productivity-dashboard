@@ -900,6 +900,10 @@ body.cmd-palette-open .mobile-tab-bar{z-index:1150;}
   .pd-topbar .pd-marker-key .day-progress-marker-label{
     display:block !important;font-size:calc(9px * var(--type-scale,1)) !important;top:1px !important;font-weight:600 !important;
   }
+  /* No timer in the PD nav row on phones -- 386px of content vs 335px of
+     row (measured at 375px wide; see ProjectDashboard.jsx). Desktop keeps
+     it: the row is wide there and the wrap never engaged anyway. */
+  .pd-nav-timer{display:none !important;}
   /* Row 2: timer on the right. The Presence badge no longer lives in the
      header (moved into the Tool Kit panel), so this row is just the timer. */
   /* The presence badge sits on row 2, to the LEFT of the Today/Everything

@@ -674,8 +674,13 @@ export default function ProjectDashboard({ open, onClose }) {
 
           {/* Timer, moved down from the banner row so the banner keeps the
               full width. marginLeft:auto right-aligns it whether or not the
-              selected-project info block (flex:1) is rendered. */}
-          <div className="header-right" style={{ flexShrink: 0, marginLeft: 'auto' }}>
+              selected-project info block (flex:1) is rendered.
+              pd-nav-timer hides it on PHONES (see app.css): measured, the
+              row needs 386px for Dashboard + dropdown + timer against 335px
+              available at 375px wide -- 51px over, beyond what any label
+              trim can recover, so per Joe (2026-08-25) the PD goes without
+              a timer on phones. The main header's timer is one tap away. */}
+          <div className="header-right pd-nav-timer" style={{ flexShrink: 0, marginLeft: 'auto' }}>
             <div className="header-timer-outer">
               <span className="header-timer-label-tag">Timer</span>
               <div className="header-timer-wrap">
