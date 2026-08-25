@@ -6681,6 +6681,9 @@ function _cmdPaletteRenderChips(){
 function openCommandPalette(){
   var modal=document.getElementById('cmdPaletteModal');if(!modal)return;
   modal.classList.add('open');
+  // Lift the tab bar above the palette's backdrop while it's open -- see the
+  // body.cmd-palette-open rule in app.css for why.
+  document.body.classList.add('cmd-palette-open');
   var input=document.getElementById('cmdPaletteInput');
   if(input){input.value='';input.focus();}
   _cmdPaletteSelected=0;
@@ -6696,6 +6699,7 @@ function openCommandPalette(){
 function closeCommandPalette(){
   var modal=document.getElementById('cmdPaletteModal');if(!modal)return;
   modal.classList.remove('open');
+  document.body.classList.remove('cmd-palette-open');
 }
 // On device 2026-08-24: with Search open, tapping another tab-bar button ran
 // that button's action UNDERNEATH the still-open palette -- the view changed
