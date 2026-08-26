@@ -792,3 +792,37 @@ test('deleted project stays deleted when a stale client writes', () => {
   const roundTrip = reconcileSync(A, bAfter);
   assert.deepEqual(roundTrip.projects, []);
 });
+
+
+// ── tlBlocks join SYNC_ACTIVE_ARRAYS (2026-08-25, build-113 on-device) ──────
+// A block added to tomorrow appeared, then vanished: blocks were merged by
+// NEITHER path, so the snapshot handler's plain cloud spread dropped any block
+// the (older) cloud doc didn't carry. These pin the three behaviors the fix
+// promises: a fresh local add survives a stale echo, a tombstoned delete stays
+// deleted, and concurrent adds on two devices both survive.
+const blk = (id, extra={}) => Object.assign({ id, name: id, date:'2026-08-26', time:'09:00' }, extra);
+
+test('tlBlocks: a just-added block survives a stale cloud echo', () => {
+  const local = { tlBlocks: [ blk('tlb_new') ], tasks: [], reminders: [], notes: [], thoughts: [] };
+  const staleCloud = { tlBlocks: [] };            // echo of the doc from before the add
+  const out = reconcileSync(local, staleCloud);
+  assert.deepEqual(out.tlBlocks.map(b=>b.id), ['tlb_new'], 'the add is not dropped');
+});
+
+test('tlBlocks: a deleted block stays deleted when a stale client writes', () => {
+  // Deleter removed it AND tombstoned it (every removal site goes through
+  // _tlRemoveBlocks in legacy.js); the stale side still carries the block.
+  const A = { tlBlocks: [], _tombstones: { tlb_gone: '2026-08-25T12:00:00.000Z' } };
+  const staleB = { tlBlocks: [ blk('tlb_gone') ] };
+  const out = reconcileSync(staleB, A);
+  assert.deepEqual(out.tlBlocks, [], 'tombstoned block does not resurrect');
+  // Round-trip: stale side saves the reconciled state, deleter reloads it.
+  const bAfter = Object.assign({}, staleB, out);
+  assert.deepEqual(reconcileSync(A, bAfter).tlBlocks, []);
+});
+
+test('tlBlocks: concurrent adds on two devices both survive', () => {
+  const out = reconcileSync({ tlBlocks: [ blk('tlb_phone') ] },
+                            { tlBlocks: [ blk('tlb_desktop') ] });
+  assert.deepEqual(out.tlBlocks.map(b=>b.id).sort(), ['tlb_desktop','tlb_phone']);
+});

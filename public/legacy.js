@@ -1506,6 +1506,21 @@ function _tombstone(id){
   if(!state._tombstones)state._tombstones={};
   if(!state._tombstones[id])state._tombstones[id]=new Date().toISOString();
 }
+// Every timeline-block removal goes through here. tlBlocks is one of
+// SYNC_ACTIVE_ARRAYS (2026-08-25), merged by id-union + tombstone-drop --
+// which makes a bare filter() no longer a deletion: the union with any other
+// copy of the doc brings the block straight back. Removal must be recorded as
+// a tombstone, the same synced fact every other active array records. Block
+// ids are generated (tlb<ts><rand> / rem_tl_<id>_<ts>), never reused, so a
+// tombstone here can never suppress a future legitimate add.
+function _tlRemoveBlocks(pred){
+  if(!state.tlBlocks)return;
+  state.tlBlocks=state.tlBlocks.filter(function(b){
+    if(!b)return false;                    // drop corrupt null entries outright
+    if(pred(b)){_tombstone(b.id);return false;}
+    return true;
+  });
+}
 // Removing a COMPLETED-history entry (removeCompleted) is also a durable fact,
 // but it needs its OWN map: an archive record reuses the id of the live item
 // it archived, and that id is already in _tombstones from the completion --
@@ -1733,7 +1748,7 @@ async function load(){
   if(Array.isArray(state.tlBlocks)){
     var _tlCut=_anchoredNow();_tlCut.setDate(_tlCut.getDate()-14);
     var _tlCutKey=_dayKey(_tlCut);
-    state.tlBlocks=state.tlBlocks.filter(function(b){return b&&(!b.date||b.date>=_tlCutKey);});
+    _tlRemoveBlocks(function(b){return !!b.date&&b.date<_tlCutKey;});
   }
   if(!state.routines)state.routines={morning:[],evening:[],custom:[]};
   if(!state._tombstones)state._tombstones={};
@@ -1897,16 +1912,38 @@ function startRealtimeSync(){
       if(localRoutineReset===_today&&cloud.lastRoutineReset!==_today){
         state.routines=localRoutines;state.lastRoutineReset=_today;
       }
-      ['morning','evening','custom'].forEach(function(tab){
-        var local=localRoutines[tab]||[];
-        var merged=state.routines[tab]||[];
-        local.forEach(function(lr){
-          if(lr.done){
-            var mr=merged.find(function(x){return x.id===lr.id;});
-            if(mr)mr.done=true;
-          }
-        });
-      });
+      // Re-apply local routine done-flags ONLY when local's flags belong to
+      // the same routine-day as the merged list (build-113 on-device, both
+      // symptoms from this one loop running unguarded):
+      //  - A webview resumed with YESTERDAY's flags in memory stamped them
+      //    onto the freshly reset lists ("routines not clearing in the
+      //    morning") -- and the save() that followed poisoned the cloud copy
+      //    for the whole day.
+      //  - The loop can only ever set done=TRUE, so an UNCHECK could not
+      //    survive a stale echo: the spread restored done:true, the loop
+      //    couldn't clear it, and the checkbox visibly reverted -- Joe's
+      //    "taps take 2 taps to register" (the second tap landed after the
+      //    echo settled).
+      // Same-day: if our in-memory edit is newer than the cloud doc, local
+      // wins wholesale (checks AND unchecks -- the points field above uses
+      // the identical rule); otherwise keep the old done-true union so two
+      // devices checking different items concurrently both survive.
+      if(localRoutineReset===state.lastRoutineReset){
+        if(localUpdatedAt>(cloud._updatedAt||0)){
+          state.routines=localRoutines;
+        }else{
+          ['morning','evening','custom'].forEach(function(tab){
+            var local=localRoutines[tab]||[];
+            var merged=state.routines[tab]||[];
+            local.forEach(function(lr){
+              if(lr.done){
+                var mr=merged.find(function(x){return x.id===lr.id;});
+                if(mr)mr.done=true;
+              }
+            });
+          });
+        }
+      }
 
       // Re-apply any gcalEventIds that were wiped by the cloud spread
       (state.tasks||[]).forEach(function(t){if(!t.gcalEventId&&_gcalLocal['t:'+t.id])t.gcalEventId=_gcalLocal['t:'+t.id];});
@@ -14933,7 +14970,7 @@ function handleWorkTodayClick(itemType,itemId,projectId){
   if(existing){
     var name=existing.name;
     _confirm('"'+name+'" is scheduled at '+_tlFmtTime(_tlParseTime(existing.time))+'. Unschedule it?',function(){
-      state.tlBlocks=(state.tlBlocks||[]).filter(function(b){return b.id!==existing.id;});
+      _tlRemoveBlocks(function(b){return b.id===existing.id;});
       save();
       renderProjects();renderTaskList();renderTimeline();
       if(typeof updateDayProgress==='function')updateDayProgress();
@@ -15195,7 +15232,7 @@ function deleteEditingBlock(){
   var blockName=_wtCurrentItem.name;
   _confirm('Delete "'+blockName+'"?',function(){
     var id=_wtCurrentItem._editBlockId;
-    state.tlBlocks=(state.tlBlocks||[]).filter(function(b){return b.id!==id;});
+    _tlRemoveBlocks(function(b){return b.id===id;});
     save();
     closeWorkTodayModal();
     renderProjects();renderTaskList();renderTimeline();
@@ -15215,13 +15252,12 @@ var _tlDragInProgress=false;
 // nothing was clearing it. That breaks the core rule for these blocks -- they
 // go away when the item is checked off, and only then.
 //
-// Plain filter + save, matching what reminderPopupDone already does for
-// reminder-linked blocks. No _tombstone: tlBlocks is not one of
-// SYNC_ACTIVE_ARRAYS in sync-merge.js, so it is not tombstone-reconciled and a
-// tombstone here would be inert.
+// Removal goes through _tlRemoveBlocks so it tombstones: tlBlocks joined
+// SYNC_ACTIVE_ARRAYS on 2026-08-25, so a bare filter is no longer a deletion
+// (the id-union merge would restore the block from any other copy).
 function _tlUnlinkBlocks(itemId){
   if(!itemId||!state.tlBlocks)return;
-  state.tlBlocks=state.tlBlocks.filter(function(b){return b.linkedId!==itemId;});
+  _tlRemoveBlocks(function(b){return b.linkedId===itemId;});
 }
 
 // Turn an auto-placed (derived) task/subtask block into a REAL linked tlBlock at
@@ -15841,7 +15877,7 @@ function deleteTimelineBlock(id){
   var block=(state.tlBlocks||[]).find(function(b){return b.id===id;});
   var blockName=block?block.name:'this block';
   _confirm('Delete "'+blockName+'"?',function(){
-    state.tlBlocks=(state.tlBlocks||[]).filter(function(b){return b.id!==id;});
+    _tlRemoveBlocks(function(b){return b.id===id;});
     save();
     renderProjects();renderTaskList();renderTimeline();
     if(typeof updateDayProgress==='function')updateDayProgress();
@@ -15855,7 +15891,7 @@ function clearTimelineBlocks(){
   var count=(state.tlBlocks||[]).filter(function(b){return b.date===viewDate;}).length;
   if(count===0){toast('No manual blocks to clear for '+dayLabel);return;}
   _confirm('Delete all '+count+' manual blocks for '+dayLabel+'?',function(){
-    state.tlBlocks=(state.tlBlocks||[]).filter(function(b){return b.date!==viewDate;});
+    _tlRemoveBlocks(function(b){return b.date===viewDate;});
     save();renderTimeline();
     if(typeof updateDayProgress==='function')updateDayProgress();
     toast('Manual blocks cleared');
@@ -17743,7 +17779,7 @@ function reminderPopupDone(id){
   var r=(state.reminders||[]).find(function(r){return r.id===id;});
   if(r){r._done=true;r._dismissed=true;}
   // Remove any auto-scheduled timeline block for this reminder
-  state.tlBlocks=(state.tlBlocks||[]).filter(function(b){return b.linkedId!==id;});
+  _tlRemoveBlocks(function(b){return b.linkedId===id;});
   save();
   if(typeof renderReminders==='function')renderReminders();
   if(typeof renderTimeline==='function')renderTimeline();
@@ -17790,7 +17826,7 @@ function reminderPopupSnooze(id){
     r._dismissed=false;
     r._autoScheduled=false;
     // Remove the old auto-scheduled block -- new date might be different
-    state.tlBlocks=(state.tlBlocks||[]).filter(function(b){return b.linkedId!==id;});
+    _tlRemoveBlocks(function(b){return b.linkedId===id;});
     save();
     if(typeof renderReminders==='function')renderReminders();
     if(typeof renderTimeline==='function')renderTimeline();

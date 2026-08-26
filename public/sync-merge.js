@@ -97,7 +97,14 @@ function mergeProjects(localArr, cloudArr, tomb){
 }
 
 // Array fields whose deletions/completions are tracked by the tombstone map.
-var SYNC_ACTIVE_ARRAYS = ['reminders','tasks','notes','thoughts'];
+// tlBlocks joined 2026-08-25 (build-113 on-device report: a block added to
+// tomorrow appeared, then vanished; a second add stuck). Blocks were merged by
+// NEITHER path -- the snapshot handler's plain cloud spread took whichever
+// array the cloud doc carried, so an echo of an older doc silently dropped a
+// just-added block. Block ids are generated (timestamp+random), never reused,
+// so id-union + tombstone-drop is safe; every legacy.js removal site now
+// tombstones via _tlRemoveBlocks.
+var SYNC_ACTIVE_ARRAYS = ['reminders','tasks','notes','thoughts','tlBlocks'];
 // Append-mostly archive arrays still riding the dashboard blob: union by id so
 // an entry added on one device isn't dropped by a stale write. These are NOT
 // filtered by the live-item _tombstones map — a completed record reuses the
