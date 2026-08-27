@@ -15243,6 +15243,22 @@ function deleteEditingBlock(){
 
 // === Drag-to-reschedule (works on both banner and timeline) ===
 var _tlDragInProgress=false;
+// The block drag is Pointer Events, and a pointer event's preventDefault()
+// CANNOT stop native touch scrolling -- the browser claims the gesture per
+// touch-action and fires pointercancel, killing the drag ("the block shifts
+// slightly but won't move, the timeline scrolls instead" -- Joe, build 114;
+// worse under the pager, whose page scrolls vertically AND pages
+// horizontally, so every axis steals the gesture). While a block IS lifted
+// (see the hold-to-lift logic in _tlAttachDragHandlers) this non-passive
+// listener vetoes the scroll at the touch layer, which DOES work mid-
+// gesture. Deliberately NOT touch-action:none on the blocks: that would
+// also stop quick swipes over a block from scrolling the timeline or paging
+// the panels, and on a dense day blocks are most of the touchable surface.
+if('ontouchstart' in window){
+  document.addEventListener('touchmove',function(e){
+    if(_tlDragInProgress)e.preventDefault();
+  },{passive:false});
+}
 
 // Drop any timeline block pinned to an item that has just been completed.
 //
@@ -15294,6 +15310,28 @@ function _tlAttachDragHandlers(el,blockId,mode,derived,dateStr){
   if(!inTlBlocks&&!canMaterialize){el.style.cursor='default';return;}
 
   var dragging=false,startCoord=0,initialStartMin=0,pxPerMin=0,blockRef=null,pendingMin=null;
+  var holdTimer=null,downX=0,downY=0,downPointerId=null;
+
+  function engage(cx,cy,pointerId){
+    initialStartMin=_tlParseTime(blockRef.time);
+    pendingMin=initialStartMin;
+    if(mode==='banner'){
+      var bar=document.getElementById('dayProgressBar');
+      if(!bar)return;
+      // Banner spans 5am-8pm = 900 min
+      pxPerMin=bar.getBoundingClientRect().width/900;
+      startCoord=cx;
+    }else{
+      // Timeline: 52px per hour
+      pxPerMin=TL_HOUR_PX/60;
+      startCoord=cy;
+    }
+    dragging=true;
+    _tlDragInProgress=true;
+    try{el.setPointerCapture(pointerId);}catch(err){}
+    el.classList.add('dragging');
+  }
+  function cancelHold(){if(holdTimer){clearTimeout(holdTimer);holdTimer=null;}}
 
   el.addEventListener('pointerdown',function(e){
     if(e.button!==0&&e.pointerType==='mouse')return; // left button only for mouse
@@ -15310,33 +15348,35 @@ function _tlAttachDragHandlers(el,blockId,mode,derived,dateStr){
                 duration:derived.durMin};
     }
     if(!blockRef)return;
-    e.preventDefault();
-    e.stopPropagation();
-    
-    initialStartMin=_tlParseTime(blockRef.time);
-    pendingMin=initialStartMin;
-    
-    if(mode==='banner'){
-      var bar=document.getElementById('dayProgressBar');
-      if(!bar)return;
-      var rect=bar.getBoundingClientRect();
-      // Banner spans 5am-8pm = 900 min
-      pxPerMin=rect.width/900;
-      startCoord=e.clientX;
-    }else{
-      // Timeline: 52px per hour
-      pxPerMin=TL_HOUR_PX/60;
-      startCoord=e.clientY;
+    if(e.pointerType==='mouse'){
+      // Mouse: nothing competes for the gesture -- grab immediately, as ever.
+      e.preventDefault();
+      e.stopPropagation();
+      engage(e.clientX,e.clientY,e.pointerId);
+      return;
     }
-    
-    dragging=true;
-    _tlDragInProgress=true;
-    try{el.setPointerCapture(e.pointerId);}catch(err){}
-    el.classList.add('dragging');
+    // Touch/pen: HOLD TO LIFT. Engaging on contact can't work here -- the
+    // instant the finger moves, the scroll container (or the pager's
+    // horizontal snap) claims the gesture and pointercancels the drag, which
+    // is exactly the on-device report this replaces. Instead: a quick swipe
+    // starting on a block scrolls/pages as normal (the hold is cancelled by
+    // >10px of movement below), while holding still for 250ms lifts the
+    // block -- the standard mobile reorder pattern -- and from lift onward
+    // the document-level touchmove veto (see _tlDragInProgress above) keeps
+    // the scroll from starting. No preventDefault on this path: a plain tap
+    // shorter than the hold should keep behaving like a tap.
+    downX=e.clientX;downY=e.clientY;downPointerId=e.pointerId;
+    cancelHold();
+    holdTimer=setTimeout(function(){holdTimer=null;engage(downX,downY,downPointerId);},250);
   });
-  
+
   el.addEventListener('pointermove',function(e){
-    if(!dragging)return;
+    if(!dragging){
+      // Finger moved before the hold matured: it's a scroll/swipe, not a
+      // drag -- stand down and let the browser have it.
+      if(holdTimer&&(Math.abs(e.clientX-downX)>10||Math.abs(e.clientY-downY)>10))cancelHold();
+      return;
+    }
     e.preventDefault();
     
     var deltaPx=(mode==='banner'?e.clientX:e.clientY)-startCoord;
@@ -15367,11 +15407,19 @@ function _tlAttachDragHandlers(el,blockId,mode,derived,dateStr){
   });
   
   var commit=function(e){
+    cancelHold();               // a released tap must not lift a block later
     if(!dragging)return;
     dragging=false;
     _tlDragInProgress=false;
     try{el.releasePointerCapture(e.pointerId);}catch(err){}
     el.classList.remove('dragging');
+    // A lift consumed this gesture -- swallow the click the browser may
+    // still synthesize for it, so holding a block (with or without moving
+    // it) doesn't ALSO open the block's tap action on release. once:true
+    // removes it if the click fires; the timeout removes it if none does.
+    var _sup=function(ev){ev.stopPropagation();ev.preventDefault();};
+    el.addEventListener('click',_sup,{capture:true,once:true});
+    setTimeout(function(){el.removeEventListener('click',_sup,{capture:true});},400);
     
     if(pendingMin===null||pendingMin===initialStartMin){
       // No real movement -- re-render to clean up any partial visual changes
