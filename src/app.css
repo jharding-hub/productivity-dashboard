@@ -1185,7 +1185,6 @@ body.capacitor-native a[target="_blank"]{-webkit-touch-callout:none;}
 .panel.panel-tile .panel-content,
 .panel.panel-tile .tasklist-controls,
 .panel.panel-tile .note-filter-row,
-.panel.panel-tile .completed-projects-section,
 .panel.panel-tile .panel-content-extra{display:none !important;}
 .panel.panel-tile .panel-header{cursor:pointer;user-select:none;transition:opacity 0.15s;}
 .panel.panel-tile .panel-header:hover{opacity:0.85;}
