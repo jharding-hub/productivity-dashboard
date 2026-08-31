@@ -9996,7 +9996,7 @@ function openProjectModal(pid){
     html+=linkedNotes.map(function(n){
       return '<div class="pmd-item"><div class="pmd-item-label">'+esc(n.label||'Note')+'</div>'
         +(n.date?'<div class="pmd-item-meta">'+n.date+(n.time?' · '+n.time:'')+'</div>':'')
-        +(n.body?'<div class="pmd-item-body">'+esc(n.body)+'</div>':'')+'</div>';
+        +(n.body?'<div class="pmd-item-body">'+_renderNoteBody(n)+'</div>':'')+'</div>';
     }).join('');
     html+='</div>';
   }
@@ -10114,7 +10114,7 @@ function openArchivedProjectModal(pid){
     html+=linkedNotes.map(function(n){
       return '<div class="pmd-item"><div class="pmd-item-label">'+esc(n.label||'Note')+'</div>'
         +(n.date?'<div class="pmd-item-meta">'+n.date+(n.time?' · '+n.time:'')+'</div>':'')
-        +(n.body?'<div class="pmd-item-body">'+esc(n.body)+'</div>':'')+'</div>';
+        +(n.body?'<div class="pmd-item-body">'+_renderNoteBody(n)+'</div>':'')+'</div>';
     }).join('');
     html+='</div>';
   }
