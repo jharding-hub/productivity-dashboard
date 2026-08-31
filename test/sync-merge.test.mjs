@@ -11,7 +11,7 @@ import { createRequire } from 'node:module';
 const require = createRequire(import.meta.url);
 
 const { mergeById, mergeTombstones, reconcileSync, _dropTombstoned, reconcileLifetimeCounter,
-        mergeDeviceHeartbeats, DEVICE_HEARTBEAT_MAX } = require('../public/sync-merge.js');
+        mergeDeviceHeartbeats, DEVICE_HEARTBEAT_MAX, mergeProjects } = require('../public/sync-merge.js');
 const DU = require('../public/date-utils.js');
 const { fmtDate, _dueCountdownLabel, setDayAnchorMinutes, getDayAnchorMinutes,
         _anchoredNow, _anchoredDayKey, _anchoredDayEnd, todayStr, _dayKey, _monthKey,
@@ -216,6 +216,51 @@ test('a removed completed-project history entry does not resurrect', () => {
   assert.deepEqual(reconciled.completedProjects.map(t => t.id), ['t2'],
     'the cleared archive record does not come back from a stale client');
   assert.ok(reconciled._archiveTombstones.t1, 'archive tombstone carries forward');
+});
+
+// ── 7b. Archiving a project must tombstone it, or a stale device duplicates it ──
+// (Projects-panel investigation, 2026-08-30.) Before this fix, markProjectComplete
+// filtered state.projects and pushed to completedProjects but never called
+// _tombstone -- so mergeProjects' union brought the project straight back into
+// the active list on any device that was offline/backgrounded for the archive,
+// while the archive copy ALSO survived. The project rendered in both lists.
+test('an archived project stays out of the active list when a stale client still holds it', () => {
+  const proj = { id:'p1', name:'Ultrasound', due:'', subtasks:[] };
+  const A = {
+    projects: [],
+    completedProjects: [{ id:'p1', name:'Ultrasound', archivedAt:'2026-08-30T12:00:00.000Z', subtasks:[] }],
+    _tombstones: { p1: '2026-08-30T12:00:00.000Z' },
+  };
+  const staleB = { projects: [ JSON.parse(JSON.stringify(proj)) ], completedProjects: [] };
+
+  const reconciled = reconcileSync(staleB, A);
+  assert.deepEqual(reconciled.projects.map(p => p.id), [],
+    'the archived project does not resurrect into the active list');
+  assert.deepEqual(reconciled.completedProjects.map(p => p.id), ['p1'],
+    'the archive record is the only surviving copy');
+});
+
+// ── 7c. Restoring an archived project must not resurrect under the tombstoned id ──
+test('a restored project lives under a fresh id and its old archive record stays cleared', () => {
+  // Same rule as the reminder-restore case: the archived id is permanently in
+  // _tombstones (grow-only), so restoreProject mints a fresh id. Pin down that
+  // a restore staying under the OLD id would be re-dropped by mergeProjects,
+  // and that the archive record itself is cleared via _archiveTombstones so a
+  // stale archive doc can't bring the old record back either.
+  const tomb = { p1: '2026-08-30T12:00:00.000Z' };
+  const staleRestoreUnderOldId = { projects: [{ id:'p1', name:'Ultrasound', subtasks:[] }] };
+  const cloudNoProjects = { projects: [] };
+  const wronglyRestored = reconcileSync(staleRestoreUnderOldId, cloudNoProjects);
+  assert.deepEqual(mergeProjects(wronglyRestored.projects, [], tomb).map(p => p.id), [],
+    'restoring under the tombstoned id would be dropped on the very next reconcile');
+
+  const restoredUnderFreshId = { projects: [{ id:'p1-restored', name:'Ultrasound', subtasks:[] }] };
+  const stillActive = mergeProjects(restoredUnderFreshId.projects, [], tomb);
+  assert.deepEqual(stillActive.map(p => p.id), ['p1-restored'], 'a fresh id survives the tombstone filter');
+
+  const archiveTomb = { p1: '2026-08-30T13:00:00.000Z' };
+  const staleArchive = _dropTombstoned(mergeById([], [{ id:'p1', name:'Ultrasound' }]), archiveTomb);
+  assert.equal(staleArchive.length, 0, 'old archive record does not resurrect after restore');
 });
 
 // ── 8. The live-item tombstone must NOT wipe a fresh archive record ─────────

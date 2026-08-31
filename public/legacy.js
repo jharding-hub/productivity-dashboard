@@ -2842,9 +2842,9 @@ function markProjectComplete(pid,btnEl){
   var activeCount=p.subtasks.length;
   var msg;
   if(activeCount>0){
-    msg='"'+p.name+'" still has '+activeCount+' active '+(activeCount===1?'task':'tasks')+'.\n\nMark project complete?';
+    msg='"'+p.name+'" still has '+activeCount+' active '+(activeCount===1?'task':'tasks')+'.\n\nArchive project?';
   }else{
-    msg='Mark "'+p.name+'" complete?';
+    msg='Archive "'+p.name+'"?';
   }
   _confirm(msg,function(){
   // Count completed tasks for this project (for the archive stats)
@@ -2865,11 +2865,17 @@ function markProjectComplete(pid,btnEl){
   });
   
   // Clear any subtasks that were still pending (they go away with the project)
-  // Notes/reminders stay; their projectId reference will become orphaned but still searchable
-  
-  // Remove from active projects
+  // Notes/reminders stay; still reachable through the archived project's
+  // read-only view (openArchivedProjectModal) as well as by search.
+
+  // Remove from active projects. Tombstoned like deleteProject (2026-08-23) --
+  // a bare filter() is silently reversed by mergeProjects' union on any stale
+  // device that still holds the pre-archive array, which duplicated the
+  // project into BOTH the active list and completedProjects (repro'd against
+  // sync-merge.js during the projects-panel investigation, 2026-08-30).
   state.projects=state.projects.filter(function(pr){return pr.id!==pid;});
-  
+  _tombstone(pid);
+
   // Award points
   addPoints('project',btnEl);
   
@@ -2879,24 +2885,41 @@ function markProjectComplete(pid,btnEl){
   renderNotes();
   renderReminders();
   toast('\u2713 Project archived');
-  },{confirmText:'Mark Complete',icon:'ti-circle-check'});
+  if(_pmdOpenPid===pid)closeProjectModal();
+  },{confirmText:'Archive',icon:'ti-archive'});
 }
 
 function restoreProject(pid){
   var arch=(state.completedProjects||[]).find(function(cp){return cp.id===pid;});
   if(!arch)return;
   _confirm('Restore "'+arch.name+'" to active projects?',function(){
-  // Restore as active project
+  // Restore MUST mint a fresh id: the archived id is permanently in
+  // _tombstones (grow-only), so re-adding under it would be silently
+  // re-dropped by mergeProjects on every future reconcile -- same rule as
+  // restoreArchivedReminder. Linked tasks/notes/reminders point at the OLD
+  // id via projectId/projectIds, so they're remapped here or the restore
+  // would orphan them from the project they were attached to.
+  var newId='p'+Date.now()+Math.random().toString(36).slice(2,6);
   state.projects.push({
-    id:arch.id,name:arch.name,due:arch.due||'',
+    id:newId,name:arch.name,due:arch.due||'',
     expanded:false,
     subtasks:arch.subtasks||[]
   });
+  [state.tasks,state.notes,state.reminders].forEach(function(arr){
+    (arr||[]).forEach(function(it){
+      if(it.projectId===pid)it.projectId=newId;
+      if(it.projectIds){var i=it.projectIds.indexOf(pid);if(i>=0)it.projectIds[i]=newId;}
+    });
+  });
+  _archiveTombstone(pid);
   state.completedProjects=state.completedProjects.filter(function(cp){return cp.id!==pid;});
   save();
   renderProjects();
   renderTaskList();
+  renderNotes();
+  renderReminders();
   toast('Project restored');
+  if(_pmdOpenPid===pid)closeProjectModal();
   },{confirmText:'Restore',icon:'ti-archive'});
 }
 
@@ -2904,9 +2927,14 @@ function purgeCompletedProject(pid){
   var arch=(state.completedProjects||[]).find(function(cp){return cp.id===pid;});
   if(!arch)return;
   _confirm('Permanently delete "'+arch.name+'" from the archive? This cannot be undone.',function(){
+  // Same archive-tombstone rule as purgeArchivedReminder: a bare filter() is
+  // reversed by completedProjects' union merge on any stale device that still
+  // holds the record (found alongside the archive resurrection bug, 2026-08-30).
+  _archiveTombstone(pid);
   state.completedProjects=state.completedProjects.filter(function(cp){return cp.id!==pid;});
   save();
   renderProjects();
+  if(_pmdOpenPid===pid)closeProjectModal();
   },{destructive:true,confirmText:'Delete Forever'});
 }
 
@@ -2930,11 +2958,11 @@ function _renderCompletedProjectsSection(){
     if(cp.completedTaskCount)stats.push(cp.completedTaskCount+' done');
     if(cp.noteCount)stats.push(cp.noteCount+' note'+(cp.noteCount!==1?'s':''));
     if(when)stats.push('archived '+when);
-    html+='<div class="completed-project-card">'
+    html+='<div class="completed-project-card" onclick="openArchivedProjectModal(\''+cp.id+'\')">'
       +'<span class="cp-name">'+esc(cp.name)+'</span>'
       +(stats.length?'<span class="cp-stats">'+stats.join(' \u00b7 ')+'</span>':'')
-      +'<span class="cp-action cp-restore" onclick="restoreProject(\''+cp.id+'\')" title="Restore project">\u21BA</span>'
-      +'<span class="cp-action cp-purge" onclick="purgeCompletedProject(\''+cp.id+'\')" title="Permanently delete">\u2715</span>'
+      +'<span class="cp-action cp-restore" onclick="event.stopPropagation();restoreProject(\''+cp.id+'\')" title="Restore project">\u21BA</span>'
+      +'<span class="cp-action cp-purge" onclick="event.stopPropagation();purgeCompletedProject(\''+cp.id+'\')" title="Permanently delete">\u2715</span>'
       +'</div>';
   });
   html+='</div></div>';
@@ -3241,81 +3269,11 @@ function _sortedProjects(){
   });
 }
 
-// Compact, id-free preview rows for the Projects dashboard tile (J2-3).
-// Nearest due date first, undated last -- "what needs me" ordering, matching
-// how the rest of the app sorts.
-var PROJ_PREVIEW_N=3;
-function _projPreviewHTML(projects,today){
-  var sorted=projects.slice().sort(function(a,b){
-    if(!a.due&&!b.due)return (a.name||'').localeCompare(b.name||'');
-    if(!a.due)return 1;
-    if(!b.due)return -1;
-    return a.due.localeCompare(b.due);
-  });
-  var shown=sorted.slice(0,PROJ_PREVIEW_N);
-  var rest=sorted.length-shown.length;
-  var html='<div class="proj-preview">'+shown.map(function(p){
-    var open=(p.subtasks||[]).filter(function(st){return !st.done;}).length;
-    var dueTxt=p.due?(_dueCountdownLabel(p.due)||fmtDate(p.due)):'no end date';
-    return '<div class="proj-preview-row" onclick="openProjectModal(\''+p.id+'\')">'
-      +'<span class="ppr-name">'+esc(p.name)+'</span>'
-      +'<span class="ppr-meta">'+open+' open \u00b7 '+esc(dueTxt)+'</span>'
-      +'</div>';
-  }).join('');
-  html+='<div class="proj-preview-more" onclick="var cb=document.getElementById(\'projUpcomingOnly\');if(cb){cb.checked=true;renderProjects();}">'
-    +(rest>0?('Show all '+sorted.length+' projects'):'Show full cards')
-    +'</div>';
-  return html+'</div>';
-}
 function renderProjects(){
 if(_isEditingInPanel('projectList')){_deferPanelRender('projectList');return;}
-const el=document.getElementById('projectList');const today=todayStr();
-
-// Detect if we're rendering inside the overlay (panel-tile removed) vs the dashboard tile
-var projPanel=document.querySelector('.panel[data-panel="projects"]');
-var inOverlay=projPanel&&!projPanel.classList.contains('panel-tile');
-
-// "Show all" toggle -- only applies on the dashboard tile, never in overlay
-var upcomingEl=document.getElementById('projUpcomingOnly');
-var showAll=!inOverlay&&upcomingEl&&upcomingEl.checked;
-// Always sort alphabetically regardless of showAll / overlay mode
+const el=document.getElementById('projectList');
 var visibleProjects=_sortedProjects();
 if(state.projects.length===0){el.innerHTML='<div class="empty-state"><p style="margin:0 0 8px;color:var(--text-dim);">No projects yet. Create one to start tracking goals and subtasks.</p><button class="btn btn-accent btn-sm" onclick="document.getElementById(\'newProjName\').focus()" style="margin:0 auto;display:block;">+ Create your first project</button></div>'+_renderCompletedProjectsSection();document.getElementById('projCount').textContent='0';var emptyProjCompCount=state.completedProjectSubtasksLifetime!==undefined?state.completedProjectSubtasksLifetime:(state.completedTasks||[]).filter(function(t){return t.source==='project';}).length;var emptyProjCompBadge=document.getElementById('projCompletedBadge');if(emptyProjCompBadge){emptyProjCompBadge.textContent='✓ '+emptyProjCompCount;emptyProjCompBadge.title=emptyProjCompCount+' completed subtask'+(emptyProjCompCount!==1?'s':'');emptyProjCompBadge.style.display=emptyProjCompCount>0?'inline-flex':'none';}updateNoteSelectors();if(typeof _updateTileSummaryProjects==='function')_updateTileSummaryProjects();return;}
-var pcpEl=document.getElementById('pc_projects');
-// Tile mode, unchecked -- blank panel so add-form anchors to bottom.
-// Panel survey 2026-08-18 (I-1): with real projects in state, this blank
-// body under a nonzero count badge read as data loss to six of eight
-// personas ("a bug wearing a filter's clothes" -- Skeptic), verified by the
-// surveyor at both 2 and 26 seeded projects. Keeping the compact tile (this
-// was a deliberate choice -- see the original comment above, the add-form
-// staying reachable without scrolling past a long list still matters) but
-// the empty space now says plainly that the filter, not a missing project,
-// is why nothing is showing, with a one-tap way to reveal them.
-if(!inOverlay&&!showAll){
-  // Panel survey 2026-08-22 (J2-3): the notice became a PREVIEW. Explaining an
-  // empty body was an improvement on an empty body, but seven of eight seats
-  // still said a dashboard should render its data -- "a click-tax on every
-  // single load". So the tile now shows the few nearest projects and offers
-  // the rest, which keeps the compact tile and the bottom-anchored add form
-  // (the original reasons for this branch) while never showing a count over
-  // nothing.
-  //
-  // Rows are deliberately ID-FREE: the full cards below emit pn_/pd_/sn_ ids
-  // and this preview renders at the same time in the same document, so
-  // reusing them would be the duplicate-id bug class this file keeps
-  // re-learning.
-  el.innerHTML=visibleProjects.length>0
-    ?_projPreviewHTML(visibleProjects,today)
-    :'';
-  if(pcpEl){pcpEl.style.flex='none';pcpEl.style.minHeight='0';}
-  document.getElementById('projCount').textContent=state.projects.length;
-  updateNoteSelectors();
-  if(typeof _updateTileSummaryProjects==='function')_updateTileSummaryProjects();
-  return;
-}
-// Checked but no projects exist -- also blank (safety)
-if(showAll&&visibleProjects.length===0){el.innerHTML='';if(pcpEl){pcpEl.style.flex='none';pcpEl.style.minHeight='0';}document.getElementById('projCount').textContent=state.projects.length;updateNoteSelectors();if(typeof _updateTileSummaryProjects==='function')_updateTileSummaryProjects();return;}
-if(pcpEl){pcpEl.style.flex='';pcpEl.style.minHeight='';}
 el.innerHTML=visibleProjects.map(p=>{const total=p.subtasks.length;const sorted=[...p.subtasks].sort((a,b)=>{if(a.due&&b.due)return a.due.localeCompare(b.due);if(a.due)return -1;if(b.due)return 1;return 0;});
 
 // Completed items for this project (by id or fallback to name match for older records)
@@ -9949,9 +9907,13 @@ function removeCompleted(id){
 // =======================================
 // PROJECT DETAIL MODAL
 // =======================================
+var _pmdOpenPid=null; // which project the detail modal is showing -- lets a
+// commit made FROM the modal (e.g. archiving) close it, without every other
+// caller of markProjectComplete needing to know about the modal at all.
 function openProjectModal(pid){
   var p=state.projects.find(function(pr){return pr.id===pid;});
   if(!p)return;
+  _pmdOpenPid=pid;
   document.getElementById('projDetailModal').classList.add('open');
   _blurDashboard();
   var today=todayStr();
@@ -10050,7 +10012,8 @@ function openProjectModal(pid){
     +'</div></div>';
 
   document.getElementById('pmdBody').innerHTML=html;
-  
+  document.getElementById('pmdFooter').innerHTML='<button class="btn btn-sm" onclick="markProjectComplete(\''+pid+'\')" title="Archive this project"><i class="ti ti-archive" aria-hidden="true"></i> Archive</button>';
+
   // Wire editable subtask names + due dates inside the modal
   p.subtasks.forEach(function(st){
     var nameEl=document.getElementById('pmd_stname_'+st.id);
@@ -10079,6 +10042,87 @@ function openProjectModal(pid){
 function closeProjectModal(){
   document.getElementById('projDetailModal').classList.remove('open');
   _unblurDashboard();
+  _pmdOpenPid=null;
+}
+
+// Read-only view of an archived project -- reuses the same modal shell as
+// openProjectModal, but the project itself lives in completedProjects, not
+// state.projects, and its subtasks/linked items are shown, not edited (an
+// archived project has no open() form to add to, and its subtasks are a
+// point-in-time snapshot rather than a live array). Rows are deliberately
+// ID-FREE, same rule as the old dashboard-tile preview: this modal can be
+// open while the full project list renders pn_/pd_/sn_ ids behind it, and
+// reusing them would be the duplicate-id bug class this file keeps re-learning.
+function openArchivedProjectModal(pid){
+  var cp=(state.completedProjects||[]).find(function(c){return c.id===pid;});
+  if(!cp)return;
+  _pmdOpenPid=pid;
+  document.getElementById('projDetailModal').classList.add('open');
+  _blurDashboard();
+  var subtasks=cp.subtasks||[];
+  var done=subtasks.filter(function(s){return s.done;}).length;
+  document.getElementById('pmdTitle').textContent=cp.name;
+  var metaParts=[(done+'/'+subtasks.length+' subtasks')];
+  if(cp.due)metaParts.push('Ends: '+fmtDate(cp.due));
+  var linkedNotes=(state.notes||[]).filter(function(n){return (n.projectIds&&n.projectIds.indexOf(pid)>=0)||n.projectId===pid;});
+  var linkedTasks=(state.tasks||[]).filter(function(t){return (t.projectIds&&t.projectIds.indexOf(pid)>=0)||t.projectId===pid;});
+  var linkedReminders=(state.reminders||[]).filter(function(r){return (r.projectIds&&r.projectIds.indexOf(pid)>=0)||r.projectId===pid;});
+  if(linkedTasks.length)metaParts.push(linkedTasks.length+' task'+(linkedTasks.length!==1?'s':''));
+  if(linkedNotes.length)metaParts.push(linkedNotes.length+' note'+(linkedNotes.length!==1?'s':''));
+  if(linkedReminders.length)metaParts.push(linkedReminders.length+' reminder'+(linkedReminders.length!==1?'s':''));
+  document.getElementById('pmdMeta').textContent=metaParts.join(' · ');
+
+  var html='<div class="proj-modal-archived-banner"><i class="ti ti-archive" aria-hidden="true"></i> Archived'
+    +(cp.archivedAt?(' '+_wellFormatDate(cp.archivedAt)):'')+' · read-only</div>';
+
+  html+='<div class="proj-modal-section"><div class="proj-modal-section-title">&#128203; Subtasks</div>';
+  if(subtasks.length===0){html+='<div style="font-size:13px;color:var(--text-faint);padding:6px 0;">No subtasks.</div>';}
+  else{
+    var sorted=subtasks.slice().sort(function(a,b){
+      if(a.done!==b.done)return a.done?1:-1;
+      if(a.due&&b.due)return a.due.localeCompare(b.due);
+      if(a.due)return -1;if(b.due)return 1;return 0;
+    });
+    html+=sorted.map(function(st){
+      return '<div class="pmd-subtask"><div class="pmd-st-check'+(st.done?' checked':'')+'" style="cursor:default;">'+(st.done?'✓':'')+'</div>'
+        +'<span class="pmd-st-name'+(st.done?' done':'')+'">'+esc(st.name)+'</span>'
+        +(st.due?'<span style="font-size:11px;color:var(--text-dim);">'+_dueCellText(st.due,st.time)+'</span>':'')
+        +'</div>';
+    }).join('');
+  }
+  html+='</div>';
+
+  if(linkedTasks.length){
+    html+='<div class="proj-modal-section"><div class="proj-modal-section-title">&#128203; Linked Tasks</div>';
+    html+=linkedTasks.map(function(t){
+      return '<div class="pmd-item"><div class="pmd-item-label">'+esc(t.name)
+        +(t.done?' <span style="color:var(--text-faint);font-size:11px;">(done)</span>':'')+'</div>'
+        +(t.due?'<div class="pmd-item-meta">Due: '+_dueCellText(t.due,t.time)+'</div>':'')+'</div>';
+    }).join('');
+    html+='</div>';
+  }
+  if(linkedReminders.length){
+    html+='<div class="proj-modal-section"><div class="proj-modal-section-title">&#128276; Reminders</div>';
+    html+=linkedReminders.map(function(r){
+      return '<div class="pmd-item"><div class="pmd-item-label">'+esc(r.text)+'</div>'
+        +(r.date?'<div class="pmd-item-meta">'+fmtDate(r.date)+(r.time?' at '+fmtTime(r.time):'')+'</div>':'')+'</div>';
+    }).join('');
+    html+='</div>';
+  }
+  if(linkedNotes.length){
+    html+='<div class="proj-modal-section"><div class="proj-modal-section-title">&#128221; Notes</div>';
+    html+=linkedNotes.map(function(n){
+      return '<div class="pmd-item"><div class="pmd-item-label">'+esc(n.label||'Note')+'</div>'
+        +(n.date?'<div class="pmd-item-meta">'+n.date+(n.time?' · '+n.time:'')+'</div>':'')
+        +(n.body?'<div class="pmd-item-body">'+esc(n.body)+'</div>':'')+'</div>';
+    }).join('');
+    html+='</div>';
+  }
+
+  document.getElementById('pmdBody').innerHTML=html;
+  document.getElementById('pmdFooter').innerHTML=
+    '<button class="btn btn-sm" onclick="restoreProject(\''+pid+'\')" title="Restore to active projects"><i class="ti ti-arrow-back-up" aria-hidden="true"></i> Restore</button>'
+    +'<button class="btn btn-sm btn-danger" onclick="purgeCompletedProject(\''+pid+'\')" title="Permanently delete">Delete Forever</button>';
 }
 
 function pmdToggleSubtask(pid,sid){

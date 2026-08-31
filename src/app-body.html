@@ -68,7 +68,6 @@
 <div class="panel-header"><div class="panel-title"><span class="drag-handle">&#10495;</span><i class="ti ti-folder icon" aria-hidden="true"></i> Projects</div>
 <div style="display:flex;gap:6px;align-items:center;"><button class="breakdown-btn" onclick="openJarvisBreakdown('projects')" title="AI Breakdown — pick a project to break into micro-steps"><span class="bd-spark">&#10022;</span> Breakdown</button><span class="panel-badge" id="projCount">0</span><span class="panel-badge completed-badge" id="projCompletedBadge" style="display:none;">✓ 0</span><button class="expand-btn" onclick="openPanelOverlay('projects')" title="Expand to full view"><span class="expand-arrow">&#9660;</span></button></div></div>
 <div class="panel-tile-summary" id="tile-summary-projects" onclick="openPanelOverlay('projects')" style="cursor:pointer;"></div>
-<label class="upcoming-filter-toggle" onclick="event.stopPropagation();"><input type="checkbox" id="projUpcomingOnly" onchange="renderProjects()"> <span>Show all projects</span></label>
 <div class="panel-content" id="pc_projects">
 <div class="project-list" id="projectList"><div class="skel-wrap"><div class="skel-row-item" style="flex-direction:column;gap:6px;align-items:stretch;"><div class="skel skel-line lg" style="width:62%"></div><div class="skel skel-line sm" style="width:44%"></div></div><div class="skel-row-item" style="flex-direction:column;gap:6px;align-items:stretch;"><div class="skel skel-line lg" style="width:78%"></div><div class="skel skel-line sm" style="width:60%"></div></div><div class="skel-row-item" style="flex-direction:column;gap:6px;align-items:stretch;"><div class="skel skel-line lg" style="width:55%"></div><div class="skel skel-line sm" style="width:37%"></div></div></div></div>
 </div>
@@ -476,6 +475,7 @@
     <button class="proj-modal-close" onclick="closeProjectModal()">&#10005;</button>
   </div>
   <div class="proj-modal-body" id="pmdBody"></div>
+  <div class="proj-modal-footer" id="pmdFooter"></div>
 </div>
 </div>
 

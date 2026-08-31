@@ -2502,6 +2502,9 @@ body[data-theme="storm-dark"] .tl-hour-label{
 .proj-modal-section-title::after{content:'';flex:1;height:1px;background:var(--border);}
 .proj-modal-close{background:none;border:none;color:var(--text-faint);cursor:pointer;font-size:calc(18px * var(--type-scale,1));padding:4px 6px;line-height:1;transition:color 0.15s;}
 .proj-modal-close:hover{color:var(--text);}
+.proj-modal-footer{display:flex;gap:8px;justify-content:flex-end;padding:14px 22px;border-top:1px solid var(--border);flex-shrink:0;}
+.proj-modal-footer:empty{display:none;}
+.proj-modal-archived-banner{display:flex;align-items:center;gap:8px;padding:10px 14px;margin-bottom:16px;background:var(--surface-raised);border:1px solid var(--border);border-radius:var(--radius-sm);font-size:calc(12px * var(--type-scale,1));color:var(--text-dim);}
 /* subtask rows in modal */
 .pmd-subtask{display:flex;align-items:center;gap:8px;padding:7px 0;border-bottom:1px solid var(--border);}
 .pmd-subtask:last-child{border-bottom:none;}
@@ -2529,7 +2532,8 @@ body[data-theme="storm-dark"] .tl-hour-label{
 .completed-projects-toggle.open .cp-arrow{transform:rotate(90deg);}
 .completed-projects-list{display:none;flex-direction:column;gap:6px;margin-top:6px;}
 .completed-projects-list.open{display:flex;}
-.completed-project-card{display:flex;align-items:center;gap:8px;padding:8px 10px;background:rgba(107,171,115,0.05);border:1px solid rgba(107,171,115,0.2);border-radius:var(--radius-sm);font-size:calc(12px * var(--type-scale,1));}
+.completed-project-card{display:flex;align-items:center;gap:8px;padding:8px 10px;background:rgba(107,171,115,0.05);border:1px solid rgba(107,171,115,0.2);border-radius:var(--radius-sm);font-size:calc(12px * var(--type-scale,1));cursor:pointer;transition:border-color 0.15s;}
+.completed-project-card:hover{border-color:var(--green);}
 .cp-name{flex:1;color:var(--text-dim);text-decoration:line-through;font-weight:500;}
 .cp-stats{font-size:calc(10px * var(--type-scale,1));color:var(--text-faint);font-variant-numeric:tabular-nums;white-space:nowrap;}
 .cp-action{cursor:pointer;color:var(--text-faint);padding:2px 6px;border-radius:4px;font-size:calc(13px * var(--type-scale,1));transition:all 0.15s;}
@@ -3596,16 +3600,6 @@ body.admin-overlay-open #starryLayer,body.admin-overlay-open #galaxyLayer,body.a
 .modal-footer-link{background:none;border:none;color:var(--text-faint);font-size:calc(11px * var(--type-scale,1));margin-top:14px;cursor:pointer;text-decoration:underline;padding:0;font-family:inherit;display:block;}
 .modal-footer-link:hover{color:var(--text-dim);}
 
-/* Content-first tile defaults (panel survey 2026-08-22, J2-3). A live count
-   over an empty body read as data loss to most of the panel; these give the
-   count something to point at without expanding the tile. */
-.proj-preview{display:flex;flex-direction:column;gap:4px;padding:2px 0 0;}
-.proj-preview-row{display:flex;align-items:baseline;justify-content:space-between;gap:8px;padding:6px 8px;border-radius:var(--radius-sm);background:var(--surface-raised);cursor:pointer;transition:border-color 0.15s;border:1px solid transparent;}
-.proj-preview-row:hover{border-color:var(--border-focus);}
-.ppr-name{font-size:calc(12.5px * var(--type-scale,1));color:var(--text);font-weight:600;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
-.ppr-meta{font-size:calc(10.5px * var(--type-scale,1));color:var(--text-dim);white-space:nowrap;flex-shrink:0;}
-.proj-preview-more{font-size:calc(11px * var(--type-scale,1));color:var(--text-dim);cursor:pointer;padding:4px 8px;text-decoration:underline;}
-.proj-preview-more:hover{color:var(--accent);}
 .tile-summary-peek{display:flex;flex-direction:column;gap:3px;margin-top:7px;width:100%;}
 .tsp-row{display:flex;align-items:baseline;justify-content:space-between;gap:8px;font-size:calc(11px * var(--type-scale,1));}
 .tsp-text{color:var(--text-dim);overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
