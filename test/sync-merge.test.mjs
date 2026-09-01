@@ -904,3 +904,54 @@ test('FIX: the same holds through the full reconcileSync path used by the onSnap
   const out = reconcileSync(localState, staleCloudState);
   assert.deepEqual(out.notes[0].projectIds, ['p1'], 'project tag survives a stale onSnapshot echo');
 });
+
+// ── restoreProject's remap is an EDIT and must be stamped (2026-09-01) ──────
+// Real data loss, not a hypothetical: Controlled Substances was archived and
+// restored on 2026-08-31. Restore mints a fresh project id and remaps linked
+// notes/tasks/reminders onto it -- but the remap didn't stamp updatedAt, so it
+// tied the cloud copy, mergeById kept the cloud's DEAD-id version, and three
+// notes (POA, CSOS, Boundtree DEA registration webinar) were left pointing at
+// a project that no longer exists. They rendered nowhere: no chip in the Notes
+// panel, absent from the project. See restoreProject in legacy.js.
+const OLD_PID = 'p1775252024102', NEW_PID = 'p17881390076385x49';
+// These notes were written in the spring and remapped by the restore on Aug 31,
+// so `created` is genuinely older than the remap stamp -- matching the real
+// records. (A stamp EARLIER than `created` would still tie, because
+// _syncItemTime takes the max of the two.)
+const RESTORE_STAMP = '2026-08-31T01:16:48.000Z';
+const rnote = (id, extra={}) => Object.assign(
+  { id, label:id, body:'', projectIds:[], created:'2026-04-02T00:00:00.000Z' }, extra);
+
+test('BUG (unstamped remap): a restored project loses its remapped notes to a stale echo', () => {
+  const local = [ rnote('n1', { projectIds:[NEW_PID] }) ];        // remapped, but unstamped
+  const staleCloud = [ rnote('n1', { projectIds:[OLD_PID] }) ];   // pre-restore echo
+  const merged = mergeById(local, staleCloud);
+  assert.deepEqual(merged[0].projectIds, [OLD_PID],
+    'demonstrates the orphaning: the tie keeps the dead-id cloud copy');
+});
+
+test('FIX: a stamped remap survives the stale echo and stays on the restored project', () => {
+  const local = [ rnote('n1', { projectIds:[NEW_PID], updatedAt:RESTORE_STAMP }) ];
+  const staleCloud = [ rnote('n1', { projectIds:[OLD_PID] }) ];
+  const merged = mergeById(local, staleCloud);
+  assert.deepEqual(merged[0].projectIds, [NEW_PID], 'the remap holds');
+});
+
+test('FIX: the remap holds for tasks and reminders too, through reconcileSync', () => {
+  // restoreProject remaps all three arrays in one loop, so all three need it.
+  const born = '2026-04-02T00:00:00.000Z';
+  const local = {
+    notes:     [ rnote('n1', { projectIds:[NEW_PID], updatedAt:RESTORE_STAMP }) ],
+    tasks:     [ { id:'t1', name:'task',  projectId:NEW_PID, projectIds:[NEW_PID], created:born, updatedAt:RESTORE_STAMP } ],
+    reminders: [ { id:'r1', text:'rem',   projectId:NEW_PID, projectIds:[NEW_PID], created:born, updatedAt:RESTORE_STAMP } ],
+  };
+  const staleCloud = {
+    notes:     [ rnote('n1', { projectIds:[OLD_PID] }) ],
+    tasks:     [ { id:'t1', name:'task',  projectId:OLD_PID, projectIds:[OLD_PID], created:born } ],
+    reminders: [ { id:'r1', text:'rem',   projectId:OLD_PID, projectIds:[OLD_PID], created:born } ],
+  };
+  const out = reconcileSync(local, staleCloud);
+  assert.deepEqual(out.notes[0].projectIds,     [NEW_PID], 'note remap survives');
+  assert.deepEqual(out.tasks[0].projectIds,     [NEW_PID], 'task remap survives');
+  assert.deepEqual(out.reminders[0].projectIds, [NEW_PID], 'reminder remap survives');
+});

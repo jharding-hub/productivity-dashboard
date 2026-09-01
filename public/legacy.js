@@ -1532,6 +1532,21 @@ function _archiveTombstone(id){
   if(!state._archiveTombstones)state._archiveTombstones={};
   if(!state._archiveTombstones[id])state._archiveTombstones[id]=new Date().toISOString();
 }
+// Mark an EXISTING item as edited-now, so mergeById can tell this copy is
+// newer than the one the cloud holds. Deletion is a tombstone; an EDIT is a
+// timestamp -- _syncItemTime (public/sync-merge.js) reads updatedAt first and
+// falls back to `created`, which never changes. An unstamped edit therefore
+// TIES its own cloud counterpart, and mergeById's tie-break keeps the cloud
+// copy -- silently reverting the edit as soon as a snapshot echo lands.
+//
+// This is not theoretical: it ate the project tags on notes (fixed 2026-09-01,
+// commit f51c60e) and, through the restoreProject remap below, permanently
+// orphaned three Controlled Substances notes from their restored project.
+// Call this at EVERY site that mutates an item already in a synced array.
+function _stampEdit(it){
+  if(it&&typeof it==='object')it.updatedAt=new Date().toISOString();
+  return it;
+}
 
 // SAVE -- writes to localStorage + Firestore (per-user)
 var saveTimer=null;
@@ -2905,10 +2920,18 @@ function restoreProject(pid){
     expanded:false,
     subtasks:arch.subtasks||[]
   });
+  // Each remapped item MUST be stamped: the remap is an edit to an item that
+  // already exists in a synced array, so without a fresh updatedAt it ties its
+  // cloud counterpart and mergeById keeps the CLOUD copy -- reverting every
+  // item straight back to the dead id. That is exactly how the Controlled
+  // Substances notes were orphaned on 2026-08-31 (project restored, notes
+  // remapped, remap silently rolled back by a snapshot echo minutes later).
   [state.tasks,state.notes,state.reminders].forEach(function(arr){
     (arr||[]).forEach(function(it){
-      if(it.projectId===pid)it.projectId=newId;
-      if(it.projectIds){var i=it.projectIds.indexOf(pid);if(i>=0)it.projectIds[i]=newId;}
+      var touched=false;
+      if(it.projectId===pid){it.projectId=newId;touched=true;}
+      if(it.projectIds){var i=it.projectIds.indexOf(pid);if(i>=0){it.projectIds[i]=newId;touched=true;}}
+      if(touched)_stampEdit(it);
     });
   });
   _archiveTombstone(pid);
@@ -3084,7 +3107,7 @@ function editTaskProject(taskId,source,oldProjectId,newProjectId){
       p.subtasks.push({id:t.id,name:t.name,due:t.due,priority:t.priority,timeEst:t.timeEst||'',done:t.done});
       state.tasks=state.tasks.filter(function(x){return x.id!==taskId;});
     }else{
-      t.projectId='';t.projectIds=[];
+      t.projectId='';t.projectIds=[];_stampEdit(t);
     }
   }else{
     var op=state.projects.find(function(x){return x.id===oldProjectId;});
@@ -8821,6 +8844,7 @@ function _tlBulkMoveToProject(projectId){
       prevAssign.push({id:id,oldProjectId:t.projectId,oldProjectIds:t.projectIds});
       t.projectId=projectId||'';
       t.projectIds=projectId?[projectId]:[];
+      _stampEdit(t);
       moved++;
     });
     save();
@@ -8836,7 +8860,7 @@ function _tlBulkMoveToProject(projectId){
       _withBatch(function(){
         prevAssign.forEach(function(r){
           var t=(state.tasks||[]).find(function(x){return x.id===r.id;});
-          if(t){t.projectId=r.oldProjectId;t.projectIds=r.oldProjectIds;}
+          if(t){t.projectId=r.oldProjectId;t.projectIds=r.oldProjectIds;_stampEdit(t);}
         });
         save();
       });
