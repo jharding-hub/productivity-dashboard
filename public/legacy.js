@@ -4909,8 +4909,8 @@ function deleteNote(id){
     restore:function(){if(!state.notes.some(n=>n.id===id))state.notes.splice(Math.min(idx,state.notes.length),0,snap);renderNotes();}
   });
 }
-function editNoteLabel(id,v){if(!v)return;const n=state.notes.find(n=>n.id===id);if(n){n.label=v;save();}}
-function editNoteBody(id,v){const n=state.notes.find(n=>n.id===id);if(n){n.body=v;save();}}
+function editNoteLabel(id,v){if(!v)return;const n=state.notes.find(n=>n.id===id);if(n){n.label=v;n.updatedAt=new Date().toISOString();save();}}
+function editNoteBody(id,v){const n=state.notes.find(n=>n.id===id);if(n){n.body=v;n.updatedAt=new Date().toISOString();save();}}
 
 // -- Lightweight markdown renderer for note bodies --------------------------
 // Supports: **bold**, *italic*, # / ## headers, - bullets, [text](url) links.
@@ -5006,8 +5006,8 @@ function toggleNoteEdit(id){
     if(toggle) toggle.innerHTML='<i class="ti ti-check" aria-hidden="true"></i>Done';
   }
 }
-function editNoteProject(id,projId){const n=state.notes.find(n=>n.id===id);if(n){n.projectId=projId;n.projectIds=projId?[projId]:[];save();renderNotes();renderProjects();}}
-function editNoteProjects(id,projIdsStr){const n=state.notes.find(n=>n.id===id);if(n){var ids=projIdsStr?projIdsStr.split(',').filter(Boolean):[];n.projectIds=ids;n.projectId=ids[0]||'';save();renderProjects();}}
+function editNoteProject(id,projId){const n=state.notes.find(n=>n.id===id);if(n){n.projectId=projId;n.projectIds=projId?[projId]:[];n.updatedAt=new Date().toISOString();save();renderNotes();renderProjects();}}
+function editNoteProjects(id,projIdsStr){const n=state.notes.find(n=>n.id===id);if(n){var ids=projIdsStr?projIdsStr.split(',').filter(Boolean):[];n.projectIds=ids;n.projectId=ids[0]||'';n.updatedAt=new Date().toISOString();save();renderProjects();}}
 function autoResizeTextarea(ta){ta.style.height='auto';ta.style.height=ta.scrollHeight+'px';}
 function updateNoteSelectors(){
   // Filter dropdown for notes (still single-select) -- preserve current selection

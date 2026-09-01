@@ -871,3 +871,36 @@ test('tlBlocks: concurrent adds on two devices both survive', () => {
                             { tlBlocks: [ blk('tlb_desktop') ] });
   assert.deepEqual(out.tlBlocks.map(b=>b.id).sort(), ['tlb_desktop','tlb_phone']);
 });
+
+
+// ── Note project-tag survives a stale cloud echo (2026-09-01) ───────────────
+// Root cause of "notes tagged to a project don't show up in the project":
+// editNoteLabel/editNoteBody/editNoteProject/editNoteProjects never stamped
+// updatedAt, so _syncItemTime fell back to `created`, which never changes.
+// An edit to an EXISTING note therefore always tied its cloud counterpart,
+// and mergeById's tie-break keeps the cloud copy -- silently reverting the
+// tag the moment a snapshot lands before the edit's own save() round-trips.
+const note = (id, extra={}) => Object.assign({ id, label:id, body:'', projectIds:[], created:'2026-09-01T10:00:00.000Z' }, extra);
+
+test('BUG (unstamped edit): tagging a note to a project loses the tag to a stale cloud echo', () => {
+  // Local just tagged the note to p1, but (the bug) never touched updatedAt --
+  // so both copies carry the identical `created` time and this is a tie.
+  const local = [ note('n1', { projectIds:['p1'] }) ];
+  const staleCloud = [ note('n1', { projectIds:[] }) ]; // pre-tag echo, same `created`
+  const merged = mergeById(local, staleCloud); // real call order: mergeById(local[k], cloud[k])
+  assert.deepEqual(merged[0].projectIds, [], 'demonstrates the bug: the tie keeps the untagged cloud copy');
+});
+
+test('FIX: stamping updatedAt on the tag edit lets it survive the same stale cloud echo', () => {
+  const local = [ note('n1', { projectIds:['p1'], updatedAt:'2026-09-01T10:05:00.000Z' }) ];
+  const staleCloud = [ note('n1', { projectIds:[] }) ]; // no updatedAt -> falls back to `created`
+  const merged = mergeById(local, staleCloud);
+  assert.deepEqual(merged[0].projectIds, ['p1'], 'the stamped, newer local tag wins instead of tying');
+});
+
+test('FIX: the same holds through the full reconcileSync path used by the onSnapshot listener', () => {
+  const localState = { notes: [ note('n1', { projectIds:['p1'], updatedAt:'2026-09-01T10:05:00.000Z' }) ] };
+  const staleCloudState = { notes: [ note('n1', { projectIds:[] }) ] };
+  const out = reconcileSync(localState, staleCloudState);
+  assert.deepEqual(out.notes[0].projectIds, ['p1'], 'project tag survives a stale onSnapshot echo');
+});

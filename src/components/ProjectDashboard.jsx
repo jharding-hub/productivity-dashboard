@@ -570,7 +570,7 @@ export default function ProjectDashboard({ open, onClose }) {
       date: now.toLocaleDateString('en-US', { year: 'numeric', month: 'short', day: 'numeric' }),
       time: now.toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit' }),
       created: now.toISOString(),
-      updated: now.toISOString(),
+      updatedAt: now.toISOString(),
     });
     setNewNoteName('');
     if (ed) ed.innerHTML = '';
