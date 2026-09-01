@@ -2846,6 +2846,13 @@ function toggleProjectExpand(id){
 
 // Per-project "completed folder" expand state (memory only, doesn't persist)
 var _projCompletedOpen={};
+// Per-project "notes folder" expand state (memory only), same idiom as above.
+// Added 2026-09-01: the expanded project card advertised a note COUNT but had
+// no way to reach the notes themselves -- they rendered ONLY in the project
+// detail modal. Joe read "3 notes" next to an empty card and reasonably
+// concluded his project tags were broken. Default OPEN, because the count
+// existing at all is the signal that there is something to show.
+var _projNotesOpen={};
 // Global "Completed Projects" section toggle (memory only)
 var _completedProjectsOpen=false;
 
@@ -2992,7 +2999,11 @@ function _renderCompletedProjectsSection(){
   return html;
 }
 
-function _renderProjSummary(p,activeTotal,noteCount,remCount,completedItems){
+// `notes` is the linked-note ARRAY (was a bare count until 2026-09-01) so the
+// pill can open a real list instead of only advertising one.
+function _renderProjSummary(p,activeTotal,notes,remCount,completedItems){
+  notes=notes||[];
+  var noteCount=notes.length;
   var compCount=completedItems.length;
   var folderOpen=!!_projCompletedOpen[p.id];
   var html='<div class="proj-summary">';
@@ -3002,9 +3013,32 @@ function _renderProjSummary(p,activeTotal,noteCount,remCount,completedItems){
   }else{
     html+='<span class="proj-summary-pill">\u2713 <span class="ps-num">0</span> done</span>';
   }
-  html+='<span class="proj-summary-pill">\u{1F4DD} <span class="ps-num">'+noteCount+'</span> '+(noteCount===1?'note':'notes')+'</span>';
+  if(noteCount>0){
+    var notesOpen=_projNotesOpen[p.id]!==false; // default open
+    html+='<span class="proj-summary-pill ps-done'+(notesOpen?' open':'')+'" onclick="event.stopPropagation();_toggleProjNotes(\''+p.id+'\')">\u{1F4DD} <span class="ps-num">'+noteCount+'</span> '+(noteCount===1?'note':'notes')+' <span class="ps-arrow">▶</span></span>';
+  }else{
+    html+='<span class="proj-summary-pill">\u{1F4DD} <span class="ps-num">0</span> notes</span>';
+  }
   html+='<span class="proj-summary-pill">\u{1F514} <span class="ps-num">'+remCount+'</span> '+(remCount===1?'reminder':'reminders')+'</span>';
   html+='</div>';
+  // Notes folder body -- the actual linked notes, newest first. Clicking one
+  // opens it in the Notes editor (_openNoteFromProject), matching what the
+  // React project dashboard already does for the same list.
+  if(noteCount>0&&_projNotesOpen[p.id]!==false){
+    html+='<div class="proj-completed-folder open" id="proj-notes-'+p.id+'"><div class="proj-completed-list">';
+    notes.slice().sort(function(a,b){return (b.created||'').localeCompare(a.created||'');}).slice(0,30).forEach(function(n){
+      var when=n.date?esc(n.date):'';
+      html+='<div class="proj-completed-item" style="cursor:pointer;" title="Open in the Notes editor" onclick="event.stopPropagation();_openNoteFromProject(\''+n.id+'\')">'
+        +'<span style="color:var(--blue);">\u{1F4DD}</span>'
+        +'<span class="proj-completed-name">'+esc(n.label||'Note')+'</span>'
+        +(when?'<span class="proj-completed-date">'+when+'</span>':'')
+        +'</div>';
+    });
+    if(noteCount>30){
+      html+='<div class="proj-completed-empty">+ '+(noteCount-30)+' more notes</div>';
+    }
+    html+='</div></div>';
+  }
   // Completed folder body
   if(compCount>0){
     html+='<div class="proj-completed-folder'+(folderOpen?' open':'')+'" id="proj-comp-'+p.id+'"><div class="proj-completed-list">';
@@ -3027,6 +3061,26 @@ function _renderProjSummary(p,activeTotal,noteCount,remCount,completedItems){
 function _toggleProjCompleted(pid){
   _projCompletedOpen[pid]=!_projCompletedOpen[pid];
   renderProjects();
+}
+// Notes folder defaults to OPEN, so the flag is stored inverted (absent = open).
+function _toggleProjNotes(pid){
+  _projNotesOpen[pid]=(_projNotesOpen[pid]===false);
+  renderProjects();
+}
+// Open a note from a project card in the full Notes editor: show the Notes
+// panel, drop into that note's rich editor, scroll it into view. Mirrors
+// openNoteInEditor in src/components/ProjectDashboard.jsx. Deferred a tick so
+// the panel is mounted before we look its elements up.
+function _openNoteFromProject(noteId){
+  if(typeof openPanelOverlay==='function')openPanelOverlay('notes');
+  setTimeout(function(){
+    var editor=document.getElementById('nb_'+noteId);
+    if(editor&&editor.style.display==='none'&&typeof toggleNoteEdit==='function'){
+      toggleNoteEdit(noteId);
+    }
+    var target=document.getElementById('nb_'+noteId)||document.getElementById('nbr_'+noteId);
+    if(target&&target.scrollIntoView)target.scrollIntoView({block:'center'});
+  },0);
 }
 function addSubtask(pid){const ne=document.getElementById('stN_'+pid),de=document.getElementById('stD_'+pid),te=document.getElementById('stT_'+pid);const nm=ne.value.trim();if(!nm)return;const pr=state.projects.find(p=>p.id===pid);if(!pr)return;const q=_applyQuickAdd(nm,{due:de.value},{date:true,time:true,recurrence:true});pr.subtasks.push({id:'st'+Date.now(),name:q.name,due:q.due,priority:'med',timeEst:te?te.value:'',time:q.time||'',done:false,recurrence:q.recurrence});ne.value='';de.value='';save();renderProjects();renderTaskList();}
 function toggleSubtask(pid,sid){
@@ -3333,7 +3387,7 @@ if(linkedTasks.length||linkedNotes.length||linkedReminders.length){
   linkedHtml+='</div>';
 }
 
-return '<div class="project-card"><div class="proj-header" onclick="openProjectModal(\''+p.id+'\')"><span class="proj-expand '+(p.expanded?'open':'')+'">\u25B6</span><div class="proj-info"><div class="proj-name-row"><span class="proj-name editable" id="pn_'+p.id+'">'+esc(p.name)+'</span><button class="proj-edit-btn" onclick="event.stopPropagation();promptEditProject(\''+p.id+'\')" title="Rename project">&#9998;</button></div><div class="proj-meta"><span>'+total+' subtask'+(total!==1?'s':'')+'</span>'+(linkedNotes.length?'<span>'+linkedNotes.length+' note'+(linkedNotes.length!==1?'s':'')+'</span>':'')+''+(linkedReminders.length?'<span>'+linkedReminders.length+' reminder'+(linkedReminders.length!==1?'s':'')+'</span>':'')+'</div></div><div style="display:flex;gap:4px;align-items:center;"><span class="wt-clock-btn '+(_isScheduledToday(p.id)?'scheduled':'')+'" onclick="event.stopPropagation();handleWorkTodayClick(\'project\',\''+p.id+'\',\''+p.id+'\')" title="Work on today" style="width:20px;height:20px;font-size:10px;">\u{1F4C5}</span><span class="st-btn st-cal" onclick="exportProjectICS(\''+p.id+'\')">\u{1F4C5}</span><button class="proj-complete-btn" onclick="event.stopPropagation();markProjectComplete(\''+p.id+'\',this)" title="Mark complete">\u2713</button><span class="proj-delete" onclick="deleteProject(\''+p.id+'\')">\u2715</span></div></div><div class="subtask-area '+(p.expanded?'open':'')+'"><div class="proj-due-display">'+(p.due?'<span class="date-editable" id="pd_'+p.id+'">Ends: '+fmtDate(p.due)+'</span>':'<span class="date-editable" id="pd_'+p.id+'" style="color:var(--text-faint);">+ set end date</span>')+'</div>'+_renderProjSummary(p,total,linkedNotes.length,linkedReminders.length,projCompletedItems)+'<div class="subtask-list">'+(sorted.length===0?'<div class="empty-state" style="padding:10px;">No subtasks yet.</div>':sorted.map(st=>{return '<div class="subtask-item"><div class="st-check" onclick="toggleSubtask(\''+p.id+"','"+st.id+'\')"></div><span class="st-name editable" id="sn_'+st.id+'">'+esc(st.name)+'</span>'+(st.due?'<span class="st-due date-editable" id="sd_'+st.id+'"'+_dueCellAttrs(st.due,st.time)+'>'+_dueCellText(st.due,st.time)+'</span>':'<span class="st-due date-editable" id="sd_'+st.id+'" style="color:var(--text-faint);">+ date</span>')+'<div class="st-actions">'+(st.timeEst?'<span class="tl-time-badge">'+fmtTimeEst(st.timeEst)+'</span>':'')+'<span class="wt-clock-btn '+(_isScheduledToday(st.id)?'scheduled':'')+'" onclick="event.stopPropagation();handleWorkTodayClick(\'subtask\',\''+st.id+'\',\''+p.id+'\')" title="Work on today" style="width:18px;height:18px;font-size:9px;">\u{1F4C5}</span><span class="st-btn st-cal" onclick="exportSubtaskICS(\''+p.id+"','"+st.id+'\')">\u{1F4C5}</span><span class="st-btn st-del" onclick="deleteSubtask(\''+p.id+"','"+st.id+'\')">\u2715</span></div></div>';}).join(''))+'</div><div class="subtask-add"><input type="text" id="stN_'+p.id+'" placeholder="Next step..." onkeydown="if(event.key===\'Enter\')addSubtask(\''+p.id+'\')"><button class="mic-btn" id="stMic_'+p.id+'" onclick="toggleMic(\'stN_'+p.id+'\',\'stMic_'+p.id+'\')" title="Voice input">&#127908;</button><select id="stT_'+p.id+'" class="time-est-select"><option value="">Time?</option><option value="30">30m</option><option value="60">1hr</option><option value="90">1.5hr</option><option value="120">2hr</option><option value="180">3hr</option><option value="240">4hr</option><option value="360">6hr</option><option value="480">8hr</option><option value="720">12hr</option></select><input type="date" id="stD_'+p.id+'"><button class="btn btn-accent btn-sm" onclick="addSubtask(\''+p.id+'\')">+</button></div></div></div>';}).join('');
+return '<div class="project-card"><div class="proj-header" onclick="openProjectModal(\''+p.id+'\')"><span class="proj-expand '+(p.expanded?'open':'')+'">\u25B6</span><div class="proj-info"><div class="proj-name-row"><span class="proj-name editable" id="pn_'+p.id+'">'+esc(p.name)+'</span><button class="proj-edit-btn" onclick="event.stopPropagation();promptEditProject(\''+p.id+'\')" title="Rename project">&#9998;</button></div><div class="proj-meta"><span>'+total+' subtask'+(total!==1?'s':'')+'</span>'+(linkedNotes.length?'<span>'+linkedNotes.length+' note'+(linkedNotes.length!==1?'s':'')+'</span>':'')+''+(linkedReminders.length?'<span>'+linkedReminders.length+' reminder'+(linkedReminders.length!==1?'s':'')+'</span>':'')+'</div></div><div style="display:flex;gap:4px;align-items:center;"><span class="wt-clock-btn '+(_isScheduledToday(p.id)?'scheduled':'')+'" onclick="event.stopPropagation();handleWorkTodayClick(\'project\',\''+p.id+'\',\''+p.id+'\')" title="Work on today" style="width:20px;height:20px;font-size:10px;">\u{1F4C5}</span><span class="st-btn st-cal" onclick="exportProjectICS(\''+p.id+'\')">\u{1F4C5}</span><button class="proj-complete-btn" onclick="event.stopPropagation();markProjectComplete(\''+p.id+'\',this)" title="Mark complete">\u2713</button><span class="proj-delete" onclick="deleteProject(\''+p.id+'\')">\u2715</span></div></div><div class="subtask-area '+(p.expanded?'open':'')+'"><div class="proj-due-display">'+(p.due?'<span class="date-editable" id="pd_'+p.id+'">Ends: '+fmtDate(p.due)+'</span>':'<span class="date-editable" id="pd_'+p.id+'" style="color:var(--text-faint);">+ set end date</span>')+'</div>'+_renderProjSummary(p,total,linkedNotes,linkedReminders.length,projCompletedItems)+'<div class="subtask-list">'+(sorted.length===0?'<div class="empty-state" style="padding:10px;">No subtasks yet.</div>':sorted.map(st=>{return '<div class="subtask-item"><div class="st-check" onclick="toggleSubtask(\''+p.id+"','"+st.id+'\')"></div><span class="st-name editable" id="sn_'+st.id+'">'+esc(st.name)+'</span>'+(st.due?'<span class="st-due date-editable" id="sd_'+st.id+'"'+_dueCellAttrs(st.due,st.time)+'>'+_dueCellText(st.due,st.time)+'</span>':'<span class="st-due date-editable" id="sd_'+st.id+'" style="color:var(--text-faint);">+ date</span>')+'<div class="st-actions">'+(st.timeEst?'<span class="tl-time-badge">'+fmtTimeEst(st.timeEst)+'</span>':'')+'<span class="wt-clock-btn '+(_isScheduledToday(st.id)?'scheduled':'')+'" onclick="event.stopPropagation();handleWorkTodayClick(\'subtask\',\''+st.id+'\',\''+p.id+'\')" title="Work on today" style="width:18px;height:18px;font-size:9px;">\u{1F4C5}</span><span class="st-btn st-cal" onclick="exportSubtaskICS(\''+p.id+"','"+st.id+'\')">\u{1F4C5}</span><span class="st-btn st-del" onclick="deleteSubtask(\''+p.id+"','"+st.id+'\')">\u2715</span></div></div>';}).join(''))+'</div><div class="subtask-add"><input type="text" id="stN_'+p.id+'" placeholder="Next step..." onkeydown="if(event.key===\'Enter\')addSubtask(\''+p.id+'\')"><button class="mic-btn" id="stMic_'+p.id+'" onclick="toggleMic(\'stN_'+p.id+'\',\'stMic_'+p.id+'\')" title="Voice input">&#127908;</button><select id="stT_'+p.id+'" class="time-est-select"><option value="">Time?</option><option value="30">30m</option><option value="60">1hr</option><option value="90">1.5hr</option><option value="120">2hr</option><option value="180">3hr</option><option value="240">4hr</option><option value="360">6hr</option><option value="480">8hr</option><option value="720">12hr</option></select><input type="date" id="stD_'+p.id+'"><button class="btn btn-accent btn-sm" onclick="addSubtask(\''+p.id+'\')">+</button></div></div></div>';}).join('');
 document.getElementById('projCount').textContent=state.projects.length;
 // Append "Completed Projects" section at the bottom of the projects list
 el.innerHTML+=_renderCompletedProjectsSection();
@@ -5182,11 +5236,18 @@ function openProjMultiPicker(ev,picker){
     dropdown.style.width=ddW+'px';
     // Prefer below; flip above only if too little room below AND more room above
     var openUp=spaceBelow<ddH+10&&spaceAbove>spaceBelow;
-    if(openUp){
-      dropdown.style.top=Math.max(8,rect.top-ddH-4)+'px';
-    }else{
-      dropdown.style.top=(rect.bottom+4)+'px';
-    }
+    var top=openUp?(rect.top-ddH-4):(rect.bottom+4);
+    // Clamp into the viewport on BOTH branches. The anchor's viewport position
+    // is NOT bounded by the window: panel overlays scroll their own content, so
+    // a picker can sit at rect.top = 9357 or well above 0 while still being the
+    // element the user just clicked. The open-down branch used rect.bottom+4
+    // raw, which put the dropdown at top:-470px (jammed above the top edge --
+    // Joe's "picker up high", 2026-09-01) or thousands of px below the fold.
+    // Only the open-up branch had a floor, and it had no ceiling.
+    var maxTop=window.innerHeight-ddH-8;
+    if(top>maxTop)top=maxTop;
+    if(top<8)top=8;
+    dropdown.style.top=top+'px';
     // Horizontal: align left edge with picker; clamp to viewport
     var left=rect.left;
     if(left+ddW>window.innerWidth-8)left=window.innerWidth-ddW-8;
