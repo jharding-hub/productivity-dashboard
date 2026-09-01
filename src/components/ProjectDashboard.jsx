@@ -455,7 +455,7 @@ function ProjectBanner({ tick }) {
   );
 }
 
-export default function ProjectDashboard({ open, onClose }) {
+export default function ProjectDashboard({ open, initialProjectId, onClose }) {
   const [selectedId, setSelectedId] = useState(null);
   const [tick, setTick] = useState(0);
   const [newTaskName, setNewTaskName] = useState('');
@@ -473,6 +473,15 @@ export default function ProjectDashboard({ open, onClose }) {
     window.addEventListener('centerpost-state-change', refresh);
     return () => window.removeEventListener('centerpost-state-change', refresh);
   }, [refresh]);
+
+  // Land on the project the caller picked. Runs on every OPEN (not just mount,
+  // since this component stays mounted between openings) so a second card click
+  // switches projects instead of showing the previous one. A null id means
+  // "opened from the Projects panel" -- keep the picker empty, as before.
+  useEffect(() => {
+    if (!open) return;
+    setSelectedId(initialProjectId || null);
+  }, [open, initialProjectId]);
 
   useEffect(() => {
     if (open) document.body.style.overflow = 'hidden';

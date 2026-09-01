@@ -30,6 +30,9 @@ export default function App() {
   const ref = useRef(null);
   const [mounts, setMounts] = useState({});
   const [projectDashboardOpen, setProjectDashboardOpen] = useState(false);
+  // Which project the page should land on. null = open the picker with nothing
+  // selected (how the Projects panel has always opened it).
+  const [initialProjectId, setInitialProjectId] = useState(null);
 
   useEffect(() => {
     if (!ref.current || legacyLoaded) return;
@@ -65,10 +68,18 @@ export default function App() {
       const origOpen = window.openPanelOverlay;
       window.openPanelOverlay = function(panelKey) {
         if (panelKey === 'projects') {
+          setInitialProjectId(null);
           setProjectDashboardOpen(true);
           return;
         }
         if (origOpen) origOpen(panelKey);
+      };
+      // Picking a project anywhere in legacy.js (dashboard cards included)
+      // lands on this same full page, opened straight to that project --
+      // legacy.js calls it through openProject().
+      window.openProjectPage = function(pid) {
+        setInitialProjectId(pid || null);
+        setProjectDashboardOpen(true);
       };
     };
     document.body.appendChild(script);
@@ -99,6 +110,7 @@ export default function App() {
       {mounts.statusBar && createPortal(<StatusBar />, mounts.statusBar)}
       <ProjectDashboard
         open={projectDashboardOpen}
+        initialProjectId={initialProjectId}
         onClose={() => setProjectDashboardOpen(false)}
       />
     </>
