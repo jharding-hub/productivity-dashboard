@@ -2307,15 +2307,29 @@ body[data-theme="storm-dark"] .tl-hour-label{
 .tl-block-del{position:absolute;top:3px;right:5px;font-size:calc(13px * var(--type-scale,1));color:rgba(255,255,255,0.7);cursor:pointer;display:flex;align-items:center;justify-content:center;line-height:1;width:22px;height:22px;border-radius:50%;background:rgba(0,0,0,0.35);z-index:6;font-weight:700;}
 .tl-block-del:hover{color:#ff8888;background:rgba(229,57,53,0.5);}
 
-/* Project color palette — auto-assigned via hash */
-.tl-block.tl-color-0{background:rgba(91,140,232,0.18);border-left-color:#5b8ce8;}
-.tl-block.tl-color-1{background:rgba(127,179,160,0.18);border-left-color:#7fb3a0;}
-.tl-block.tl-color-2{background:rgba(232,140,106,0.18);border-left-color:#e88c6a;}
-.tl-block.tl-color-3{background:rgba(199,125,186,0.18);border-left-color:#c77dba;}
-.tl-block.tl-color-4{background:rgba(160,160,170,0.15);border-left-color:#a0a0aa;}
-.tl-block.tl-color-5{background:rgba(158,123,255,0.18);border-left-color:#9e7bff;}
-.tl-block.tl-color-6{background:rgba(91,232,255,0.15);border-left-color:#5be8ff;}
-.tl-block.tl-color-7{background:rgba(255,107,157,0.16);border-left-color:#ff6b9d;}
+/* Project colours -- "Deep Jewel", 2026-09-02. The eight hexes live in
+   public/legacy.js as PROJECT_PALETTE; these custom properties and
+   ProjectDashboard.jsx's BLOCK_PALETTE are mirrors of it, held in step by
+   test/project-palette.test.mjs. Stored as bare r,g,b triples so one value
+   feeds both the solid rule and the translucent fill. */
+:root{
+  --proj-0-rgb:37,94,203;   /* #255ecb */
+  --proj-1-rgb:14,125,85;   /* #0e7d55 */
+  --proj-2-rgb:184,84,27;   /* #b8541b */
+  --proj-3-rgb:166,46,157;   /* #a62e9d */
+  --proj-4-rgb:82,100,129;   /* #526481 */
+  --proj-5-rgb:109,74,208;   /* #6d4ad0 */
+  --proj-6-rgb:13,127,146;   /* #0d7f92 */
+  --proj-7-rgb:191,35,67;   /* #bf2343 */
+}
+.tl-block.tl-color-0{background:rgba(var(--proj-0-rgb),0.20);border-left-color:rgb(var(--proj-0-rgb));}
+.tl-block.tl-color-1{background:rgba(var(--proj-1-rgb),0.20);border-left-color:rgb(var(--proj-1-rgb));}
+.tl-block.tl-color-2{background:rgba(var(--proj-2-rgb),0.20);border-left-color:rgb(var(--proj-2-rgb));}
+.tl-block.tl-color-3{background:rgba(var(--proj-3-rgb),0.20);border-left-color:rgb(var(--proj-3-rgb));}
+.tl-block.tl-color-4{background:rgba(var(--proj-4-rgb),0.20);border-left-color:rgb(var(--proj-4-rgb));}
+.tl-block.tl-color-5{background:rgba(var(--proj-5-rgb),0.20);border-left-color:rgb(var(--proj-5-rgb));}
+.tl-block.tl-color-6{background:rgba(var(--proj-6-rgb),0.20);border-left-color:rgb(var(--proj-6-rgb));}
+.tl-block.tl-color-7{background:rgba(var(--proj-7-rgb),0.20);border-left-color:rgb(var(--proj-7-rgb));}
 .tl-block.tl-color-no-proj{background:rgba(255,255,255,0.04);border-left-color:rgba(255,255,255,0.2);}
 
 /* Legend */

@@ -15,6 +15,29 @@ var currentUser=null;
 var isAdmin=false;
 var userProfile=null;
 
+// --- PROJECT COLOURS ---------------------------------------------------------
+// The eight colours projects are hashed into (see _tlProjectColor). Declared
+// here at the very top of the file rather than beside _tlProjectColor, because
+// a large region further down sits inside an async init closure and anything
+// declared there is not reachable from the earlier render functions that also
+// need this.
+//
+// "Deep Jewel", 2026-09-02. The previous set was chosen against a dark
+// background only; six of its eight colours fell under 3:1 contrast on white,
+// which is why they read as washed-out pastels once the light themes shipped.
+// Every colour here clears 3:1 against #ffffff (Light/Sunny) AND against both
+// #10152a (Starry) and #0a1124 (Galaxy) -- five of the eight had to be lifted
+// a few points of lightness off the original Deep Jewel swatches to clear the
+// dark end; test/project-palette.test.mjs holds that floor.
+//
+// TWO MIRRORS must be kept in step -- test/project-palette.test.mjs fails the
+// build if they drift:
+//   * src/app.css  --proj-N-rgb custom properties (.tl-block.tl-color-N)
+//   * src/components/ProjectDashboard.jsx  BLOCK_PALETTE
+// The React shell cannot read this constant: App.jsx injects legacy.js at
+// runtime, so it is not guaranteed to exist when a component first renders.
+var PROJECT_PALETTE=['#255ecb','#0e7d55','#b8541b','#a62e9d','#526481','#6d4ad0','#0d7f92','#bf2343'];
+
 // --- TIER SYSTEM -------------------------------------------------------------
 // DEV_UID: your Firebase UID -- the switcher badge only renders for this account
 var DEV_UID='s3c2jCHRkRWfxRAjJKoVVuL14aJ3';
@@ -8154,7 +8177,7 @@ function renderTodayView(){
     ?'<div class="empty-state">Nothing scheduled today.</div>'
     :'<div id="todayTimelineList">'+tlBlocks.map(function(b){
         var colorIdx=_tlProjectColor(b.projectId);
-        var palette=['#5b8ce8','#7fb3a0','#e88c6a','#c77dba','#a0a0aa','#9e7bff','#5be8ff','#ff6b9d'];
+        var palette=PROJECT_PALETTE;
         var color=colorIdx==='no-proj'?'rgba(255,255,255,0.4)':palette[colorIdx];
         var endMin=b.startMin+b.durMin;
         return '<div class="reminder-item" onclick="editTimelineBlock(\''+b.id+'\')">'
@@ -15550,7 +15573,7 @@ function renderBannerBlocks(){
   // Banner window: 5am → 8pm = 15 hours
   var BANNER_START=5*60,BANNER_END=20*60,BANNER_RANGE=BANNER_END-BANNER_START;
   
-  var palette=['#5b8ce8','#7fb3a0','#e88c6a','#c77dba','#a0a0aa','#9e7bff','#5be8ff','#ff6b9d'];
+  var palette=PROJECT_PALETTE;
   
   var container=document.createElement('div');
   container.className='day-progress-bar-blocks';
@@ -15809,7 +15832,7 @@ function _tlBuildLegend(){
   if(!el)return;
   if(projIds.length===0){el.innerHTML='';return;}
   
-  var palette=['#5b8ce8','#7fb3a0','#e88c6a','#c77dba','#a0a0aa','#9e7bff','#5be8ff','#ff6b9d'];
+  var palette=PROJECT_PALETTE;
   var html=projIds.map(function(pid){
     var p=(state.projects||[]).find(function(p){return p.id===pid;});
     if(!p)return '';
@@ -16241,6 +16264,9 @@ function applyTheme(key){
     metas.forEach(function(m){m.setAttribute('content',theme.bg);});
   }
   _emsUpdateOverlays(key);
+  // Themed bars paint their own background; the real-sky gradient is an inline
+  // style, so it has to be reapplied or cleared on every theme change.
+  if(typeof applySkyGradient==='function')applySkyGradient();
 }
 
 // -- Emergency theme overlays (fire = strobe+fire+embers, police = strobe) --

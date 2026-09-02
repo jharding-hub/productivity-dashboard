@@ -14,7 +14,9 @@
     "test:sync-e2e": "firebase emulators:exec --only firestore --project demo-centerpost \"node --test test/sync-two-client.test.mjs\"",
     "test:parser": "node --test test/quick-add-parser.test.mjs",
     "test:recurrence": "node --test test/recurrence-engine.test.mjs",
-    "test:parity": "bash test/parity/run.sh"
+    "test:parity": "bash test/parity/run.sh",
+    "test:palette": "node --test test/project-palette.test.mjs",
+    "test:sky": "node --test test/sky-banner.test.mjs"
   },
   "repository": {
     "type": "git",

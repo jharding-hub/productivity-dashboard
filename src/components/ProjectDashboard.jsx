@@ -343,7 +343,11 @@ const BANNER_HOUR_MARKERS = [
   { pct: '86.67%', label: '6p' }, { pct: '93.33%', label: '7p' },
 ];
 
-const BLOCK_PALETTE = ['#5b8ce8','#7fb3a0','#e88c6a','#c77dba','#a0a0aa','#9e7bff','#5be8ff','#ff6b9d'];
+// Mirror of PROJECT_PALETTE in public/legacy.js -- App.jsx injects legacy.js at
+// runtime, so its global is not reliably present when this first renders and the
+// values have to be repeated here. test/project-palette.test.mjs fails if the two
+// (and src/app.css's --proj-N-rgb) ever drift apart.
+const BLOCK_PALETTE = ['#255ecb','#0e7d55','#b8541b','#a62e9d','#526481','#6d4ad0','#0d7f92','#bf2343'];
 
 function tlProjectColor(projectId) {
   if (!projectId) return null;
