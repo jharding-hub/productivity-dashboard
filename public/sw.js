@@ -72,7 +72,7 @@ const HTML_PATH = /\.html?$|\/$/;
 // if legacy.js (network-first) updates but a dependency (sync-merge, date-utils)
 // is served stale, legacy.js can call a symbol the old copy lacks and throw at
 // init -- a real prod crash (reconcileLifetimeCounter ReferenceError, cc0eee5).
-const APP_SCRIPT_PATH = /\/(legacy|config|journal-crypto|quick-add-parser|sync-merge|date-utils)\.js$/;
+const APP_SCRIPT_PATH = /\/(legacy|config|journal-crypto|quick-add-parser|sync-merge|date-utils|day-progress)\.js$/;
 
 // A same-origin script/style/asset response whose Content-Type is text/html
 // is Cloudflare Pages' SPA fallback wearing that URL -- it answers ANY path
