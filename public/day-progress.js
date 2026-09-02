@@ -51,7 +51,7 @@ function updateDayProgress(){
 }
 
 // ═══════════════════════════════════════════════════════════════════
-// REAL-SKY BANNER (opt-in: add ?sky=1 to the URL)
+// REAL-SKY BANNER (default on; ?sky=0 to fall back to the fixed gradient)
 // ═══════════════════════════════════════════════════════════════════
 // The banner's default gradient is a fixed, stylised sunrise→dusk wash. This
 // paints the *actual* sky instead: the sun's elevation is computed for every
@@ -173,9 +173,13 @@ function skyGradientFor(lat,date){
   return 'linear-gradient(to right,'+stops.join(',')+')';
 }
 
+// On by default. ?sky=0 is the rollback hatch -- same pattern as ?pager=0.
+// Note it is unreachable inside the native app, which loads from
+// capacitor://localhost with no query string: on device the sky is simply
+// always on, and backing it out there means a new build.
 function _skyEnabled(){
-  try{ return new URLSearchParams(location.search).get('sky')==='1'; }
-  catch(e){ return false; }
+  try{ return new URLSearchParams(location.search).get('sky')!=='0'; }
+  catch(e){ return true; }
 }
 
 var _skyCacheKey='',_skyCacheValue='';
@@ -196,7 +200,11 @@ function applySkyGradient(){
   }
   var now=new Date();
   var lat=_skyLatitude();
-  var key=now.getFullYear()+'-'+now.getMonth()+'-'+now.getDate()+'|'+lat;
+  // getTimezoneOffset() is part of the key on purpose: on the two changeover
+  // days a gradient built before 2am would otherwise hold the pre-switch
+  // offset until midnight, leaving the bar an hour out all day.
+  var key=now.getFullYear()+'-'+now.getMonth()+'-'+now.getDate()
+         +'|'+lat+'|'+now.getTimezoneOffset();
   if(key!==_skyCacheKey){
     _skyCacheKey=key;
     _skyCacheValue=skyGradientFor(lat,now);

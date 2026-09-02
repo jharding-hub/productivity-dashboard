@@ -9,7 +9,7 @@ import { readFileSync } from 'node:fs';
 
 const src = readFileSync(new URL('../public/day-progress.js', import.meta.url), 'utf8');
 const sky = new Function(
-  src + ';return{_skyElevation,_skyColor,skyGradientFor,_skyLatitude,SKY_TZ_LAT,SKY_RAMP};'
+  src + ';return{_skyElevation,_skyColor,skyGradientFor,_skyLatitude,_skyEnabled,SKY_TZ_LAT,SKY_RAMP};'
 )();
 
 const LAT = 40;
@@ -86,4 +86,28 @@ test('every latitude in the timezone table is a real latitude', () => {
 
 test('an unknown timezone still yields a usable latitude', () => {
   assert.equal(typeof sky._skyLatitude(), 'number');
+});
+
+// The sky is on by default; ?sky=0 is the only way to get the old fixed
+// gradient back. It is deliberately unreachable inside the native app, which
+// loads from capacitor://localhost with no query string -- so the no-location
+// fallback has to be ON, not off, or the phone would silently never show it.
+test('the sky is on by default and ?sky=0 is the only opt-out', () => {
+  const cases = [
+    ['', true, 'no query string'],
+    ['?sky=0', false, 'explicit opt-out'],
+    ['?sky=1', true, 'explicit opt-in still works'],
+    ['?pager=0', true, 'an unrelated param'],
+    ['?sky=false', true, 'only the exact string 0 disables it'],
+  ];
+  for (const [search, expected, why] of cases) {
+    globalThis.location = { search };
+    assert.equal(sky._skyEnabled(), expected, `${why}: location.search=${JSON.stringify(search)}`);
+  }
+  delete globalThis.location;
+});
+
+test('with no location at all the sky is on (the native case)', () => {
+  delete globalThis.location;
+  assert.equal(sky._skyEnabled(), true, 'native has no query string and must still get the sky');
 });
