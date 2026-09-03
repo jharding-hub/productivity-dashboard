@@ -76,57 +76,89 @@ function updateDayProgress(){
 // night-blue bug happened on the light themes.
 var SKY_THEMES=[null,'light','sunny','galaxy'];
 
-// Representative latitude per IANA zone. Sunrise moves ~1 minute per 12km of
-// latitude at mid-latitudes, so a city-level guess is far more precision than
-// a 15-hour bar can show. Anything unlisted falls back to its region.
-var SKY_TZ_LAT={
-  'America/New_York':40.7,'America/Detroit':42.3,'America/Toronto':43.7,
-  'America/Chicago':41.9,'America/Winnipeg':49.9,'America/Mexico_City':19.4,
-  'America/Denver':39.7,'America/Phoenix':33.4,'America/Edmonton':53.5,
-  'America/Los_Angeles':34.1,'America/Vancouver':49.3,'America/Anchorage':61.2,
-  'America/Halifax':44.6,'America/St_Johns':47.6,'America/Bogota':4.7,
-  'America/Lima':-12.0,'America/Sao_Paulo':-23.5,'America/Argentina/Buenos_Aires':-34.6,
-  'America/Santiago':-33.4,'America/Caracas':10.5,'America/Panama':9.0,
-  'America/Havana':23.1,'America/Puerto_Rico':18.5,'America/Guatemala':14.6,
-  'Pacific/Honolulu':21.3,
-  'Europe/London':51.5,'Europe/Dublin':53.3,'Europe/Lisbon':38.7,
-  'Europe/Madrid':40.4,'Europe/Paris':48.9,'Europe/Brussels':50.8,
-  'Europe/Amsterdam':52.4,'Europe/Berlin':52.5,'Europe/Zurich':47.4,
-  'Europe/Rome':41.9,'Europe/Vienna':48.2,'Europe/Prague':50.1,
-  'Europe/Warsaw':52.2,'Europe/Stockholm':59.3,'Europe/Oslo':59.9,
-  'Europe/Copenhagen':55.7,'Europe/Helsinki':60.2,'Europe/Athens':38.0,
-  'Europe/Bucharest':44.4,'Europe/Kyiv':50.5,'Europe/Kiev':50.5,
-  'Europe/Moscow':55.8,'Europe/Istanbul':41.0,'Atlantic/Reykjavik':64.1,
-  'Asia/Jerusalem':31.8,'Asia/Dubai':25.2,'Asia/Karachi':24.9,
-  'Asia/Kolkata':22.6,'Asia/Calcutta':22.6,'Asia/Dhaka':23.8,
-  'Asia/Bangkok':13.8,'Asia/Jakarta':-6.2,'Asia/Singapore':1.4,
-  'Asia/Manila':14.6,'Asia/Hong_Kong':22.3,'Asia/Shanghai':31.2,
-  'Asia/Taipei':25.0,'Asia/Seoul':37.6,'Asia/Tokyo':35.7,
-  'Asia/Riyadh':24.7,'Asia/Tehran':35.7,'Asia/Almaty':43.2,
-  'Africa/Cairo':30.0,'Africa/Lagos':6.5,'Africa/Nairobi':-1.3,
-  'Africa/Johannesburg':-26.2,'Africa/Casablanca':33.6,'Africa/Accra':5.6,
-  'Australia/Perth':-31.9,'Australia/Adelaide':-34.9,'Australia/Brisbane':-27.5,
-  'Australia/Sydney':-33.9,'Australia/Melbourne':-37.8,'Australia/Hobart':-42.9,
-  'Australia/Darwin':-12.5,'Pacific/Auckland':-36.9,'Pacific/Fiji':-18.1
+// Representative latitude AND longitude per IANA zone.
+//
+// The longitude is the whole point of this table. Deriving it from the UTC
+// offset -- assuming every zone sits on its own central meridian -- is the
+// obvious shortcut and it is wrong by four minutes of solar time for every
+// degree the place actually sits away from that meridian. Indianapolis is
+// -86.15 in a zone centred on -75: eleven degrees, forty-five minutes of
+// sunset. It verified perfectly against New York, which happens to sit almost
+// exactly on the meridian, and was three quarters of an hour out in Indiana.
+//
+// Latitude tolerance is generous (sunrise moves ~1 min per 12km at mid
+// latitudes, so city-level is ample). Longitude is not: it is 4 min/degree
+// everywhere, so a zone missing from this table is the only case that still
+// falls back to the central meridian.
+var SKY_TZ_LOC={
+  'America/New_York':[40.7,-74.0],'America/Detroit':[42.3,-83.0],
+  'America/Toronto':[43.7,-79.4],'America/Montreal':[45.5,-73.6],
+  'America/Indianapolis':[39.8,-86.2],'America/Indiana/Indianapolis':[39.8,-86.2],
+  'America/Kentucky/Louisville':[38.3,-85.8],'America/Columbus':[40.0,-83.0],
+  'America/Chicago':[41.9,-87.6],'America/Winnipeg':[49.9,-97.1],
+  'America/Mexico_City':[19.4,-99.1],'America/Denver':[39.7,-105.0],
+  'America/Phoenix':[33.4,-112.1],'America/Edmonton':[53.5,-113.5],
+  'America/Los_Angeles':[34.1,-118.2],'America/Vancouver':[49.3,-123.1],
+  'America/Anchorage':[61.2,-149.9],'America/Halifax':[44.6,-63.6],
+  'America/St_Johns':[47.6,-52.7],'America/Bogota':[4.7,-74.1],
+  'America/Lima':[-12.0,-77.0],'America/Sao_Paulo':[-23.5,-46.6],
+  'America/Argentina/Buenos_Aires':[-34.6,-58.4],'America/Santiago':[-33.4,-70.7],
+  'America/Caracas':[10.5,-66.9],'America/Panama':[9.0,-79.5],
+  'America/Havana':[23.1,-82.4],'America/Puerto_Rico':[18.5,-66.1],
+  'America/Guatemala':[14.6,-90.5],'Pacific/Honolulu':[21.3,-157.9],
+  'Europe/London':[51.5,-0.1],'Europe/Dublin':[53.3,-6.3],
+  'Europe/Lisbon':[38.7,-9.1],'Europe/Madrid':[40.4,-3.7],
+  'Europe/Paris':[48.9,2.4],'Europe/Brussels':[50.8,4.4],
+  'Europe/Amsterdam':[52.4,4.9],'Europe/Berlin':[52.5,13.4],
+  'Europe/Zurich':[47.4,8.5],'Europe/Rome':[41.9,12.5],
+  'Europe/Vienna':[48.2,16.4],'Europe/Prague':[50.1,14.4],
+  'Europe/Warsaw':[52.2,21.0],'Europe/Stockholm':[59.3,18.1],
+  'Europe/Oslo':[59.9,10.8],'Europe/Copenhagen':[55.7,12.6],
+  'Europe/Helsinki':[60.2,24.9],'Europe/Athens':[38.0,23.7],
+  'Europe/Bucharest':[44.4,26.1],'Europe/Kyiv':[50.5,30.5],
+  'Europe/Kiev':[50.5,30.5],'Europe/Moscow':[55.8,37.6],
+  'Europe/Istanbul':[41.0,29.0],'Atlantic/Reykjavik':[64.1,-21.9],
+  'Asia/Jerusalem':[31.8,35.2],'Asia/Dubai':[25.2,55.3],
+  'Asia/Karachi':[24.9,67.0],'Asia/Kolkata':[22.6,88.4],
+  'Asia/Calcutta':[22.6,88.4],'Asia/Dhaka':[23.8,90.4],
+  'Asia/Bangkok':[13.8,100.5],'Asia/Jakarta':[-6.2,106.8],
+  'Asia/Singapore':[1.4,103.8],'Asia/Manila':[14.6,121.0],
+  'Asia/Hong_Kong':[22.3,114.2],'Asia/Shanghai':[31.2,121.5],
+  'Asia/Taipei':[25.0,121.6],'Asia/Seoul':[37.6,127.0],
+  'Asia/Tokyo':[35.7,139.7],'Asia/Riyadh':[24.7,46.7],
+  'Asia/Tehran':[35.7,51.4],'Asia/Almaty':[43.2,76.9],
+  'Africa/Cairo':[30.0,31.2],'Africa/Lagos':[6.5,3.4],
+  'Africa/Nairobi':[-1.3,36.8],'Africa/Johannesburg':[-26.2,28.0],
+  'Africa/Casablanca':[33.6,-7.6],'Africa/Accra':[5.6,-0.2],
+  'Australia/Perth':[-31.9,115.9],'Australia/Adelaide':[-34.9,138.6],
+  'Australia/Brisbane':[-27.5,153.0],'Australia/Sydney':[-33.9,151.2],
+  'Australia/Melbourne':[-37.8,145.0],'Australia/Hobart':[-42.9,147.3],
+  'Australia/Darwin':[-12.5,130.8],'Pacific/Auckland':[-36.9,174.8],
+  'Pacific/Fiji':[-18.1,178.4]
 };
+// Region fallback: latitude only. A null longitude means "no better guess than
+// the zone's own central meridian" -- the old behaviour, now the exception.
 var SKY_REGION_LAT={America:40,Europe:50,Asia:30,Africa:5,Australia:-33,Pacific:-15,Atlantic:40,Indian:-10};
 
-function _skyLatitude(){
+// Returns {lat, lon}. A null lon means fall back to the central meridian.
+function _skyLocation(){
   var tz='';
   try{ tz=Intl.DateTimeFormat().resolvedOptions().timeZone||''; }catch(e){}
-  if(SKY_TZ_LAT[tz]!==undefined)return SKY_TZ_LAT[tz];
+  var hit=SKY_TZ_LOC[tz];
+  if(hit)return {lat:hit[0],lon:hit[1]};
   var region=tz.split('/')[0];
-  if(SKY_REGION_LAT[region]!==undefined)return SKY_REGION_LAT[region];
-  return 40;   // mid-northern default: wrong by minutes, never by seasons
+  if(SKY_REGION_LAT[region]!==undefined)return {lat:SKY_REGION_LAT[region],lon:null};
+  return {lat:40,lon:null};   // mid-northern default
 }
 
+
 // Sun elevation in degrees at `minutes` past local midnight. NOAA's general
-// solar position equations. Longitude is assumed to be the zone's central
-// meridian, which is what makes this work without a location: it can be up to
-// ~30 min out at the edge of a wide zone, and is exact at its centre.
+// solar position equations. `lon` is degrees EAST-positive; omit it and the
+// zone's central meridian is assumed, which is only right for a place sitting
+// near the middle of its timezone.
 // Daylight saving needs no special case -- the gap between the zone's standard
 // offset and today's actual offset IS the shift.
-function _skyElevation(lat,date,minutes){
+function _skyElevation(lat,date,minutes,lon){
   var y=date.getFullYear();
   var stdOffset=-Math.max(new Date(y,0,1).getTimezoneOffset(),new Date(y,6,1).getTimezoneOffset())/60;
   var curOffset=-date.getTimezoneOffset()/60;
@@ -138,7 +170,10 @@ function _skyElevation(lat,date,minutes){
   var decl=0.006918-0.399912*Math.cos(g)+0.070257*Math.sin(g)
           -0.006758*Math.cos(2*g)+0.000907*Math.sin(2*g)
           -0.002697*Math.cos(3*g)+0.00148*Math.sin(3*g);
-  var trueSolar=minutes+eqTime+4*(15*stdOffset)-60*curOffset;
+  // Real longitude when the zone is in the table; the zone's central meridian
+  // (15 deg per hour of standard offset) only when it is not.
+  var longitude=(lon===undefined||lon===null)?15*stdOffset:lon;
+  var trueSolar=minutes+eqTime+4*longitude-60*curOffset;
   var hourAngle=(trueSolar/4-180)*Math.PI/180;
   var latRad=lat*Math.PI/180;
   var cosZenith=Math.sin(latRad)*Math.sin(decl)
@@ -170,11 +205,11 @@ function _skyColor(elev){
 }
 
 // 61 samples at 15-minute steps across the banner window.
-function skyGradientFor(lat,date){
+function skyGradientFor(lat,date,lon){
   var startMin=TL_START_H*60,endMin=TL_END_H*60,steps=60,stops=[];
   for(var i=0;i<=steps;i++){
     var m=startMin+(endMin-startMin)*i/steps;
-    stops.push(_skyColor(_skyElevation(lat,date,m))+' '+(i/steps*100).toFixed(2)+'%');
+    stops.push(_skyColor(_skyElevation(lat,date,m,lon))+' '+(i/steps*100).toFixed(2)+'%');
   }
   return 'linear-gradient(to right,'+stops.join(',')+')';
 }
@@ -205,15 +240,15 @@ function applySkyGradient(){
     return;
   }
   var now=new Date();
-  var lat=_skyLatitude();
+  var loc=_skyLocation();
   // getTimezoneOffset() is part of the key on purpose: on the two changeover
   // days a gradient built before 2am would otherwise hold the pre-switch
   // offset until midnight, leaving the bar an hour out all day.
   var key=now.getFullYear()+'-'+now.getMonth()+'-'+now.getDate()
-         +'|'+lat+'|'+now.getTimezoneOffset();
+         +'|'+loc.lat+','+loc.lon+'|'+now.getTimezoneOffset();
   if(key!==_skyCacheKey){
     _skyCacheKey=key;
-    _skyCacheValue=skyGradientFor(lat,now);
+    _skyCacheValue=skyGradientFor(loc.lat,now,loc.lon);
   }
   for(var i=0;i<bars.length;i++)bars[i].style.background=_skyCacheValue;
 }

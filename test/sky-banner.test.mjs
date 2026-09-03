@@ -9,7 +9,7 @@ import { readFileSync } from 'node:fs';
 
 const src = readFileSync(new URL('../public/day-progress.js', import.meta.url), 'utf8');
 const sky = new Function(
-  src + ';return{_skyElevation,_skyColor,skyGradientFor,_skyLatitude,_skyEnabled,SKY_THEMES,SKY_TZ_LAT,SKY_RAMP};'
+  src + ';return{_skyElevation,_skyColor,skyGradientFor,_skyEnabled,_skyLocation,SKY_THEMES,SKY_TZ_LOC,SKY_REGION_LAT,SKY_RAMP};'
 )();
 
 const LAT = 40;
@@ -77,15 +77,25 @@ test('gradient is a well-formed CSS value with 61 stops', () => {
   assert.ok(g.includes('0.00%') && g.includes('100.00%'));
 });
 
-test('every latitude in the timezone table is a real latitude', () => {
-  const lats = Object.values(sky.SKY_TZ_LAT);
-  assert.ok(lats.length > 60, 'timezone table is suspiciously small');
-  for (const l of lats) assert.ok(l >= -60 && l <= 72, `latitude ${l} out of range`);
-  assert.equal(sky.SKY_TZ_LAT['America/New_York'], 40.7);
+test('every entry in the timezone table is a real coordinate', () => {
+  const entries = Object.entries(sky.SKY_TZ_LOC);
+  assert.ok(entries.length > 60, 'timezone table is suspiciously small');
+  for (const [tz, loc] of entries) {
+    assert.ok(Array.isArray(loc) && loc.length === 2, `${tz} is not a [lat, lon] pair`);
+    const [lat, lon] = loc;
+    assert.ok(lat >= -60 && lat <= 72, `${tz} latitude ${lat} out of range`);
+    assert.ok(lon >= -180 && lon <= 180, `${tz} longitude ${lon} out of range`);
+    // A longitude more than 30 degrees from its own name's hemisphere is almost
+    // always a sign flip, which is the easy mistake in a table like this.
+    if (tz.startsWith('America/')) assert.ok(lon < 20, `${tz} longitude ${lon} looks sign-flipped`);
+  }
+  assert.deepEqual(sky.SKY_TZ_LOC['America/New_York'], [40.7, -74.0]);
 });
 
-test('an unknown timezone still yields a usable latitude', () => {
-  assert.equal(typeof sky._skyLatitude(), 'number');
+test('an unknown timezone still yields a usable location', () => {
+  const loc = sky._skyLocation();
+  assert.equal(typeof loc.lat, 'number');
+  assert.ok(loc.lon === null || typeof loc.lon === 'number');
 });
 
 // The sky is on by default; ?sky=0 is the only way to get the old fixed
@@ -132,4 +142,47 @@ test('galaxy is on the sky list', () => {
   assert.ok(sky.SKY_THEMES.includes('galaxy'), 'galaxy should get the real sky');
   assert.ok(!sky.SKY_THEMES.includes('starry'), 'starry paints its own bar and must not be overridden');
   assert.ok(!sky.SKY_THEMES.includes('storm-dark'), 'storm-dark paints its own bar');
+});
+
+// The bug this table exists to prevent. Indianapolis is at -86.15 in a zone
+// centred on -75: eleven degrees, which is 45 minutes of solar time. Deriving
+// longitude from the UTC offset verified perfectly against New York (almost
+// exactly on the meridian) and was three quarters of an hour out here.
+// Offsets for Indianapolis and New York are identical, so running this file
+// under TZ=America/New_York and passing the Indiana longitude is equivalent.
+test('Indianapolis matches published times, not its central meridian', () => {
+  const LAT = 39.8, LON = -86.2;
+  const d = new Date(2026, 8, 2);
+  const cross = (rising, lon) => {
+    let prev = sky._skyElevation(LAT, d, 0, lon);
+    for (let m = 1; m <= 1440; m++) {
+      const cur = sky._skyElevation(LAT, d, m, lon);
+      if (rising ? prev < -0.833 && cur >= -0.833 : prev >= -0.833 && cur < -0.833) return m;
+      prev = cur;
+    }
+    return null;
+  };
+  near(cross(true, LON), hm(7, 11), 6, 'Indianapolis sunrise 2 Sep 2026');
+  near(cross(false, LON), hm(20, 19), 6, 'Indianapolis sunset 2 Sep 2026');
+
+  // And prove the longitude is actually doing the work: without it the same
+  // date lands roughly three quarters of an hour early.
+  const drift = cross(false, LON) - cross(false, undefined);
+  assert.ok(drift > 35 && drift < 55,
+    `omitting longitude should shift sunset ~45min earlier, got ${drift}min`);
+});
+
+test('Indiana zones resolve to Indiana, not the region fallback', () => {
+  for (const tz of ['America/Indianapolis', 'America/Indiana/Indianapolis']) {
+    const [lat, lon] = sky.SKY_TZ_LOC[tz];
+    assert.ok(Math.abs(lat - 39.8) < 0.5, `${tz} latitude is ${lat}`);
+    assert.ok(Math.abs(lon + 86.2) < 0.5, `${tz} longitude is ${lon}`);
+  }
+});
+
+// Only a zone missing from the table may fall back to the central meridian.
+test('a listed zone always carries a real longitude', () => {
+  for (const [tz, [, lon]] of Object.entries(sky.SKY_TZ_LOC)) {
+    assert.ok(lon !== null && lon !== undefined, `${tz} has no longitude`);
+  }
 });
