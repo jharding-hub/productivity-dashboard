@@ -579,6 +579,41 @@ body{font-family:'DM Sans',sans-serif;background:var(--bg);color:var(--text);min
 .day-progress-now{position:absolute;top:0;bottom:0;width:3px;background:rgba(255,255,255,0.7);z-index:6;border-radius:2px;pointer-events:none;box-shadow:0 0 6px rgba(255,255,255,0.5);}
 .day-progress-now.resting{display:none !important;}
 
+/* ── Day-theme day-progress-bar: white ticks and numbers ──────────────────
+   The default tick/label colour is near-black, which was fine when the bar was
+   a fixed warm gradient that stayed bright end to end. It is not fine now the
+   bar paints the real sky: both ends go night-blue in the morning and evening
+   and through the winter, and black numbers disappear into them.
+   White with a DARK shadow rather than the dark themes' white glow -- the glow
+   is for a bar that is dark all the way across, whereas a sky is dark at the
+   ends and bright at midday, so the label needs its contrast carried with it.
+   Covers every light theme, including the -light variants that are styled here
+   but not listed in THEMES. */
+body[data-theme="light"] .day-progress-marker,
+body[data-theme="sunny"] .day-progress-marker,
+body[data-theme="autumn"] .day-progress-marker,
+body[data-theme="storm-light"] .day-progress-marker,
+body[data-theme="police-light"] .day-progress-marker,
+body[data-theme="fire-light"] .day-progress-marker{
+  background:rgba(255,255,255,0.5);
+  box-shadow:0 0 2px rgba(0,0,0,0.55);
+}
+body[data-theme="light"] .day-progress-marker-label,
+body[data-theme="sunny"] .day-progress-marker-label,
+body[data-theme="autumn"] .day-progress-marker-label,
+body[data-theme="storm-light"] .day-progress-marker-label,
+body[data-theme="police-light"] .day-progress-marker-label,
+body[data-theme="fire-light"] .day-progress-marker-label,
+body[data-theme="light"] .day-progress-edge-label,
+body[data-theme="sunny"] .day-progress-edge-label,
+body[data-theme="autumn"] .day-progress-edge-label,
+body[data-theme="storm-light"] .day-progress-edge-label,
+body[data-theme="police-light"] .day-progress-edge-label,
+body[data-theme="fire-light"] .day-progress-edge-label{
+  color:#ffffff;
+  text-shadow:0 1px 3px rgba(0,0,0,0.85),0 0 9px rgba(0,0,0,0.55);
+}
+
 /* ── Dark-theme day-progress-bar: glowing contrasting markers + labels ── */
 /* Default dark, fire, police, starry, storm-dark all have deep dark backgrounds
    on the bar — flip ticks and numbers to bright glowing white/accent variants. */
