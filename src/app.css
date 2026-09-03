@@ -621,6 +621,7 @@ body:not([data-theme]) .day-progress-marker,
 body[data-theme="fire"] .day-progress-marker,
 body[data-theme="police"] .day-progress-marker,
 body[data-theme="starry"] .day-progress-marker,
+body[data-theme="galaxy"] .day-progress-marker,
 body[data-theme="storm-dark"] .day-progress-marker{
   background:rgba(255,255,255,0.45);
   box-shadow:0 0 4px rgba(255,255,255,0.5);
@@ -634,6 +635,8 @@ body:not([data-theme]) .day-progress-edge-label,
 body[data-theme="fire"] .day-progress-edge-label,
 body[data-theme="police"] .day-progress-edge-label,
 body[data-theme="starry"] .day-progress-edge-label,
+body[data-theme="galaxy"] .day-progress-marker-label,
+body[data-theme="galaxy"] .day-progress-edge-label,
 body[data-theme="storm-dark"] .day-progress-edge-label{
   color:rgba(255,255,255,0.92);
   text-shadow:0 0 6px rgba(255,255,255,0.7),0 0 12px rgba(255,255,255,0.35);
@@ -653,6 +656,11 @@ body[data-theme="starry"] .day-progress-marker-label,
 body[data-theme="starry"] .day-progress-edge-label{
   color:#c8b8ff;
   text-shadow:0 0 6px rgba(160,130,255,0.8),0 0 14px rgba(120,100,238,0.4);
+}
+body[data-theme="galaxy"] .day-progress-marker-label,
+body[data-theme="galaxy"] .day-progress-edge-label{
+  color:#dce9ff;
+  text-shadow:0 1px 3px rgba(0,0,0,0.8),0 0 8px rgba(74,144,232,0.75);
 }
 body[data-theme="storm-dark"] .day-progress-marker-label,
 body[data-theme="storm-dark"] .day-progress-edge-label{

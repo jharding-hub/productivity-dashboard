@@ -68,7 +68,13 @@ function updateDayProgress(){
 // would stop them being themes. Only Dark (no data-theme), Light and Sunny
 // get the sky.
 
-var SKY_THEMES=[null,'light','sunny'];
+// Galaxy is on this list even though it is a dark theme: unlike Starry,
+// Storm and the rest, it never painted its own .day-progress-bar, so it was
+// falling through to the base warm gradient. The sky suits it better than a
+// sunrise wash it never asked for. Its labels are handled in app.css --
+// adding a theme here without giving it visible ticks is how the black-on-
+// night-blue bug happened on the light themes.
+var SKY_THEMES=[null,'light','sunny','galaxy'];
 
 // Representative latitude per IANA zone. Sunrise moves ~1 minute per 12km of
 // latitude at mid-latitudes, so a city-level guess is far more precision than

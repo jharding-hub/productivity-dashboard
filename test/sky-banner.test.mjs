@@ -9,7 +9,7 @@ import { readFileSync } from 'node:fs';
 
 const src = readFileSync(new URL('../public/day-progress.js', import.meta.url), 'utf8');
 const sky = new Function(
-  src + ';return{_skyElevation,_skyColor,skyGradientFor,_skyLatitude,_skyEnabled,SKY_TZ_LAT,SKY_RAMP};'
+  src + ';return{_skyElevation,_skyColor,skyGradientFor,_skyLatitude,_skyEnabled,SKY_THEMES,SKY_TZ_LAT,SKY_RAMP};'
 )();
 
 const LAT = 40;
@@ -110,4 +110,26 @@ test('the sky is on by default and ?sky=0 is the only opt-out', () => {
 test('with no location at all the sky is on (the native case)', () => {
   delete globalThis.location;
   assert.equal(sky._skyEnabled(), true, 'native has no query string and must still get the sky');
+});
+
+// This has now caused the same visible bug twice: a theme starts painting the
+// real sky, its ticks and numbers are still the near-black default, and they
+// vanish into the night-blue at both ends of the bar. Any theme on SKY_THEMES
+// must have its own marker and label rules in app.css.
+test('every theme that gets the sky also has visible ticks and labels', () => {
+  const css = readFileSync(new URL('../src/app.css', import.meta.url), 'utf8');
+  for (const theme of sky.SKY_THEMES) {
+    const sel = theme === null ? 'body:not([data-theme])' : `body[data-theme="${theme}"]`;
+    const name = theme === null ? 'default dark' : theme;
+    for (const part of ['.day-progress-marker', '.day-progress-edge-label']) {
+      const hit = css.includes(`${sel} ${part},`) || css.includes(`${sel} ${part}{`);
+      assert.ok(hit, `${name} paints the sky but has no "${sel} ${part}" rule — it would fall back to the near-black default and vanish into the night-blue ends`);
+    }
+  }
+});
+
+test('galaxy is on the sky list', () => {
+  assert.ok(sky.SKY_THEMES.includes('galaxy'), 'galaxy should get the real sky');
+  assert.ok(!sky.SKY_THEMES.includes('starry'), 'starry paints its own bar and must not be overridden');
+  assert.ok(!sky.SKY_THEMES.includes('storm-dark'), 'storm-dark paints its own bar');
 });
