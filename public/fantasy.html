@@ -145,6 +145,10 @@ td.num{text-align:right;font-variant-numeric:tabular-nums;color:var(--text-secon
 .signin-card input{width:100%;margin-bottom:10px}
 .signin-card button{width:100%;padding:9px 0;background:var(--text-primary);border:none;color:var(--surface-0);font-weight:500}
 .signin-err{color:var(--err);font-size:11px;margin-top:8px;min-height:14px}
+.biopop{position:absolute;z-index:31;background:var(--surface-2);border:1px solid var(--border);border-radius:10px;box-shadow:0 12px 32px rgba(0,0,0,.28);width:min(460px,calc(100vw - 24px));max-height:72vh;overflow:auto;padding:12px}
+.biopop .close{position:absolute;top:6px;right:6px;border:none;background:transparent;font-size:18px;line-height:1;padding:2px 6px;color:var(--text-muted)}
+.biopop .cand{border:none;background:transparent;padding:0}
+@media (max-width:640px){.biopop{position:fixed;left:8px;right:8px;bottom:8px;top:auto;width:auto;max-height:75vh}}
 .pickmenu{position:absolute;z-index:30;background:var(--surface-2);border:1px solid var(--border);border-radius:8px;box-shadow:0 8px 24px rgba(0,0,0,.2);padding:6px;min-width:200px}
 .pickmenu button{display:block;width:100%;text-align:left;border:none;background:transparent;padding:6px 8px;border-radius:5px}
 .pickmenu button:hover{background:var(--surface-1)}
@@ -229,7 +233,7 @@ kbd{font-family:inherit;font-size:11px;border:1px solid var(--border);border-bot
         </div>
         <details class="help" style="margin-top:8px"><summary>How picking works</summary>
           <p>Click a row (or type a name and press <kbd>Enter</kbd>) to give that player to the team on the clock. The pick advances automatically. Click the team name in a row's menu to assign to a different team if you fell behind. <b>Undo</b> removes the last pick.</p>
-          <p><b>bio</b> on a row asks the advisor for that player's bio, strengths, weaknesses, and team situation (quick, about 10 s); it shows in the Advisor panel with a Draft button.</p>
+          <p><b>bio</b> on a row opens that player's bio, strengths, weaknesses, and team situation right over the row (quick, about 10 s) with a Draft button. Click anywhere else or press Esc to close.</p>
           <p>Cons = average of FantasyPros ECR and ESPN rank. T = SB Nation positional tier. $ = ESPN auction value. <b>Live ranks</b> pulls FantasyPros half-PPR data today; the free API key returns 10 rows per call, so you get the top 10 at each position (live tier and rank shown next to the name), the top 10 overall, and injury flags.</p>
         </details>
       </div>
@@ -604,7 +608,7 @@ async function api(path,body){
   var tok=await user.getIdToken();
   var r=await fetch(API+path,{method:'POST',headers:{'Content-Type':'application/json','Authorization':'Bearer '+tok},body:JSON.stringify(body)});
   var j=null;try{j=await r.json();}catch(e){}
-  if(!r.ok)throw new Error((j&&j.error)||('HTTP '+r.status));
+  if(!r.ok){if(j&&j.raw)console.warn('[advisor raw reply]',j.stop_reason,j.raw);throw new Error((j&&j.error)||('HTTP '+r.status));}
   return j;
 }
 function aiBusy(on,msg){
@@ -670,14 +674,15 @@ async function ask(){
   try{var res=await api('/ff/advise',{mode:'ask',depth:document.getElementById('deep-mode').checked?'deep':'quick',question:q,state:buildState()});document.getElementById('ai-out').innerHTML='<div class="strategy" style="white-space:pre-wrap">'+esc(res.result&&res.result.answer||'')+'</div>';aiBusy(false,'');}
   catch(e){aiBusy(false,'');document.getElementById('ai-out').innerHTML='<div class="err">'+esc(e.message)+'</div>';}
 }
-// Per-player profile card (quick effort). Cached per player for the session.
+// Per-player profile popover, anchored to the clicked row (quick effort). Cached per player.
 var _bioCache={};
-function showAdvisorTab(){var tabs=document.getElementById('tabs');if(getComputedStyle(tabs).display!=='none'){var b=tabs.querySelector('button[data-col=ai]');if(b)b.click();}}
-function renderBio(r,pl){
+function closeBio(){var m=document.getElementById('biopop');if(m)m.remove();document.removeEventListener('keydown',_bioEsc);}
+function _bioEsc(e){if(e.key==='Escape')closeBio();}
+function bioCardHTML(r,pl){
   var d=draftedIds(),taken=pl&&d[pl.id];
   var li=function(a){return (a||[]).map(function(x){return '<li>'+esc(x)+'</li>';}).join('');};
-  document.getElementById('ai-out').innerHTML='<div class="cand"><div class="cand-head"><span class="pos pos-'+esc(pl?pl.pos:r.pos)+'">'+esc(posLabel(pl?pl.pos:r.pos))+'</span><span class="nm">'+esc(r.name||(pl&&pl.name))+'</span><span class="muted small">'+esc((pl&&pl.team)||r.team||'')+' · bye '+esc((pl&&pl.bye)||r.bye||'?')+(pl?' · cons '+Math.round(pl.cons)+(pl.sbTier?' · T'+pl.sbTier:''):'')+'</span>'+
-    (pl?(taken?'<span class="err" style="margin-left:auto">already drafted</span>':'<button class="small primary" data-draft="'+pl.id+'" style="margin-left:auto">Draft</button>'):'')+'</div>'+
+  return '<div class="cand"><div class="cand-head"><span class="pos pos-'+esc(pl?pl.pos:r.pos)+'">'+esc(posLabel(pl?pl.pos:r.pos))+'</span><span class="nm">'+esc(r.name||(pl&&pl.name))+'</span><span class="muted small">'+esc((pl&&pl.team)||r.team||'')+' · bye '+esc((pl&&pl.bye)||r.bye||'?')+(pl?' · cons '+Math.round(pl.cons)+(pl.sbTier?' · T'+pl.sbTier:''):'')+'</span>'+
+    (pl?(taken?'<span class="err">already drafted</span>':'<button class="small primary" data-draft="'+pl.id+'">Draft</button>'):'')+'</div>'+
     (r.bio?'<div class="lbl">Bio</div><p>'+esc(r.bio)+'</p>':'')+
     (r.stats?'<div class="lbl">Stats</div><p>'+esc(r.stats)+'</p>':'')+
     ((r.strengths||[]).length?'<div class="lbl">Strengths</div><ul>'+li(r.strengths)+'</ul>':'')+
@@ -687,16 +692,33 @@ function renderBio(r,pl){
     ((r.teamWeaknesses||[]).length?'<div class="lbl">Team weaknesses</div><ul>'+li(r.teamWeaknesses)+'</ul>':'')+
     (r.verdict?'<div class="lbl">Verdict</div><p>'+esc(r.verdict)+'</p>':'')+
   '</div>';
-  document.getElementById('ai-out').querySelectorAll('[data-draft]').forEach(function(b){b.addEventListener('click',function(){makePick(b.dataset.draft,S.me);});});
-  showAdvisorTab();
 }
-async function playerBio(id){
+function openBioPop(anchor,pl,bodyHTML){
+  closeBio();closeMenu();
+  var m=document.createElement('div');m.className='biopop';m.id='biopop';
+  m.innerHTML='<button class="close" title="Close">×</button>'+bodyHTML;
+  document.body.appendChild(m);
+  var r=anchor.getBoundingClientRect();
+  if(window.innerWidth>640){
+    var w=m.offsetWidth,left=Math.max(12,Math.min(r.left+window.scrollX-w+r.width,window.innerWidth-w-12));
+    var top=r.bottom+window.scrollY+6;
+    if(r.bottom+m.offsetHeight+12>window.innerHeight&&r.top>m.offsetHeight+12)top=r.top+window.scrollY-m.offsetHeight-6;
+    m.style.left=left+'px';m.style.top=top+'px';
+  }
+  m.querySelector('.close').addEventListener('click',closeBio);
+  m.addEventListener('click',function(e){e.stopPropagation();});
+  m.querySelectorAll('[data-draft]').forEach(function(b){b.addEventListener('click',function(){var id=b.dataset.draft;closeBio();makePick(id,S.me);});});
+  setTimeout(function(){document.addEventListener('click',closeBio,{once:true});document.addEventListener('keydown',_bioEsc);},0);
+  return m;
+}
+async function playerBio(id,anchor){
   var pl=BYID[id];if(!pl)return;
-  if(_bioCache[id]){renderBio(_bioCache[id],pl);return;}
-  aiBusy(true,'Profiling '+pl.name+'…');showAdvisorTab();
+  if(_bioCache[id]){openBioPop(anchor,pl,bioCardHTML(_bioCache[id],pl));return;}
+  var m=openBioPop(anchor,pl,'<div class="small muted" style="padding:6px 0"><span class="spinner"></span>Profiling '+esc(pl.name)+'…</div>');
   var t0=Date.now();
-  try{var res=await api('/ff/advise',{mode:'player',depth:'quick',player:pl.name,state:buildState()});_bioCache[id]=res.result;document.getElementById('ai-model').textContent=(res.model||'')+' · quick · '+Math.round((Date.now()-t0)/1000)+'s';aiBusy(false,'');renderBio(res.result,pl);}
-  catch(e){aiBusy(false,'');document.getElementById('ai-out').innerHTML='<div class="err">'+esc(e.message)+'</div>';}
+  try{var res=await api('/ff/advise',{mode:'player',depth:'quick',player:pl.name,state:buildState()});_bioCache[id]=res.result;document.getElementById('ai-model').textContent=(res.model||'')+' · quick · '+Math.round((Date.now()-t0)/1000)+'s';
+    if(document.getElementById('biopop')===m){m.innerHTML='<button class="close" title="Close">×</button>'+bioCardHTML(res.result,pl);m.querySelector('.close').addEventListener('click',closeBio);m.querySelectorAll('[data-draft]').forEach(function(b){b.addEventListener('click',function(){var pid=b.dataset.draft;closeBio();makePick(pid,S.me);});});}}
+  catch(e){if(document.getElementById('biopop')===m)m.innerHTML='<button class="close" title="Close">×</button><div class="err" style="padding:6px 0">'+esc(e.message)+'</div>';var c=m.querySelector('.close');if(c)c.addEventListener('click',closeBio);console.warn('[bio]',e);}
 }
 async function opponents(){
   aiBusy(true,'Grading the other nine teams…');
@@ -794,7 +816,7 @@ function bind(){
   document.getElementById('posfilters').addEventListener('click',function(e){var b=e.target.closest('button');if(!b)return;ui.pos=b.dataset.pos;document.querySelectorAll('#posfilters button').forEach(function(x){x.classList.toggle('on',x===b);});renderAvail();});
   document.getElementById('avail').addEventListener('click',function(e){
     var mb=e.target.closest('[data-menu]');if(mb){e.stopPropagation();openMenu(mb,mb.dataset.menu);return;}
-    var bb=e.target.closest('[data-bio]');if(bb){e.stopPropagation();playerBio(bb.dataset.bio);return;}
+    var bb=e.target.closest('[data-bio]');if(bb){e.stopPropagation();playerBio(bb.dataset.bio,bb.closest('tr')||bb);return;}
     var tr=e.target.closest('tr.player');if(tr)makePick(tr.dataset.id);
   });
   document.getElementById('tabs').addEventListener('click',function(e){var b=e.target.closest('button');if(!b)return;document.querySelectorAll('#tabs button').forEach(function(x){x.classList.toggle('on',x===b);});document.querySelectorAll('.col').forEach(function(c){c.classList.toggle('show',c.dataset.col===b.dataset.col);});});
