@@ -9,6 +9,7 @@
 <script src="fantasy-players.js"></script>
 <script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-app-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-auth-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore-compat.js"></script>
 <style>
 :root{
 --text-primary:#1a1a1a;--text-secondary:#5f5e5a;--text-muted:#8a8880;--border:#e4e2da;
@@ -138,6 +139,9 @@ td.num{text-align:right;font-variant-numeric:tabular-nums;color:var(--text-secon
 .spinner{display:inline-block;width:12px;height:12px;border:2px solid var(--border);border-top-color:var(--accent);border-radius:50%;animation:sp .8s linear infinite;vertical-align:-2px;margin-right:6px}
 @keyframes sp{to{transform:rotate(360deg)}}
 .err{color:var(--err);font-size:12px}
+.sync-pill{font-size:11px;padding:3px 9px;border-radius:999px;background:var(--surface-1);border:1px solid var(--border);color:var(--text-secondary);white-space:nowrap}
+.sync-pill.ok{color:var(--ok);border-color:var(--ok)}
+.sync-pill.warn{color:var(--warn);border-color:var(--warn)}
 .signin-overlay{position:fixed;inset:0;z-index:999;display:none;align-items:center;justify-content:center;background:rgba(0,0,0,0.45);backdrop-filter:blur(3px)}
 .signin-card{background:var(--surface-2);border:1px solid var(--border);border-radius:12px;padding:24px 22px;width:280px;box-shadow:0 8px 30px rgba(0,0,0,0.25)}
 .signin-title{font-size:15px;font-weight:500;margin-bottom:2px}
@@ -165,6 +169,7 @@ kbd{font-family:inherit;font-size:11px;border:1px solid var(--border);border-bot
   <p class="small muted"><a href="/" style="color:inherit">&larr; Centerpost</a></p>
   <h1 style="font-size:22px;margin-bottom:4px">Draft Day — 101 League</h1>
   <p class="muted" style="margin:0 0 18px">10 teams, snake, half-PPR. Set the draft order Yahoo gives you, mark which team is yours, and start.</p>
+  <p style="margin:0 0 14px"><span class="sync-pill" id="sync-pill-setup"></span></p>
   <div class="card">
     <h2>Draft order (pick 1 at the top)</h2>
     <div id="setup-teams"></div>
@@ -187,11 +192,12 @@ kbd{font-family:inherit;font-size:11px;border:1px solid var(--border);border-bot
 <div id="draft" class="hidden">
   <div class="topbar">
     <h1>Draft Day</h1>
+    <span class="sync-pill" id="sync-pill-top"></span>
     <div class="clock" id="clock"></div>
     <div class="actions">
       <button class="small" id="btn-undo" title="Undo last pick">Undo</button>
       <button class="small" id="btn-live" title="Pull live half-PPR consensus + ADP from FantasyPros">Live ranks</button>
-      <button class="small" id="btn-export">Export</button>
+      <button class="small" id="btn-export">Export .xlsx</button>
       <button class="small ghost" id="btn-setup">Setup</button>
     </div>
   </div>
@@ -322,10 +328,14 @@ function esc(s){return String(s==null?'':s).replace(/[&<>"']/g,function(c){retur
 var S=null;
 function blankState(){
   var teams=[];for(var i=0;i<TEAMS;i++)teams.push({name:'Team '+(i+1)});
-  return {v:1,teams:teams,me:0,picks:[],started:false,plan:null,aiCache:{},oppReport:null,liveAt:null,liveNote:''};
+  return {v:1,rev:0,teams:teams,me:0,picks:[],started:false,plan:null,aiCache:{},oppReport:null,liveAt:null,liveNote:''};
 }
 function load(){try{var j=JSON.parse(localStorage.getItem(LS_KEY));if(j&&j.v===1&&Array.isArray(j.teams)&&j.teams.length===TEAMS)return j;}catch(e){}return blankState();}
-function save(){try{localStorage.setItem(LS_KEY,JSON.stringify(S));}catch(e){toast('Could not save locally: '+e.message);}}
+function save(sync){
+  if(sync!==false)S.rev=(S.rev||0)+1;
+  try{localStorage.setItem(LS_KEY,JSON.stringify(S));}catch(e){toast('Could not save locally: '+e.message);}
+  if(sync!==false)scheduleCloudPush();
+}
 function toast(msg){var t=document.getElementById('toast');t.textContent=msg;t.classList.add('on');clearTimeout(t._h);t._h=setTimeout(function(){t.classList.remove('on');},2200);}
 
 // snake: overall n (1-based) → {round, slot(0-based team index in draft order)}
@@ -334,6 +344,67 @@ function myPickNumbers(me){var out=[];for(var n=1;n<=TEAMS*ROUNDS;n++){if(slotFo
 function draftedIds(){var m={};S.picks.forEach(function(p){m[p.playerId]=true;});return m;}
 function teamRoster(idx){return S.picks.filter(function(p){return p.slot===idx;}).map(function(p){var pl=BYID[p.playerId];return Object.assign({},pl,{overall:p.overall,round:p.round});});}
 function nextOverall(){return S.picks.length+1;}
+
+// ── Cloud sync (Firestore, users/{uid}/data/fantasyDraft) ──────────────
+// Own-doc write guard: NEVER .set() this doc unless a read has succeeded
+// this session — a thrown read is not a read (see centerpost-own-doc-write-guard).
+// Last-write-wins by a monotonic "rev" counter (bumped in save()), not by
+// clock time, so two devices with skewed clocks still resolve consistently.
+// This is a single-blob overwrite, not a merge — fine for one person moving
+// between devices, not for two people editing the same draft at once.
+var _cloudRef=null,_cloudUnsub=null,_cloudReadOk=false,_cloudSaveTimer=null;
+var _deviceId=(function(){try{var k=localStorage.getItem('ff2026deviceId');if(k)return k;k='dev-'+Math.random().toString(36).slice(2,10);localStorage.setItem('ff2026deviceId',k);return k;}catch(e){return 'dev-unknown';}})();
+function setSyncStatus(text,cls){document.querySelectorAll('.sync-pill').forEach(function(el){el.textContent=text;el.className='sync-pill'+(cls?' '+cls:'');});}
+function nowClock(){return new Date().toLocaleTimeString([],{hour:'numeric',minute:'2-digit'});}
+async function initCloudSync(uid){
+  var db;try{db=firebase.firestore();}catch(e){setSyncStatus('Sync unavailable','warn');return;}
+  _cloudRef=db.collection('users').doc(uid).collection('data').doc('fantasyDraft');
+  setSyncStatus('Connecting…','');
+  try{
+    var snap=await _cloudRef.get();
+    _cloudReadOk=true; // a successful read — including "document does not exist" — satisfies the guard
+    if(snap.exists){
+      var remote=snap.data(),remoteState=remote&&remote.state,remoteRev=(remote&&remote.rev)||0,localRev=(S&&S.rev)||0;
+      if(remoteState&&remoteRev>=localRev){S=remoteState;S.rev=remoteRev;save(false);route();}
+      else if(localRev>0){pushCloud();}
+    }else if(S&&(S.picks.length||S.plan||S.started)){
+      pushCloud(); // nothing in the cloud yet but there is local state — seed it
+    }
+    setSyncStatus('Synced '+nowClock(),'ok');
+  }catch(e){
+    _cloudReadOk=false; // defensive: never leave the write guard open on a failed read
+    console.warn('[cloud] initial read failed — staying local-only this session',e);
+    setSyncStatus('Offline — saved locally','warn');
+    return; // never attach a listener or write without a successful read first
+  }
+  attachCloudListener();
+}
+function attachCloudListener(){
+  if(!_cloudRef||_cloudUnsub)return;
+  _cloudUnsub=_cloudRef.onSnapshot(function(snap){
+    if(!snap.exists||snap.metadata.hasPendingWrites)return; // ignore our own optimistic echo
+    var remote=snap.data();
+    if(!remote||!remote.state||remote.device===_deviceId)return; // our own confirmed write
+    var remoteRev=remote.rev||0;
+    if(remoteRev<=((S&&S.rev)||0))return; // stale or duplicate
+    S=remote.state;S.rev=remoteRev;save(false);route();
+    toast('Updated from another device');
+    setSyncStatus('Synced '+nowClock(),'ok');
+  },function(err){console.warn('[cloud] listener error',err);setSyncStatus('Offline — saved locally','warn');});
+}
+function scheduleCloudPush(){
+  if(!_cloudReadOk)return;
+  clearTimeout(_cloudSaveTimer);
+  setSyncStatus('Saving…','');
+  _cloudSaveTimer=setTimeout(pushCloud,700);
+}
+async function pushCloud(){
+  if(!_cloudReadOk||!_cloudRef)return;
+  try{
+    await _cloudRef.set({v:1,rev:S.rev,device:_deviceId,updatedAt:firebase.firestore.FieldValue.serverTimestamp(),state:S});
+    setSyncStatus('Synced '+nowClock(),'ok');
+  }catch(e){console.warn('[cloud] push failed',e);setSyncStatus('Sync error — saved locally','warn');}
+}
 
 // ── setup screen ─────────────────────────────────────────────────────
 function renderSetup(){
@@ -566,10 +637,64 @@ function openMenu(btn,id){
 function closeMenu(){var m=document.getElementById('pickmenu');if(m)m.remove();}
 
 // ── export / import ──────────────────────────────────────────────────
-function exportJson(){
-  var blob=new Blob([JSON.stringify(S,null,1)],{type:'application/json'});
-  var a=document.createElement('a');a.href=URL.createObjectURL(blob);a.download='draft-101-league-'+new Date().toISOString().slice(0,10)+'.json';a.click();
-  setTimeout(function(){URL.revokeObjectURL(a.href);},2000);
+// Lazy-loaded so the ~860KB SheetJS library only costs load time when someone
+// actually exports (once or twice a draft), not on every page load.
+function ensureXlsxLib(){
+  if(window.XLSX)return Promise.resolve();
+  return new Promise(function(resolve,reject){
+    var s=document.createElement('script');
+    s.src='vendor/xlsx.full.min.js';
+    s.onload=resolve;s.onerror=function(){reject(new Error('Could not load the Excel export library'));};
+    document.head.appendChild(s);
+  });
+}
+async function exportXlsx(){
+  var btn=document.getElementById('btn-export');
+  btn.disabled=true;var oldLabel=btn.textContent;btn.textContent='Exporting…';
+  try{
+    await ensureXlsxLib();
+    var wb=XLSX.utils.book_new();
+
+    // My Team — starters then bench, in roster order
+    var myRo=teamRoster(S.me),lu=lineup(myRo);
+    var teamRows=[['Slot','Player','Pos','NFL Team','Bye','Round','Overall Pick']];
+    lu.slots.forEach(function(sl){teamRows.push([sl.slot,sl.p?sl.p.name:'',sl.p?sl.p.pos:'',sl.p?(sl.p.team||'FA'):'',sl.p?sl.p.bye:'',sl.p?sl.p.round:'',sl.p?sl.p.overall:'']);});
+    lu.bench.forEach(function(p){teamRows.push(['BN',p.name,p.pos,p.team||'FA',p.bye,p.round,p.overall]);});
+    XLSX.utils.book_append_sheet(wb,XLSX.utils.aoa_to_sheet(teamRows),'My Team');
+
+    // All Picks — every pick made so far, in draft order
+    var pickRows=[['Overall','Round','Team','Player','Pos','NFL Team','Bye']];
+    S.picks.forEach(function(p){var pl=BYID[p.playerId];pickRows.push([p.overall,p.round,S.teams[p.slot].name,pl?pl.name:p.playerId,pl?pl.pos:'',pl?(pl.team||'FA'):'',pl?pl.bye:'']);});
+    XLSX.utils.book_append_sheet(wb,XLSX.utils.aoa_to_sheet(pickRows),'All Picks');
+
+    // Draft Board — the snake grid, one row per round
+    var boardRows=[['Round'].concat(S.teams.map(function(t){return t.name;}))];
+    var byOverall={};S.picks.forEach(function(p){byOverall[p.overall]=p;});
+    for(var r=1;r<=ROUNDS;r++){
+      var row=['R'+r];
+      for(var i=0;i<TEAMS;i++){
+        var overall=(r%2===1)?(r-1)*TEAMS+i+1:(r-1)*TEAMS+(TEAMS-i);
+        var pk=byOverall[overall],pl=pk?BYID[pk.playerId]:null;
+        row.push(pl?(pl.name+' ('+pl.pos+')'):'');
+      }
+      boardRows.push(row);
+    }
+    XLSX.utils.book_append_sheet(wb,XLSX.utils.aoa_to_sheet(boardRows),'Draft Board');
+
+    // Plan — only if one has been generated
+    if(S.plan){
+      var planRows=[['Round','Overall','Targets','Approach']];
+      (S.plan.rounds||[]).forEach(function(rd){planRows.push([rd.round,rd.overall||'',(rd.targets||[]).join(', '),rd.approach||'']);});
+      planRows.push([]);planRows.push(['Overview',S.plan.overview||'']);
+      (S.plan.pivots||[]).forEach(function(pv){planRows.push(['Pivot',pv]);});
+      XLSX.utils.book_append_sheet(wb,XLSX.utils.aoa_to_sheet(planRows),'Plan');
+    }
+
+    var fname='draft-101-league-'+new Date().toISOString().slice(0,10)+'.xlsx';
+    XLSX.writeFile(wb,fname);
+    toast('Exported '+fname);
+  }catch(e){toast('Export failed: '+e.message);}
+  btn.disabled=false;btn.textContent=oldLabel;
 }
 function importJson(file){
   var rd=new FileReader();
@@ -798,7 +923,7 @@ function bind(){
     var teams=S.teams,me=S.me;S=blankState();S.teams=teams;S.me=me;save();toast('Draft reset');route();
   });
   document.getElementById('file-import').addEventListener('change',function(e){if(e.target.files[0])importJson(e.target.files[0]);e.target.value='';});
-  document.getElementById('btn-export').addEventListener('click',exportJson);
+  document.getElementById('btn-export').addEventListener('click',exportXlsx);
   document.getElementById('btn-undo').addEventListener('click',undo);
   document.getElementById('btn-live').addEventListener('click',pullLive);
   document.getElementById('btn-suggest').addEventListener('click',function(){suggest(true);});
@@ -826,8 +951,10 @@ function bind(){
   S=load();bind();
   if(!PLAYERS.length){document.body.innerHTML='<p style="padding:20px">fantasy-players.js failed to load — run node scripts/build-fantasy-players.mjs</p>';return;}
   if(typeof firebase==='undefined'||typeof CENTERPOST_FIREBASE_CONFIG==='undefined'){route();return;} // local dev without config
-  await requireOwner();
-  route();
+  var user=await requireOwner();
+  route(); // render local state immediately — never block first paint on the network
+  firebase.auth().onAuthStateChanged(function(u){if(!u&&_cloudUnsub){_cloudUnsub();_cloudUnsub=null;_cloudReadOk=false;setSyncStatus('Signed out','');}});
+  try{await initCloudSync(user.uid);}catch(e){console.warn('[cloud] init failed',e);setSyncStatus('Sync unavailable','warn');}
 })();
 </script>
 </body>
