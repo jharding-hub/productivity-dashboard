@@ -24,7 +24,7 @@ var GOOGLE_CLIENT_ID = '1065593793454-57q4unojejuafv4rihajmoas77ucr6q8.apps.goog
 // instead (ios/App/App/GoogleAuthBridge.swift).
 // Leave empty until the iOS client exists -- native then explains itself in
 // Calendar settings rather than offering a button that can only ever fail.
-var GOOGLE_IOS_CLIENT_ID = '';
+var GOOGLE_IOS_CLIENT_ID = '1065593793454-7aklaospq678pui9umg89hcnbqhjsd10.apps.googleusercontent.com';
 
 var JARVIS_PROXY_URL = 'https://centerpost-jarvis.medicjth.workers.dev';
 
