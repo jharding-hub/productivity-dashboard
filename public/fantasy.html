@@ -401,7 +401,7 @@ function renderAvail(){
     var clash=p.bye&&byes[p.bye]>=2;
     rows.push('<tr class="player" data-id="'+p.id+'" title="Click to draft to the team on the clock">'+
       '<td class="num">'+Math.round(p.cons)+'</td>'+
-      '<td class="name">'+esc(p.name)+' <span class="meta">'+esc(p.team||'FA')+(p.upside>=4?' · ↑':'')+(p.bust>=4?' · ⚠':'')+'</span></td>'+
+      '<td class="name">'+esc(p.name)+' <span class="meta">'+esc(p.team||'FA')+(p.upside>=4?' · ↑':'')+(p.bust>=4?' · ⚠':'')+(p.live&&p.live.injury?' · <span class="byeclash" title="'+esc(p.live.injuryNote||'')+'">'+esc(p.live.injury)+'</span>':'')+'</span></td>'+
       '<td><span class="pos pos-'+p.pos+'">'+posLabel(p.pos)+(p.posRank||'')+'</span></td>'+
       '<td class="num'+(clash?' byeclash':'')+'">'+(p.bye||'–')+'</td>'+
       '<td class="num">'+(p.sbTier||'–')+'</td>'+
@@ -556,7 +556,7 @@ function importJson(file){
 function compactPlayer(p){
   var o={name:p.name,pos:p.pos,team:p.team,bye:p.bye,fp:p.fpRank,fpTier:p.fpTier,espn:p.espnRank,sbTier:p.sbTier};
   if(p.upside)o.upside=p.upside;if(p.bust)o.bust=p.bust;if(p.auction)o.auction=p.auction;
-  if(p.live){o.liveEcr=p.live.ecr;if(p.live.adp)o.liveAdp=p.live.adp;if(p.live.injury)o.injury=p.live.injury;}
+  if(p.live){if(p.live.ecr)o.liveEcr=p.live.ecr;if(p.live.adp)o.liveAdp=p.live.adp;if(p.live.tier)o.liveTier=p.live.tier;if(p.live.injury)o.injury=p.live.injury+(p.live.injuryNote?' — '+p.live.injuryNote.slice(0,140):'');}
   return o;
 }
 function rosterLine(p){return p.name+' ('+p.pos+', '+(p.team||'FA')+', bye '+(p.bye||'?')+', R'+p.round+')';}
@@ -635,16 +635,35 @@ async function opponents(){
 }
 async function pullLive(){
   var b=document.getElementById('btn-live');b.disabled=true;b.textContent='Pulling…';
+  var notes=[],hit=0;
   try{
-    var res=await api('/ff/rankings',{scoring:'HALF'});
-    var hit=0;
     PLAYERS.forEach(function(p){p.live=null;});
-    (res.players||[]).forEach(function(lp){
+    // 1. /players: half-PPR ECR + ADP for every ranked player (the broad source)
+    var pl=await api('/ff/rankings',{source:'players'});
+    (pl.players||[]).forEach(function(lp){
       var p=BYNORM[norm(lp.name)];
       if(!p&&lp.pos==='DST'&&lp.team)p=PLAYERS.find(function(x){return x.pos==='DST'&&x.team===lp.team;});
-      if(p){p.live={ecr:lp.ecr,adp:lp.adp,tier:lp.tier,posRank:lp.posRank,injury:lp.injury||null};hit++;}
+      if(!p)return;
+      var ecr=lp.ecrHalf||lp.ecr;if(!ecr&&!lp.adp)return;
+      p.live={ecr:ecr||null,adp:lp.adp||null,posRank:lp.posRank||null,tier:null,injury:null};hit++;
     });
-    S.liveAt=new Date().toISOString();S.liveNote='FantasyPros live half-PPR ECR/ADP pulled '+new Date().toLocaleTimeString()+' ('+hit+' players matched'+(res.cached?', cached':'')+')';
+    notes.push(hit+' players matched'+(pl.cached?' (cached)':''));
+    // 2. consensus DRAFT/HALF: tiers + a fresher ECR when the list is full-size
+    try{
+      var cs=await api('/ff/rankings',{source:'consensus',scoring:'HALF'});
+      var used=0;
+      if((cs.players||[]).length>=50){
+        cs.players.forEach(function(lp){var p=BYNORM[norm(lp.name)];if(!p&&lp.pos==='DST'&&lp.team)p=PLAYERS.find(function(x){return x.pos==='DST'&&x.team===lp.team;});if(!p)return;p.live=p.live||{ecr:null,adp:null,posRank:null,tier:null,injury:null};if(lp.ecr)p.live.ecr=lp.ecr;if(lp.tier)p.live.tier=lp.tier;if(lp.posRank)p.live.posRank=lp.posRank;used++;});
+        notes.push('consensus tiers on '+used);
+      }else notes.push('consensus list short ('+(cs.players||[]).length+'), using /players ECR');
+    }catch(e){notes.push('consensus: '+e.message);}
+    // 3. injuries
+    try{
+      var inj=await api('/ff/rankings',{source:'injuries'});var ni=0;
+      (inj.players||[]).forEach(function(lp){var p=BYNORM[norm(lp.name)];if(!p)return;p.live=p.live||{ecr:null,adp:null,posRank:null,tier:null,injury:null};p.live.injury=(lp.statusShort||lp.status||'?')+(lp.type?' '+lp.type:'');p.live.injuryNote=lp.comment||'';ni++;});
+      notes.push(ni+' injury flags');
+    }catch(e){notes.push('injuries: '+e.message);}
+    S.liveAt=new Date().toISOString();S.liveNote='FantasyPros live pull '+new Date().toLocaleTimeString()+': '+notes.join(', ');
     save();
     if(hit){ui.sort='live';document.getElementById('sort').value='live';}
     toast(S.liveNote);renderAvail();
