@@ -162,6 +162,7 @@ kbd{font-family:inherit;font-size:11px;border:1px solid var(--border);border-bot
   <div style="display:flex;gap:8px;margin-top:14px;flex-wrap:wrap">
     <button class="primary" id="btn-start">Start draft</button>
     <button id="btn-import-setup">Import saved draft…</button>
+    <button id="btn-reset" class="ghost" title="Clear every pick, plan, and report and start over">Reset draft…</button>
     <input type="file" id="file-import" accept="application/json" class="hidden">
   </div>
   <p class="small muted" style="margin-top:14px">Data: <span id="setup-meta"></span></p>
@@ -247,9 +248,10 @@ kbd{font-family:inherit;font-size:11px;border:1px solid var(--border);border-bot
     <div class="col" data-col="ai">
       <div class="card">
         <div class="card-head"><h2>Advisor</h2><span class="small muted" id="ai-model"></span></div>
-        <div style="display:flex;gap:6px;flex-wrap:wrap">
+        <div style="display:flex;gap:6px;flex-wrap:wrap;align-items:center">
           <button class="primary" id="btn-suggest">Suggest my pick</button>
           <button id="btn-plan">Round-by-round plan</button>
+          <label class="small muted" style="display:flex;align-items:center;gap:4px;margin-left:auto" title="Sonnet takes 30-90 s. With this on, a suggestion is fetched in the background two picks before your turn so it is waiting when you are on the clock."><input type="checkbox" id="auto-suggest" checked> prefetch 2 picks early</label>
         </div>
         <div class="searchrow" style="margin-top:8px">
           <input type="search" id="ask" placeholder="Ask anything about the board…">
@@ -524,6 +526,7 @@ function makePick(playerId,slotOverride){
   ui.q='';document.getElementById('q').value='';
   renderAll();
   if(slotFor(nextOverall()).slot===S.me&&nextOverall()<=TEAMS*ROUNDS)setTimeout(function(){toast('You are on the clock');},900);
+  maybePrefetch();
 }
 function undo(){
   if(!S.picks.length)return;
@@ -590,15 +593,20 @@ function aiBusy(on,msg){
   var st=document.getElementById('ai-status');st.innerHTML=on?'<span class="spinner"></span>'+esc(msg||'Thinking…'):(msg?esc(msg):'');
   ['btn-suggest','btn-plan','btn-ask','btn-opp'].forEach(function(id){document.getElementById(id).disabled=!!on;});
 }
-function renderSuggest(res){
+function renderSuggest(res,preparedAt){
   var host=document.getElementById('ai-out');
   var html='';
+  var d=draftedIds(),n=nextOverall();
+  if(preparedAt&&preparedAt<n){
+    var gone=(res.candidates||[]).filter(function(c){var pl=BYNORM[norm(c.name)];return pl&&d[pl.id];}).map(function(c){return c.name;});
+    html+='<div class="alert'+(gone.length?' hot':'')+'">Prepared '+(n-preparedAt)+' pick'+(n-preparedAt===1?'':'s')+' early (at #'+preparedAt+'). '+(gone.length?'Since taken: '+esc(gone.join(', '))+'. ':'All candidates still available. ')+'Press Suggest my pick for a fresh read.</div>';
+  }
   if(res.strategy)html+='<div class="strategy">'+esc(res.strategy)+'</div>';
   if(res.tierAlerts&&res.tierAlerts.length)html+='<div class="alerts">'+res.tierAlerts.map(function(a){return '<div class="alert">'+esc(a)+'</div>';}).join('')+'</div>';
   (res.candidates||[]).forEach(function(c){
     var pl=BYNORM[norm(c.name)];
     html+='<div class="cand"><div class="cand-head"><span class="pos pos-'+esc(c.pos||(pl&&pl.pos)||'')+'">'+esc(posLabel(c.pos||(pl&&pl.pos)||''))+'</span><span class="nm">'+esc(c.name)+'</span><span class="muted small">'+esc(c.team||(pl&&pl.team)||'')+' · bye '+esc(c.bye||(pl&&pl.bye)||'?')+'</span>'+(c.fit?'<span class="fit">'+esc(c.fit)+'</span>':'')+
-      (pl?'<button class="small primary" data-draft="'+pl.id+'" style="margin-left:auto">Draft</button>':'<span class="err" style="margin-left:auto">not in pool</span>')+'</div>'+
+      (pl?(d[pl.id]?'<span class="err" style="margin-left:auto">already drafted</span>':'<button class="small primary" data-draft="'+pl.id+'" style="margin-left:auto">Draft</button>'):'<span class="err" style="margin-left:auto">not in pool</span>')+'</div>'+
       (c.summary?'<p>'+esc(c.summary)+'</p>':'')+
       (c.bio?'<div class="lbl">Bio</div><p>'+esc(c.bio)+'</p>':'')+
       (c.stats?'<div class="lbl">Stats</div><p>'+esc(c.stats)+'</p>':'')+
@@ -610,12 +618,27 @@ function renderSuggest(res){
   host.innerHTML=html||'<div class="small muted">No suggestions returned.</div>';
   host.querySelectorAll('[data-draft]').forEach(function(b){b.addEventListener('click',function(){makePick(b.dataset.draft,S.me);});});
 }
-async function suggest(){
-  var key='s'+nextOverall()+'_'+S.picks.length;
-  if(S.aiCache[key]){renderSuggest(S.aiCache[key]);return;}
-  aiBusy(true,'Reading the board…');
-  try{var res=await api('/ff/advise',{mode:'suggest',state:buildState()});S.aiCache={};S.aiCache[key]=res.result;save();renderSuggest(res.result);document.getElementById('ai-model').textContent=res.model||'';aiBusy(false,'');}
+var _suggestInFlight=false;
+// force=true always asks again; otherwise reuse a suggestion prepared at this pick.
+async function suggest(force){
+  var n=nextOverall(),c=S.aiCache&&S.aiCache.suggest;
+  if(!force&&c&&c.at===n){renderSuggest(c.result,c.at);return;}
+  if(_suggestInFlight)return;
+  _suggestInFlight=true;
+  aiBusy(true,slotFor(Math.min(n,TEAMS*ROUNDS)).slot===S.me?'Reading the board…':'Preparing your next pick early…');
+  try{var res=await api('/ff/advise',{mode:'suggest',state:buildState()});S.aiCache={suggest:{at:n,result:res.result}};save();document.getElementById('ai-model').textContent=res.model||'';aiBusy(false,'');if(nextOverall()===n||slotFor(nextOverall()).slot===S.me)renderSuggest(res.result,n);}
   catch(e){aiBusy(false,'');document.getElementById('ai-out').innerHTML='<div class="err">'+esc(e.message)+'</div>';}
+  _suggestInFlight=false;
+}
+// Called after every pick: two picks before mine, fetch in the background so the
+// answer is waiting when the clock starts. Also re-show a prepared answer on my turn.
+function maybePrefetch(){
+  var n=nextOverall();if(n>TEAMS*ROUNDS)return;
+  var mine=myPickNumbers(S.me).filter(function(x){return x>=n;})[0];if(!mine)return;
+  var until=mine-n,c=S.aiCache&&S.aiCache.suggest;
+  if(until===0&&c&&c.at>=n-3&&c.at<n){renderSuggest(c.result,c.at);return;}
+  var auto=document.getElementById('auto-suggest');
+  if(auto&&auto.checked&&until===2&&!(c&&c.at>=n-1))suggest(true);
 }
 async function plan(){
   aiBusy(true,'Building a round-by-round plan for slot '+(S.me+1)+'…');
@@ -700,11 +723,16 @@ function bind(){
   document.getElementById('btn-start').addEventListener('click',function(){S.started=true;save();route();});
   document.getElementById('btn-setup').addEventListener('click',function(){S.started=false;save();route();});
   document.getElementById('btn-import-setup').addEventListener('click',function(){document.getElementById('file-import').click();});
+  document.getElementById('btn-reset').addEventListener('click',function(){
+    if(!S.picks.length&&!S.plan){toast('Nothing to reset');return;}
+    if(!confirm('Clear all '+S.picks.length+' picks, the plan, and the reports? Team names are kept. Export first if you want a copy.'))return;
+    var teams=S.teams,me=S.me;S=blankState();S.teams=teams;S.me=me;save();toast('Draft reset');route();
+  });
   document.getElementById('file-import').addEventListener('change',function(e){if(e.target.files[0])importJson(e.target.files[0]);e.target.value='';});
   document.getElementById('btn-export').addEventListener('click',exportJson);
   document.getElementById('btn-undo').addEventListener('click',undo);
   document.getElementById('btn-live').addEventListener('click',pullLive);
-  document.getElementById('btn-suggest').addEventListener('click',suggest);
+  document.getElementById('btn-suggest').addEventListener('click',function(){suggest(true);});
   document.getElementById('btn-plan').addEventListener('click',plan);
   document.getElementById('btn-ask').addEventListener('click',ask);
   document.getElementById('ask').addEventListener('keydown',function(e){if(e.key==='Enter')ask();});
