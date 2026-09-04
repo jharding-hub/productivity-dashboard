@@ -18356,6 +18356,8 @@ var _gcalSyncing = false;
 // the Keychain, so "refresh" restores a session silently after a reload
 // instead of demanding consent every single time.
 var _gaPending = {}, _gaReqSeq = 0;
+// Last native auth failure code, and whether a silent resume is in flight.
+var _gcalNativeAuthError = null, _gcalReconnecting = false;
 
 window.__cpGoogleAuthResult = function(reqId, ok, b64){
   var p = _gaPending[reqId]; if(!p) return;
@@ -18409,10 +18411,54 @@ async function _gcalNativeToken(interactive){
   if(r.ok && r.data && r.data.access_token){
     _gcalAccessToken = r.data.access_token;
     _gcalTokenExpiry = Date.now() + ((r.data.expires_in||3600) * 1000) - 60000;
+    _gcalNativeAuthError = null;
     return true;
   }
-  console.warn('[gcal] native auth failed', (r.data && r.data.error) || 'no detail');
+  _gcalNativeAuthError = (r.data && r.data.error) || 'unknown';
+  console.warn('[gcal] native auth failed', _gcalNativeAuthError);
   return false;
+}
+
+// Native only. A relaunch leaves _gcalAccessToken null even when the Keychain
+// still holds a perfectly good refresh token -- the variable is memory-only.
+// Nothing used to consult that stored grant when the panel opened, so the modal
+// always rendered "Session expired" and the only button offered was the
+// interactive one, which forces a consent screen. That is the whole reason the
+// app asked for consent on every single launch.
+//
+// Web deliberately does not do this: GIS's silent path can escalate to a popup,
+// and a popup fired from a panel opening is exactly what browsers block.
+async function _gcalNativeResume(){
+  if(!_gcalNativeAuthReady()) return false;
+  if(!(state.gcal && state.gcal.connected)) return false;
+  if(_gcalAccessToken && Date.now() < _gcalTokenExpiry) return true;
+  if(_gcalReconnecting) return false;
+
+  _gcalReconnecting = true;
+  _gcalRenderModal();
+  var ok = false;
+  try { ok = await _gcalEnsureToken(false); }
+  catch(e){ console.warn('[gcal] resume threw', e); }
+  _gcalReconnecting = false;
+  _gcalRenderModal();
+  return ok;
+}
+
+// Turns the Swift bridge's error code into something worth reading on a phone.
+// Kept specific on purpose: which of these appears is the difference between
+// "Google never issued a refresh token" and "the grant was revoked", and that
+// decides where the next fix goes.
+function _gcalNativeAuthReason(){
+  switch(_gcalNativeAuthError){
+    case 'no-refresh-token': return 'No saved Google grant on this device yet.';
+    case 'invalid_grant':    return 'Google revoked the saved grant (this also happens after 7 days while the app is unverified).';
+    case 'cancelled':        return 'Sign-in was cancelled.';
+    case 'network':          return 'Could not reach Google. Check your connection.';
+    case 'busy':             return 'A sign-in is already in progress.';
+    case 'timeout':          return 'The sign-in sheet timed out.';
+    case null: case undefined: return '';
+    default: return 'Google returned: ' + _gcalNativeAuthError;
+  }
 }
 
 // -- GIS BOOTSTRAP ----------------------------------------------------------
@@ -18941,6 +18987,11 @@ function openGcalModal(){
   _gcalRenderModal();
   var m = document.getElementById('gcalModal');
   if(m) m.classList.add('open');
+  // Native: try the stored Keychain grant before the user is told anything
+  // about an expired session. No-op on web, and when a live token already
+  // exists. Intentionally not awaited -- the panel opens immediately and
+  // re-renders itself when the answer arrives.
+  if(_gcalNativeHandler()) _gcalNativeResume();
 }
 
 function closeGcalModal(){
@@ -18984,9 +19035,28 @@ function _gcalRenderModal(){
     var sessionActive = _gcalAccessToken && Date.now() < _gcalTokenExpiry;
 
     if(!sessionActive){
+      var _nativeAuth = !!_gcalNativeHandler();
+
+      // Silent resume in flight -- say so rather than flashing "expired" and
+      // then quietly contradicting it a moment later.
+      if(_gcalReconnecting){
+        html += '<div class="gcal-status-row"><span class="gcal-dot"></span><div><strong>Reconnecting\u2026</strong><br><span style="font-size:12px;color:var(--text-dim);">Restoring your saved Google session.</span></div></div>';
+        body.innerHTML = html;
+        return;
+      }
+
       html += '<div class="gcal-status-row" style="border-left:3px solid var(--orange);padding-left:10px;">';
       html += '<span class="gcal-dot" style="background:var(--orange);"></span>';
-      html += '<div><strong>Session expired.</strong><br><span style="font-size:12px;color:var(--text-dim);">Your Google Calendar connection is saved but the session token needs to be refreshed. This happens after every page reload -- tap Re-authorize to restore sync.</span></div></div>';
+      if(_nativeAuth){
+        // The web copy ("happens after every page reload") is wrong here: on
+        // native a saved grant should have restored silently, so reaching this
+        // branch means the resume actually failed. Name the reason.
+        var _why = _gcalNativeAuthReason();
+        html += '<div><strong>Sign-in needed.</strong><br><span style="font-size:12px;color:var(--text-dim);">'+
+                (_why ? esc(_why)+' ' : '')+'Tap Re-authorize to sign in again.</span></div></div>';
+      } else {
+        html += '<div><strong>Session expired.</strong><br><span style="font-size:12px;color:var(--text-dim);">Your Google Calendar connection is saved but the session token needs to be refreshed. This happens after every page reload -- tap Re-authorize to restore sync.</span></div></div>';
+      }
       html += '<dl class="gcal-info-grid"><dt>Account</dt><dd>'+esc(state.gcal.email||'(saved)')+'</dd>';
       html += '<dt>Calendar</dt><dd>'+GCAL_CALENDAR_NAME+'</dd>';
       html += '<dt>Last push</dt><dd>'+_gcalRelTime(state.gcal.lastPush)+'</dd></dl>';
