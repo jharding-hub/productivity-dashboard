@@ -15,6 +15,17 @@ var CENTERPOST_FIREBASE_CONFIG = {
 
 var GOOGLE_CLIENT_ID = '1065593793454-57q4unojejuafv4rihajmoas77ucr6q8.apps.googleusercontent.com';
 
+// Calendar OAuth for the NATIVE iOS app. A second, iOS-type client in the same
+// Google Cloud project -- the web client above cannot be reused, because the
+// Capacitor WebView's origin is capacitor://localhost and Google rejects every
+// origin that is not http(s) ("Error 400: invalid_request"). That origin also
+// cannot be registered in the console; the field refuses custom schemes. So
+// native runs the auth-code + PKCE flow through ASWebAuthenticationSession
+// instead (ios/App/App/GoogleAuthBridge.swift).
+// Leave empty until the iOS client exists -- native then explains itself in
+// Calendar settings rather than offering a button that can only ever fail.
+var GOOGLE_IOS_CLIENT_ID = '';
+
 var JARVIS_PROXY_URL = 'https://centerpost-jarvis.medicjth.workers.dev';
 
 var SENTRY_DSN = 'https://fa11403c0d7a9449b1749d199dc90395@o4511667943505920.ingest.us.sentry.io/4511668027129856';

@@ -15,6 +15,13 @@ var CENTERPOST_FIREBASE_CONFIG = {
 
 var GOOGLE_CLIENT_ID = 'YOUR_OAUTH_CLIENT_ID.apps.googleusercontent.com';
 
+// Calendar OAuth for the NATIVE iOS app -- a second, iOS-TYPE client in the
+// same project (bundle id app.centerpost.app). The web client above cannot be
+// reused: the Capacitor WebView's origin is capacitor://localhost, and Google
+// rejects every non-http(s) OAuth origin outright. Leave empty for web-only
+// checkouts; native then explains itself instead of offering a dead button.
+var GOOGLE_IOS_CLIENT_ID = '';
+
 var JARVIS_PROXY_URL = 'https://your-worker.your-subdomain.workers.dev';
 
 // Optional — leave empty to disable error reporting.

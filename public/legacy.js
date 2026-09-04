@@ -18326,6 +18326,95 @@ var _gcalTokenExpiry = 0;
 var _gcalGisLoaded = false;
 var _gcalSyncing = false;
 
+// -- NATIVE AUTH BRIDGE (iOS) -----------------------------------------------
+// Google Identity Services cannot run in the Capacitor WebView at all. Its
+// origin is capacitor://localhost, and Google rejects every OAuth origin that
+// is not http(s) -- "Error 400: invalid_request ... does not comply with one or
+// more Google validation rules". That is a policy block, not a console setting:
+// the Authorized JavaScript origins field refuses custom schemes outright, so
+// there is nothing to register and no way to make initTokenClient work here.
+//
+// So on native the OAuth dance runs in Swift (GoogleAuthBridge.swift) through
+// ASWebAuthenticationSession -- the system browser, which Google does allow --
+// using a separate iOS-type client and the auth-code + PKCE flow. Only the
+// finished access token crosses back. Everything downstream is untouched:
+// googleapis.com echoes capacitor://localhost in Access-Control-Allow-Origin,
+// so _gcalFetch, push and pull all work as-is once a token exists.
+//
+// Same `notify` channel and request/reply shape as the passkey bridge.
+//
+//   JS -> native : { action:"googleAuth", op:"signIn"|"refresh"|"signOut",
+//                    reqId:<int>, clientId:<ios client id> }
+//   native -> JS : window.__cpGoogleAuthResult(reqId, ok, <base64 JSON>)
+//
+// NOTE: the scopes are PINNED in GoogleAuthBridge.swift and deliberately not
+// taken from this message -- this channel is reachable from any script in the
+// WebView, so a scope sent from here would be an escalation primitive. If you
+// change GOOGLE_SCOPES above, change the Swift copy in the same commit.
+//
+// Native gets something the web build cannot have: the refresh token lives in
+// the Keychain, so "refresh" restores a session silently after a reload
+// instead of demanding consent every single time.
+var _gaPending = {}, _gaReqSeq = 0;
+
+window.__cpGoogleAuthResult = function(reqId, ok, b64){
+  var p = _gaPending[reqId]; if(!p) return;
+  clearTimeout(p.timer); delete _gaPending[reqId];
+  var data = null;
+  try { data = b64 ? JSON.parse(atob(b64)) : null; } catch(e){}
+  p.resolve({ ok: !!ok, data: data });
+};
+
+// The native shell AND a usable message handler. Both, because the CSS marker
+// class is set from Capacitor.isNativePlatform() while the actual channel is a
+// WKWebView detail -- on a hypothetical Android build the first is true and the
+// second is not, and we must fall back rather than hang.
+function _gcalNativeHandler(){
+  try {
+    if(!document.body.classList.contains('capacitor-native')) return null;
+    return (window.webkit && window.webkit.messageHandlers && window.webkit.messageHandlers.notify) || null;
+  } catch(e){ return null; }
+}
+
+// True when this build can actually complete a native Google sign-in. Without
+// an iOS client id there is nothing to send, so the UI explains itself instead.
+function _gcalNativeAuthReady(){
+  return !!(_gcalNativeHandler() && typeof GOOGLE_IOS_CLIENT_ID !== 'undefined' && GOOGLE_IOS_CLIENT_ID);
+}
+
+// Never rejects. 180s: the system browser sheet can sit open through an account
+// picker, a password, and a 2FA prompt. Nothing destructive happens on timeout.
+function _gaRequest(op){
+  return new Promise(function(resolve){
+    var h = _gcalNativeHandler();
+    if(!h){ resolve({ok:false,data:{error:'no-bridge'}}); return; }
+    var id = ++_gaReqSeq;
+    _gaPending[id] = { resolve: resolve, timer: setTimeout(function(){
+      delete _gaPending[id]; resolve({ok:false,data:{error:'timeout'}});
+    }, 180000) };
+    try {
+      h.postMessage({ action:'googleAuth', op:op, reqId:id,
+                      clientId: GOOGLE_IOS_CLIENT_ID });
+    } catch(e){
+      clearTimeout(_gaPending[id].timer); delete _gaPending[id];
+      resolve({ok:false,data:{error:'post-failed'}});
+    }
+  });
+}
+
+// Acquires a token on native. interactive=false tries the stored refresh token
+// (silent); interactive=true raises the system browser and asks for consent.
+async function _gcalNativeToken(interactive){
+  var r = await _gaRequest(interactive ? 'signIn' : 'refresh');
+  if(r.ok && r.data && r.data.access_token){
+    _gcalAccessToken = r.data.access_token;
+    _gcalTokenExpiry = Date.now() + ((r.data.expires_in||3600) * 1000) - 60000;
+    return true;
+  }
+  console.warn('[gcal] native auth failed', (r.data && r.data.error) || 'no detail');
+  return false;
+}
+
 // -- GIS BOOTSTRAP ----------------------------------------------------------
 function _gcalLoadGis(){
   return new Promise(function(resolve, reject){
@@ -18374,6 +18463,22 @@ function _gcalInitTokenClient(){
 async function gcalConnect(){
   try {
     _gcalSetSyncingUI(true);
+    // Native runs the whole flow in Swift through the system browser -- GIS
+    // cannot load a usable origin here. See the NATIVE AUTH BRIDGE block.
+    if(_gcalNativeHandler()){
+      if(!_gcalNativeAuthReady()){
+        toast('Google Calendar sync is not available in this app build yet');
+        _gcalSetSyncingUI(false);
+        return;
+      }
+      if(!(await _gcalNativeToken(true))){
+        toast('Google sign-in was cancelled');
+        _gcalSetSyncingUI(false);
+        return;
+      }
+      await _gcalOnAuthSuccess();   // clears the syncing UI itself
+      return;
+    }
     await _gcalLoadGis();
     if(!_gcalInitTokenClient()){ _gcalSetSyncingUI(false); return; }
     // Interactive -- prompts the user to pick account & grant consent
@@ -18406,6 +18511,10 @@ async function _gcalOnAuthSuccess(){
 }
 
 function gcalDisconnect(){
+  // Native holds a refresh token in the Keychain. Without this, Disconnect
+  // would leave the grant alive and the next Connect would silently restore
+  // the very account the user just removed.
+  if(_gcalNativeHandler()) _gaRequest('signOut');
   if(_gcalAccessToken && window.google && google.accounts && google.accounts.oauth2){
     try { google.accounts.oauth2.revoke(_gcalAccessToken, function(){}); } catch(e){}
   }
@@ -18433,13 +18542,19 @@ var _gcalInteractiveCb = null;  // callback target for the active request
 
 async function _gcalEnsureToken(interactive){
   if(_gcalAccessToken && Date.now() < _gcalTokenExpiry) return true;
-  if(!GOOGLE_CLIENT_ID) return false;
+  var _native = !!_gcalNativeHandler();
+  if(_native ? !_gcalNativeAuthReady() : !GOOGLE_CLIENT_ID) return false;
 
   // If a token request is already in flight, await the same promise rather than
   // starting a second one (which would clobber the callback and hang the first).
   if(_gcalTokenPromise) return _gcalTokenPromise;
 
   _gcalTokenPromise = (async function(){
+    // Native: Swift owns the flow. Unlike the web build -- whose token is
+    // memory-only and therefore always needs consent again -- the silent path
+    // here really can succeed, because the refresh token survives in the
+    // Keychain across reloads and relaunches.
+    if(_native) return _gcalNativeToken(!!interactive);
     try {
       await _gcalLoadGis();
       if(!_gcalInitTokenClient()) return false;
@@ -18837,6 +18952,23 @@ function _gcalRenderModal(){
   var body = document.getElementById('gcalModalBody');
   if(!body) return;
   var html = '';
+
+  // Native build with no iOS OAuth client configured. The web build's Google
+  // Identity flow is structurally impossible in this WebView (its origin,
+  // capacitor://localhost, is not a legal OAuth origin and cannot be
+  // registered), so offering the usual button would only ever land the user on
+  // a Google "Access blocked" page. Say what is actually true instead.
+  if(_gcalNativeHandler() && !_gcalNativeAuthReady()){
+    html += '<div class="gcal-status-row"><span class="gcal-dot"></span><div><strong>Not available in the app yet.</strong><br><span style="font-size:12px;color:var(--text-dim);">Google Calendar sync can\'t run inside the Centerpost app on this build. Open <strong>centerpost.app</strong> in Safari and connect there.</span></div></div>';
+    if(state.gcal && state.gcal.connected){
+      html += '<dl class="gcal-info-grid"><dt>Account</dt><dd>'+esc(state.gcal.email||'(saved)')+'</dd>';
+      html += '<dt>Last push</dt><dd>'+_gcalRelTime(state.gcal.lastPush)+'</dd></dl>';
+      html += '<div class="gcal-actions"><button class="gcal-btn danger" onclick="_confirmGcalDisconnect()">Disconnect</button></div>';
+    }
+    html += '<div class="gcal-help">Your connection is saved to your account, so anything you push from a browser still shows up here. Only the sign-in step needs a browser.</div>';
+    body.innerHTML = html;
+    return;
+  }
 
   if(!GOOGLE_CLIENT_ID){
     html += '<div class="gcal-status-row"><span class="gcal-dot"></span><div><strong>Not configured.</strong><br><span style="font-size:12px;color:var(--text-dim);">Open index.html, find <code>GOOGLE_CLIENT_ID</code> near the bottom of the script, and paste your OAuth client ID from Google Cloud Console.</span></div></div>';
