@@ -85,6 +85,10 @@
   Cache-Control: no-cache, no-store, must-revalidate
 /config.js
   Cache-Control: no-cache, no-store, must-revalidate
+# /app.html was a stray Vite scaffold (deleted). Nothing links to /app, but
+# both paths now fall through to the SPA 200+index.html fallback, so they
+# still return HTML -- keep them no-store so a fallback response can never be
+# cached under them. That caching is exactly what broke the site once before.
 /app.html
   Cache-Control: no-cache, no-store, must-revalidate
 /app
