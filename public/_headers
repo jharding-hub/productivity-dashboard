@@ -133,6 +133,12 @@
   Cache-Control: no-cache, no-store, must-revalidate
 /disclaimer
   Cache-Control: no-cache, no-store, must-revalidate
+/fantasy.html
+  Cache-Control: no-cache, no-store, must-revalidate
+/fantasy
+  Cache-Control: no-cache, no-store, must-revalidate
+/fantasy-players.js
+  Cache-Control: no-cache, no-store, must-revalidate
 
 # Apple app-site-association (Face ID/Touch ID sign-in on native). The file
 # is deliberately extensionless — Apple's CDN fetches it by exact path — so
