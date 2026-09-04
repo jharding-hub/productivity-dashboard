@@ -216,7 +216,7 @@ kbd{font-family:inherit;font-size:11px;border:1px solid var(--border);border-bot
         </div>
         <details class="help" style="margin-top:8px"><summary>How picking works</summary>
           <p>Click a row (or type a name and press <kbd>Enter</kbd>) to give that player to the team on the clock. The pick advances automatically. Click the team name in a row's menu to assign to a different team if you fell behind. <b>Undo</b> removes the last pick.</p>
-          <p>Cons = average of FantasyPros ECR and ESPN rank. T = SB Nation positional tier. $ = ESPN auction value. Live columns appear after you press <b>Live ranks</b>.</p>
+          <p>Cons = average of FantasyPros ECR and ESPN rank. T = SB Nation positional tier. $ = ESPN auction value. <b>Live ranks</b> pulls FantasyPros half-PPR data today; the free API key returns 10 rows per call, so you get the top 10 at each position (live tier and rank shown next to the name), the top 10 overall, and injury flags.</p>
         </details>
       </div>
     </div>
@@ -370,7 +370,7 @@ function renderClock(){
 function sortKey(p){
   if(ui.sort==='fp')return p.fpRank||999;
   if(ui.sort==='espn')return p.espnRank||999;
-  if(ui.sort==='live')return (p.live&&p.live.ecr)||999;
+  if(ui.sort==='live')return (p.live&&p.live.ecr)||(p.live&&p.live.posEcr?500+p.live.posEcr:999);
   if(ui.sort==='adp')return (p.live&&p.live.adp)||999;
   return p.cons;
 }
@@ -401,7 +401,7 @@ function renderAvail(){
     var clash=p.bye&&byes[p.bye]>=2;
     rows.push('<tr class="player" data-id="'+p.id+'" title="Click to draft to the team on the clock">'+
       '<td class="num">'+Math.round(p.cons)+'</td>'+
-      '<td class="name">'+esc(p.name)+' <span class="meta">'+esc(p.team||'FA')+(p.upside>=4?' · ↑':'')+(p.bust>=4?' · ⚠':'')+(p.live&&p.live.injury?' · <span class="byeclash" title="'+esc(p.live.injuryNote||'')+'">'+esc(p.live.injury)+'</span>':'')+'</span></td>'+
+      '<td class="name">'+esc(p.name)+' <span class="meta">'+esc(p.team||'FA')+(p.upside>=4?' · ↑':'')+(p.bust>=4?' · ⚠':'')+(p.live&&p.live.tier?' · live '+esc(p.live.posRank||'')+' T'+esc(p.live.tier):'')+(p.live&&p.live.injury?' · <span class="byeclash" title="'+esc(p.live.injuryNote||'')+'">'+esc(p.live.injury)+'</span>':'')+'</span></td>'+
       '<td><span class="pos pos-'+p.pos+'">'+posLabel(p.pos)+(p.posRank||'')+'</span></td>'+
       '<td class="num'+(clash?' byeclash':'')+'">'+(p.bye||'–')+'</td>'+
       '<td class="num">'+(p.sbTier||'–')+'</td>'+
@@ -556,7 +556,7 @@ function importJson(file){
 function compactPlayer(p){
   var o={name:p.name,pos:p.pos,team:p.team,bye:p.bye,fp:p.fpRank,fpTier:p.fpTier,espn:p.espnRank,sbTier:p.sbTier};
   if(p.upside)o.upside=p.upside;if(p.bust)o.bust=p.bust;if(p.auction)o.auction=p.auction;
-  if(p.live){if(p.live.ecr)o.liveEcr=p.live.ecr;if(p.live.adp)o.liveAdp=p.live.adp;if(p.live.tier)o.liveTier=p.live.tier;if(p.live.injury)o.injury=p.live.injury+(p.live.injuryNote?' — '+p.live.injuryNote.slice(0,140):'');}
+  if(p.live){if(p.live.ecr)o.liveEcr=p.live.ecr;if(p.live.adp)o.liveAdp=p.live.adp;if(p.live.tier)o.liveTier=p.live.tier;if(p.live.posRank)o.livePosRank=p.live.posRank;if(p.live.injury)o.injury=p.live.injury+(p.live.injuryNote?' — '+p.live.injuryNote.slice(0,140):'');}
   return o;
 }
 function rosterLine(p){return p.name+' ('+p.pos+', '+(p.team||'FA')+', bye '+(p.bye||'?')+', R'+p.round+')';}
@@ -634,38 +634,32 @@ async function opponents(){
   catch(e){aiBusy(false,'');document.getElementById('opp-ai').innerHTML='<div class="err">'+esc(e.message)+'</div>';}
 }
 async function pullLive(){
+  // Joe's FantasyPros key is the FREE tier: every call returns at most 10 rows.
+  // So we ask per position (top 10 each, with live tier + positional ECR), plus
+  // the top 10 overall and injuries. A paid key would lift the cap with no change here.
   var b=document.getElementById('btn-live');b.disabled=true;b.textContent='Pulling…';
-  var notes=[],hit=0;
+  var notes=[],hit=0,capped=false;
+  function attach(lp){var p=BYNORM[norm(lp.name)];if(!p&&lp.pos==='DST'&&lp.team)p=PLAYERS.find(function(x){return x.pos==='DST'&&x.team===lp.team;});if(!p)return null;if(!p.live){p.live={ecr:null,adp:null,posRank:null,posEcr:null,tier:null,injury:null,injuryNote:''};hit++;}return p;}
   try{
     PLAYERS.forEach(function(p){p.live=null;});
-    // 1. /players: half-PPR ECR + ADP for every ranked player (the broad source)
-    var pl=await api('/ff/rankings',{source:'players'});
-    (pl.players||[]).forEach(function(lp){
-      var p=BYNORM[norm(lp.name)];
-      if(!p&&lp.pos==='DST'&&lp.team)p=PLAYERS.find(function(x){return x.pos==='DST'&&x.team===lp.team;});
-      if(!p)return;
-      var ecr=lp.ecrHalf||lp.ecr;if(!ecr&&!lp.adp)return;
-      p.live={ecr:ecr||null,adp:lp.adp||null,posRank:lp.posRank||null,tier:null,injury:null};hit++;
-    });
-    notes.push(hit+' players matched'+(pl.cached?' (cached)':''));
-    // 2. consensus DRAFT/HALF: tiers + a fresher ECR when the list is full-size
-    try{
-      var cs=await api('/ff/rankings',{source:'consensus',scoring:'HALF'});
-      var used=0;
-      if((cs.players||[]).length>=50){
-        cs.players.forEach(function(lp){var p=BYNORM[norm(lp.name)];if(!p&&lp.pos==='DST'&&lp.team)p=PLAYERS.find(function(x){return x.pos==='DST'&&x.team===lp.team;});if(!p)return;p.live=p.live||{ecr:null,adp:null,posRank:null,tier:null,injury:null};if(lp.ecr)p.live.ecr=lp.ecr;if(lp.tier)p.live.tier=lp.tier;if(lp.posRank)p.live.posRank=lp.posRank;used++;});
-        notes.push('consensus tiers on '+used);
-      }else notes.push('consensus list short ('+(cs.players||[]).length+'), using /players ECR');
-    }catch(e){notes.push('consensus: '+e.message);}
-    // 3. injuries
-    try{
-      var inj=await api('/ff/rankings',{source:'injuries'});var ni=0;
-      (inj.players||[]).forEach(function(lp){var p=BYNORM[norm(lp.name)];if(!p)return;p.live=p.live||{ecr:null,adp:null,posRank:null,tier:null,injury:null};p.live.injury=(lp.statusShort||lp.status||'?')+(lp.type?' '+lp.type:'');p.live.injuryNote=lp.comment||'';ni++;});
-      notes.push(ni+' injury flags');
-    }catch(e){notes.push('injuries: '+e.message);}
-    S.liveAt=new Date().toISOString();S.liveNote='FantasyPros live pull '+new Date().toLocaleTimeString()+': '+notes.join(', ');
+    // 1. per-position consensus (DRAFT, half-PPR): tier + positional ECR
+    var poss=['QB','RB','WR','TE','K','DST'];
+    for(var i=0;i<poss.length;i++){
+      try{var r=await api('/ff/rankings',{source:'consensus',scoring:'HALF',position:poss[i]});if(r.meta&&r.meta.public_api_limited)capped=true;
+        (r.players||[]).forEach(function(lp){var p=attach(lp);if(!p)return;if(lp.tier)p.live.tier=lp.tier;if(lp.ecr)p.live.posEcr=lp.ecr;if(lp.posRank)p.live.posRank=lp.posRank;});
+      }catch(e){notes.push(poss[i]+': '+e.message);}
+    }
+    // 2. overall top-N: overall ECR
+    try{var all=await api('/ff/rankings',{source:'consensus',scoring:'HALF',position:'ALL'});(all.players||[]).forEach(function(lp){var p=attach(lp);if(p&&lp.ecr)p.live.ecr=lp.ecr;});}catch(e){notes.push('overall: '+e.message);}
+    // 3. ADP top-N
+    try{var adp=await api('/ff/rankings',{source:'consensus',scoring:'HALF',position:'ALL',type:'ADP'});(adp.players||[]).forEach(function(lp){var p=attach(lp);if(p&&lp.ecr)p.live.adp=lp.ecr;});}catch(e){notes.push('adp: '+e.message);}
+    // 4. injuries
+    var ni=0;
+    try{var inj=await api('/ff/rankings',{source:'injuries'});(inj.players||[]).forEach(function(lp){var p=attach(lp);if(!p)return;p.live.injury=(lp.statusShort||lp.status||'?')+(lp.type?' '+lp.type:'');p.live.injuryNote=lp.comment||'';ni++;});}catch(e){notes.push('injuries: '+e.message);}
+    notes.unshift(hit+' players tagged, '+ni+' injury flags'+(capped?' (free FantasyPros key: 10 rows per call)':''));
+    S.liveAt=new Date().toISOString();S.liveNote='FantasyPros live pull '+new Date().toLocaleTimeString()+': '+notes.join('; ');
     save();
-    if(hit){ui.sort='live';document.getElementById('sort').value='live';}
+    if(hit>=150){ui.sort='live';document.getElementById('sort').value='live';}
     toast(S.liveNote);renderAvail();
   }catch(e){toast('Live ranks: '+e.message);}
   b.disabled=false;b.textContent='Live ranks';
