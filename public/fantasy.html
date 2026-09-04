@@ -251,7 +251,8 @@ kbd{font-family:inherit;font-size:11px;border:1px solid var(--border);border-bot
         <div style="display:flex;gap:6px;flex-wrap:wrap;align-items:center">
           <button class="primary" id="btn-suggest">Suggest my pick</button>
           <button id="btn-plan">Round-by-round plan</button>
-          <label class="small muted" style="display:flex;align-items:center;gap:4px;margin-left:auto" title="Sonnet takes 30-90 s. With this on, a suggestion is fetched in the background two picks before your turn so it is waiting when you are on the clock."><input type="checkbox" id="auto-suggest" checked> prefetch 2 picks early</label>
+          <label class="small muted" style="display:flex;align-items:center;gap:4px;margin-left:auto" title="Quick: 3 candidates, short notes, about 10-15 s. Deep: 5 candidates with full bios and stats, about a minute."><input type="checkbox" id="deep-mode"> deep (slower)</label>
+          <label class="small muted" style="display:flex;align-items:center;gap:4px" title="A suggestion is fetched in the background two picks before your turn so it is waiting when you are up."><input type="checkbox" id="auto-suggest" checked> prefetch 2 picks early</label>
         </div>
         <div class="searchrow" style="margin-top:8px">
           <input type="search" id="ask" placeholder="Ask anything about the board…">
@@ -626,7 +627,8 @@ async function suggest(force){
   if(_suggestInFlight)return;
   _suggestInFlight=true;
   aiBusy(true,slotFor(Math.min(n,TEAMS*ROUNDS)).slot===S.me?'Reading the board…':'Preparing your next pick early…');
-  try{var res=await api('/ff/advise',{mode:'suggest',state:buildState()});S.aiCache={suggest:{at:n,result:res.result}};save();document.getElementById('ai-model').textContent=res.model||'';aiBusy(false,'');if(nextOverall()===n||slotFor(nextOverall()).slot===S.me)renderSuggest(res.result,n);}
+  var depth=document.getElementById('deep-mode').checked?'deep':'quick',t0=Date.now();
+  try{var res=await api('/ff/advise',{mode:'suggest',depth:depth,state:buildState()});S.aiCache={suggest:{at:n,result:res.result}};save();document.getElementById('ai-model').textContent=(res.model||'')+' · '+depth+' · '+Math.round((Date.now()-t0)/1000)+'s';aiBusy(false,'');if(nextOverall()===n||slotFor(nextOverall()).slot===S.me)renderSuggest(res.result,n);}
   catch(e){aiBusy(false,'');document.getElementById('ai-out').innerHTML='<div class="err">'+esc(e.message)+'</div>';}
   _suggestInFlight=false;
 }
@@ -648,7 +650,7 @@ async function plan(){
 async function ask(){
   var q=document.getElementById('ask').value.trim();if(!q)return;
   aiBusy(true,'Thinking…');
-  try{var res=await api('/ff/advise',{mode:'ask',question:q,state:buildState()});document.getElementById('ai-out').innerHTML='<div class="strategy" style="white-space:pre-wrap">'+esc(res.result&&res.result.answer||'')+'</div>';aiBusy(false,'');}
+  try{var res=await api('/ff/advise',{mode:'ask',depth:document.getElementById('deep-mode').checked?'deep':'quick',question:q,state:buildState()});document.getElementById('ai-out').innerHTML='<div class="strategy" style="white-space:pre-wrap">'+esc(res.result&&res.result.answer||'')+'</div>';aiBusy(false,'');}
   catch(e){aiBusy(false,'');document.getElementById('ai-out').innerHTML='<div class="err">'+esc(e.message)+'</div>';}
 }
 async function opponents(){
