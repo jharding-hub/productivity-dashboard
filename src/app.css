@@ -3337,6 +3337,10 @@ body.capacitor-native .pd-topbar{padding-top:max(env(safe-area-inset-top),46px) 
 .wo-log-input:focus{border-color:#0a3d8f;outline:none;box-shadow:0 0 0 2px rgba(10,61,143,0.15);}
 .wo-log-input::placeholder{color:#b0a898;font-weight:400;}
 .wo-log-label{font-size:calc(10px * var(--type-scale,1));color:#7a6a50;font-weight:600;text-transform:uppercase;letter-spacing:0.4px;}
+.wo-log-block{display:flex;flex-direction:column;gap:4px;}
+.wo-log-block .wo-log-label:first-child{min-width:34px;}
+.wo-log-last{font-size:calc(11px * var(--type-scale,1));color:#4a3e28;background:rgba(160,144,112,0.14);border-radius:var(--radius-sm);padding:3px 8px;margin-bottom:2px;display:flex;align-items:center;gap:8px;flex-wrap:wrap;}
+.wo-log-copy{font:inherit;font-size:calc(10px * var(--type-scale,1));font-weight:700;color:#0a3d8f;background:#fff;border:1px solid #0a3d8f;border-radius:6px;padding:1px 7px;cursor:pointer;}
 .wo-rest-badge{display:inline-flex;align-items:center;gap:4px;font-size:calc(11px * var(--type-scale,1));color:#7a4010;background:rgba(199,146,95,0.18);border:1px solid #c07830;border-radius:6px;padding:3px 10px;margin:4px 0 2px;}
 .wo-walk-card{background:#e6f4ec;border:1.5px solid #3a9a5a;border-radius:var(--radius-sm);padding:16px;text-align:center;}
 .wo-walk-title{font-size:calc(15px * var(--type-scale,1));font-weight:700;color:#1a6a3a;margin-bottom:4px;}

@@ -14854,7 +14854,6 @@ function _renderInclineWarmup(dayLetter){
 
 function _renderExercise(ex,slotId){
   var exData=WO_EXERCISES[ex.id];
-  var log=(state.workoutLog&&state.workoutLog[ex.id])||{weight:'',reps:'',sets:''};
   var firstAlt=exData.alts&&exData.alts.length?WO_EXERCISES[exData.alts[0]]:null;
   var primaryLabel=firstAlt?exData.name+' / '+firstAlt.name:exData.name;
   var opts='<option value="'+ex.id+'">'+primaryLabel+'</option>'
@@ -14866,25 +14865,99 @@ function _renderExercise(ex,slotId){
     +'<button class="btn btn-sm" onclick="showExerciseInfo(this.closest(\'.wo-exercise\').querySelector(\'.wo-ex-select\').value)" style="font-size:11px;padding:3px 9px;flex-shrink:0;">&#9432; How-to</button>'
     +'</div>'
     +'<div class="wo-ex-note">'+ex.sets+' &bull; '+ex.note+'</div>'
-    +'<div class="wo-log-row">'
-    +'<span class="wo-log-label">Log:</span>'
-    +'<input class="wo-log-input" type="number" inputmode="numeric" placeholder="sets" value="'+esc(log.sets||'')+'" oninput="woLog(this.closest(\'.wo-exercise\').querySelector(\'.wo-ex-select\').value,\'sets\',this.value)" title="Sets done">'
-    +'<span class="wo-log-label">×</span>'
-    +'<input class="wo-log-input" type="number" inputmode="decimal" placeholder="lbs" value="'+esc(log.weight||'')+'" oninput="woLog(this.closest(\'.wo-exercise\').querySelector(\'.wo-ex-select\').value,\'weight\',this.value)" title="Weight used">'
-    +'<span class="wo-log-label">@</span>'
-    +'<input class="wo-log-input" type="number" inputmode="numeric" placeholder="reps" value="'+esc(log.reps||'')+'" oninput="woLog(this.closest(\'.wo-exercise\').querySelector(\'.wo-ex-select\').value,\'reps\',this.value)" title="Reps done">'
-    +'</div>'
+    +'<div class="wo-log-block">'+_renderLogBlock(ex.id)+'</div>'
     +'</div>';
+}
+
+// -- 3-set logging ----------------------------------------------------------
+// state.workoutLog[exId] = {
+//   cur:[{w,r},{w,r},{w,r}], curDate:'YYYY-MM-DD',   // this session
+//   prev:[{w,r},...],        prevDate:'YYYY-MM-DD'    // last session
+// }
+// Legacy entries were a single {weight,reps,sets} that got overwritten every
+// session, so progressive overload was invisible. Migration turns that one
+// row into `prev` so it shows as "Last time" and the inputs start empty.
+// Rollover is date-based (not completion-based): the first time an entry is
+// touched or rendered on a later day than curDate, cur -> prev. That way a
+// forgotten "Workout Completed" tap never fuses two sessions into one.
+function _woLocalDayKey(d){
+  d=d||new Date();
+  return d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')+'-'+String(d.getDate()).padStart(2,'0');
+}
+function _woSetHasData(sets){
+  return (sets||[]).some(function(x){return x&&(x.w||x.r);});
+}
+function _woEntry(exId){
+  if(!state.workoutLog)state.workoutLog={};
+  var e=state.workoutLog[exId];
+  if(!e)e=state.workoutLog[exId]={};
+  if(!e.cur){
+    e.cur=[{w:'',r:''},{w:'',r:''},{w:'',r:''}];
+    if(!e.prev&&(e.weight||e.reps)){
+      // legacy single row -> "last time"; repeat it per logged set (max 3)
+      var n=Math.min(3,Math.max(1,parseInt(e.sets,10)||1));
+      e.prev=[];
+      for(var i=0;i<n;i++)e.prev.push({w:String(e.weight||''),r:String(e.reps||'')});
+    }
+  }
+  while(e.cur.length<3)e.cur.push({w:'',r:''});
+  var today=_woLocalDayKey();
+  if(e.curDate&&e.curDate!==today&&_woSetHasData(e.cur)){
+    e.prev=e.cur.map(function(x){return {w:x.w||'',r:x.r||''};});
+    e.prevDate=e.curDate;
+    e.cur=[{w:'',r:''},{w:'',r:''},{w:'',r:''}];
+    e.curDate=undefined;
+  }
+  return e;
+}
+function _woFmtDate(key){
+  if(!key)return '';
+  var p=key.split('-');
+  var d=new Date(+p[0],+p[1]-1,+p[2]);
+  return d.toLocaleDateString(undefined,{month:'short',day:'numeric'});
+}
+function _renderLogBlock(exId){
+  var e=_woEntry(exId);
+  var prev=e.prev||[];
+  var html='';
+  if(_woSetHasData(prev)){
+    var parts=prev.filter(function(x){return x.w||x.r;}).map(function(x){return esc(x.w||'?')+'×'+esc(x.r||'?');});
+    html+='<div class="wo-log-last">Last time'+(e.prevDate?' ('+_woFmtDate(e.prevDate)+')':'')+': '+parts.join(' · ')
+      +' <button type="button" class="wo-log-copy" onclick="woCopyLast(\''+exId+'\',this)" title="Fill today\'s sets with last time\'s numbers">= last</button></div>';
+  }
+  for(var i=0;i<3;i++){
+    var c=e.cur[i]||{w:'',r:''},pl=prev[i]||{};
+    html+='<div class="wo-log-row">'
+      +'<span class="wo-log-label">Set '+(i+1)+'</span>'
+      +'<input class="wo-log-input" type="number" inputmode="decimal" placeholder="'+esc(pl.w||'lbs')+'" value="'+esc(c.w||'')+'" oninput="woLogSet(\''+exId+'\','+i+',\'w\',this.value)" title="Weight, set '+(i+1)+'">'
+      +'<span class="wo-log-label">×</span>'
+      +'<input class="wo-log-input" type="number" inputmode="numeric" placeholder="'+esc(pl.r||'reps')+'" value="'+esc(c.r||'')+'" oninput="woLogSet(\''+exId+'\','+i+',\'r\',this.value)" title="Reps, set '+(i+1)+'">'
+      +'</div>';
+  }
+  return html;
+}
+function woLogSet(exId,idx,field,val){
+  var e=_woEntry(exId);
+  e.cur[idx][field]=val;
+  e.curDate=_woLocalDayKey();
+  save();
+}
+function woCopyLast(exId,btn){
+  var e=_woEntry(exId);
+  if(!_woSetHasData(e.prev))return;
+  e.cur=[0,1,2].map(function(i){var p=(e.prev||[])[i]||{};return {w:p.w||'',r:p.r||''};});
+  e.curDate=_woLocalDayKey();
+  save();
+  var block=btn&&btn.closest('.wo-log-block');
+  if(block)block.innerHTML=_renderLogBlock(exId);
+  toast('Filled from last time -- now beat it');
 }
 
 function woExChanged(sel){
   var exId=sel.value;
   var container=sel.closest('.wo-exercise');
-  var log=(state.workoutLog&&state.workoutLog[exId])||{weight:'',reps:'',sets:''};
-  var inputs=container.querySelectorAll('.wo-log-input');
-  if(inputs[0])inputs[0].value=log.sets||'';
-  if(inputs[1])inputs[1].value=log.weight||'';
-  if(inputs[2])inputs[2].value=log.reps||'';
+  var block=container&&container.querySelector('.wo-log-block');
+  if(block)block.innerHTML=_renderLogBlock(exId);
 }
 
 function woQuickSub(btnEl){
