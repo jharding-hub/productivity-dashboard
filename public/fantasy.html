@@ -384,7 +384,15 @@ function attachCloudListener(){
   _cloudUnsub=_cloudRef.onSnapshot(function(snap){
     if(!snap.exists||snap.metadata.hasPendingWrites)return; // ignore our own optimistic echo
     var remote=snap.data();
-    if(!remote||!remote.state||remote.device===_deviceId)return; // our own confirmed write
+    if(!remote||!remote.state)return;
+    // NOTE: no same-device filter here on purpose — localStorage (and so
+    // _deviceId) is shared across every tab of one browser, so two tabs of
+    // the SAME browser would wrongly look like "the same device" and a
+    // pick made in one would never reach the other. The rev check below is
+    // what actually distinguishes "new information" from "my own write
+    // echoing back" — it already rejects rev<=ours, which covers a tab's
+    // own confirmed write (rev is already equal locally) without needing
+    // a device comparison at all.
     var remoteRev=remote.rev||0;
     if(remoteRev<=((S&&S.rev)||0))return; // stale or duplicate
     S=remote.state;S.rev=remoteRev;save(false);route();
