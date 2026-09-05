@@ -13862,7 +13862,7 @@ var WO_DAYS=[
   {label:'Monday',type:'lift',prog:0},
   {label:'Tuesday',type:'walk'},
   {label:'Wednesday',type:'lift',prog:1},
-  {label:'Thursday',type:'walk'},
+  {label:'Thursday',type:'rest'},
   {label:'Friday',type:'lift',prog:2},
   {label:'Saturday',type:'walk'},
   {label:'Sunday',type:'rest'}
@@ -14779,11 +14779,19 @@ function _renderLiftDay(){
   });
   html+='</div></div>';
   
-  // Warmup
-  html+='<div class="wo-section"><div class="wo-section-title">Warmup (10 min)</div>'
-    +'<div class="wo-cooldown"><div class="wo-cooldown-item">'
-    +(trackId==='bodyweight'?'5 min easy jog or jumping jacks + dynamic stretches (leg swings, arm circles)':'Treadmill walk at warmup pace -- 10 minutes')
-    +'</div></div></div>';
+  // Warmup -- Mon/Wed (Day A/B) use Joe's knee-friendly progressive incline
+  // walk instead of a flat treadmill walk; it doubles as cardio + leg work
+  // and gets its own logged field (max incline) so progress on it is visible
+  // too, not just the lifts. Day C (kettlebell day) warms up with light KB
+  // work instead since there's no incline walk before it.
+  if(dayLetter==='A'||dayLetter==='B'){
+    html+=_renderInclineWarmup(dayLetter);
+  }else{
+    html+='<div class="wo-section"><div class="wo-section-title">Warmup (5 min)</div>'
+      +'<div class="wo-cooldown"><div class="wo-cooldown-item">'
+      +(trackId==='bodyweight'?'5 min easy jog or jumping jacks + dynamic stretches (leg swings, arm circles)':'5 min light KB halos + swings -- get the shoulders and hips moving before loading up')
+      +'</div></div></div>';
+  }
   
   html+='<div class="wo-day-rationale"><strong>Day '+prog.day+': '+prog.name+'</strong><br>'+prog.rationale+'</div>';
   
@@ -14823,6 +14831,25 @@ function setWorkoutTrack(dayLetter,trackId){
     }
   }
   toast('Switched to '+WO_TRACKS[trackId].name);
+}
+
+// Joe's progressive incline treadmill walk (Mon/Wed, before lifting). Knees
+// tolerate this well where jogging/sprinting does not, so it's the fixed
+// warm-up for Day A and Day B -- logged via the same woLog() path as
+// exercises, keyed by a synthetic id per day so A and B track separately.
+function _renderInclineWarmup(dayLetter){
+  var exId='incline_walk_'+dayLetter.toLowerCase();
+  var log=(state.workoutLog&&state.workoutLog[exId])||{incline:'',minutes:'15'};
+  return '<div class="wo-section"><div class="wo-section-title">Warmup -- Progressive Incline Walk</div>'
+    +'<div class="wo-cooldown"><div class="wo-cooldown-item">'
+    +'15 minutes, 3.7 mph, incline stepped up progressively. Doubles as cardio + leg work -- easy on the knees.'
+    +'</div></div>'
+    +'<div class="wo-log-row">'
+    +'<span class="wo-log-label">Log:</span>'
+    +'<input class="wo-log-input" type="number" inputmode="numeric" placeholder="min" value="'+esc(log.minutes||'')+'" oninput="woLog(\''+exId+'\',\'minutes\',this.value)" title="Minutes walked">'
+    +'<span class="wo-log-label">min @ incline</span>'
+    +'<input class="wo-log-input" type="number" inputmode="decimal" placeholder="incline" value="'+esc(log.incline||'')+'" oninput="woLog(\''+exId+'\',\'incline\',this.value)" title="Max incline reached">'
+    +'</div></div>';
 }
 
 function _renderExercise(ex,slotId){
@@ -14910,8 +14937,14 @@ function completeWorkout(type,dayIndex){
   var dayLabel=WO_DAYS[WO_ACTIVE_DAY]?WO_DAYS[WO_ACTIVE_DAY].label:'Unknown';
   var workoutName='';
   if(type==='lift'){
-    var prog=WO_PROGRAM[dayIndex];
-    workoutName='Day '+prog.day+': '+prog.name;
+    // Use whichever track was actually selected for this day -- completions
+    // used to always read WO_PROGRAM (Primary), so a Kettlebell or Body Split
+    // session got mislabeled as the Primary day of the same letter.
+    var dayLetter=['A','B','C'][dayIndex];
+    var trackId=(state.workoutTracks&&state.workoutTracks[dayLetter])||'primary';
+    if(!WO_TRACKS[trackId])trackId='primary';
+    var prog=WO_TRACKS[trackId].program[dayIndex];
+    workoutName='Day '+prog.day+': '+prog.name+' ('+WO_TRACKS[trackId].name+')';
   }else if(type==='recovery'){
     workoutName=dayLabel+' -- Active Recovery';
   }
