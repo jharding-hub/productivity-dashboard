@@ -13878,7 +13878,7 @@ var WO_EXERCISES={
   db_incline:{name:'Incline DB Press',muscles:'Upper Chest · Anterior Deltoid · Triceps',
     steps:['Set bench 30–45°. Kick DBs up as you lie back.','Press upward at bench angle, not straight up.','Lower to outside upper chest, elbows ~60°.','Pause at bottom, drive back up.'],
     tip:'Upper chest is often underdeveloped. Go lighter than flat press.',
-    alts:['db_bench','db_floor_press','cable_chest','pushup_weighted','pec_deck','dips_chest','cable_crossover','smith_bench','chest_press_machine']},
+    alts:['db_bench','db_floor_press','cable_chest','pushup_weighted','pec_deck','dips_chest','cable_crossover','smith_bench','chest_press_machine','kb_clean_press']},
   db_floor_press:{name:'DB Floor Press',muscles:'Chest · Triceps',
     steps:['Lie on floor, knees bent. DBs at chest, elbows on floor.','Press to full extension, squeeze chest at top.','Lower until elbows touch floor -- that is the ROM.','Great option when bench is taken.'],
     tip:'Floor limits shoulder strain. Excellent for shoulder-sensitive days.',
@@ -13924,7 +13924,7 @@ var WO_EXERCISES={
   leg_press:{name:'Leg Press',muscles:'Quads · Glutes · Hamstrings',
     steps:['Feet hip-width on platform. Knees ~90° when loaded.','Release safety and lower platform controlled.','Stop at 90° -- knees don\'t collapse.','Press through heels, don\'t lock out.'],
     tip:'Higher foot position = more glutes; lower = more quads.',
-    alts:['goblet_squat','db_front_squat','hack_squat','box_squat','sumo_squat','smith_squat','walking_lunge','wall_sit','step_ups']},
+    alts:['goblet_squat','db_front_squat','hack_squat','kb_double_front_squat','box_squat','sumo_squat','smith_squat','walking_lunge','wall_sit','step_ups']},
   hack_squat:{name:'Hack Squat (DB)',muscles:'Quads (primary) · Glutes',
     steps:['DBs at sides, heels elevated 1–2 in on a plate.','Squat straight down, torso upright.','Knees travel over toes -- intended.','Drive through balls of feet.'],
     tip:'Heel elevation is the key for quad emphasis.',
@@ -13970,7 +13970,7 @@ var WO_EXERCISES={
   cable_row:{name:'Seated Cable Row',muscles:'Lats · Rhomboids · Biceps · Rear Delt',
     steps:['Low cable row. Feet on platform, knees slightly bent.','Retract shoulder blades before pulling.','Pull handle to lower abdomen, elbows close.','Control return -- slight forward lean only.'],
     tip:'Keep torso upright. Leaning back makes it a lower-back exercise.',
-    alts:['pullups','lat_pulldown','assisted_pullup','db_row','t_bar_row','chest_supported_row','straight_arm_pulldown','ring_row','close_grip_pulldown']},
+    alts:['pullups','lat_pulldown','assisted_pullup','db_row','kb_gorilla_row','t_bar_row','chest_supported_row','straight_arm_pulldown','ring_row','close_grip_pulldown']},
   t_bar_row:{name:'T-Bar Row',muscles:'Lats · Rhomboids · Rear Delt · Biceps',
     steps:['Straddle the barbell/T-bar handle. Hip hinge, flat back.','Row to lower chest, elbows close.','Squeeze shoulder blades together at top.','Lower with control.'],
     tip:'One of the heaviest row variations. Great for thickness.',
@@ -14054,7 +14054,7 @@ var WO_EXERCISES={
   db_lateral_lunge:{name:'Lateral Lunge (DB)',muscles:'Glutes (lateral) · Adductors · Quads',
     steps:['DBs at sides. Wide step to one side, bend that knee.','Other leg stays straight. Sit into the hip.','Push through bent leg heel to return. Alternate.'],
     tip:'Frontal plane movement -- often neglected. Great complement to step-ups.',
-    alts:['step_ups','reverse_lunge','split_squat','bulgarian_split','hip_thrust','curtsy_lunge','single_leg_rdl','walking_lunge','step_mill']},
+    alts:['kb_windmill','step_ups','reverse_lunge','split_squat','bulgarian_split','hip_thrust','curtsy_lunge','single_leg_rdl','walking_lunge','step_mill']},
   curtsy_lunge:{name:'Curtsy Lunge (DB)',muscles:'Glutes (lateral) · Adductors · Quads',
     steps:['DBs at sides. Step one foot diagonally BEHIND and across.','Lower back knee toward floor in a curtsy pattern.','Drive through front heel to return.','Alternate sides.'],
     tip:'Hits the lateral glute in a unique way. Great variety for glute development.',
@@ -14076,7 +14076,7 @@ var WO_EXERCISES={
   lateral_raise:{name:'Lateral Raise (DB)',muscles:'Lateral Delt (isolated)',
     steps:['Light DBs at sides, slight elbow bend.','Raise arms out to shoulder height -- no higher.','Pause, lower over 3 s.','Lead with elbows, pinky slightly higher than thumb.'],
     tip:'Start at 8–15 lbs. Most people go too heavy and it becomes a trap shrug.',
-    alts:['db_shoulder_press','arnold_press','db_upright_row','machine_shoulder','cable_lateral','rear_delt_fly','front_raise','face_pull','overhead_press_machine']},
+    alts:['db_shoulder_press','arnold_press','db_upright_row','kb_bottoms_up_press','machine_shoulder','cable_lateral','rear_delt_fly','front_raise','face_pull','overhead_press_machine']},
   db_upright_row:{name:'DB Upright Row',muscles:'Lateral Delt · Upper Traps · Biceps',
     steps:['DBs at thighs, overhand, close grip.','Pull straight up toward chin, elbows lead.','Elbows higher than wrists throughout.','Stop at chest height.'],
     tip:'Wide grip = more delt; narrow = more trap. Stop at chest to protect shoulder.',
@@ -14184,7 +14184,7 @@ var WO_EXERCISES={
   db_deadlift:{name:'DB Deadlift',muscles:'Hamstrings · Glutes · Lower Back · Quads · Traps',
     steps:['DBs on floor outside feet. Hinge and grip.','Flat back, chest tall, hips above knees.','Drive through floor -- hips and shoulders rise together.','Stand tall, squeeze glutes. Lower with control.'],
     tip:'Think "push the floor away" not "pull the weight up." Full compound movement.',
-    alts:['rdl','hip_thrust','kb_swing','stiff_leg_dl','sumo_rdl','trap_bar_dl','good_morning','cable_pull_through','nordic_curl']},
+    alts:['rdl','hip_thrust','kb_swing','kb_double_deadlift','stiff_leg_dl','sumo_rdl','trap_bar_dl','good_morning','cable_pull_through','nordic_curl']},
   trap_bar_dl:{name:'Trap Bar Deadlift',muscles:'Quads · Glutes · Hamstrings · Lower Back',
     steps:['Stand inside hex bar. Grip handles.','Hinge to grab, flat back, hips above knees.','Drive through floor simultaneously with hips and shoulders.','Lockout -- squeeze glutes, stand tall.'],
     tip:'Trap bar reduces lower back stress vs conventional. Higher quad involvement. Excellent for athletes.',
@@ -14220,7 +14220,7 @@ var WO_EXERCISES={
   farmer_carry:{name:'Farmer Carry',muscles:'Grip · Core · Traps · Forearms · Glutes',
     steps:['Heavy DBs or KBs at sides. Stand tall, shoulders pulled back.','Walk forward with normal gait. Do NOT shuffle.','Brace core, breathe steady. No side-bending.','Carry for distance or time.'],
     tip:'Single most occupationally relevant exercise for first responders. Pair patient transfers and gear carries with this. Start ~25% bodyweight per hand, build up.',
-    alts:['suitcase_carry','overhead_carry','plank','side_plank','pallof_press']},
+    alts:['suitcase_carry','kb_rack_carry','overhead_carry','plank','side_plank','pallof_press']},
   suitcase_carry:{name:'Suitcase Carry',muscles:'Core (anti-lateral flexion) · Grip · Obliques · QL',
     steps:['One heavy DB or KB in ONE hand. Other hand free.','Walk tall -- do NOT let weighted side dip down.','Active brace against the asymmetric load.','Carry for distance, then switch sides.'],
     tip:'The unbalanced load forces obliques and QL to work hard. Direct training for one-sided carries like jump bags or scene gear.',
@@ -14422,7 +14422,7 @@ var WO_EXERCISES={
   kb_windmill:{name:'KB Windmill',muscles:'Obliques · Hips · Shoulder Stability · Hamstrings',
     steps:['KB pressed overhead, feet angled 45° away from the loaded side.','Push hip out toward the KB side. Slowly hinge and rotate torso down.','Free hand slides down the inside of the front leg toward the floor.','Drive back up through the hip, eyes on the KB throughout.'],
     tip:'Deep lateral core and hip stability under load (McGill, 2010). Start light -- this exposes mobility limits fast. Keep the overhead arm locked and packed.',
-    alts:['kb_turkish_getup','kb_gladiator','side_plank','dead_bug']},
+    alts:['db_lateral_lunge','kb_turkish_getup','kb_gladiator','side_plank','dead_bug']},
   kb_renegade_row:{name:'KB Renegade Row',muscles:'Lats · Rhomboids · Anti-Rotation Core · Triceps',
     steps:['Two KBs on floor, shoulder width. Get into high plank on the handles.','Shift weight to one arm, row the other KB to hip. Minimize hip rotation.','Lower with control, repeat other side. That is 1 rep.','Keep feet wide for stability -- narrow feet make it harder.'],
     tip:'One of the highest anti-rotation core demands of any exercise. The row is secondary -- resisting rotation is the point. If hips sway, go lighter.',
@@ -14434,7 +14434,40 @@ var WO_EXERCISES={
   kb_gladiator:{name:'KB Gladiator',muscles:'Obliques · Glutes · Shoulder Stability · Full Body',
     steps:['Start in side plank on one hand, KB in top hand pressed overhead.','Top leg steps forward into a lunge position while maintaining the overhead hold.','Drive back to side plank, then rotate into a push-up position and through to the other side.','The full sequence is: side plank → lunge → push-up → opposite side plank. That is 1 rep.'],
     tip:'An advanced full-body stabilizer chain exercise. Combines anti-lateral flexion, overhead stability, and hip control in one movement. Master the side plank hold with KB overhead before attempting the full flow. Scale by removing the lunge or doing it unloaded.',
-    alts:['kb_turkish_getup','kb_windmill','kb_renegade_row','plank']}
+    alts:['kb_turkish_getup','kb_windmill','kb_renegade_row','plank']},
+
+  // -- KETTLEBELL EQUIVALENTS FOR DAY C (Full-Body Compound + Carry) --------
+  // Added as alternatives on the existing DB/machine slots so Day C works at
+  // any gym: pick the DB version when it's available, pick these when the
+  // gym is kettlebell-only. Kettlebells jump in ~4kg (~8-9lb) steps, so
+  // progression here is "clear the top of the rep range on all 3 sets, then
+  // move up one bell" rather than adding 5lb plates.
+  kb_double_deadlift:{name:'Double KB Deadlift',muscles:'Hamstrings · Glutes · Lower Back · Grip',
+    steps:['Two KBs on the floor just outside your feet, hip-width stance.','Hip hinge down, flat back, grip both handles.','Drive through heels to standing, squeeze glutes at the top.','Lower with control back to the floor -- reset each rep.'],
+    tip:'The kettlebell version of the heavy hip-hinge anchor. Go up one bell size once both handles clear the top of the rep range for all 3 sets.',
+    alts:['db_deadlift','trap_bar_dl','rdl','kb_swing','sumo_rdl']},
+  kb_double_front_squat:{name:'Double KB Front Squat',muscles:'Quads · Glutes · Upper Back · Core',
+    steps:['Clean two KBs to the front rack, resting on shoulders, elbows high.','Squat down keeping elbows up and torso upright.','Drive through heels back to standing.','Rack position forces an upright torso -- easier on the lower back than a bar front squat.'],
+    tip:'Two bells let you outgrow a single goblet squat once one KB gets too big to hold comfortably at the chest.',
+    alts:['goblet_squat','db_front_squat','leg_press','hack_squat','box_squat']},
+  kb_gorilla_row:{name:'KB Gorilla Row',muscles:'Lats · Rhomboids · Rear Delt · Core (anti-rotation)',
+    steps:['Two KBs on the floor, hip hinge with a flat back, knees soft.','Row one KB to the hip while the other hand stays planted on its handle for support.','Lower with control, then row the other side.','Torso stays square -- resist rotating toward the working side.'],
+    tip:'A kettlebell stand-in for a seated cable row that also trains anti-rotation core, since nothing supports your torso like a cable row seat does.',
+    alts:['cable_row','db_row','t_bar_row','chest_supported_row','pullups']},
+  kb_bottoms_up_press:{name:'KB Bottoms-Up Press',muscles:'Lateral & Anterior Deltoid · Rotator Cuff · Grip',
+    steps:['Hold the KB upside down (bell up, bottom of the handle in your palm).','Press overhead while gripping hard to keep the bell from tipping.','Lower with control -- if it starts to tip, that\'s the set.','Start very light -- the instability is the point.'],
+    tip:'Trades raw load for shoulder-stability demand. A great kettlebell substitute for lateral raise / shoulder isolation work when there\'s no dumbbell rack.',
+    alts:['lateral_raise','db_shoulder_press','arnold_press','cable_lateral','kb_clean_press']},
+  kb_rack_carry:{name:'KB Rack Carry',muscles:'Core (anti-lateral-flexion) · Upper Back · Grip · Occupational Strength',
+    steps:['Clean one or two KBs to the front rack position.','Walk a set distance or hold for time, torso tall, ribs down.','Single KB: resist leaning toward the loaded side -- that\'s the anti-lateral-flexion work.','Set the bell down with control between sets.'],
+    tip:'The kettlebell answer to a farmer carry when there\'s no dumbbell rack -- same grip/core/occupational carryover.',
+    alts:['farmer_carry','suitcase_carry','overhead_carry','pallof_press']},
+
+  // -- LOW-IMPACT CARDIO (knee-friendly HIIT substitute) --------------------
+  cardio_intervals:{name:'Low-Impact Cardio Intervals',muscles:'Cardiovascular · Legs (non-impact)',
+    steps:['Stationary bike, rower, or elliptical.','30-45 sec hard effort, 60-90 sec easy spin/row -- repeat for the set time.','Effort should feel like a 8-9/10 -- breathless by the end of each hard interval.','Zero impact on the knees, same conditioning stimulus as sprint work.'],
+    tip:'Swapped in for sprint/jump-based HIIT finishers -- same cardiovascular payoff without the impact.',
+    alts:['sprint_intervals','tabata_burpees','step_mill','jump_rope']}
 };
 
 // -- 3-Day Evidence-Based Whole-Body Program -------------------------------
@@ -14444,6 +14477,7 @@ var WO_PROGRAM=[
   {
     day:'A',name:'Push + Squat (Heavy)',
     rationale:'Horizontal push and knee-dominant squat lead the session heavy -- 6-10 reps, full 2-min rest -- since higher-intensity loading is the strongest driver of strength and bone density after 50. Vertical push and a row balance the pressing volume for shoulder health and weekly back frequency. Tricep, calves, and core finish it off.',
+    progressionRule:'Progression: once you hit the TOP of the rep range on all 3 logged sets, add weight next time this exercise comes up -- 5lb on upper-body presses/rows, 10lb on squat/hinge moves.',
     exercises:[
       {id:'db_bench',sets:'4×6–8',rest:'2 min',note:'Heavy horizontal push -- leave 1-2 reps in the tank'},
       {id:'goblet_squat',sets:'3×6–10',rest:'2 min',note:'Heavy knee-dominant lower'},
@@ -14456,12 +14490,14 @@ var WO_PROGRAM=[
   },
   {
     day:'B',name:'Pull + Hinge (Heavy)',
-    rationale:'Trap bar deadlift anchors the session heavy -- 8-10 reps, full 2-min rest -- the single highest-payoff lift for strength and bone density at this age. Pull-ups run on a rep-target progression instead of open-ended max sets. Incline press adds the week\'s second chest session. Unilateral leg work, rear delts, biceps, and deep core round it out.',
+    rationale:'A light kettlebell swing primer opens the session -- explosive hip-snap power is the first thing to fade after 50, so it goes first while fresh, not as a finisher. Trap bar deadlift then anchors the session heavy -- 8-10 reps, full 2-min rest -- the single highest-payoff lift for strength and bone density at this age. Pull-ups run on a rep-target progression instead of open-ended max sets. Incline press adds the week\'s second chest session. A knee-friendlier unilateral swap, rear delts, biceps, and deep core round it out.',
+    progressionRule:'Progression: once you hit the TOP of the rep range on all 3 logged sets, add weight next time this exercise comes up -- 5lb on upper-body presses/rows, 10lb on squat/hinge moves.',
     exercises:[
+      {id:'kb_swing',sets:'3×8',rest:'60 sec',note:'Power primer -- explosive hip snap while fresh, light weight'},
       {id:'pullups',sets:'3×6–10',rest:'2 min',note:'Vertical pull -- add load once you clear the top of the range'},
       {id:'trap_bar_dl',sets:'4×8–10',rest:'2 min',note:'Heavy hip hinge -- the day\'s anchor lift'},
       {id:'db_incline',sets:'3×10–12',rest:'90 sec',note:'Upper chest -- second weekly chest session'},
-      {id:'bulgarian_split',sets:'3×8–10 each',rest:'90 sec',note:'Unilateral posterior'},
+      {id:'reverse_lunge',sets:'3×8–10 each',rest:'90 sec',note:'Unilateral posterior -- easier on the knees than a Bulgarian split squat'},
       {id:'face_pull',sets:'3×15–20',rest:'60 sec',note:'Rear delt / rotator cuff'},
       {id:'db_bicep_curl',sets:'2×10–12',rest:'60 sec',note:'Bicep isolation'},
       {id:'dead_bug',sets:'3×8 each side',rest:'45 sec',note:'Core finisher -- deep core'}
@@ -14469,14 +14505,16 @@ var WO_PROGRAM=[
   },
   {
     day:'C',name:'Full-Body Compound + Carry',
-    rationale:'Hip hinge compound + upper chest. Horizontal pull + quad variation. Lateral delt + frontal plane lower. Loaded carry for grip, core, occupational strength.',
+    rationale:'Hip hinge compound + upper chest. Horizontal pull + quad variation (leg press over hack squat -- same quad stimulus, far less knee shear). Lateral delt + frontal plane lower (KB windmill over lateral lunge for the same reason). Pallof press for anti-rotation core, then a loaded carry for grip, core, occupational strength. Every DB/machine slot below has a kettlebell alternative in its dropdown for gyms that are kettlebell-only.',
+    progressionRule:'Progression: once you hit the TOP of the rep range on all 3 logged sets, add weight next time this exercise comes up -- 5lb on upper-body presses/rows, 10lb on squat/hinge moves. On kettlebell picks, "adding weight" means moving up one bell size.',
     exercises:[
       {id:'db_deadlift',sets:'3×8–10',rest:'2 min',note:'Full compound hip hinge'},
       {id:'db_incline',sets:'3×10–12',rest:'90 sec',note:'Upper chest push'},
       {id:'cable_row',sets:'3×10–12',rest:'90 sec',note:'Horizontal pull'},
-      {id:'hack_squat',sets:'3×12–15',rest:'90 sec',note:'Quad-dominant variation'},
+      {id:'leg_press',sets:'3×12–15',rest:'90 sec',note:'Quad-dominant variation -- knee-friendlier than hack squat'},
       {id:'lateral_raise',sets:'3×12–15',rest:'60 sec',note:'Lateral delt isolation'},
-      {id:'db_lateral_lunge',sets:'3×12 each',rest:'60 sec',note:'Frontal plane lower'},
+      {id:'kb_windmill',sets:'3×5 each',rest:'60 sec',note:'Frontal plane lower + lateral core -- knee-friendlier than lateral lunge'},
+      {id:'pallof_press',sets:'3×10 each',rest:'45 sec',note:'Anti-rotation core'},
       {id:'farmer_carry',sets:'3×30–40 sec',rest:'60 sec',note:'Loaded carry -- grip + core + occupational'}
     ]
   }
@@ -14536,38 +14574,38 @@ var WO_PROGRAM_BODYSPLIT=[
 var WO_PROGRAM_BODYWEIGHT=[
   {
     day:'A',name:'Upper Power + HIIT',
-    rationale:'Bodyweight push/pull at hypertrophy rep ranges, followed by an all-out HIIT finisher. Use weighted vest for added load if available. 30-40 min total.',
+    rationale:'Bodyweight push/pull at hypertrophy rep ranges, followed by a low-impact HIIT finisher (bike/rower, not burpees) that\'s easy on the knees. Use weighted vest for added load if available. 30-40 min total.',
     exercises:[
       {id:'push_up',sets:'4×10–20',rest:'60 sec',note:'Primary push (incline/decline to scale)'},
       {id:'inverted_row',sets:'4×8–15',rest:'60 sec',note:'Primary pull'},
       {id:'pike_push_up',sets:'3×8–12',rest:'60 sec',note:'Shoulder/overhead push'},
       {id:'diamond_push_up',sets:'3×8–12',rest:'45 sec',note:'Tricep focus'},
       {id:'plank',sets:'3×45–60 sec',rest:'30 sec',note:'Core anti-extension'},
-      {id:'tabata_burpees',sets:'1× 4 min',rest:'--',note:'HIIT finisher'}
+      {id:'cardio_intervals',sets:'1× 4 min',rest:'--',note:'Low-impact HIIT finisher -- bike or rower'}
     ]
   },
   {
     day:'B',name:'Lower Power + HIIT',
-    rationale:'Bodyweight squat/hinge patterns at higher volume, unilateral work for stability, finishing with sprint or jump intervals for explosive power.',
+    rationale:'Bodyweight squat/hinge patterns at higher volume, unilateral work for stability, finishing with low-impact bike or rower intervals instead of sprints or jumps.',
     exercises:[
       {id:'bw_squat',sets:'4×15–25',rest:'60 sec',note:'Squat pattern volume'},
       {id:'reverse_lunge',sets:'3×10 each',rest:'60 sec',note:'Unilateral (bodyweight)'},
       {id:'single_leg_glute_bridge',sets:'3×10 each',rest:'45 sec',note:'Posterior chain isolation'},
       {id:'standing_calf_raise',sets:'3×15–25',rest:'30 sec',note:'Calves (bodyweight)'},
       {id:'hollow_hold',sets:'3×20–40 sec',rest:'30 sec',note:'Deep core static'},
-      {id:'sprint_intervals',sets:'1× 6–8 rounds',rest:'--',note:'HIIT finisher'}
+      {id:'cardio_intervals',sets:'1× 6–8 rounds',rest:'--',note:'Low-impact HIIT finisher -- bike or rower'}
     ]
   },
   {
     day:'C',name:'Full Body MetCon',
-    rationale:'Mixed-modality circuit. Builds work capacity that translates to occupational tasks (scene calls, patient transfers, long shifts). AMRAP format pushes endurance.',
+    rationale:'Mixed-modality circuit. Builds work capacity that translates to occupational tasks (scene calls, patient transfers, long shifts). Impact moves swapped for knee-friendly equivalents -- controlled squat instead of a jump, weighted step-ups instead of a burpee warm-up.',
     exercises:[
-      {id:'burpee',sets:'3×8–12',rest:'60 sec',note:'Warm-up explosive set'},
+      {id:'step_ups',sets:'3×8–12 each',rest:'60 sec',note:'Warm-up set -- bodyweight or light DB, no jump'},
       {id:'push_up',sets:'3×12–20',rest:'45 sec',note:'Upper push'},
       {id:'inverted_row',sets:'3×10–15',rest:'45 sec',note:'Upper pull'},
-      {id:'jump_squat',sets:'3×10–15',rest:'45 sec',note:'Lower explosive'},
+      {id:'box_squat',sets:'3×10–15',rest:'45 sec',note:'Lower -- controlled sit-back, no jump'},
       {id:'bear_crawl',sets:'3×30–45 sec',rest:'30 sec',note:'Anti-rotation core'},
-      {id:'amrap_full_body',sets:'1× 15 min',rest:'--',note:'Conditioning finisher'}
+      {id:'cardio_intervals',sets:'1× 15 min',rest:'--',note:'Low-impact conditioning finisher -- bike or rower'}
     ]
   }
 ];
@@ -14662,40 +14700,61 @@ function renderWorkout(){
 
 function woSetDay(idx){WO_ACTIVE_DAY=idx;renderWorkout();}
 
+// Single source of truth for active-recovery activities -- previously
+// duplicated between _renderWalkDay and woSwitchActivity, which is how a
+// weather-day option (indoor cardio) or a short option (15-min mobility)
+// would have had to be added twice and could drift out of sync.
+var WO_RECOVERY_ACTIVITIES={
+  walk:{
+    icon:'&#127939;',name:'Walk',
+    desc:'45 minutes at a conversational, Zone 2 pace (100–120 bpm). The gold standard for aerobic base building and active recovery.',
+    options:[
+      'Flat neighborhood or trail -- maintain easy breathing','Treadmill incline 3–5% for extra challenge without impact',
+      'Aim for 4,000–6,000 steps minimum','Swing your arms naturally -- activates core and improves gait'
+    ]
+  },
+  hike:{
+    icon:'&#9968;',name:'Hike',
+    desc:'45–60 minutes on uneven terrain. Improves balance, recruits stabilizers, and burns more calories than flat walking at the same pace.',
+    options:[
+      'Choose trails with moderate elevation change','Trekking poles reduce knee strain on descents',
+      'Uneven ground activates glutes and ankles differently than pavement','Watch footing -- proprioception work is the bonus'
+    ]
+  },
+  yoga:{
+    icon:'&#129335;',name:'Yoga / Mobility',
+    desc:'30–45 minutes of movement-based recovery. Targets the exact muscles loaded in your lifting sessions: hip flexors, hamstrings, lats, chest, and thoracic spine.',
+    options:[
+      'Sun salutations × 5 -- warm up the whole chain','Pigeon pose -- 90 sec each side for hip flexors and glutes',
+      'Thread-the-needle -- 60 sec each side for thoracic rotation','Downward dog -- calf and hamstring lengthening',
+      'Child\'s pose wide -- lat stretch','Cat-cow × 10 -- spinal decompression after deadlifts'
+    ]
+  },
+  indoor:{
+    icon:'&#128692;',name:'Indoor Cardio',
+    desc:'30–45 minutes on a bike, rower, or elliptical at a Zone 2 pace. Same aerobic-base benefit as the walk/hike, for a weather day or when you can\'t get outside.',
+    options:[
+      'Bike or elliptical: steady spin, conversational effort','Rower: focus on the leg-drive-first stroke, not arms-first',
+      'Keep effort at "could hold a conversation" the whole time','TV/podcast time -- this one\'s made for zoning out'
+    ]
+  },
+  mobility15:{
+    icon:'&#9201;',name:'15-Min Mobility',
+    desc:'A short option for days you only have a few minutes -- hits the same areas as the full Yoga/Mobility session in less time.',
+    options:[
+      'Pigeon pose -- 60 sec each side','Thread-the-needle -- 45 sec each side',
+      'Downward dog -- 45 sec','Cat-cow × 8'
+    ]
+  }
+};
 function _renderWalkDay(){
   var dayName=WO_DAYS[WO_ACTIVE_DAY].label;
   var activeActivity=WO_ACTIVE_DAY===5?'hike':'walk'; // Saturday default hike, others walk
-  var activities={
-    walk:{
-      icon:'&#127939;',name:'Walk',
-      desc:'45 minutes at a conversational, Zone 2 pace (100–120 bpm). The gold standard for aerobic base building and active recovery.',
-      options:[
-        'Flat neighborhood or trail -- maintain easy breathing','Treadmill incline 3–5% for extra challenge without impact',
-        'Aim for 4,000–6,000 steps minimum','Swing your arms naturally -- activates core and improves gait'
-      ]
-    },
-    hike:{
-      icon:'&#9968;',name:'Hike',
-      desc:'45–60 minutes on uneven terrain. Improves balance, recruits stabilizers, and burns more calories than flat walking at the same pace.',
-      options:[
-        'Choose trails with moderate elevation change','Trekking poles reduce knee strain on descents',
-        'Uneven ground activates glutes and ankles differently than pavement','Watch footing -- proprioception work is the bonus'
-      ]
-    },
-    yoga:{
-      icon:'&#129335;',name:'Yoga / Mobility',
-      desc:'30–45 minutes of movement-based recovery. Targets the exact muscles loaded in your lifting sessions: hip flexors, hamstrings, lats, chest, and thoracic spine.',
-      options:[
-        'Sun salutations × 5 -- warm up the whole chain','Pigeon pose -- 90 sec each side for hip flexors and glutes',
-        'Thread-the-needle -- 60 sec each side for thoracic rotation','Downward dog -- calf and hamstring lengthening',
-        'Child\'s pose wide -- lat stretch','Cat-cow × 10 -- spinal decompression after deadlifts'
-      ]
-    }
-  };
+  var activities=WO_RECOVERY_ACTIVITIES;
 
   var html='<div class="wo-recovery-header">&#127807; '+dayName+' -- Active Recovery</div>'
     +'<div class="wo-activity-tabs">';
-  ['walk','hike','yoga'].forEach(function(key){
+  ['walk','hike','yoga','indoor','mobility15'].forEach(function(key){
     var a=activities[key];
     var cls='wo-activity-tab'+(key===activeActivity?' active':'');
     html+='<button class="'+cls+'" onclick="woSwitchActivity(this,\''+key+'\')">'
@@ -14727,22 +14786,8 @@ function woSwitchActivity(btn,key){
   // Update active tab
   btn.closest('.modal-blur-body').querySelectorAll('.wo-activity-tab').forEach(function(t){t.classList.remove('active');});
   btn.classList.add('active');
-  // Re-render detail panel
-  var activities={
-    walk:{icon:'&#127939;',name:'Walk',
-      desc:'45 minutes at a conversational, Zone 2 pace (100–120 bpm). The gold standard for aerobic base building and active recovery.',
-      options:['Flat neighborhood or trail -- maintain easy breathing','Treadmill incline 3–5% for extra challenge without impact',
-        'Aim for 4,000–6,000 steps minimum','Swing your arms naturally -- activates core and improves gait']},
-    hike:{icon:'&#9968;',name:'Hike',
-      desc:'45–60 minutes on uneven terrain. Improves balance, recruits stabilizers, and burns more calories than flat walking at the same pace.',
-      options:['Choose trails with moderate elevation change','Trekking poles reduce knee strain on descents',
-        'Uneven ground activates glutes and ankles differently than pavement','Watch footing -- proprioception work is the bonus']},
-    yoga:{icon:'&#129335;',name:'Yoga / Mobility',
-      desc:'30–45 minutes of movement-based recovery. Targets the exact muscles loaded in your lifting sessions.',
-      options:['Sun salutations × 5 -- warm up the whole chain','Pigeon pose -- 90 sec each side for hip flexors and glutes',
-        'Thread-the-needle -- 60 sec each side for thoracic rotation','Downward dog -- calf and hamstring lengthening',
-        "Child's pose wide -- lat stretch",'Cat-cow × 10 -- spinal decompression after deadlifts']}
-  };
+  // Re-render detail panel from the single shared activities list
+  var activities=WO_RECOVERY_ACTIVITIES;
   var existing=btn.closest('.modal-blur-body').querySelector('.wo-activity-detail');
   if(existing){
     var tmp=document.createElement('div');
@@ -14794,6 +14839,9 @@ function _renderLiftDay(){
   }
   
   html+='<div class="wo-day-rationale"><strong>Day '+prog.day+': '+prog.name+'</strong><br>'+prog.rationale+'</div>';
+  if(prog.progressionRule){
+    html+='<div class="wo-progression-rule">&#128200; '+prog.progressionRule+'</div>';
+  }
   
   // Render all exercises
   html+='<div class="wo-section"><div class="wo-section-title">Today\'s Exercises</div>';
