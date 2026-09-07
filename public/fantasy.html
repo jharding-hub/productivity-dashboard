@@ -225,7 +225,7 @@ kbd{font-family:inherit;font-size:11px;border:1px solid var(--border);border-bot
     </div>
     <div id="yahoo-link" class="small" style="margin-top:6px"></div>
     <div id="yahoo-leagues" class="small" style="margin-top:6px"></div>
-    <div class="small muted" style="margin-top:6px">Read-only for now. Yahoo tokens stay on the server; this page never sees them. Link a Yahoo league to this Draft Day league to prepare for roster sync.</div>
+    <div class="small muted" style="margin-top:6px">Read-only. Yahoo tokens stay on the server; this page never sees them. Yahoo approves Fantasy Sports API access per app by manual review (<a href="https://sports.yahoo.com/developer/access/" target="_blank" rel="noopener" style="color:inherit">request form</a>); until then Connect ends in "invalid scope".</div>
   </div>
   <div class="card" style="margin-top:12px">
     <h2>Draft order (pick 1 at the top)</h2>
@@ -1371,7 +1371,15 @@ async function yahooHandleCallback(){
   var u=new URL(location.href),code=u.searchParams.get('code'),state=u.searchParams.get('state'),err=u.searchParams.get('error');
   if(!code&&!err)return false;
   history.replaceState(null,'',u.pathname);
-  if(err){toast('Yahoo: '+(u.searchParams.get('error_description')||err));show('setup');renderSetup();return true;}
+  if(err){
+    var desc=u.searchParams.get('error_description')||err;
+    // Yahoo no longer self-serves Fantasy Sports API access: a new app has no fantasy
+    // permission until Yahoo approves a manual request, and until then the fspt-r scope
+    // is rejected at the consent page as "invalid scope".
+    _yahoo.status={connected:false,lastError:/scope/i.test(desc)?'Yahoo has not approved Fantasy Sports API access for this app yet. Apply at sports.yahoo.com/developer/access with the Client ID; approval is a manual review. Retry Connect after it lands.':('Yahoo: '+desc)};
+    toast(/scope/i.test(desc)?'Yahoo: Fantasy Sports access not approved yet':'Yahoo: '+desc);
+    show('setup');renderSetup();return true;
+  }
   try{await api('/ff/yahoo/exchange',{code:code,state:state});toast('Yahoo connected');}
   catch(e){toast('Yahoo connect failed: '+e.message);}
   await yahooStatus();
