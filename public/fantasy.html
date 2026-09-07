@@ -186,6 +186,11 @@ kbd{font-family:inherit;font-size:11px;border:1px solid var(--border);border-bot
       <button class="small" id="btn-league-rename">Rename…</button>
       <button class="small ghost" id="btn-league-delete">Delete…</button>
     </div>
+    <div class="league-row" style="margin-top:8px">
+      <span class="small">Rounds: <b id="rounds-count"></b> · <span id="picks-total"></span> picks · <span id="bench-count"></span> bench</span>
+      <button class="small" id="btn-round-add" title="Add another round to this league (e.g. a 16th)">+ Add round</button>
+      <button class="small ghost" id="btn-round-remove" title="Remove the last round, if it has no picks yet">− Remove</button>
+    </div>
     <div class="small muted" style="margin-top:6px" id="league-meta"></div>
   </div>
   <div class="card" style="margin-top:12px">
@@ -216,6 +221,7 @@ kbd{font-family:inherit;font-size:11px;border:1px solid var(--border);border-bot
       <button class="small" id="btn-live" title="Pull live half-PPR consensus + ADP from FantasyPros">Live ranks</button>
       <button class="small" id="btn-export">Export .xlsx</button>
       <button class="small" id="btn-import" title="Load a draft from an exported .xlsx as a new league">Import…</button>
+      <button class="small" id="btn-round-add-top" title="Add another round to this league">+ Round</button>
       <button class="small ghost" id="btn-setup">Setup</button>
     </div>
   </div>
@@ -335,7 +341,11 @@ kbd{font-family:inherit;font-size:11px;border:1px solid var(--border);border-bot
 // ═══════════════════════════════════════════════════════════════════
 var OWNER_EMAIL='medicjth@gmail.com';
 var LS_KEY='ff2026draft';
-var TEAMS=10, ROUNDS=15;
+var TEAMS=10, DEFAULT_ROUNDS=15, MAX_ROUNDS=20;
+// Rounds are per league (S.rounds); 15 unless the league added or removed some.
+function rounds(){return (S&&S.rounds)||DEFAULT_ROUNDS;}
+function totalPicks(){return TEAMS*rounds();}
+function benchSlots(){return Math.max(0,rounds()-STARTERS.length);}
 var STARTERS=['QB','RB','RB','WR','WR','TE','FLEX','K','DST'];
 var FLEX_OK={RB:1,WR:1,TE:1};
 var POS_LABEL={DST:'DEF'};
@@ -359,7 +369,7 @@ function esc(s){return String(s==null?'':s).replace(/[&<>"']/g,function(c){retur
 var C=null,S=null;
 function blankState(name){
   var teams=[];for(var i=0;i<TEAMS;i++)teams.push({name:'Team '+(i+1)});
-  return {v:1,name:name||'101 League',teams:teams,me:0,picks:[],started:false,plan:null,aiCache:{},oppReport:null,scorecard:null,liveAt:null,liveNote:''};
+  return {v:1,name:name||'101 League',rounds:DEFAULT_ROUNDS,teams:teams,me:0,picks:[],started:false,plan:null,aiCache:{},oppReport:null,scorecard:null,liveAt:null,liveNote:''};
 }
 function blankContainer(){var st=blankState('101 League');return {v:2,rev:0,activeId:'l1',order:['l1'],leagues:{l1:st}};}
 function isLeagueState(j){return !!(j&&j.v===1&&Array.isArray(j.teams)&&j.teams.length===TEAMS&&Array.isArray(j.picks));}
@@ -385,6 +395,20 @@ function activate(){
   if(!S.name)S.name='101 League';
   if(S.scorecard===undefined)S.scorecard=null;
   if(!S.aiCache)S.aiCache={};
+  if(!(S.rounds>=1&&S.rounds<=MAX_ROUNDS))S.rounds=DEFAULT_ROUNDS;
+}
+// ── rounds ───────────────────────────────────────────────────────────
+function addRound(){
+  if(rounds()>=MAX_ROUNDS){toast('This league already has the maximum '+MAX_ROUNDS+' rounds');return;}
+  S.rounds=rounds()+1;save();
+  toast('Round '+S.rounds+' added — the draft now runs to pick '+totalPicks());
+  route();
+}
+function removeRound(){
+  var r=rounds();if(r<=1)return;
+  if(S.picks.some(function(p){return p.round>=r;})){toast('Round '+r+' already has picks — undo them first');return;}
+  if(!confirm('Remove round '+r+'? The draft will end at pick '+(TEAMS*(r-1))+'.'))return;
+  S.rounds=r-1;save();route();
 }
 function replaceActive(st){C.leagues[C.activeId]=st;S=st;}
 function save(sync){
@@ -438,7 +462,7 @@ function toast(msg){var t=document.getElementById('toast');t.textContent=msg;t.c
 
 // snake: overall n (1-based) → {round, slot(0-based team index in draft order)}
 function slotFor(n){var r=Math.ceil(n/TEAMS),i=(n-1)%TEAMS;return {round:r,slot:(r%2===1)?i:TEAMS-1-i,overall:n};}
-function myPickNumbers(me){var out=[];for(var n=1;n<=TEAMS*ROUNDS;n++){if(slotFor(n).slot===me)out.push(n);}return out;}
+function myPickNumbers(me){var out=[];for(var n=1;n<=totalPicks();n++){if(slotFor(n).slot===me)out.push(n);}return out;}
 function draftedIds(){var m={};S.picks.forEach(function(p){m[p.playerId]=true;});return m;}
 function teamRoster(idx){return S.picks.filter(function(p){return p.slot===idx;}).map(function(p){var pl=BYID[p.playerId];return Object.assign({},pl,{overall:p.overall,round:p.round});});}
 function nextOverall(){return S.picks.length+1;}
@@ -537,7 +561,11 @@ function renderSetup(){
 }
 function renderLeagueCard(){
   var sel=document.getElementById('league-select');
-  sel.innerHTML=C.order.map(function(id){var l=C.leagues[id];return '<option value="'+esc(id)+'"'+(id===C.activeId?' selected':'')+'>'+esc(l.name)+' — '+l.picks.length+' pick'+(l.picks.length===1?'':'s')+(l.picks.length>=TEAMS*ROUNDS?' (complete)':l.started?' (in progress)':'')+'</option>';}).join('');
+  sel.innerHTML=C.order.map(function(id){var l=C.leagues[id];return '<option value="'+esc(id)+'"'+(id===C.activeId?' selected':'')+'>'+esc(l.name)+' — '+l.picks.length+' pick'+(l.picks.length===1?'':'s')+(l.picks.length>=TEAMS*(l.rounds||DEFAULT_ROUNDS)?' (complete)':l.started?' (in progress)':'')+'</option>';}).join('');
+  document.getElementById('rounds-count').textContent=rounds();
+  document.getElementById('picks-total').textContent=totalPicks();
+  document.getElementById('bench-count').textContent=benchSlots();
+  document.getElementById('btn-round-remove').disabled=rounds()<=1||S.picks.some(function(p){return p.round>=rounds();});
   document.getElementById('league-meta').textContent=C.order.length+' saved league'+(C.order.length===1?'':'s')+'. Each keeps its own teams, picks, plan, and reports. Every league uses the 101 League roster and half-PPR scoring for the advisor.';
   applyTitles();
 }
@@ -571,7 +599,7 @@ function renderAll(){renderClock();renderAvail();renderBoard();renderOpps();rend
 
 function renderClock(){
   var n=nextOverall(),host=document.getElementById('clock');
-  if(n>TEAMS*ROUNDS){host.innerHTML='<span class="pill">Draft complete</span>';return;}
+  if(n>totalPicks()){host.innerHTML='<span class="pill">Draft complete · '+rounds()+' rounds</span><span class="until">+ Round adds a '+(rounds()+1)+'th</span>';return;}
   var sf=slotFor(n),mine=sf.slot===S.me;
   var untilMine=myPickNumbers(S.me).filter(function(x){return x>=n;})[0];
   host.innerHTML='<span class="pill'+(mine?' mine':'')+'">'+(mine?'YOUR PICK':'On the clock: '+esc(S.teams[sf.slot].name))+'</span>'+
@@ -629,7 +657,7 @@ function renderBoard(){
   var head='<tr><th class="rnd"></th>'+S.teams.map(function(t,i){return '<th'+(i===S.me?' class="me"':'')+'>'+esc(t.name)+'</th>';}).join('')+'</tr>';
   var byOverall={};S.picks.forEach(function(p){byOverall[p.overall]=p;});
   var n=nextOverall(),rows=[head];
-  for(var r=1;r<=ROUNDS;r++){
+  for(var r=1;r<=rounds();r++){
     var cells='';
     for(var i=0;i<TEAMS;i++){
       var overall=(r%2===1)?(r-1)*TEAMS+i+1:(r-1)*TEAMS+(TEAMS-i);
@@ -640,7 +668,7 @@ function renderBoard(){
     rows.push('<tr><td class="rnd">R'+r+'</td>'+cells+'</tr>');
   }
   document.getElementById('board').innerHTML=rows.join('');
-  document.getElementById('board-sub').textContent=S.picks.length+' of '+(TEAMS*ROUNDS)+' picks made';
+  document.getElementById('board-sub').textContent=S.picks.length+' of '+(totalPicks())+' picks made';
 }
 function posCounts(roster){var c={QB:0,RB:0,WR:0,TE:0,K:0,DST:0};roster.forEach(function(p){if(c[p.pos]!=null)c[p.pos]++;});return c;}
 function renderOpps(){
@@ -677,15 +705,15 @@ function needs(roster){
 }
 function renderRoster(){
   var ro=teamRoster(S.me),nd=needs(ro),lu=nd.lineup;
-  document.getElementById('my-picks').textContent=ro.length+' of '+ROUNDS+' picks';
+  document.getElementById('my-picks').textContent=ro.length+' of '+rounds()+' picks';
   var html=lu.slots.map(function(s){
     return '<div class="roster-slot'+(s.p?'':' empty')+'"><span class="slot">'+posLabel(s.slot)+'</span><span class="who">'+(s.p?('<span class="pos pos-'+s.p.pos+'">'+posLabel(s.p.pos)+'</span> '+esc(s.p.name)+' <span class="muted small">'+esc(s.p.team||'FA')+' · bye '+(s.p.bye||'–')+' · R'+s.p.round+'</span>'):'open')+'</span></div>';
   }).join('');
   html+=lu.bench.map(function(p){return '<div class="roster-slot"><span class="slot">BN</span><span class="who"><span class="pos pos-'+p.pos+'">'+posLabel(p.pos)+'</span> '+esc(p.name)+' <span class="muted small">'+esc(p.team||'FA')+' · bye '+(p.bye||'–')+' · R'+p.round+'</span></span></div>';}).join('');
-  for(var i=lu.bench.length;i<6;i++)html+='<div class="roster-slot empty"><span class="slot">BN</span><span class="who">open</span></div>';
+  for(var i=lu.bench.length;i<benchSlots();i++)html+='<div class="roster-slot empty"><span class="slot">BN</span><span class="who">open</span></div>';
   document.getElementById('roster').innerHTML=html;
   // needs chips
-  var round=slotFor(Math.min(nextOverall(),TEAMS*ROUNDS)).round;
+  var round=slotFor(Math.min(nextOverall(),totalPicks())).round;
   var chips=nd.starters.map(function(s){
     var hot=(s==='RB'||s==='WR')&&round>=4||(s==='TE'&&round>=8)||(s==='QB'&&round>=9)||((s==='K'||s==='DST')&&round>=14);
     return '<span class="need'+(hot?' hot':'')+'">need '+posLabel(s)+'</span>';
@@ -725,7 +753,7 @@ function renderPlan(){
 
 // ── picking ──────────────────────────────────────────────────────────
 function makePick(playerId,slotOverride){
-  var n=nextOverall();if(n>TEAMS*ROUNDS){toast('Draft is complete');return;}
+  var n=nextOverall();if(n>totalPicks()){toast('Draft is complete');return;}
   if(draftedIds()[playerId]){toast('Already drafted');return;}
   var sf=slotFor(n),slot=(slotOverride==null)?sf.slot:slotOverride;
   S.picks.push({overall:n,round:sf.round,slot:slot,playerId:playerId,at:new Date().toISOString()});
@@ -734,7 +762,7 @@ function makePick(playerId,slotOverride){
   toast('#'+n+' '+S.teams[slot].name+': '+pl.name);
   ui.q='';document.getElementById('q').value='';
   renderAll();
-  if(slotFor(nextOverall()).slot===S.me&&nextOverall()<=TEAMS*ROUNDS)setTimeout(function(){toast('You are on the clock');},900);
+  if(slotFor(nextOverall()).slot===S.me&&nextOverall()<=totalPicks())setTimeout(function(){toast('You are on the clock');},900);
   if(draftComplete())setTimeout(function(){toast('Draft complete — grade it in the Scorecard');},900);
   maybePrefetch();
 }
@@ -787,7 +815,7 @@ async function exportXlsx(){
     // Draft Board — the snake grid, one row per round
     var boardRows=[['Round'].concat(S.teams.map(function(t){return t.name;}))];
     var byOverall={};S.picks.forEach(function(p){byOverall[p.overall]=p;});
-    for(var r=1;r<=ROUNDS;r++){
+    for(var r=1;r<=rounds();r++){
       var row=['R'+r];
       for(var i=0;i<TEAMS;i++){
         var overall=(r%2===1)?(r-1)*TEAMS+i+1:(r-1)*TEAMS+(TEAMS-i);
@@ -816,7 +844,7 @@ async function exportXlsx(){
     }
 
     // Settings — human-readable; Import reads League and My team from here on the rebuild path
-    var setRows=[['Key','Value'],['League',S.name],['My team',S.teams[S.me].name],['Started',S.started?'yes':'no'],['Picks made',S.picks.length],['Exported',new Date().toISOString()],['Format','Draft Day v1']];
+    var setRows=[['Key','Value'],['League',S.name],['My team',S.teams[S.me].name],['Rounds',rounds()],['Started',S.started?'yes':'no'],['Picks made',S.picks.length],['Exported',new Date().toISOString()],['Format','Draft Day v1']];
     XLSX.utils.book_append_sheet(wb,XLSX.utils.aoa_to_sheet(setRows),'Settings');
 
     // _raw — the full state as JSON, chunked to stay under Excel's 32,767-char cell limit,
@@ -880,15 +908,20 @@ function rebuildFromSheets(wb){
   picks.sort(function(a,b){return a.overall-b.overall;});
   var seen={},clean=[];picks.forEach(function(p){if(p.overall===clean.length+1&&!seen[p.playerId]){seen[p.playerId]=1;clean.push(p);}});
   st.picks=clean;st.started=clean.length>0||String(settings.Started||'').toLowerCase()==='yes';
+  var maxOverall=clean.length?clean[clean.length-1].overall:0;
+  st.rounds=Math.min(MAX_ROUNDS,Math.max(DEFAULT_ROUNDS,+settings.Rounds||0,Math.ceil(maxOverall/TEAMS)));
   st._importNote=(clean.length+' picks rebuilt'+(unmatched.length?', '+unmatched.length+' unmatched: '+unmatched.slice(0,5).join(', ')+(unmatched.length>5?'…':''):''));
   return st;
 }
 function importState(j,name,how){
   var st=blankState(name);
-  ['teams','me','picks','started','plan','oppReport','scorecard','liveAt','liveNote'].forEach(function(k){if(j[k]!==undefined)st[k]=j[k];});
+  ['teams','me','rounds','picks','started','plan','oppReport','scorecard','liveAt','liveNote'].forEach(function(k){if(j[k]!==undefined)st[k]=j[k];});
   st.picks=(st.picks||[]).filter(function(p){return p&&BYID[p.playerId];}).sort(function(a,b){return a.overall-b.overall;});
   st.started=!!st.started||st.picks.length>0;st.aiCache={};
   if(!(st.me>=0&&st.me<TEAMS))st.me=0;
+  var maxOv=st.picks.length?st.picks[st.picks.length-1].overall:0;
+  if(!(st.rounds>=1&&st.rounds<=MAX_ROUNDS))st.rounds=DEFAULT_ROUNDS;
+  st.rounds=Math.min(MAX_ROUNDS,Math.max(st.rounds,Math.ceil(maxOv/TEAMS)));
   var note=j._importNote||'';delete st._importNote;
   addLeague(st);
   toast('Imported "'+S.name+'": '+S.picks.length+' picks'+(how==='rebuilt'?' ('+note+')':''));
@@ -904,14 +937,14 @@ function compactPlayer(p){
 }
 function rosterLine(p){return p.name+' ('+p.pos+', '+(p.team||'FA')+', bye '+(p.bye||'?')+', R'+p.round+')';}
 function buildState(){
-  var n=nextOverall(),sf=slotFor(Math.min(n,TEAMS*ROUNDS)),mine=myPickNumbers(S.me);
+  var n=nextOverall(),sf=slotFor(Math.min(n,totalPicks())),mine=myPickNumbers(S.me);
   var av=availablePlayers().sort(function(a,b){return a.cons-b.cons;});
   var top=av.slice(0,60);
   ['QB','RB','WR','TE','K','DST'].forEach(function(pos){av.filter(function(p){return p.pos===pos;}).slice(0,8).forEach(function(p){if(top.indexOf(p)<0)top.push(p);});});
   var myRo=teamRoster(S.me),nd=needs(myRo);
   return {
-    league:{teams:TEAMS,rounds:ROUNDS,scoring:'Half-PPR: 0.5 per reception; 1 pt per 10 rush/rec yds; 6 per rush/rec TD; passing 1 pt per 25 yds, 4 per pass TD, -1 INT; -2 fumble lost; K: 3 pts FG 0-39, 4 for 40-49, 5 for 50+, 1 PAT; DST: sack 1, INT 2, FR 2, TD 6, safety 2, block 2, points-allowed 0=10, 1-6=7, 7-13=4, 14-20=1, 21-27=0, 28-34=-1, 35+=-4',
-      roster:'QB, RB, RB, WR, WR, TE, FLEX (W/R/T), K, DEF, 6 bench, 2 IR',playoffs:'4 of 10 teams, weeks 16-17, head-to-head, no divisions',waivers:'rolling, unlimited adds, trades allowed until Nov 28'},
+    league:{teams:TEAMS,rounds:rounds(),scoring:'Half-PPR: 0.5 per reception; 1 pt per 10 rush/rec yds; 6 per rush/rec TD; passing 1 pt per 25 yds, 4 per pass TD, -1 INT; -2 fumble lost; K: 3 pts FG 0-39, 4 for 40-49, 5 for 50+, 1 PAT; DST: sack 1, INT 2, FR 2, TD 6, safety 2, block 2, points-allowed 0=10, 1-6=7, 7-13=4, 14-20=1, 21-27=0, 28-34=-1, 35+=-4',
+      roster:'QB, RB, RB, WR, WR, TE, FLEX (W/R/T), K, DEF, '+benchSlots()+' bench, 2 IR ('+rounds()+' rounds)',playoffs:'4 of 10 teams, weeks 16-17, head-to-head, no divisions',waivers:'rolling, unlimited adds, trades allowed until Nov 28'},
     me:{name:S.teams[S.me].name,slot:S.me+1,pickNumbers:mine,roster:myRo.map(rosterLine),needs:nd.starters,lineup:nd.lineup.slots.map(function(s){return s.slot+': '+(s.p?s.p.name:'open');})},
     draft:{overall:n,round:sf.round,onClock:S.teams[sf.slot].name,isMyPick:sf.slot===S.me,picksUntilMine:(mine.filter(function(x){return x>=n;})[0]||n)-n,
       recent:S.picks.slice(-12).map(function(p){var pl=BYID[p.playerId];return '#'+p.overall+' '+S.teams[p.slot].name+': '+pl.name+' ('+pl.pos+', '+(pl.team||'FA')+')';}),
@@ -965,7 +998,7 @@ async function suggest(force){
   if(!force&&c&&c.at===n){renderSuggest(c.result,c.at);return;}
   if(_suggestInFlight)return;
   _suggestInFlight=true;
-  aiBusy(true,slotFor(Math.min(n,TEAMS*ROUNDS)).slot===S.me?'Reading the board…':'Preparing your next pick early…');
+  aiBusy(true,slotFor(Math.min(n,totalPicks())).slot===S.me?'Reading the board…':'Preparing your next pick early…');
   var depth=document.getElementById('deep-mode').checked?'deep':'quick',t0=Date.now();
   try{var res=await api('/ff/advise',{mode:'suggest',depth:depth,state:buildState()});S.aiCache={suggest:{at:n,result:res.result}};save();document.getElementById('ai-model').textContent=(res.model||'')+' · '+depth+' · '+Math.round((Date.now()-t0)/1000)+'s';aiBusy(false,'');if(nextOverall()===n||slotFor(nextOverall()).slot===S.me)renderSuggest(res.result,n);}
   catch(e){aiBusy(false,'');document.getElementById('ai-out').innerHTML='<div class="err">'+esc(e.message)+'</div>';}
@@ -974,7 +1007,7 @@ async function suggest(force){
 // Called after every pick: two picks before mine, fetch in the background so the
 // answer is waiting when the clock starts. Also re-show a prepared answer on my turn.
 function maybePrefetch(){
-  var n=nextOverall();if(n>TEAMS*ROUNDS)return;
+  var n=nextOverall();if(n>totalPicks())return;
   var mine=myPickNumbers(S.me).filter(function(x){return x>=n;})[0];if(!mine)return;
   var until=mine-n,c=S.aiCache&&S.aiCache.suggest;
   if(until===0&&c&&c.at>=n-3&&c.at<n){renderSuggest(c.result,c.at);return;}
@@ -1039,7 +1072,7 @@ async function playerBio(id,anchor){
   catch(e){if(document.getElementById('biopop')===m)m.innerHTML='<button class="close" title="Close">×</button><div class="err" style="padding:6px 0">'+esc(e.message)+'</div>';var c=m.querySelector('.close');if(c)c.addEventListener('click',closeBio);console.warn('[bio]',e);}
 }
 // ── Scorecard (after pick 150) ────────────────────────────────────────
-function draftComplete(){return S.picks.length>=TEAMS*ROUNDS;}
+function draftComplete(){return S.picks.length>=totalPicks();}
 function renderScorecard(){
   var col=document.getElementById('score-col'),tab=document.getElementById('tab-score');
   var show=draftComplete()||!!S.scorecard;
@@ -1147,6 +1180,9 @@ function bind(){
   document.getElementById('btn-league-rename').addEventListener('click',renameLeague);
   document.getElementById('btn-league-delete').addEventListener('click',deleteLeague);
   document.getElementById('btn-score').addEventListener('click',scorecard);
+  document.getElementById('btn-round-add').addEventListener('click',addRound);
+  document.getElementById('btn-round-add-top').addEventListener('click',addRound);
+  document.getElementById('btn-round-remove').addEventListener('click',removeRound);
   document.getElementById('btn-reset').addEventListener('click',function(){
     if(!S.picks.length&&!S.plan){toast('Nothing to reset');return;}
     if(!confirm('Clear all '+S.picks.length+' picks, the plan, and the reports? Team names are kept. Export first if you want a copy.'))return;
