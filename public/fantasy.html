@@ -139,6 +139,28 @@ td.num{text-align:right;font-variant-numeric:tabular-nums;color:var(--text-secon
 .spinner{display:inline-block;width:12px;height:12px;border:2px solid var(--border);border-top-color:var(--accent);border-radius:50%;animation:sp .8s linear infinite;vertical-align:-2px;margin-right:6px}
 @keyframes sp{to{transform:rotate(360deg)}}
 .err{color:var(--err);font-size:12px}
+.season{padding:12px 12px 0;max-width:1900px;margin:0 auto}
+.season .card-head{flex-wrap:wrap}
+.season-tools{display:flex;gap:6px;align-items:center;flex-wrap:wrap}
+.season-tools select{padding:5px 8px;font-size:13px}
+.lineup{width:100%;font-size:13px}
+.lineup td,.lineup th{white-space:normal;vertical-align:top}
+.lineup tr.start td{background:var(--accent-soft)}
+.lineup tr.benchhead td{background:var(--surface-1);color:var(--text-muted);font-size:11px;text-transform:uppercase;letter-spacing:.04em;padding:3px 6px}
+.lineup .call{font-size:11px;font-weight:700;border-radius:999px;padding:2px 8px;white-space:nowrap}
+.lineup .call.start{background:var(--ok);color:#fff}
+.lineup .call.sit{background:var(--surface-1);border:1px solid var(--border);color:var(--text-secondary)}
+.lineup .call.flex{background:var(--accent);color:#fff}
+.lineup .inj{font-size:11px;font-weight:700;color:var(--warn)}
+.lineup .drop{border:none;background:transparent;color:var(--text-muted);font-size:16px;line-height:1;padding:0 4px}
+.lineup .drop:hover{color:var(--err)}
+.addrow{position:relative;display:flex;gap:6px;align-items:center;flex-wrap:wrap;margin-top:8px}
+.addrow input{flex:1;min-width:200px}
+.addresults{position:absolute;top:100%;left:0;z-index:25;background:var(--surface-2);border:1px solid var(--border);border-radius:8px;box-shadow:0 8px 24px rgba(0,0,0,.2);min-width:280px;max-height:260px;overflow:auto}
+.addresults button{display:block;width:100%;text-align:left;border:none;background:transparent;padding:6px 10px;border-radius:0;font-size:13px}
+.addresults button:hover{background:var(--surface-1)}
+.advice-cols{display:grid;grid-template-columns:repeat(auto-fit,minmax(260px,1fr));gap:10px;margin-top:10px}
+.advice-cols ul{margin:4px 0 0;padding-left:18px;font-size:13px}
 .score-table{width:100%;font-size:13px}
 .score-table td,.score-table th{white-space:normal;vertical-align:top}
 .score-table tr.mine td{background:var(--accent-soft)}
@@ -223,6 +245,30 @@ kbd{font-family:inherit;font-size:11px;border:1px solid var(--border);border-bot
       <button class="small" id="btn-import" title="Load a draft from an exported .xlsx as a new league">Import…</button>
       <button class="small" id="btn-round-add-top" title="Add another round to this league">+ Round</button>
       <button class="small ghost" id="btn-setup">Setup</button>
+    </div>
+  </div>
+  <!-- ───────── SEASON (this week's lineup) ───────── -->
+  <div id="season" class="season hidden">
+    <div class="card">
+      <div class="card-head">
+        <h2>This week — <span id="season-week-label">week</span></h2>
+        <div class="season-tools">
+          <select id="season-week" title="NFL week"></select>
+          <button class="small" id="btn-season-refresh" title="Pull this week's projections, matchups, tiers, and injury notes">Refresh</button>
+          <button class="small primary" id="btn-season-advise" title="Ask the advisor to set the lineup and flag drops">Who do I start?</button>
+          <button class="small ghost" id="btn-season-collapse" title="Collapse or expand">Hide</button>
+        </div>
+      </div>
+      <div id="season-body">
+        <div id="season-status" class="small muted"></div>
+        <div style="overflow:auto;margin-top:6px"><table class="lineup" id="lineup"></table></div>
+        <div class="addrow">
+          <input type="search" id="season-add" placeholder="Add a player (waiver pickup) — type a name" autocomplete="off">
+          <div class="addresults hidden" id="season-add-results"></div>
+          <button class="small ghost" id="btn-season-reset" title="Put the roster back to your draft picks">Reset to draft picks</button>
+        </div>
+        <div id="season-advice"></div>
+      </div>
     </div>
   </div>
   <div class="tabs" id="tabs">
@@ -396,7 +442,16 @@ function activate(){
   if(S.scorecard===undefined)S.scorecard=null;
   if(!S.aiCache)S.aiCache={};
   if(!(S.rounds>=1&&S.rounds<=MAX_ROUNDS))S.rounds=DEFAULT_ROUNDS;
+  if(S.season===undefined)S.season=null;
 }
+// ── season (in-season lineup) ─────────────────────────────────────────
+function ensureSeason(){
+  if(S.season&&Array.isArray(S.season.roster))return S.season;
+  S.season={roster:draftRosterEntries(),week:null,data:null,advice:null,adviceWeek:null,collapsed:false};
+  return S.season;
+}
+function draftRosterEntries(){return teamRoster(S.me).map(function(p){return {id:p.id,name:p.name,pos:p.pos,team:p.team||null,sleeperId:null};});}
+function seasonVisible(){return draftComplete()||!!(S.season&&S.season.roster&&S.season.roster.length);}
 // ── rounds ───────────────────────────────────────────────────────────
 function addRound(){
   if(rounds()>=MAX_ROUNDS){toast('This league already has the maximum '+MAX_ROUNDS+' rounds');return;}
@@ -595,7 +650,7 @@ function renderSetupStrategy(){document.getElementById('setup-strategy').innerHT
 // ── draft screen ─────────────────────────────────────────────────────
 var ui={pos:'ALL',q:'',sort:'cons'};
 function show(id){['setup','draft'].forEach(function(x){document.getElementById(x).classList.toggle('hidden',x!==id);});}
-function renderAll(){renderClock();renderAvail();renderBoard();renderOpps();renderRoster();renderPlan();renderScorecard();document.getElementById('my-name').textContent=S.teams[S.me].name;}
+function renderAll(){renderClock();renderAvail();renderBoard();renderOpps();renderRoster();renderPlan();renderScorecard();renderSeason();document.getElementById('my-name').textContent=S.teams[S.me].name;}
 
 function renderClock(){
   var n=nextOverall(),host=document.getElementById('clock');
@@ -843,6 +898,15 @@ async function exportXlsx(){
       XLSX.utils.book_append_sheet(wb,XLSX.utils.aoa_to_sheet(scRows),'Scorecard');
     }
 
+    // This week's lineup — only if the season panel has data
+    if(S.season&&S.season.data){
+      var slu=seasonLineup(),wkRows=[['Slot','Player','Pos','NFL Team','Opp','Proj (half-PPR)','Health','Call','Why']];
+      slu.slots.forEach(function(sl){if(sl.p)wkRows.push([posLabel(sl.slot),sl.p.name,sl.p.pos,sl.p.team||'',sl.p.opp||'',sl.p.proj!=null?sl.p.proj:'',sl.p.injury||'',sl.slot==='FLEX'?'FLEX':'START',sl.reason]);});
+      slu.bench.forEach(function(e){wkRows.push(['BN',e.name,e.pos,e.team||'',e.opp||'',e.proj!=null?e.proj:'',e.injury||'','SIT',e.reason]);});
+      if(slu.adv){wkRows.push([]);wkRows.push(['Summary',slu.adv.summary||'']);(slu.adv.closeCalls||[]).forEach(function(x){wkRows.push(['Close call',x]);});(slu.adv.injuryWatch||[]).forEach(function(x){wkRows.push(['Injury watch',x]);});(slu.adv.drops||[]).forEach(function(x){if(x.drop&&x.drop!=='none')wkRows.push(['Drop',x.drop,x.reason,x.add||'',x.addReason||'']);});}
+      XLSX.utils.book_append_sheet(wb,XLSX.utils.aoa_to_sheet(wkRows),'Week '+S.season.week+' lineup');
+    }
+
     // Settings — human-readable; Import reads League and My team from here on the rebuild path
     var setRows=[['Key','Value'],['League',S.name],['My team',S.teams[S.me].name],['Rounds',rounds()],['Started',S.started?'yes':'no'],['Picks made',S.picks.length],['Exported',new Date().toISOString()],['Format','Draft Day v1']];
     XLSX.utils.book_append_sheet(wb,XLSX.utils.aoa_to_sheet(setRows),'Settings');
@@ -915,7 +979,7 @@ function rebuildFromSheets(wb){
 }
 function importState(j,name,how){
   var st=blankState(name);
-  ['teams','me','rounds','picks','started','plan','oppReport','scorecard','liveAt','liveNote'].forEach(function(k){if(j[k]!==undefined)st[k]=j[k];});
+  ['teams','me','rounds','picks','started','plan','oppReport','scorecard','season','liveAt','liveNote'].forEach(function(k){if(j[k]!==undefined)st[k]=j[k];});
   st.picks=(st.picks||[]).filter(function(p){return p&&BYID[p.playerId];}).sort(function(a,b){return a.overall-b.overall;});
   st.started=!!st.started||st.picks.length>0;st.aiCache={};
   if(!(st.me>=0&&st.me<TEAMS))st.me=0;
@@ -1071,6 +1135,121 @@ async function playerBio(id,anchor){
     if(document.getElementById('biopop')===m){m.innerHTML='<button class="close" title="Close">×</button>'+bioCardHTML(res.result,pl);m.querySelector('.close').addEventListener('click',closeBio);m.querySelectorAll('[data-draft]').forEach(function(b){b.addEventListener('click',function(){var pid=b.dataset.draft;closeBio();makePick(pid,S.me);});});}}
   catch(e){if(document.getElementById('biopop')===m)m.innerHTML='<button class="close" title="Close">×</button><div class="err" style="padding:6px 0">'+esc(e.message)+'</div>';var c=m.querySelector('.close');if(c)c.addEventListener('click',closeBio);console.warn('[bio]',e);}
 }
+// ── Season panel: this week's lineup, start/sit, drops ────────────────
+var _seasonAutoPulled=false,_addTimer=null;
+function seasonPlayerData(entry){var d=S.season&&S.season.data;if(!d||!d.players)return null;return d.players[norm(entry.name)]||null;}
+function seasonLineup(){
+  // Starters from the advisor when it covered this week; otherwise best projection per slot.
+  var ss=ensureSeason(),d=ss.data,adv=(ss.advice&&ss.adviceWeek===ss.week)?ss.advice:null;
+  var pool=ss.roster.map(function(e){var pd=seasonPlayerData(e);return Object.assign({},e,{proj:pd&&pd.proj!=null?pd.proj:null,opp:pd&&pd.opp,injury:pd&&pd.injury,fpRank:pd&&pd.fpRank,fpTier:pd&&pd.fpTier,fpPos:pd&&pd.fpPos,notes:(pd&&pd.notes)||[],matched:!!(pd&&pd.matched)});});
+  var slots=STARTERS.map(function(sl){return {slot:sl,p:null,reason:''};}),used={};
+  if(adv&&Array.isArray(adv.starters)){
+    adv.starters.forEach(function(st){var sl=slots.find(function(x){return x.slot===String(st.slot).toUpperCase().replace('DEF','DST')&&!x.p;});var pl=pool.find(function(e){return !used[e.name]&&norm(e.name)===norm(st.name);});if(sl&&pl){sl.p=pl;sl.reason=st.reason||'';used[pl.name]=1;}});
+  }
+  // fill anything the advisor left open (or everything, with no advice) by projection
+  var score=function(e){return e.opp==='BYE'?-1:(e.proj||0);}; // a bye week never beats a live player
+  var byProj=pool.slice().sort(function(a,b){return score(b)-score(a);});
+  slots.forEach(function(sl){if(sl.p)return;var pl=byProj.find(function(e){return !used[e.name]&&(sl.slot==='FLEX'?FLEX_OK[e.pos]:e.pos===sl.slot);});if(pl){sl.p=pl;used[pl.name]=1;sl.reason=adv?'Filled by projection (the advisor did not name a '+posLabel(sl.slot)+')':(pl.proj!=null?'Best projected '+posLabel(sl.slot)+' on your roster ('+pl.proj+' pts'+(pl.opp?' vs '+pl.opp:'')+')':'No projection yet — press Refresh');}});
+  var bench=pool.filter(function(e){return !used[e.name];}).sort(function(a,b){return (b.proj||0)-(a.proj||0);}).map(function(e){var br=adv&&(adv.bench||[]).find(function(b){return norm(b.name)===norm(e.name);});var starterSame=slots.filter(function(x){return x.p&&(x.p.pos===e.pos||(x.slot==='FLEX'&&FLEX_OK[e.pos]));});var floor=starterSame.length?Math.min.apply(null,starterSame.map(function(x){return x.p.proj||0;})):null;return Object.assign({},e,{reason:br?br.reason:(e.proj!=null&&floor!=null?'Projected '+e.proj+' — behind your '+posLabel(e.pos)+' starters ('+floor+'+)':e.proj!=null?'Projected '+e.proj:'No projection yet')});});
+  return {slots:slots,bench:bench,adv:adv};
+}
+function renderSeason(){
+  var host=document.getElementById('season');
+  if(!seasonVisible()){host.classList.add('hidden');return;}
+  host.classList.remove('hidden');
+  var ss=ensureSeason(),d=ss.data;
+  var sel=document.getElementById('season-week');
+  var cur=(d&&d.currentWeek)||ss.week||1,wk=ss.week||cur;
+  sel.innerHTML='';for(var w=1;w<=18;w++){var o=document.createElement('option');o.value=w;o.textContent='Week '+w+(w===cur?' (now)':'');if(w===wk)o.selected=true;sel.appendChild(o);}
+  document.getElementById('season-week-label').textContent='week '+wk;
+  document.getElementById('btn-season-collapse').textContent=ss.collapsed?'Show':'Hide';
+  document.getElementById('season-body').classList.toggle('hidden',!!ss.collapsed);
+  if(ss.collapsed)return;
+  var st=document.getElementById('season-status');
+  if(!d)st.textContent='No data for this week yet. Press Refresh to pull projections, matchups, and injury notes.';
+  else{var src=d.sources||{};st.textContent='Projections and matchups from Sleeper'+(src.fpWeekly==='ok'?', expert tiers and injury notes from FantasyPros':'')+' · pulled '+new Date(d.fetchedAt).toLocaleTimeString([],{hour:'numeric',minute:'2-digit'})+(d.week!==ss.week?' · data is for week '+d.week+' — press Refresh':'');}
+  var lu=seasonLineup(),tbl=document.getElementById('lineup');
+  var row=function(sl,e,isStart,reason){
+    var call=isStart?(sl==='FLEX'?'flex':'start'):'sit';
+    return '<tr class="'+(isStart?'start':'')+'" data-name="'+esc(e.name)+'"><td class="num" style="font-weight:600;color:var(--text-muted)">'+esc(posLabel(sl))+'</td>'+
+      '<td><span class="pos pos-'+esc(e.pos)+'">'+esc(posLabel(e.pos))+'</span> <b>'+esc(e.name)+'</b> <span class="muted small">'+esc(e.team||'')+'</span>'+(e.fpPos?' <span class="muted small">· FP '+esc(e.fpPos)+(e.fpTier?' T'+esc(e.fpTier):'')+'</span>':'')+'</td>'+
+      '<td>'+esc(e.opp?(e.opp==='BYE'?'BYE':'vs '+e.opp):(d?'—':''))+'</td><td class="num">'+(e.proj!=null?esc(e.proj):'—')+'</td>'+
+      '<td>'+(e.opp==='BYE'?'<span class="inj">BYE</span>':e.injury?'<span class="inj" title="'+esc((e.notes||[]).join(' | '))+'">'+esc(e.injury)+'</span>':(e.notes&&e.notes.length?'<span class="inj" title="'+esc(e.notes.join(' | '))+'">note</span>':(d&&e.matched?'<span class="muted small">ok</span>':'<span class="muted small">—</span>')))+'</td>'+
+      '<td><span class="call '+call+'">'+(isStart?(sl==='FLEX'?'FLEX':'START'):'SIT')+'</span></td><td class="small">'+esc(reason||'')+'</td>'+
+      '<td><button class="drop" data-drop="'+esc(e.name)+'" title="Drop '+esc(e.name)+' from your roster">×</button></td></tr>';
+  };
+  var html='<tr><th>Slot</th><th>Player</th><th>Opp</th><th>Proj</th><th>Health</th><th>Call</th><th>Why</th><th></th></tr>';
+  lu.slots.forEach(function(sl){html+=sl.p?row(sl.slot,sl.p,true,sl.reason):'<tr><td class="num" style="font-weight:600;color:var(--text-muted)">'+esc(posLabel(sl.slot))+'</td><td colspan="7" class="muted small">open — add a '+esc(posLabel(sl.slot))+'</td></tr>';});
+  html+='<tr class="benchhead"><td colspan="8">Bench · '+lu.bench.length+'</td></tr>';
+  lu.bench.forEach(function(e){html+=row('BN',e,false,e.reason);});
+  tbl.innerHTML=html;
+  var advHost=document.getElementById('season-advice'),adv=lu.adv;
+  if(!adv){advHost.innerHTML=ss.advice?'<div class="small muted" style="margin-top:8px">The saved advice is for week '+esc(ss.adviceWeek)+'. Press "Who do I start?" for this week.</div>':'';return;}
+  var li=function(a){return (a||[]).map(function(x){return '<li>'+esc(x)+'</li>';}).join('');};
+  advHost.innerHTML='<div class="strategy" style="margin-top:10px">'+esc(adv.summary||'')+'</div><div class="advice-cols">'+
+    ((adv.closeCalls||[]).length?'<div><div class="lbl">Close calls</div><ul>'+li(adv.closeCalls)+'</ul></div>':'')+
+    ((adv.injuryWatch||[]).length?'<div><div class="lbl">Check before kickoff</div><ul>'+li(adv.injuryWatch)+'</ul></div>':'')+
+    ((adv.drops||[]).filter(function(x){return x.drop&&x.drop!=='none';}).length?'<div><div class="lbl">Drop candidates</div><ul>'+(adv.drops||[]).filter(function(x){return x.drop&&x.drop!=='none';}).map(function(x){return '<li><b>Drop '+esc(x.drop)+'</b> — '+esc(x.reason)+(x.add&&x.add!=='none'?'<br><b>Add '+esc(x.add)+'</b> — '+esc(x.addReason)+' <span class="muted">(check he is still on waivers)</span>':'')+'</li>';}).join('')+'</ul></div>':'<div><div class="lbl">Drops</div><div class="small muted">No drop recommended this week.</div></div>')+'</div>';
+}
+async function seasonRefresh(){
+  var ss=ensureSeason(),btn=document.getElementById('btn-season-refresh');btn.disabled=true;btn.textContent='Pulling…';
+  try{
+    var body={names:ss.roster.map(function(e){return {name:e.name,pos:e.pos};})};if(ss.week)body.week=ss.week;
+    var res=await api('/ff/week',body);
+    var byName={};(res.players||[]).forEach(function(p){byName[norm(p.name)]=p;});
+    ss.data={week:res.week,season:res.season,currentWeek:res.currentWeek,fetchedAt:res.fetchedAt,sources:res.sources,players:byName,pool:res.pool||[]};
+    ss.week=res.week;save();renderSeason();
+    var missing=(res.players||[]).filter(function(p){return !p.matched;}).map(function(p){return p.name;});
+    toast('Week '+res.week+' data pulled'+(missing.length?' — no projection for '+missing.join(', '):''));
+  }catch(e){toast('Refresh failed: '+e.message);}
+  btn.disabled=false;btn.textContent='Refresh';
+}
+async function seasonAdvise(){
+  var ss=ensureSeason();
+  if(!ss.data||ss.data.week!==ss.week){await seasonRefresh();if(!ss.data)return;}
+  var btn=document.getElementById('btn-season-advise');btn.disabled=true;var old=btn.textContent;btn.textContent='Thinking… ~45 s';
+  try{
+    var lu=seasonLineup();
+    var roster=ss.roster.map(function(e){var pd=seasonPlayerData(e)||{};return {name:e.name,pos:e.pos,team:e.team,opp:pd.opp||null,proj:pd.proj!=null?pd.proj:null,injury:pd.injury||null,fpWeeklyRank:pd.fpRank||null,fpTier:pd.fpTier||null,fpPosRank:pd.fpPos||null,notes:pd.notes||[]};});
+    var drafted={};S.picks.forEach(function(p){var pl=BYID[p.playerId];if(pl)drafted[norm(pl.name)]=1;});
+    var mine={};ss.roster.forEach(function(e){mine[norm(e.name)]=1;});
+    var pool=(ss.data.pool||[]).filter(function(p){return !mine[norm(p.name)];}).map(function(p){return {name:p.name,pos:p.pos,team:p.team,opp:p.opp,proj:p.proj,injury:p.injury||null,drafted:!!drafted[norm(p.name)]};});
+    var fa=pool.filter(function(p){return !p.drafted;}).sort(function(a,b){return (b.proj||0)-(a.proj||0);});
+    var trimmed=[].concat(fa.filter(function(p){return p.pos!=='K'&&p.pos!=='DST';}).slice(0,40),fa.filter(function(p){return p.pos==='K';}).slice(0,5),fa.filter(function(p){return p.pos==='DST';}).slice(0,6));
+    var state={available:[],week:ss.week,league:buildState().league,me:{name:S.teams[S.me].name},slots:STARTERS.map(posLabel),roster:roster,currentLineupByProjection:lu.slots.map(function(x){return posLabel(x.slot)+': '+(x.p?x.p.name:'open');}),pool:trimmed};
+    var res=await api('/ff/advise',{mode:'lineup',state:state});
+    ss.advice=res.result;ss.adviceWeek=ss.week;save();renderSeason();
+    document.getElementById('ai-model').textContent=(res.model||'')+' · lineup';
+  }catch(e){toast('Advice failed: '+e.message);}
+  btn.disabled=false;btn.textContent=old;
+}
+function seasonDrop(name){
+  var ss=ensureSeason();
+  if(!confirm('Drop '+name+' from your roster?'))return;
+  ss.roster=ss.roster.filter(function(e){return e.name!==name;});ss.advice=null;save();renderSeason();toast('Dropped '+name);
+}
+function seasonAdd(p){
+  var ss=ensureSeason();
+  if(ss.roster.some(function(e){return norm(e.name)===norm(p.name);})){toast(p.name+' is already on your roster');return;}
+  var pool=BYNORM[norm(p.name)];
+  ss.roster.push({id:pool?pool.id:('sl:'+p.sleeperId),name:p.name,pos:p.pos,team:p.team||null,sleeperId:p.sleeperId||null});
+  if(ss.data&&ss.data.players)ss.data.players[norm(p.name)]={name:p.name,matched:p.name,pos:p.pos,team:p.team,opp:p.opp,proj:p.proj,injury:p.injury,notes:[]};
+  ss.advice=null;save();renderSeason();toast('Added '+p.name);
+  document.getElementById('season-add').value='';hideAddResults();
+}
+function hideAddResults(){var r=document.getElementById('season-add-results');r.classList.add('hidden');r.innerHTML='';}
+async function seasonSearch(q){
+  var box=document.getElementById('season-add-results');
+  if(!q||q.trim().length<2){hideAddResults();return;}
+  try{
+    var res=await api('/ff/week',{q:q.trim(),week:ensureSeason().week||undefined});
+    var list=res.results||[];
+    if(!list.length){box.innerHTML='<button disabled>No match in this week\'s projections</button>';box.classList.remove('hidden');return;}
+    box.innerHTML=list.map(function(p,i){return '<button data-i="'+i+'"><span class="pos pos-'+esc(p.pos)+'">'+esc(posLabel(p.pos))+'</span> '+esc(p.name)+' <span class="muted small">'+esc(p.team||'')+(p.opp?' vs '+esc(p.opp):'')+(p.proj!=null?' · '+esc(p.proj)+' pts':'')+(p.injury?' · '+esc(p.injury):'')+'</span></button>';}).join('');
+    box.classList.remove('hidden');
+    box.querySelectorAll('button[data-i]').forEach(function(b){b.addEventListener('click',function(){seasonAdd(list[+b.dataset.i]);});});
+  }catch(e){box.innerHTML='<button disabled>'+esc(e.message)+'</button>';box.classList.remove('hidden');}
+}
 // ── Scorecard (after pick 150) ────────────────────────────────────────
 function draftComplete(){return S.picks.length>=totalPicks();}
 function renderScorecard(){
@@ -1181,6 +1360,16 @@ function bind(){
   document.getElementById('btn-league-delete').addEventListener('click',deleteLeague);
   document.getElementById('btn-score').addEventListener('click',scorecard);
   document.getElementById('btn-round-add').addEventListener('click',addRound);
+  document.getElementById('btn-season-refresh').addEventListener('click',seasonRefresh);
+  document.getElementById('btn-season-advise').addEventListener('click',seasonAdvise);
+  document.getElementById('btn-season-collapse').addEventListener('click',function(){var ss=ensureSeason();ss.collapsed=!ss.collapsed;save(false);renderSeason();});
+  document.getElementById('season-week').addEventListener('change',function(e){var ss=ensureSeason();ss.week=+e.target.value;ss.advice=null;save();renderSeason();});
+  document.getElementById('btn-season-reset').addEventListener('click',function(){if(!confirm('Replace your roster with your draft picks?'))return;var ss=ensureSeason();ss.roster=draftRosterEntries();ss.advice=null;save();renderSeason();toast('Roster reset to draft picks');});
+  document.getElementById('lineup').addEventListener('click',function(e){var b=e.target.closest('[data-drop]');if(b)seasonDrop(b.dataset.drop);});
+  var addInp=document.getElementById('season-add');
+  addInp.addEventListener('input',function(){clearTimeout(_addTimer);_addTimer=setTimeout(function(){seasonSearch(addInp.value);},350);});
+  addInp.addEventListener('keydown',function(e){if(e.key==='Escape'){addInp.value='';hideAddResults();}});
+  document.addEventListener('click',function(e){if(!e.target.closest('.addrow'))hideAddResults();});
   document.getElementById('btn-round-add-top').addEventListener('click',addRound);
   document.getElementById('btn-round-remove').addEventListener('click',removeRound);
   document.getElementById('btn-reset').addEventListener('click',function(){
