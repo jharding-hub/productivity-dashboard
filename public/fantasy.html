@@ -139,6 +139,14 @@ td.num{text-align:right;font-variant-numeric:tabular-nums;color:var(--text-secon
 .spinner{display:inline-block;width:12px;height:12px;border:2px solid var(--border);border-top-color:var(--accent);border-radius:50%;animation:sp .8s linear infinite;vertical-align:-2px;margin-right:6px}
 @keyframes sp{to{transform:rotate(360deg)}}
 .err{color:var(--err);font-size:12px}
+.score-table{width:100%;font-size:13px}
+.score-table td,.score-table th{white-space:normal;vertical-align:top}
+.score-table tr.mine td{background:var(--accent-soft)}
+.score-table .grade{font-weight:700;font-size:15px;color:var(--accent)}
+.score-table details summary{cursor:pointer;color:var(--text-secondary);font-size:12px}
+.score-table ul{margin:4px 0;padding-left:16px;font-size:12px}
+.league-row{display:flex;gap:6px;align-items:center;flex-wrap:wrap}
+.league-row select{flex:1;min-width:180px}
 .sync-pill{font-size:11px;padding:3px 9px;border-radius:999px;background:var(--surface-1);border:1px solid var(--border);color:var(--text-secondary);white-space:nowrap}
 .sync-pill.ok{color:var(--ok);border-color:var(--ok)}
 .sync-pill.warn{color:var(--warn);border-color:var(--warn)}
@@ -167,10 +175,20 @@ kbd{font-family:inherit;font-size:11px;border:1px solid var(--border);border-bot
 <!-- ───────── SETUP ───────── -->
 <div id="setup" class="setup hidden">
   <p class="small muted"><a href="/" style="color:inherit">&larr; Centerpost</a></p>
-  <h1 style="font-size:22px;margin-bottom:4px">Draft Day — 101 League</h1>
+  <h1 style="font-size:22px;margin-bottom:4px" id="setup-title">Draft Day — 101 League</h1>
   <p class="muted" style="margin:0 0 18px">10 teams, snake, half-PPR. Set the draft order Yahoo gives you, mark which team is yours, and start.</p>
   <p style="margin:0 0 14px"><span class="sync-pill" id="sync-pill-setup"></span></p>
   <div class="card">
+    <h2>League</h2>
+    <div class="league-row">
+      <select id="league-select" title="Switch between saved leagues"></select>
+      <button class="small" id="btn-league-new">New league…</button>
+      <button class="small" id="btn-league-rename">Rename…</button>
+      <button class="small ghost" id="btn-league-delete">Delete…</button>
+    </div>
+    <div class="small muted" style="margin-top:6px" id="league-meta"></div>
+  </div>
+  <div class="card" style="margin-top:12px">
     <h2>Draft order (pick 1 at the top)</h2>
     <div id="setup-teams"></div>
     <div class="small muted" style="margin-top:8px">Type the names as Yahoo shows them. Use ↑ ↓ to reorder. Tick "me" on your team.</div>
@@ -181,9 +199,8 @@ kbd{font-family:inherit;font-size:11px;border:1px solid var(--border);border-bot
   </div>
   <div style="display:flex;gap:8px;margin-top:14px;flex-wrap:wrap">
     <button class="primary" id="btn-start">Start draft</button>
-    <button id="btn-import-setup">Import saved draft…</button>
-    <button id="btn-reset" class="ghost" title="Clear every pick, plan, and report and start over">Reset draft…</button>
-    <input type="file" id="file-import" accept="application/json" class="hidden">
+    <button id="btn-import-setup" title="Load a draft from an exported .xlsx (or an old .json backup) as a new league">Import .xlsx…</button>
+    <button id="btn-reset" class="ghost" title="Clear every pick, plan, and report in this league and start over">Reset draft…</button>
   </div>
   <p class="small muted" style="margin-top:14px">Data: <span id="setup-meta"></span></p>
 </div>
@@ -191,13 +208,14 @@ kbd{font-family:inherit;font-size:11px;border:1px solid var(--border);border-bot
 <!-- ───────── DRAFT ───────── -->
 <div id="draft" class="hidden">
   <div class="topbar">
-    <h1>Draft Day</h1>
+    <h1 id="draft-title">Draft Day</h1>
     <span class="sync-pill" id="sync-pill-top"></span>
     <div class="clock" id="clock"></div>
     <div class="actions">
       <button class="small" id="btn-undo" title="Undo last pick">Undo</button>
       <button class="small" id="btn-live" title="Pull live half-PPR consensus + ADP from FantasyPros">Live ranks</button>
       <button class="small" id="btn-export">Export .xlsx</button>
+      <button class="small" id="btn-import" title="Load a draft from an exported .xlsx as a new league">Import…</button>
       <button class="small ghost" id="btn-setup">Setup</button>
     </div>
   </div>
@@ -207,6 +225,7 @@ kbd{font-family:inherit;font-size:11px;border:1px solid var(--border);border-bot
     <button data-col="ai">Advisor</button>
     <button data-col="team">My team</button>
     <button data-col="opps">Teams</button>
+    <button data-col="score" id="tab-score" class="hidden">Score</button>
   </div>
   <div class="layout">
 
@@ -292,11 +311,19 @@ kbd{font-family:inherit;font-size:11px;border:1px solid var(--border);border-bot
         <div id="opp-ai" class="ai-out"></div>
       </div>
     </div>
+    <div class="col hidden" data-col="score" id="score-col" style="grid-column:1/-1">
+      <div class="card">
+        <div class="card-head"><h2>Scorecard</h2><button class="primary small" id="btn-score">Grade the draft</button></div>
+        <div id="score-status" class="small muted"></div>
+        <div id="score-out"></div>
+      </div>
+    </div>
     </div><!-- /row2 -->
 
   </div>
 </div>
 
+<input type="file" id="file-import" accept=".xlsx,.json,application/json,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet" class="hidden">
 <div class="toast" id="toast"></div>
 
 <script>
@@ -325,16 +352,87 @@ function posLabel(p){return POS_LABEL[p]||p;}
 function esc(s){return String(s==null?'':s).replace(/[&<>"']/g,function(c){return{'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c];});}
 
 // ── state ────────────────────────────────────────────────────────────
-var S=null;
-function blankState(){
+// C = the container of every saved league (what is stored and synced).
+// S = the ACTIVE league's state (what the rest of the page reads and writes).
+// S is always the same object as C.leagues[C.activeId]; use replaceActive()
+// when a whole new state object is needed so both stay in step.
+var C=null,S=null;
+function blankState(name){
   var teams=[];for(var i=0;i<TEAMS;i++)teams.push({name:'Team '+(i+1)});
-  return {v:1,rev:0,teams:teams,me:0,picks:[],started:false,plan:null,aiCache:{},oppReport:null,liveAt:null,liveNote:''};
+  return {v:1,name:name||'101 League',teams:teams,me:0,picks:[],started:false,plan:null,aiCache:{},oppReport:null,scorecard:null,liveAt:null,liveNote:''};
 }
-function load(){try{var j=JSON.parse(localStorage.getItem(LS_KEY));if(j&&j.v===1&&Array.isArray(j.teams)&&j.teams.length===TEAMS)return j;}catch(e){}return blankState();}
+function blankContainer(){var st=blankState('101 League');return {v:2,rev:0,activeId:'l1',order:['l1'],leagues:{l1:st}};}
+function isLeagueState(j){return !!(j&&j.v===1&&Array.isArray(j.teams)&&j.teams.length===TEAMS&&Array.isArray(j.picks));}
+// Accepts a v2 container, a v1 single-league state (the pre-league format,
+// local or cloud), or junk. Returns a valid container or null.
+function migrateContainer(j){
+  if(j&&j.v===2&&j.leagues&&typeof j.leagues==='object'){
+    var ids=Object.keys(j.leagues).filter(function(id){return isLeagueState(j.leagues[id]);});
+    if(!ids.length)return null;
+    j.order=(Array.isArray(j.order)?j.order:[]).filter(function(id){return ids.indexOf(id)>=0;});
+    ids.forEach(function(id){if(j.order.indexOf(id)<0)j.order.push(id);});
+    if(!j.leagues[j.activeId])j.activeId=j.order[0];
+    j.rev=j.rev||0;
+    return j;
+  }
+  if(isLeagueState(j)){var c=blankContainer();j.name=j.name||'101 League';c.leagues.l1=j;c.rev=j.rev||0;return c;}
+  return null;
+}
+function load(){try{var c=migrateContainer(JSON.parse(localStorage.getItem(LS_KEY)));if(c)return c;}catch(e){}return blankContainer();}
+function activate(){
+  S=C.leagues[C.activeId];
+  if(!S){C.activeId=C.order[0];S=C.leagues[C.activeId];}
+  if(!S.name)S.name='101 League';
+  if(S.scorecard===undefined)S.scorecard=null;
+  if(!S.aiCache)S.aiCache={};
+}
+function replaceActive(st){C.leagues[C.activeId]=st;S=st;}
 function save(sync){
-  if(sync!==false)S.rev=(S.rev||0)+1;
-  try{localStorage.setItem(LS_KEY,JSON.stringify(S));}catch(e){toast('Could not save locally: '+e.message);}
+  if(sync!==false)C.rev=(C.rev||0)+1;
+  try{localStorage.setItem(LS_KEY,JSON.stringify(C));}catch(e){toast('Could not save locally: '+e.message);}
   if(sync!==false)scheduleCloudPush();
+}
+// ── leagues ──────────────────────────────────────────────────────────
+function leagueNames(){return C.order.map(function(id){return C.leagues[id].name;});}
+function uniqueName(name){
+  name=String(name||'').trim()||'League';
+  var names=leagueNames();if(names.indexOf(name)<0)return name;
+  var n=2;while(names.indexOf(name+' ('+n+')')>=0)n++;return name+' ('+n+')';
+}
+function addLeague(st){
+  var id='l'+Date.now().toString(36)+Math.random().toString(36).slice(2,5);
+  st.name=uniqueName(st.name);
+  C.leagues[id]=st;C.order.push(id);C.activeId=id;activate();save();
+  return id;
+}
+function newLeague(){
+  var name=prompt('Name for the new league:','League '+(C.order.length+1));
+  if(name===null)return;
+  var teams=S.teams.map(function(t){return {name:t.name};}); // carry the current team names as a starting point
+  var st=blankState(name);st.teams=teams;st.me=S.me;
+  addLeague(st);toast('New league: '+S.name);route();
+}
+function switchLeague(id){if(!C.leagues[id]||id===C.activeId)return;C.activeId=id;activate();save();route();}
+function renameLeague(){
+  var name=prompt('Rename league:',S.name);if(name===null)return;
+  name=String(name).trim();if(!name||name===S.name)return;
+  var others=leagueNames().filter(function(n){return n!==S.name;});
+  if(others.indexOf(name)>=0){toast('A league named "'+name+'" already exists');return;}
+  S.name=name;save();route();
+}
+function deleteLeague(){
+  var msg='Delete league "'+S.name+'" with '+S.picks.length+' picks? This cannot be undone. Export first if you want a copy.';
+  if(!confirm(msg))return;
+  var id=C.activeId;delete C.leagues[id];C.order=C.order.filter(function(x){return x!==id;});
+  if(!C.order.length){var st=blankState('101 League');C.leagues.l1=st;C.order=['l1'];}
+  C.activeId=C.order[0];activate();save();toast('League deleted');route();
+}
+function containerHasData(){return C.order.some(function(id){var l=C.leagues[id];return l.picks.length||l.plan||l.started;});}
+function applyTitles(){
+  var t='Draft Day — '+S.name;
+  document.title=t;
+  var a=document.getElementById('setup-title');if(a)a.textContent=t;
+  var b=document.getElementById('draft-title');if(b)b.textContent='Draft Day · '+S.name;
 }
 function toast(msg){var t=document.getElementById('toast');t.textContent=msg;t.classList.add('on');clearTimeout(t._h);t._h=setTimeout(function(){t.classList.remove('on');},2200);}
 
@@ -364,10 +462,12 @@ async function initCloudSync(uid){
     var snap=await _cloudRef.get();
     _cloudReadOk=true; // a successful read — including "document does not exist" — satisfies the guard
     if(snap.exists){
-      var remote=snap.data(),remoteState=remote&&remote.state,remoteRev=(remote&&remote.rev)||0,localRev=(S&&S.rev)||0;
-      if(remoteState&&remoteRev>=localRev){S=remoteState;S.rev=remoteRev;save(false);route();}
+      var remote=snap.data(),remoteRev=(remote&&remote.rev)||0,localRev=(C&&C.rev)||0;
+      // v2 docs carry `container`; the pre-league v1 docs carried `state` — migrate either.
+      var remoteC=remote?migrateContainer(remote.container||remote.state):null;
+      if(remoteC&&remoteRev>=localRev){C=remoteC;C.rev=remoteRev;activate();save(false);route();}
       else if(localRev>0){pushCloud();}
-    }else if(S&&(S.picks.length||S.plan||S.started)){
+    }else if(C&&containerHasData()){
       pushCloud(); // nothing in the cloud yet but there is local state — seed it
     }
     setSyncStatus('Synced '+nowClock(),'ok');
@@ -384,7 +484,7 @@ function attachCloudListener(){
   _cloudUnsub=_cloudRef.onSnapshot(function(snap){
     if(!snap.exists||snap.metadata.hasPendingWrites)return; // ignore our own optimistic echo
     var remote=snap.data();
-    if(!remote||!remote.state)return;
+    if(!remote||!(remote.container||remote.state))return;
     // NOTE: no same-device filter here on purpose — localStorage (and so
     // _deviceId) is shared across every tab of one browser, so two tabs of
     // the SAME browser would wrongly look like "the same device" and a
@@ -394,8 +494,9 @@ function attachCloudListener(){
     // own confirmed write (rev is already equal locally) without needing
     // a device comparison at all.
     var remoteRev=remote.rev||0;
-    if(remoteRev<=((S&&S.rev)||0))return; // stale or duplicate
-    S=remote.state;S.rev=remoteRev;save(false);route();
+    if(remoteRev<=((C&&C.rev)||0))return; // stale or duplicate
+    var remoteC=migrateContainer(remote.container||remote.state);if(!remoteC)return;
+    C=remoteC;C.rev=remoteRev;activate();save(false);route();
     toast('Updated from another device');
     setSyncStatus('Synced '+nowClock(),'ok');
   },function(err){console.warn('[cloud] listener error',err);setSyncStatus('Offline — saved locally','warn');});
@@ -409,7 +510,7 @@ function scheduleCloudPush(){
 async function pushCloud(){
   if(!_cloudReadOk||!_cloudRef)return;
   try{
-    await _cloudRef.set({v:1,rev:S.rev,device:_deviceId,updatedAt:firebase.firestore.FieldValue.serverTimestamp(),state:S});
+    await _cloudRef.set({v:2,rev:C.rev,device:_deviceId,updatedAt:firebase.firestore.FieldValue.serverTimestamp(),container:C});
     setSyncStatus('Synced '+nowClock(),'ok');
   }catch(e){console.warn('[cloud] push failed',e);setSyncStatus('Sync error — saved locally','warn');}
 }
@@ -431,7 +532,14 @@ function renderSetup(){
   host.querySelectorAll('[data-up]').forEach(function(b){b.addEventListener('click',function(){swapTeams(+b.dataset.up,+b.dataset.up-1);});});
   host.querySelectorAll('[data-down]').forEach(function(b){b.addEventListener('click',function(){swapTeams(+b.dataset.down,+b.dataset.down+1);});});
   document.getElementById('setup-meta').textContent=(window.FF_META?('FantasyPros ECR + ESPN top 300 + SB Nation tiers, built '+FF_META.built+', '+FF_META.counts.players+' players'):'no player data loaded');
+  renderLeagueCard();
   renderSetupStrategy();
+}
+function renderLeagueCard(){
+  var sel=document.getElementById('league-select');
+  sel.innerHTML=C.order.map(function(id){var l=C.leagues[id];return '<option value="'+esc(id)+'"'+(id===C.activeId?' selected':'')+'>'+esc(l.name)+' — '+l.picks.length+' pick'+(l.picks.length===1?'':'s')+(l.picks.length>=TEAMS*ROUNDS?' (complete)':l.started?' (in progress)':'')+'</option>';}).join('');
+  document.getElementById('league-meta').textContent=C.order.length+' saved league'+(C.order.length===1?'':'s')+'. Each keeps its own teams, picks, plan, and reports. Every league uses the 101 League roster and half-PPR scoring for the advisor.';
+  applyTitles();
 }
 function swapTeams(a,b){
   if(b<0||b>=TEAMS)return;
@@ -459,7 +567,7 @@ function renderSetupStrategy(){document.getElementById('setup-strategy').innerHT
 // ── draft screen ─────────────────────────────────────────────────────
 var ui={pos:'ALL',q:'',sort:'cons'};
 function show(id){['setup','draft'].forEach(function(x){document.getElementById(x).classList.toggle('hidden',x!==id);});}
-function renderAll(){renderClock();renderAvail();renderBoard();renderOpps();renderRoster();renderPlan();document.getElementById('my-name').textContent=S.teams[S.me].name;}
+function renderAll(){renderClock();renderAvail();renderBoard();renderOpps();renderRoster();renderPlan();renderScorecard();document.getElementById('my-name').textContent=S.teams[S.me].name;}
 
 function renderClock(){
   var n=nextOverall(),host=document.getElementById('clock');
@@ -627,6 +735,7 @@ function makePick(playerId,slotOverride){
   ui.q='';document.getElementById('q').value='';
   renderAll();
   if(slotFor(nextOverall()).slot===S.me&&nextOverall()<=TEAMS*ROUNDS)setTimeout(function(){toast('You are on the clock');},900);
+  if(draftComplete())setTimeout(function(){toast('Draft complete — grade it in the Scorecard');},900);
   maybePrefetch();
 }
 function undo(){
@@ -698,16 +807,92 @@ async function exportXlsx(){
       XLSX.utils.book_append_sheet(wb,XLSX.utils.aoa_to_sheet(planRows),'Plan');
     }
 
-    var fname='draft-101-league-'+new Date().toISOString().slice(0,10)+'.xlsx';
+    // Scorecard — only if one has been generated
+    if(S.scorecard&&S.scorecard.teams){
+      var scRows=[['Rank','Team','Grade','Projection','Best pick','Riskiest pick','Strengths','Weaknesses','Bye note','Needs']];
+      S.scorecard.teams.forEach(function(t){scRows.push([t.rank,t.name,t.grade,t.projection,t.bestPick,t.riskiestPick,(t.strengths||[]).join('; '),(t.weaknesses||[]).join('; '),t.byeNote,t.note]);});
+      scRows.push([]);scRows.push(['Overview',S.scorecard.overview||'']);
+      XLSX.utils.book_append_sheet(wb,XLSX.utils.aoa_to_sheet(scRows),'Scorecard');
+    }
+
+    // Settings — human-readable; Import reads League and My team from here on the rebuild path
+    var setRows=[['Key','Value'],['League',S.name],['My team',S.teams[S.me].name],['Started',S.started?'yes':'no'],['Picks made',S.picks.length],['Exported',new Date().toISOString()],['Format','Draft Day v1']];
+    XLSX.utils.book_append_sheet(wb,XLSX.utils.aoa_to_sheet(setRows),'Settings');
+
+    // _raw — the full state as JSON, chunked to stay under Excel's 32,767-char cell limit,
+    // so Import is lossless (plan, reports, scorecard). Hidden so it does not clutter the workbook.
+    var rawJson=JSON.stringify(S),chunks=[];
+    for(var ci=0;ci<rawJson.length;ci+=30000)chunks.push([rawJson.slice(ci,ci+30000)]);
+    XLSX.utils.book_append_sheet(wb,XLSX.utils.aoa_to_sheet(chunks),'_raw');
+    wb.Workbook=wb.Workbook||{};wb.Workbook.Sheets=wb.Workbook.Sheets||[];
+    wb.SheetNames.forEach(function(nm,ix){wb.Workbook.Sheets[ix]=wb.Workbook.Sheets[ix]||{};if(nm==='_raw')wb.Workbook.Sheets[ix].Hidden=1;});
+
+    var fname='draft-'+(S.name||'league').toLowerCase().replace(/[^a-z0-9]+/g,'-').replace(/^-|-$/g,'')+'-'+new Date().toISOString().slice(0,10)+'.xlsx';
     XLSX.writeFile(wb,fname);
     toast('Exported '+fname);
   }catch(e){toast('Export failed: '+e.message);}
   btn.disabled=false;btn.textContent=oldLabel;
 }
-function importJson(file){
-  var rd=new FileReader();
-  rd.onload=function(){try{var j=JSON.parse(rd.result);if(j.v!==1||!Array.isArray(j.picks))throw new Error('not a draft file');S=j;save();toast('Imported');route();}catch(e){toast('Import failed: '+e.message);}};
-  rd.readAsText(file);
+// Import always creates a NEW league (never overwrites the one you are in).
+function importFile(file){
+  var name=file.name||'';
+  if(/\.json$/i.test(name)){
+    var rd=new FileReader();
+    rd.onload=function(){try{var j=JSON.parse(rd.result);if(!isLeagueState(j))throw new Error('not a Draft Day file');importState(j,j.name||name.replace(/\.json$/i,''),'json');}catch(e){toast('Import failed: '+e.message);}};
+    rd.readAsText(file);return;
+  }
+  var rd2=new FileReader();
+  rd2.onload=async function(){
+    try{
+      await ensureXlsxLib();
+      var wb=XLSX.read(new Uint8Array(rd2.result),{type:'array'});
+      var raw=wb.Sheets['_raw'];
+      if(raw){
+        var cells=XLSX.utils.sheet_to_json(raw,{header:1}).map(function(r){return r[0]==null?'':String(r[0]);}).join('');
+        var j=JSON.parse(cells);
+        if(!isLeagueState(j))throw new Error('the _raw sheet is not a Draft Day state');
+        importState(j,j.name||name.replace(/\.xlsx$/i,''),'xlsx');
+        return;
+      }
+      importState(rebuildFromSheets(wb),null,'rebuilt');
+    }catch(e){toast('Import failed: '+e.message);console.warn('[import]',e);}
+  };
+  rd2.readAsArrayBuffer(file);
+}
+// Fallback for a workbook without _raw (hand-edited or built elsewhere): teams from the
+// Draft Board header, picks from All Picks matched to the player pool, me from Settings.
+function rebuildFromSheets(wb){
+  var wsB=wb.Sheets['Draft Board'],wsP=wb.Sheets['All Picks'],wsS=wb.Sheets['Settings'];
+  if(!wsB||!wsP)throw new Error('need Draft Board and All Picks sheets');
+  var board=XLSX.utils.sheet_to_json(wsB,{header:1});
+  var teams=[];for(var i=0;i<TEAMS;i++){var nm=board[0]&&board[0][i+1];teams.push({name:nm!=null&&String(nm).trim()?String(nm).trim():'Team '+(i+1)});}
+  var settings={};if(wsS)XLSX.utils.sheet_to_json(wsS,{header:1}).forEach(function(r){if(r[0]!=null)settings[String(r[0])]=r[1];});
+  var st=blankState(settings.League?String(settings.League):'Imported league');st.teams=teams;
+  var meIdx=teams.findIndex(function(t){return t.name===String(settings['My team']||'');});st.me=meIdx>=0?meIdx:0;
+  var rows=XLSX.utils.sheet_to_json(wsP,{header:1}).slice(1),unmatched=[],picks=[];
+  rows.forEach(function(r){
+    if(r[0]==null||r[3]==null)return;
+    var overall=+r[0],pl=BYNORM[norm(String(r[3]))];
+    if(!overall||!pl){unmatched.push(String(r[3]));return;}
+    var slot=teams.findIndex(function(t){return t.name===String(r[2]);});if(slot<0)slot=slotFor(overall).slot;
+    picks.push({overall:overall,round:slotFor(overall).round,slot:slot,playerId:pl.id,at:''});
+  });
+  picks.sort(function(a,b){return a.overall-b.overall;});
+  var seen={},clean=[];picks.forEach(function(p){if(p.overall===clean.length+1&&!seen[p.playerId]){seen[p.playerId]=1;clean.push(p);}});
+  st.picks=clean;st.started=clean.length>0||String(settings.Started||'').toLowerCase()==='yes';
+  st._importNote=(clean.length+' picks rebuilt'+(unmatched.length?', '+unmatched.length+' unmatched: '+unmatched.slice(0,5).join(', ')+(unmatched.length>5?'…':''):''));
+  return st;
+}
+function importState(j,name,how){
+  var st=blankState(name);
+  ['teams','me','picks','started','plan','oppReport','scorecard','liveAt','liveNote'].forEach(function(k){if(j[k]!==undefined)st[k]=j[k];});
+  st.picks=(st.picks||[]).filter(function(p){return p&&BYID[p.playerId];}).sort(function(a,b){return a.overall-b.overall;});
+  st.started=!!st.started||st.picks.length>0;st.aiCache={};
+  if(!(st.me>=0&&st.me<TEAMS))st.me=0;
+  var note=j._importNote||'';delete st._importNote;
+  addLeague(st);
+  toast('Imported "'+S.name+'": '+S.picks.length+' picks'+(how==='rebuilt'?' ('+note+')':''));
+  route();
 }
 
 // ── AI ───────────────────────────────────────────────────────────────
@@ -853,6 +1038,37 @@ async function playerBio(id,anchor){
     if(document.getElementById('biopop')===m){m.innerHTML='<button class="close" title="Close">×</button>'+bioCardHTML(res.result,pl);m.querySelector('.close').addEventListener('click',closeBio);m.querySelectorAll('[data-draft]').forEach(function(b){b.addEventListener('click',function(){var pid=b.dataset.draft;closeBio();makePick(pid,S.me);});});}}
   catch(e){if(document.getElementById('biopop')===m)m.innerHTML='<button class="close" title="Close">×</button><div class="err" style="padding:6px 0">'+esc(e.message)+'</div>';var c=m.querySelector('.close');if(c)c.addEventListener('click',closeBio);console.warn('[bio]',e);}
 }
+// ── Scorecard (after pick 150) ────────────────────────────────────────
+function draftComplete(){return S.picks.length>=TEAMS*ROUNDS;}
+function renderScorecard(){
+  var col=document.getElementById('score-col'),tab=document.getElementById('tab-score');
+  var show=draftComplete()||!!S.scorecard;
+  col.classList.toggle('hidden',!show);tab.classList.toggle('hidden',!show);
+  if(!show)return;
+  document.getElementById('btn-score').textContent=S.scorecard?'Grade again':'Grade the draft';
+  document.getElementById('btn-score').disabled=!draftComplete();
+  var out=document.getElementById('score-out'),sc=S.scorecard;
+  if(!sc){out.innerHTML='<div class="small muted">'+(draftComplete()?'Draft complete. Press Grade the draft for a full report on all ten rosters.':'')+'</div>';return;}
+  var mine=S.teams[S.me].name;
+  var li=function(a){return (a||[]).map(function(x){return '<li>'+esc(x)+'</li>';}).join('');};
+  out.innerHTML='<div class="strategy" style="margin:6px 0 10px">'+esc(sc.overview||'')+'</div>'+
+    '<div style="overflow:auto"><table class="score-table"><tr><th>#</th><th>Team</th><th>Grade</th><th>Outlook</th><th>Best pick</th><th>Riskiest pick</th><th></th></tr>'+
+    (sc.teams||[]).slice().sort(function(a,b){return (a.rank||99)-(b.rank||99);}).map(function(t){
+      return '<tr class="'+(t.name===mine?'mine':'')+'"><td class="num">'+esc(t.rank)+'</td><td><b>'+esc(t.name)+'</b>'+(t.name===mine?' ★':'')+'</td><td class="grade">'+esc(t.grade)+'</td><td>'+esc(t.projection)+'</td><td>'+esc(t.bestPick)+'</td><td>'+esc(t.riskiestPick)+'</td>'+
+        '<td><details><summary>details</summary><div class="lbl">Strengths</div><ul>'+li(t.strengths)+'</ul><div class="lbl">Weaknesses</div><ul>'+li(t.weaknesses)+'</ul>'+(t.byeNote?'<div class="lbl">Byes</div><p class="small" style="margin:2px 0">'+esc(t.byeNote)+'</p>':'')+(t.note?'<div class="lbl">Needs</div><p class="small" style="margin:2px 0">'+esc(t.note)+'</p>':'')+'</details></td></tr>';
+    }).join('')+'</table></div>';
+}
+async function scorecard(){
+  if(!draftComplete()){toast('Finish the draft first');return;}
+  var btn=document.getElementById('btn-score'),st=document.getElementById('score-status');
+  btn.disabled=true;st.innerHTML='<span class="spinner"></span>Grading all ten rosters… about a minute.';
+  try{
+    var state=buildState();state.available=[]; // the board is done; the rosters are what matter
+    var res=await api('/ff/advise',{mode:'scorecard',state:state});
+    S.scorecard=res.result;save();st.textContent='';renderScorecard();
+    document.getElementById('ai-model').textContent=(res.model||'')+' · scorecard';
+  }catch(e){st.innerHTML='<span class="err">'+esc(e.message)+'</span>';btn.disabled=false;}
+}
 async function opponents(){
   aiBusy(true,'Grading the other nine teams…');
   try{var res=await api('/ff/advise',{mode:'opponents',state:buildState()});S.oppReport=res.result;save();renderOpps();document.getElementById('opp-ai').innerHTML=res.result&&res.result.overview?'<div class="strategy">'+esc(res.result.overview)+'</div>':'';aiBusy(false,'');}
@@ -920,17 +1136,23 @@ function requireOwner(){
 }
 
 // ── wiring ───────────────────────────────────────────────────────────
-function route(){if(S.started){show('draft');renderAll();}else{show('setup');renderSetup();}}
+function route(){applyTitles();if(S.started){show('draft');renderAll();}else{show('setup');renderSetup();}}
 function bind(){
   document.getElementById('btn-start').addEventListener('click',function(){S.started=true;save();route();});
   document.getElementById('btn-setup').addEventListener('click',function(){S.started=false;save();route();});
   document.getElementById('btn-import-setup').addEventListener('click',function(){document.getElementById('file-import').click();});
+  document.getElementById('btn-import').addEventListener('click',function(){document.getElementById('file-import').click();});
+  document.getElementById('league-select').addEventListener('change',function(e){switchLeague(e.target.value);});
+  document.getElementById('btn-league-new').addEventListener('click',newLeague);
+  document.getElementById('btn-league-rename').addEventListener('click',renameLeague);
+  document.getElementById('btn-league-delete').addEventListener('click',deleteLeague);
+  document.getElementById('btn-score').addEventListener('click',scorecard);
   document.getElementById('btn-reset').addEventListener('click',function(){
     if(!S.picks.length&&!S.plan){toast('Nothing to reset');return;}
     if(!confirm('Clear all '+S.picks.length+' picks, the plan, and the reports? Team names are kept. Export first if you want a copy.'))return;
-    var teams=S.teams,me=S.me;S=blankState();S.teams=teams;S.me=me;save();toast('Draft reset');route();
+    var teams=S.teams,me=S.me,name=S.name;var st=blankState(name);st.teams=teams;st.me=me;replaceActive(st);save();toast('Draft reset');route();
   });
-  document.getElementById('file-import').addEventListener('change',function(e){if(e.target.files[0])importJson(e.target.files[0]);e.target.value='';});
+  document.getElementById('file-import').addEventListener('change',function(e){if(e.target.files[0])importFile(e.target.files[0]);e.target.value='';});
   document.getElementById('btn-export').addEventListener('click',exportXlsx);
   document.getElementById('btn-undo').addEventListener('click',undo);
   document.getElementById('btn-live').addEventListener('click',pullLive);
@@ -956,7 +1178,7 @@ function bind(){
   document.addEventListener('keydown',function(e){if((e.metaKey||e.ctrlKey)&&e.key==='z'&&document.activeElement.tagName!=='INPUT'){e.preventDefault();undo();}});
 }
 (async function init(){
-  S=load();bind();
+  C=load();activate();save(false);bind(); // save(false): persist a migrated container without bumping rev or pushing
   if(!PLAYERS.length){document.body.innerHTML='<p style="padding:20px">fantasy-players.js failed to load — run node scripts/build-fantasy-players.mjs</p>';return;}
   if(typeof firebase==='undefined'||typeof CENTERPOST_FIREBASE_CONFIG==='undefined'){route();return;} // local dev without config
   var user=await requireOwner();
