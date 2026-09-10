@@ -10,9 +10,8 @@ export default function LandingLogin() {
       {/* HERO */}
           <section className="landing-hero">
             <div className="landing-hero-text">
-              <div className="landing-badge"><span className="badge-dot"></span> Built by a first responder, for getting things done</div>
               <h1 className="landing-h1">A workspace for brains that <span className="accent">don't quit.</span></h1>
-              <p className="landing-sub">One dashboard designed to sharpen focus and strengthen executive function — built for anyone who wants a system that bends with the day. Made by a 30-year firefighter / paramedic who lives in it every day.</p>
+              <p className="landing-sub">One dashboard designed to sharpen focus and strengthen executive function — built for anyone who wants a system that bends with the day.</p>
               <div className="landing-cta-row">
                 {/* Panel survey 2026-08-18 (A-1 copy half): "Get Started —
                     Free" promised open, easy entry and the very next screen
@@ -168,14 +167,6 @@ export default function LandingLogin() {
                   <div className="feature-desc">Built-in AI that knows your dashboard. Ask &quot;what should I work on next?&quot; Tap Breakdown on any task or project to get a micro-step plan.</div>
                 </div>
               </div>
-            </div>
-          </section>
-
-          {/* STORY */}
-          <section className="landing-story">
-            <div className="landing-story-inner">
-              <p className="landing-story-quote">&ldquo;I needed a productivity app built to support my executive function by organizing my many projects and tasks. Along the way, I realized I also needed to pay attention to the systems behind better focus. I wanted something that could track energy and attention, redirect me when I&rsquo;m stuck, and offer suggestions to help me get going. <span className="accent">I&rsquo;ve designed Centerpost to create flexible, micro improvements that build consistency, self-awareness, and adaptive support to keep me on task.</span> Bringing these resources together in one place helps create a flow state where barriers to productive work sessions are reduced, allowing me to achieve the focus I so badly needed.&rdquo;</p>
-              <p className="landing-story-attr"><strong>Joe Harding</strong> &mdash; firefighter / paramedic, 30+ years; builder of Centerpost</p>
             </div>
           </section>
 
