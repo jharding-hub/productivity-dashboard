@@ -303,7 +303,9 @@ function _skyElevation(lat,date,minutes,lon){
 // Elevation → sky colour. The only part of this that is taste rather than
 // arithmetic. Anchors run night → astronomical/nautical/civil twilight →
 // the horizon oranges around 0° → daytime blue as the sun climbs.
-var SKY_RAMP=[[-90,[4,6,14]],[-18,[7,11,28]],[-12,[13,21,51]],[-6,[30,43,94]],
+// Night is a deep indigo rather than near-black -- the stars below need a
+// ground that reads as sky, and the labels' dark shadow still holds on it.
+var SKY_RAMP=[[-90,[8,9,28]],[-18,[12,14,40]],[-12,[19,24,62]],[-6,[33,44,100]],
               [-3,[69,65,124]],[-1,[141,86,116]],[-0.5,[200,106,79]],[0,[227,126,60]],
               [3,[242,169,92]],[7,[233,199,141]],[12,[185,204,217]],[20,[142,181,217]],
               [35,[108,164,213]],[50,[80,147,206]],[90,[61,132,199]]];
@@ -339,6 +341,56 @@ function skyGradientFor(lat,date,lon){
 // Note it is unreachable inside the native app, which loads from
 // capacitor://localhost with no query string: on device the sky is simply
 // always on, and backing it out there means a new build.
+// ── Stars ──────────────────────────────────────────────────────────────
+// A second background layer over the gradient: small white points that fade
+// in where the sun is below -6° (civil dusk) and are fully present by -18°
+// (astronomical night), so a September bar has a few at its 5am end and a
+// night worker's bar is mostly stars. Positions come from a seeded generator
+// so the field never reshuffles between repaints; only each star's opacity
+// follows the date. No animation -- "subtle" means still.
+var SKY_STAR_COUNT=72;
+var _skyStars=null;
+function _skyStarField(){
+  if(_skyStars)return _skyStars;
+  var seed=0x5EED, rnd=function(){
+    seed=(seed+0x6D2B79F5)|0;
+    var t=Math.imul(seed^(seed>>>15),1|seed);
+    t=(t+Math.imul(t^(t>>>7),61|t))^t;
+    return ((t^(t>>>14))>>>0)/4294967296;
+  };
+  var out=[];
+  for(var i=0;i<SKY_STAR_COUNT;i++){
+    out.push({fx:rnd(),fy:0.08+rnd()*0.84,
+              r:rnd()<0.14?1.3:0.55+rnd()*0.5,     // a few brighter, most pinpricks
+              a:0.35+rnd()*0.55});
+  }
+  _skyStars=out;
+  return out;
+}
+// 0 above civil dusk, 1 at astronomical night, linear between.
+function _skyDarkness(elev){
+  return Math.max(0,Math.min(1,(-6-elev)/12));
+}
+// The star layer as an SVG sized to the bar in CSS pixels (width/height on
+// the root, so the browser paints it 1:1 with no background-size games).
+// Returns '' when nothing in the window is dark enough to show a star.
+function skyStarsSvg(lat,date,lon,win,w,h){
+  var stars=_skyStarField(),parts=[];
+  for(var i=0;i<stars.length;i++){
+    var st=stars[i];
+    var m=win.startMin+st.fx*win.lenMin;
+    var op=st.a*_skyDarkness(_skyElevation(lat,date,m,lon));
+    if(op<0.05)continue;
+    parts.push("<circle cx='"+(st.fx*w).toFixed(1)+"' cy='"+(st.fy*h).toFixed(1)+"' r='"+st.r+"' fill='#fff' fill-opacity='"+op.toFixed(2)+"'/>");
+  }
+  if(!parts.length)return '';
+  return "<svg xmlns='http://www.w3.org/2000/svg' width='"+w+"' height='"+h+"' viewBox='0 0 "+w+" "+h+"'>"+parts.join('')+"</svg>";
+}
+function skyStarsLayer(lat,date,lon,win,w,h){
+  var svg=skyStarsSvg(lat,date,lon,win,w,h);
+  return svg?'url("data:image/svg+xml,'+encodeURIComponent(svg)+'")':'';
+}
+
 function _skyEnabled(){
   try{ return new URLSearchParams(location.search).get('sky')!=='0'; }
   catch(e){ return true; }
@@ -356,7 +408,7 @@ function applySkyGradient(){
   if(!_skyEnabled()||SKY_THEMES.indexOf(theme)<0){
     // Hand the bar back to the stylesheet -- a theme that paints its own bar
     // must not be left wearing an inline sky from before the switch.
-    for(var j=0;j<bars.length;j++)bars[j].style.background='';
+    for(var j=0;j<bars.length;j++){bars[j].style.background='';bars[j].style.backgroundRepeat='';delete bars[j].dataset.skyKey;}
     _skyCacheKey='';
     return;
   }
@@ -372,5 +424,16 @@ function applySkyGradient(){
     _skyCacheKey=key;
     _skyCacheValue=skyGradientFor(loc.lat,now,loc.lon);
   }
-  for(var i=0;i<bars.length;i++)bars[i].style.background=_skyCacheValue;
+  // The star layer is sized to each bar, so it is cached per bar and keyed
+  // on the bar's size as well: a resize repaints it, a tick does not.
+  for(var i=0;i<bars.length;i++){
+    var bar=bars[i];
+    var w=Math.round(bar.clientWidth)||1000,h=Math.round(bar.clientHeight)||64;
+    var barKey=key+'|'+w+'x'+h;
+    if(bar.dataset.skyKey===barKey)continue;
+    bar.dataset.skyKey=barKey;
+    var stars=skyStarsLayer(loc.lat,now,loc.lon,win,w,h);
+    bar.style.background=stars?stars+', '+_skyCacheValue:_skyCacheValue;
+    bar.style.backgroundRepeat='no-repeat';
+  }
 }

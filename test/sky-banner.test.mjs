@@ -9,7 +9,7 @@ import { readFileSync } from 'node:fs';
 
 const src = readFileSync(new URL('../public/day-progress.js', import.meta.url), 'utf8');
 const sky = new Function(
-  src + ';return{_skyElevation,_skyColor,skyGradientFor,_skyEnabled,_skyLocation,SKY_THEMES,SKY_TZ_LOC,SKY_REGION_LAT,SKY_RAMP};'
+  src + ';return{_skyElevation,_skyColor,skyGradientFor,_skyEnabled,_skyLocation,_skyDarkness,skyStarsSvg,skyStarsLayer,bannerWindowFrom,SKY_THEMES,SKY_TZ_LOC,SKY_REGION_LAT,SKY_RAMP,SKY_STAR_COUNT};'
 )();
 
 const LAT = 40;
@@ -185,4 +185,71 @@ test('a listed zone always carries a real longitude', () => {
   for (const [tz, [, lon]] of Object.entries(sky.SKY_TZ_LOC)) {
     assert.ok(lon !== null && lon !== undefined, `${tz} has no longitude`);
   }
+});
+
+// ── Stars ──────────────────────────────────────────────────────────────
+const INDY = { lat: 39.8, lon: -86.2 };
+const countStars = (svg) => (svg.match(/<circle /g) || []).length;
+
+test('darkness is 0 above civil dusk, 1 at astronomical night, linear between', () => {
+  assert.equal(sky._skyDarkness(30), 0);
+  assert.equal(sky._skyDarkness(-6), 0);
+  assert.ok(Math.abs(sky._skyDarkness(-12) - 0.5) < 1e-9);
+  assert.equal(sky._skyDarkness(-18), 1);
+  assert.equal(sky._skyDarkness(-40), 1);
+});
+
+test('a night window is full of stars; a midday window has none', () => {
+  const d = new Date(2026, 8, 11);
+  const night = sky.skyStarsSvg(INDY.lat, d, INDY.lon, sky.bannerWindowFrom(21 * 60, 7 * 60), 1000, 64);
+  const noon = sky.skyStarsSvg(INDY.lat, d, INDY.lon, sky.bannerWindowFrom(11 * 60, 15 * 60), 1000, 64);
+  assert.ok(countStars(night) > sky.SKY_STAR_COUNT * 0.6, `night window only drew ${countStars(night)} stars`);
+  assert.equal(noon, '', 'a window entirely in daylight must draw no star layer at all');
+});
+
+test('the default September bar has a few stars at its 5am end and none by mid-morning', () => {
+  const d = new Date(2026, 8, 11);                       // sunrise ~7:20 in Indianapolis
+  const svg = sky.skyStarsSvg(INDY.lat, d, INDY.lon, sky.bannerWindowFrom(300, 1200), 1000, 64);
+  const xs = [...svg.matchAll(/cx='([\d.]+)'/g)].map(m => parseFloat(m[1]));
+  assert.ok(xs.length > 0, 'expected some stars before dawn');
+  // 5am→8pm is 900 min; civil dusk ends ~6:50 which is ~12% along the bar
+  assert.ok(Math.max(...xs) < 1000 * 0.16, `a star landed at x=${Math.max(...xs)} — past dawn`);
+});
+
+test('December widens the dark ends; the same window has more stars than in June', () => {
+  const win = sky.bannerWindowFrom(300, 1200);
+  const june = countStars(sky.skyStarsSvg(INDY.lat, new Date(2026, 5, 21), INDY.lon, win, 1000, 64));
+  const dec = countStars(sky.skyStarsSvg(INDY.lat, new Date(2026, 11, 21), INDY.lon, win, 1000, 64));
+  // June: civil dawn is ~5:44am, so 5:00am is still ~-11° and a FEW stars sit
+  // at the very left edge -- the first cut of this test wrongly expected none.
+  // December: dark past 7am and again before 6pm, so both ends fill in.
+  assert.ok(june < sky.SKY_STAR_COUNT * 0.15, `June should show only a handful at 5am, got ${june}`);
+  assert.ok(dec > june * 2 && dec > 6, `December should show clearly more than June (${june}), got ${dec}`);
+});
+
+test('star positions are deterministic across calls and days', () => {
+  const win = sky.bannerWindowFrom(21 * 60, 7 * 60);
+  const a = sky.skyStarsSvg(INDY.lat, new Date(2026, 8, 11), INDY.lon, win, 800, 64);
+  const b = sky.skyStarsSvg(INDY.lat, new Date(2026, 8, 11), INDY.lon, win, 800, 64);
+  assert.equal(a, b);
+  const pos = (svg) => [...svg.matchAll(/cx='([\d.]+)' cy='([\d.]+)'/g)].map(m => m[1] + ',' + m[2]);
+  const c = sky.skyStarsSvg(INDY.lat, new Date(2026, 11, 21), INDY.lon, win, 800, 64);
+  // December has at least the same stars in the same places (more may appear)
+  const setC = new Set(pos(c));
+  for (const p of pos(a)) assert.ok(setC.has(p), `star at ${p} moved between dates`);
+});
+
+test('the SVG is sized to the bar so it paints 1:1 without background-size', () => {
+  const svg = sky.skyStarsSvg(INDY.lat, new Date(2026, 8, 11), INDY.lon, sky.bannerWindowFrom(21 * 60, 7 * 60), 640, 48);
+  assert.match(svg, /^<svg xmlns='http:\/\/www\.w3\.org\/2000\/svg' width='640' height='48' viewBox='0 0 640 48'>/);
+  for (const m of svg.matchAll(/cx='([\d.]+)' cy='([\d.]+)'/g)) {
+    assert.ok(+m[1] >= 0 && +m[1] <= 640 && +m[2] >= 0 && +m[2] <= 48, `star outside the bar: ${m[0]}`);
+  }
+  const layer = sky.skyStarsLayer(INDY.lat, new Date(2026, 8, 11), INDY.lon, sky.bannerWindowFrom(21 * 60, 7 * 60), 640, 48);
+  assert.match(layer, /^url\("data:image\/svg\+xml,/);
+});
+
+test('no star is bright enough to read as a label: every opacity is under 0.95', () => {
+  const svg = sky.skyStarsSvg(INDY.lat, new Date(2026, 11, 21), INDY.lon, sky.bannerWindowFrom(21 * 60, 7 * 60), 1000, 64);
+  for (const m of svg.matchAll(/fill-opacity='([\d.]+)'/g)) assert.ok(+m[1] < 0.95 && +m[1] >= 0.05);
 });
