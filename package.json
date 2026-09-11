@@ -16,7 +16,8 @@
     "test:recurrence": "node --test test/recurrence-engine.test.mjs",
     "test:parity": "bash test/parity/run.sh",
     "test:palette": "node --test test/project-palette.test.mjs",
-    "test:sky": "node --test test/sky-banner.test.mjs"
+    "test:sky": "node --test test/sky-banner.test.mjs",
+    "test:window": "node --test test/banner-window.test.mjs"
   },
   "repository": {
     "type": "git",

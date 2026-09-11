@@ -1343,7 +1343,7 @@ try {
 
 // ── SCRIPT 3: APP LOGIC ─────────────────────────────────────────
 // STATE
-var state={projects:[],reminders:[],thoughts:[],notes:[],moodLog:[],tasks:[],completedTasks:[],completedTasksLifetime:undefined,completedProjectSubtasksLifetime:undefined,remindersArchive:[],remindersArchiveLifetime:undefined,journal:[],journalPin:'',workoutLog:{},completedWorkouts:[],focusPlaylistId:null,points:{current:0,monthKey:'',lastTier:'bronze',totalsByDay:{},lastLoginDate:'',lifetimeTotal:0,monthlyTotals:{}},panelUseLog:{},usageMonthlyTotals:{},routines:{morning:[{id:'m1',name:'Hydrate \u2014 glass of water',done:false},{id:'m2',name:"Review today's calendar",done:false},{id:'m3',name:'Pick top 3 priorities',done:false},{id:'m4',name:'Quick workspace tidy',done:false}],evening:[{id:'e1',name:'Review what got done today',done:false},{id:'e2',name:"Brain dump tomorrow's thoughts",done:false},{id:'e3',name:"Set out tomorrow's essentials",done:false},{id:'e4',name:'Wind-down activity',done:false}],custom:[]},currentRoutineTab:'morning',energy:null,mood:null,panelOrder:['projects','reminders','time','tasklist','notes','brain','routines','wellness','decision','admin'],panelsLocked:true,lastRoutineReset:null,visiblePanels:{},knownPanels:[],dayAnchorMin:0,focusTimer:null};
+var state={projects:[],reminders:[],thoughts:[],notes:[],moodLog:[],tasks:[],completedTasks:[],completedTasksLifetime:undefined,completedProjectSubtasksLifetime:undefined,remindersArchive:[],remindersArchiveLifetime:undefined,journal:[],journalPin:'',workoutLog:{},completedWorkouts:[],focusPlaylistId:null,points:{current:0,monthKey:'',lastTier:'bronze',totalsByDay:{},lastLoginDate:'',lifetimeTotal:0,monthlyTotals:{}},panelUseLog:{},usageMonthlyTotals:{},routines:{morning:[{id:'m1',name:'Hydrate \u2014 glass of water',done:false},{id:'m2',name:"Review today's calendar",done:false},{id:'m3',name:'Pick top 3 priorities',done:false},{id:'m4',name:'Quick workspace tidy',done:false}],evening:[{id:'e1',name:'Review what got done today',done:false},{id:'e2',name:"Brain dump tomorrow's thoughts",done:false},{id:'e3',name:"Set out tomorrow's essentials",done:false},{id:'e4',name:'Wind-down activity',done:false}],custom:[]},currentRoutineTab:'morning',energy:null,mood:null,panelOrder:['projects','reminders','time','tasklist','notes','brain','routines','wellness','decision','admin'],panelsLocked:true,lastRoutineReset:null,visiblePanels:{},knownPanels:[],dayAnchorMin:0,productiveStartMin:300,productiveEndMin:1200,focusTimer:null};
 
 // CROSS-ACCOUNT LEAK, round 3 (Joe, 2026-08-03). `state` is module-level and
 // was NEVER reset when the signed-in account changed: onAuthStateChanged's
@@ -2160,6 +2160,7 @@ function openCustomize(){
   _renderAxisProfileForm();
   _renderSupportLevelSettings();
   if(typeof _renderDayAnchorSettings==='function')_renderDayAnchorSettings();
+  if(typeof _renderProductiveHoursSettings==='function')_renderProductiveHoursSettings();
   if(typeof _renderNotifSettings==='function')_renderNotifSettings();
   if(typeof _renderBreathHealthSettings==='function')_renderBreathHealthSettings();
   if(typeof _renderPointsSettings==='function')_renderPointsSettings();
@@ -3919,6 +3920,59 @@ function _renderDayAnchorSettings(){
     // not the rest. Better that the setting admits its limit than that the
     // word "rotating" promises a rotation model that does not exist.
     '<p class="cust-sub" style="margin-top:4px;opacity:0.75;">On a rotating schedule this shifts every day by the same amount &mdash; it stops late nights counting as late, but Centerpost does not yet model shift days and off days separately.</p>';
+}
+// --- Productive hours ---------------------------------------------------------
+// The window the day bar frames (see bannerWindow() in day-progress.js). Two
+// selects on the half hour; the pair may cross midnight. Stored beside
+// dayAnchorMin as plain top-level fields so it persists and syncs the same way.
+function _productiveHoursPref(){
+  var s=parseInt(state.productiveStartMin,10),e=parseInt(state.productiveEndMin,10);
+  return {start:isFinite(s)?s:300,end:isFinite(e)?e:1200};
+}
+function _productiveHourOptions(selected){
+  var out='';
+  for(var m=0;m<1440;m+=30){
+    out+='<option value="'+m+'"'+(m===selected?' selected':'')+'>'+esc(_dayAnchorLabel(m))+'</option>';
+  }
+  return out;
+}
+function _renderProductiveHoursSettings(){
+  var el=document.getElementById('productiveHoursSettings');if(!el)return;
+  var cur=_productiveHoursPref();
+  var win=(typeof bannerWindowFrom==='function')?bannerWindowFrom(cur.start,cur.end):null;
+  var hours=win?Math.round(win.lenMin/60*10)/10:null;
+  var crosses=win&&win.endMin>1440;
+  el.innerHTML='<div class="notif-row"><label>From</label>'+
+    '<select onchange="setProductiveHours(\'start\',this.value)">'+_productiveHourOptions(cur.start)+'</select></div>'+
+    '<div class="notif-row"><label>Until</label>'+
+    '<select onchange="setProductiveHours(\'end\',this.value)">'+_productiveHourOptions(cur.end)+'</select></div>'+
+    '<p class="cust-sub" style="margin-top:6px;">'+
+    (cur.start===300&&cur.end===1200
+      ? 'The bar frames 5am to 8pm, the usual working day.'
+      : 'The bar frames '+esc(_dayAnchorLabel(cur.start))+' to '+esc(_dayAnchorLabel(cur.end))+
+        (crosses?', running past midnight':'')+(hours!==null?' &mdash; '+hours+' hours':'')+'.')+
+    '</p>';
+}
+function setProductiveHours(which,v){
+  var n=parseInt(v,10);
+  if(!isFinite(n))return;
+  var cur=_productiveHoursPref();
+  var start=which==='start'?n:cur.start,end=which==='end'?n:cur.end;
+  var len=end-start;if(len<=0)len+=1440;
+  var minLen=(typeof BANNER_MIN_LEN_MIN==='number')?BANNER_MIN_LEN_MIN:240;
+  if(len<minLen){
+    if(typeof toast==='function')toast('Productive hours need to span at least '+(minLen/60)+' hours');
+    _renderProductiveHoursSettings();               // snap the select back
+    return;
+  }
+  state.productiveStartMin=start;
+  state.productiveEndMin=end;
+  save();
+  _renderProductiveHoursSettings();
+  // The bar, its sky, its markers and its block overlays all read the window
+  // on their next paint; renderBannerMarkers also announces the change for
+  // the Project Dashboard's React banner.
+  if(typeof updateDayProgress==='function')updateDayProgress();
 }
 function _dayAnchorLabel(min){
   var m=DAY_ANCHOR_CHOICES.filter(function(c){return c.v===min;})[0];
@@ -15351,10 +15405,15 @@ function confirmWorkToday(){
   if(isToday){
     var startMin=_tlParseTime(timeVal);
     var endMin=startMin+durVal;
-    var END_OF_DAY=20*60; // 8 PM
-    if(endMin>END_OF_DAY){
+    // "Runs past the end of your productive hours" -- the window from Settings,
+    // not a hardcoded 8 PM. Only a block that STARTS inside the window can run
+    // past its end; one placed outside it altogether is not this warning's job.
+    var win=bannerWindow();
+    var startOff=bannerOffset(win,startMin);
+    if(startOff<win.lenMin&&startOff+durVal>win.lenMin){
       var endLabel=_tlFmtEnd(endMin);
-      _confirm('This block would end at '+endLabel+' -- after 8 PM.',
+      var winEndLabel=(typeof _dayAnchorLabel==='function')?_dayAnchorLabel(win.endMin%1440):bannerHourLabel(win.endMin/60);
+      _confirm('This block would end at '+endLabel+' -- after '+winEndLabel+'.',
         function(){_writeBlock(targetDate,timeVal,durVal);},
         {confirmText:'Today Anyway',altText:'Push to Tomorrow',onAlt:function(){_scheduleForTomorrow(timeVal,durVal);},icon:'ti-clock-exclamation',warn:true}
       );
@@ -15581,8 +15640,8 @@ function _tlAttachDragHandlers(el,blockId,mode,derived,dateStr){
     if(mode==='banner'){
       var bar=document.getElementById('dayProgressBar');
       if(!bar)return;
-      // Banner spans 5am-8pm = 900 min
-      pxPerMin=bar.getBoundingClientRect().width/900;
+      // Banner spans the productive window
+      pxPerMin=bar.getBoundingClientRect().width/bannerWindow().lenMin;
       startCoord=cx;
     }else{
       // Timeline: 52px per hour
@@ -15655,15 +15714,12 @@ function _tlAttachDragHandlers(el,blockId,mode,derived,dateStr){
     
     // Live visual update
     if(mode==='banner'){
-      var BANNER_START=5*60,BANNER_RANGE=900;
       var dur=parseInt(blockRef.duration)||60;
-      var endMin=newStartMin+dur;
-      if(endMin<=BANNER_START||newStartMin>=20*60){el.style.display='none';return;}
-      var clippedStart=Math.max(newStartMin,BANNER_START);
-      var clippedEnd=Math.min(endMin,20*60);
+      var span=bannerSpanPct(bannerWindow(),newStartMin,newStartMin+dur);
+      if(!span){el.style.display='none';return;}
       el.style.display='';
-      el.style.left=((clippedStart-BANNER_START)/BANNER_RANGE)*100+'%';
-      el.style.width=((clippedEnd-clippedStart)/BANNER_RANGE)*100+'%';
+      el.style.left=span.leftPct+'%';
+      el.style.width=span.widthPct+'%';
     }else{
       el.style.top=_tlMinutesToY(newStartMin)+'px';
     }
@@ -15724,8 +15780,8 @@ function renderBannerBlocks(){
   var blocks=_tlCollectBlocks();
   if(blocks.length===0)return;
   
-  // Banner window: 5am → 8pm = 15 hours
-  var BANNER_START=5*60,BANNER_END=20*60,BANNER_RANGE=BANNER_END-BANNER_START;
+  // The productive window (Settings ▸ Productive hours); may cross midnight.
+  var win=bannerWindow();
   
   var palette=PROJECT_PALETTE;
   
@@ -15735,12 +15791,9 @@ function renderBannerBlocks(){
   blocks.forEach(function(b){
     var startMin=b.startMin;
     var endMin=startMin+b.durMin;
-    // Clip to banner range
-    if(endMin<=BANNER_START||startMin>=BANNER_END)return;
-    var clippedStart=Math.max(startMin,BANNER_START);
-    var clippedEnd=Math.min(endMin,BANNER_END);
-    var leftPct=((clippedStart-BANNER_START)/BANNER_RANGE)*100;
-    var widthPct=((clippedEnd-clippedStart)/BANNER_RANGE)*100;
+    var span=bannerSpanPct(win,startMin,endMin);
+    if(!span)return;                               // never intersects the window
+    var leftPct=span.leftPct,widthPct=span.widthPct;
     var colorIdx=_tlProjectColor(b.projectId);
     var color=colorIdx==='no-proj'?'rgba(255,255,255,0.4)':palette[colorIdx];
     

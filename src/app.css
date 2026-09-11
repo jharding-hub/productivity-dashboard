@@ -571,6 +571,9 @@ body{font-family:'DM Sans',sans-serif;background:var(--bg);color:var(--text);min
 /* On dark mode both still read fine on yellow bar — no change needed */
 
 .day-progress-elapsed{position:absolute;left:0;top:0;bottom:0;background:rgba(0,0,0,0.28);transition:width 1s ease;border-radius:8px 0 0 8px;}
+/* Markers live in a full-bleed container so day-progress.js can own them
+   without touching React's siblings. */
+.day-progress-markers{position:absolute;inset:0;pointer-events:none;}
 .day-progress-marker{position:absolute;top:0;bottom:0;width:1px;background:rgba(0,0,0,0.25);overflow:visible;}
 .day-progress-marker-label{position:absolute;top:3px;left:50%;transform:translateX(-50%);font-size:calc(13px * var(--type-scale,1));font-weight:700;color:rgba(0,0,0,0.55);white-space:nowrap;line-height:1;pointer-events:none;z-index:4;}
 .day-progress-edge-label{position:absolute;top:3px;font-size:calc(13px * var(--type-scale,1));font-weight:700;color:rgba(0,0,0,0.55);white-space:nowrap;line-height:1;pointer-events:none;z-index:4;}
@@ -919,9 +922,10 @@ body.cmd-palette-open .mobile-tab-bar{z-index:1150;}
   /* Thin out hour markers on mobile — only show every 4th hour so they read */
   .header .day-progress-marker-label{display:none !important;}
   .header .day-progress-edge-label{font-size:calc(9px * var(--type-scale,1)) !important;top:1px !important;font-weight:600 !important;}
-  .header .day-progress-marker[style*="left:20%"] .day-progress-marker-label,
-  .header .day-progress-marker[style*="left:46.67%"] .day-progress-marker-label,
-  .header .day-progress-marker[style*="left:73.33%"] .day-progress-marker-label{
+  /* The three quarter-point hours carry pd-marker-key (set where the markers
+     are generated, from the productive window) -- the old [style*="left:20%"]
+     match only ever worked for one hardcoded window. */
+  .header .pd-marker-key .day-progress-marker-label{
     display:block !important;font-size:calc(9px * var(--type-scale,1)) !important;top:1px !important;font-weight:600 !important;
   }
   /* The Project Dashboard's banner (ProjectBanner in ProjectDashboard.jsx)

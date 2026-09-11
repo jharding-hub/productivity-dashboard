@@ -333,15 +333,28 @@ function ProjectDropdown({ projects, selectedId, onSelect, onAddNew }) {
   );
 }
 
-const BANNER_HOUR_MARKERS = [
-  { pct: '6.67%', label: '6a' }, { pct: '13.33%', label: '7a' },
-  { pct: '20%', label: '8a' }, { pct: '26.67%', label: '9a' },
-  { pct: '33.33%', label: '10a' }, { pct: '40%', label: '11a' },
-  { pct: '46.67%', label: '12p' }, { pct: '53.33%', label: '1p' },
-  { pct: '60%', label: '2p' }, { pct: '66.67%', label: '3p' },
-  { pct: '73.33%', label: '4p' }, { pct: '80%', label: '5p' },
-  { pct: '86.67%', label: '6p' }, { pct: '93.33%', label: '7p' },
-];
+// The productive window and its markers come from the globals day-progress.js
+// defines (it is a deferred classic script in index.html, so it has run by the
+// time this module evaluates). The fallback is the 5am–8pm default for any
+// surface that renders this without them.
+const DEFAULT_WINDOW = { startMin: 300, endMin: 1200, lenMin: 900 };
+function bannerWin() {
+  try { if (typeof window.bannerWindow === 'function') return window.bannerWindow(); } catch (e) {}
+  return DEFAULT_WINDOW;
+}
+function bannerMarkers(win) {
+  try { if (typeof window.bannerHourMarkers === 'function') return window.bannerHourMarkers(win); } catch (e) {}
+  return [];
+}
+function bannerLabel(h) {
+  try { if (typeof window.bannerHourLabel === 'function') return window.bannerHourLabel(h); } catch (e) {}
+  h = ((h % 24) + 24) % 24;
+  return ((h % 12) || 12) + (h < 12 ? 'a' : 'p');
+}
+function bannerSpan(win, s, e) {
+  try { if (typeof window.bannerSpanPct === 'function') return window.bannerSpanPct(win, s, e); } catch (err) {}
+  return null;
+}
 
 // Mirror of PROJECT_PALETTE in public/legacy.js -- App.jsx injects legacy.js at
 // runtime, so its global is not reliably present when this first renders and the
@@ -397,37 +410,43 @@ function useClock() {
 function ProjectBanner({ tick }) {
   const [elapsed, setElapsed] = useState(0);
   const [nowPct, setNowPct] = useState(0);
+  const [win, setWin] = useState(bannerWin);
 
   useEffect(() => {
     const update = () => {
+      const w = bannerWin();
+      setWin(w);
       const now = new Date();
       const mins = now.getHours() * 60 + now.getMinutes();
-      const pct = Math.max(0, Math.min(100, ((mins - 300) / 900) * 100));
+      let off = mins - w.startMin; if (off < 0) off += 1440;
+      const pct = Math.max(0, Math.min(100, (off / w.lenMin) * 100));
       setElapsed(pct);
       setNowPct(pct);
     };
     update();
     const id = setInterval(update, 60000);
-    return () => clearInterval(id);
+    // renderBannerMarkers() fires this whenever the window changes -- on load,
+    // once legacy.js has state, and again when the setting is edited.
+    window.addEventListener('centerpost:bannerwindow', update);
+    return () => { clearInterval(id); window.removeEventListener('centerpost:bannerwindow', update); };
   }, []);
 
   const blocks = collectTodayBlocks();
-  const BANNER_START = 300, BANNER_RANGE = 900;
+  const markers = bannerMarkers(win);
 
   return (
     <div className="day-progress-bar" style={{ height: 64, borderRadius: 10 }}>
       <div className="day-progress-elapsed" style={{ width: `${elapsed}%` }} />
-      <span className="day-progress-edge-label start">5a</span>
-      <span className="day-progress-edge-label end">8p</span>
-      {BANNER_HOUR_MARKERS.map(({ pct, label }) => (
-        // pd-marker-key tags the quarter-point markers (20/46.67/73.33%) so the
-        // mobile CSS can keep just those three labels. A class, not the
-        // [style*="left:20%"] attribute match the .header rules use: React
-        // serializes inline styles as "left: 20%" (with a space), so the
-        // header's attribute selectors can never match this copy.
+      <span className="day-progress-edge-label start">{bannerLabel(win.startMin / 60)}</span>
+      <span className="day-progress-edge-label end">{bannerLabel(win.endMin / 60)}</span>
+      {markers.map(({ pct, label, key }) => (
+        // pd-marker-key tags the quarter-point hours so the mobile CSS can keep
+        // just those three labels. A class rather than an attribute match on
+        // the inline style: React serializes styles as "left: 20%" (with a
+        // space), so [style*="left:20%"] could never match this copy.
         <div key={label}
-          className={'day-progress-marker' + (['20%', '46.67%', '73.33%'].includes(pct) ? ' pd-marker-key' : '')}
-          style={{ left: pct }}>
+          className={'day-progress-marker' + (key ? ' pd-marker-key' : '')}
+          style={{ left: `${pct}%` }}>
           <span className="day-progress-marker-label">{label}</span>
         </div>
       ))}
@@ -439,12 +458,9 @@ function ProjectBanner({ tick }) {
       {blocks.length > 0 && (
         <div className="day-progress-bar-blocks">
           {blocks.map(b => {
-            const endMin = b.startMin + b.durMin;
-            if (endMin <= BANNER_START || b.startMin >= BANNER_START + BANNER_RANGE) return null;
-            const clippedStart = Math.max(b.startMin, BANNER_START);
-            const clippedEnd = Math.min(endMin, BANNER_START + BANNER_RANGE);
-            const leftPct = ((clippedStart - BANNER_START) / BANNER_RANGE) * 100;
-            const widthPct = ((clippedEnd - clippedStart) / BANNER_RANGE) * 100;
+            const span = bannerSpan(win, b.startMin, b.startMin + b.durMin);
+            if (!span) return null;
+            const { leftPct, widthPct } = span;
             const colorIdx = tlProjectColor(b.projectId);
             const color = colorIdx == null ? 'rgba(255,255,255,0.4)' : BLOCK_PALETTE[colorIdx];
             return (

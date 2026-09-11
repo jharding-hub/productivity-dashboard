@@ -6,7 +6,127 @@
 // define time. Loaded before legacy.js, same as the other extracted files.
 // ═══════════════════════════════════════════════════════════════════
 
-var TL_START_H=5,TL_END_H=20;
+// ═══════════════════════════════════════════════════════════════════
+// THE PRODUCTIVE WINDOW
+// ═══════════════════════════════════════════════════════════════════
+// The bar frames the user's productive hours, not the calendar day. Until
+// 2026-09-11 that frame was a hardcoded 5am–8pm repeated in six places across
+// four files; it is now a setting (state.productiveStartMin/EndMin, set in
+// Settings ▸ Productive hours) and every consumer goes through bannerWindow().
+//
+// A window may cross midnight (9pm–7am for a night worker). Internally that
+// is represented with endMin > 1440 so that everything inside the window is
+// a single contiguous range: 21:00–07:00 is {startMin:1260, endMin:1860,
+// lenMin:600}. bannerOffset() and bannerSpanPct() do the wrapping so callers
+// never have to.
+var TL_START_H=5,TL_END_H=20;                     // the defaults, nothing else reads these
+var BANNER_DEFAULT_START_MIN=TL_START_H*60,BANNER_DEFAULT_END_MIN=TL_END_H*60;
+var BANNER_MIN_LEN_MIN=4*60;                      // shorter than this and the bar is meaningless
+
+function bannerWindowFrom(startMin,endMin){
+  startMin=((Math.round(startMin)%1440)+1440)%1440;
+  endMin=((Math.round(endMin)%1440)+1440)%1440;
+  var len=endMin-startMin;
+  if(len<=0)len+=1440;                             // crosses midnight; start==end means all day
+  if(len<BANNER_MIN_LEN_MIN)len=BANNER_MIN_LEN_MIN;
+  return {startMin:startMin,endMin:startMin+len,lenMin:len};
+}
+
+// Reads the saved setting when legacy.js has loaded state; otherwise the
+// default, so a bar rendered before that still frames 5am–8pm.
+function bannerWindow(){
+  var s=BANNER_DEFAULT_START_MIN,e=BANNER_DEFAULT_END_MIN;
+  try{
+    if(typeof state==='object'&&state){
+      var ps=parseInt(state.productiveStartMin,10),pe=parseInt(state.productiveEndMin,10);
+      if(isFinite(ps)&&isFinite(pe)){s=ps;e=pe;}
+    }
+  }catch(err){}
+  return bannerWindowFrom(s,e);
+}
+
+// Minutes since the window opened for a wall-clock minute-of-day. Always
+// 0..1439; anything >= win.lenMin is outside the window.
+function bannerOffset(win,nowMin){
+  var off=nowMin-win.startMin;
+  if(off<0)off+=1440;
+  return off;
+}
+
+// Outside the window there is one rest period, from endMin round to the next
+// startMin. Its first half reads as "done for today" (full bar, moon), its
+// second half as "not started yet" (empty bar). For a window that does not
+// cross midnight the split is midnight itself, which is exactly what the
+// hardcoded bar did; a crossing window has no midnight to use and splits the
+// rest at its midpoint instead.
+function bannerPhase(win,nowMin){
+  var off=bannerOffset(win,nowMin);
+  if(off<win.lenMin)return 'during';
+  if(win.endMin<=1440)return nowMin<win.startMin?'before':'after';
+  var rest=1440-win.lenMin;
+  return (off-win.lenMin)<rest/2?'after':'before';
+}
+
+// Where a [startMin, endMin) span lands on the bar, as percentages, or null
+// when it never intersects the window. A span is tried as-is and shifted by a
+// day, which is what lets a 2am block land inside a 9pm–7am window.
+function bannerSpanPct(win,startMin,endMin){
+  for(var k=0;k<2;k++){
+    var s=startMin+k*1440,e=endMin+k*1440;
+    if(e<=win.startMin||s>=win.endMin)continue;
+    var cs=Math.max(s,win.startMin),ce=Math.min(e,win.endMin);
+    return {leftPct:(cs-win.startMin)/win.lenMin*100,widthPct:(ce-cs)/win.lenMin*100};
+  }
+  return null;
+}
+
+function bannerHourLabel(h){
+  h=((h%24)+24)%24;
+  return ((h%12)||12)+(h<12?'a':'p');
+}
+
+// One marker per whole hour strictly inside the window. `key` marks the three
+// quarter-point hours the mobile layout keeps when it hides the rest -- at
+// offsets floor(len/4), floor(len/2), floor(3len/4), which for the 15-hour
+// default is 8a, 12p and 4p, exactly the three the hardcoded CSS used to pick.
+function bannerHourMarkers(win){
+  var out=[],lenH=win.lenMin/60;
+  var keys={};
+  [Math.floor(lenH/4),Math.floor(lenH/2),Math.floor(3*lenH/4)].forEach(function(k){keys[k]=true;});
+  var firstH=Math.ceil(win.startMin/60);
+  if(firstH*60===win.startMin)firstH+=1;           // the start hour is the edge label
+  for(var h=firstH;h*60<win.endMin;h++){
+    var offH=h-win.startMin/60;
+    out.push({pct:(h*60-win.startMin)/win.lenMin*100,label:bannerHourLabel(h),key:!!keys[Math.round(offH)]});
+  }
+  return out;
+}
+
+// Paints the markers and edge labels of the header bar. React renders the
+// container empty and never touches its children, so this owns them. Only
+// rebuilds when the window actually changes, and announces that change so the
+// Project Dashboard's own React banner can follow.
+var _bannerMarkersKey='';
+function renderBannerMarkers(win){
+  var host=document.getElementById('dayProgressMarkers');
+  var key=win.startMin+'-'+win.endMin;
+  if(key===_bannerMarkersKey)return;
+  _bannerMarkersKey=key;
+  if(host){
+    host.innerHTML=bannerHourMarkers(win).map(function(m){
+      return '<div class="day-progress-marker'+(m.key?' pd-marker-key':'')+'" style="left:'+m.pct.toFixed(2)+'%">'
+            +'<span class="day-progress-marker-label">'+m.label+'</span></div>';
+    }).join('');
+  }
+  var bar=document.getElementById('dayProgressBar');
+  if(bar){
+    var s=bar.querySelector('.day-progress-edge-label.start'),e=bar.querySelector('.day-progress-edge-label.end');
+    if(s)s.textContent=bannerHourLabel(win.startMin/60);
+    if(e)e.textContent=bannerHourLabel(win.endMin/60);
+  }
+  try{ window.dispatchEvent(new CustomEvent('centerpost:bannerwindow',{detail:win})); }catch(err){}
+}
+
 function updateTimeLeft(){
   // Text overlay removed -- just update the day progress position
   updateDayProgress();
@@ -18,28 +138,28 @@ function updateDayProgress(){
   applySkyGradient();
   var now=new Date();
   var nowMin=now.getHours()*60+now.getMinutes()+now.getSeconds()/60;
-  var startMin=TL_START_H*60,endMin=TL_END_H*60,totalMin=endMin-startMin;
+  var win=bannerWindow();
+  renderBannerMarkers(win);
   var elapsedEl=document.getElementById('dayProgressElapsed');
   var nowEl=document.getElementById('dayProgressNow');
   if(!elapsedEl||!nowEl)return;
 
-  var elapsed=0;
-  if(nowMin<startMin){
-    // Before 5am -- show at start, no indicator
+  var elapsed=0,phase=bannerPhase(win,nowMin);
+  if(phase==='before'){
+    // Not started yet -- empty bar, no cursor
     elapsed=0;
     nowEl.style.left='0%';
     nowEl.style.display='none';
     nowEl.classList.remove('resting');
-  }else if(nowMin>=endMin){
-    // After 8pm -- full bar, moon at right edge (via CSS)
+  }else if(phase==='after'){
+    // Done for today -- full bar, moon at right edge (via CSS)
     elapsed=100;
     nowEl.style.left='';   // CSS handles position via .resting rule
     nowEl.style.display='flex';
     nowEl.classList.add('resting');
   }else{
-    // During productive day -- sun follows progress
-    var elapsedMin=nowMin-startMin;
-    elapsed=(elapsedMin/totalMin)*100;
+    // Inside the window -- sun follows progress
+    elapsed=(bannerOffset(win,nowMin)/win.lenMin)*100;
     nowEl.style.left=elapsed+'%';
     nowEl.style.display='block';
     nowEl.classList.remove('resting');
@@ -59,9 +179,8 @@ function updateDayProgress(){
 // darkens at both ends through autumn, and jumps an hour when the clocks
 // change. No network call, no API key, no location permission.
 //
-// Deliberately NOT changed here: the 5am–8pm window itself (TL_START_H/
-// TL_END_H). That is a work-day frame, not a daylight frame, and it is baked
-// into the hour markers and the scheduled-block overlay maths in three files.
+// The window it paints is the user's productive hours -- see bannerWindow()
+// at the top of this file -- so a night worker's bar is mostly night sky.
 //
 // Themed bars keep their own look -- Starry, Galaxy and Storm override
 // .day-progress-bar's background on purpose, and a real sky on top of them
@@ -204,9 +323,11 @@ function _skyColor(elev){
   return 'rgb('+last[0]+','+last[1]+','+last[2]+')';
 }
 
-// 61 samples at 15-minute steps across the banner window.
+// 61 samples across the banner window (15-minute steps for the 15-hour
+// default). Minutes past 1440 are simply the small hours of the next day, which
+// _skyElevation handles as a continuous quantity.
 function skyGradientFor(lat,date,lon){
-  var startMin=TL_START_H*60,endMin=TL_END_H*60,steps=60,stops=[];
+  var win=bannerWindow(),startMin=win.startMin,endMin=win.endMin,steps=60,stops=[];
   for(var i=0;i<=steps;i++){
     var m=startMin+(endMin-startMin)*i/steps;
     stops.push(_skyColor(_skyElevation(lat,date,m,lon))+' '+(i/steps*100).toFixed(2)+'%');
@@ -244,8 +365,9 @@ function applySkyGradient(){
   // getTimezoneOffset() is part of the key on purpose: on the two changeover
   // days a gradient built before 2am would otherwise hold the pre-switch
   // offset until midnight, leaving the bar an hour out all day.
+  var win=bannerWindow();
   var key=now.getFullYear()+'-'+now.getMonth()+'-'+now.getDate()
-         +'|'+loc.lat+','+loc.lon+'|'+now.getTimezoneOffset();
+         +'|'+loc.lat+','+loc.lon+'|'+now.getTimezoneOffset()+'|'+win.startMin+'-'+win.endMin;
   if(key!==_skyCacheKey){
     _skyCacheKey=key;
     _skyCacheValue=skyGradientFor(loc.lat,now,loc.lon);
