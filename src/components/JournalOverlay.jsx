@@ -46,6 +46,15 @@ export default function JournalOverlay() {
           >
             <i className="ti ti-face-id" aria-hidden="true"></i> Use Face ID
           </button>
+          {/* The PIN used to be the only way in, which made forgetting it
+              permanent data loss. The recovery code seals the same data key. */}
+          <button
+            className="btn-link"
+            onClick={() => window.showJournalRecoveryEntry()}
+            style={{ display: 'block', margin: '10px auto 0', fontSize: 11, background: 'none', border: 'none', color: 'var(--text-dim)', textDecoration: 'underline', cursor: 'pointer' }}
+          >
+            Forgot your PIN? Use a recovery code
+          </button>
         </div>
 
         {/* Set PIN form (first time or change) */}
@@ -64,7 +73,7 @@ export default function JournalOverlay() {
               offered automatically right after this, on native --
               _journalBioAfterPinUnlock() below. */}
           <p className="journal-pin-warn" style={{ fontSize: 11, color: 'var(--text-dim)', maxWidth: 320, margin: '0 auto 6px', lineHeight: 1.5 }}>
-            This PIN <strong style={{ color: 'var(--text)' }}>can’t be reset</strong> if you forget it. Export keeps a backup.
+            Centerpost <strong style={{ color: 'var(--text)' }}>can’t reset this PIN</strong> — nobody here can read your journal. You’ll get a recovery code next; save it.
           </p>
           <div className="journal-pin-dots" id="setPinDots"></div>
           <span className="sr-only" id="setPinDotsStatus" aria-live="polite"></span>
@@ -73,6 +82,54 @@ export default function JournalOverlay() {
           <div style={{ display: 'flex', gap: 8, justifyContent: 'center', marginTop: 8 }}>
             <button className="btn" onClick={() => window.closeJournal()} style={{ fontSize: 12, padding: '6px 14px' }}>Cancel</button>
             <button className="btn btn-accent" onClick={() => window.setPinSubmit()} style={{ fontSize: 12, padding: '6px 18px' }}>Continue</button>
+          </div>
+        </div>
+
+        {/* Shown exactly once, right after a recovery code is minted. The code
+            is never stored in the clear, so this is the only time it can be
+            displayed — regenerating is the only way to see a code again. */}
+        <div className="journal-recovery-layer" id="journalRecoveryShow" style={{ display: 'none' }}>
+          <div className="journal-recovery-card">
+            <div className="journal-pin-icon">{'🔑'}</div>
+            <div className="journal-pin-title">Save your recovery code</div>
+            <p className="journal-pin-sub" style={{ margin: 0 }}>
+              This is the only way into your journal if you forget your PIN. Store it somewhere private — anyone who has it can read your entries.
+            </p>
+            <div className="journal-recovery-code" id="journalRecoveryCode"></div>
+            <p style={{ fontSize: 11, color: 'var(--text-dim)', margin: 0, lineHeight: 1.5 }}>
+              We can’t show it again or look it up for you. It keeps working after you change your PIN.
+            </p>
+            <div className="journal-recovery-row">
+              <button className="btn" onClick={() => window.copyJournalRecoveryCode()} style={{ fontSize: 12, padding: '6px 14px' }}>Copy</button>
+              <button className="btn" onClick={() => window.downloadJournalRecoveryCode()} style={{ fontSize: 12, padding: '6px 14px' }}>Download</button>
+              <button className="btn btn-accent" onClick={() => window.dismissJournalRecovery()} style={{ fontSize: 12, padding: '6px 18px' }}>I’ve saved it</button>
+            </div>
+          </div>
+        </div>
+
+        {/* Redeeming a code: unwraps the same data key the PIN would have. */}
+        <div className="journal-recovery-layer" id="journalRecoveryEntry" style={{ display: 'none' }}>
+          <div className="journal-recovery-card">
+            <div className="journal-pin-icon">{'🔑'}</div>
+            <div className="journal-pin-title">Enter your recovery code</div>
+            <p className="journal-pin-sub" style={{ margin: 0 }}>
+              The code you saved when you created your PIN. Dashes and capitals don’t matter.
+            </p>
+            <input
+              className="journal-recovery-input"
+              id="journalRecoveryInput"
+              type="text"
+              autoComplete="off"
+              autoCapitalize="characters"
+              spellCheck="false"
+              placeholder="XXXXX-XXXXX-XXXXX-XXXXX"
+              aria-label="Recovery code"
+            />
+            <div className="journal-pin-error" id="journalRecoveryError"></div>
+            <div className="journal-recovery-row">
+              <button className="btn" onClick={() => window.hideJournalRecoveryEntry()} style={{ fontSize: 12, padding: '6px 14px' }}>Back</button>
+              <button className="btn btn-accent" onClick={() => window.journalRecoverySubmit()} style={{ fontSize: 12, padding: '6px 18px' }}>Unlock</button>
+            </div>
           </div>
         </div>
 

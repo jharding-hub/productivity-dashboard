@@ -13272,6 +13272,11 @@ var _journalKey=null;        // AES-GCM CryptoKey while unlocked (memory only)
 var _journalMeta=null;       // {salt,iterations,verifier} from the journal doc
 var _journalEntries=[];      // [{id,date,projId,projName,mood,enc}] at rest
 var _journalPlain={};        // id -> decrypted text (memory only, while unlocked)
+var _journalDekRaw=null;     // raw data-key bytes (b64) while unlocked. Needed to
+                             // rewrap on a PIN change and to mint a recovery code.
+                             // No worse than _journalPlain, which already holds
+                             // every decrypted entry; cleared in the same breath.
+var _journalPendingRecovery=null; // a freshly minted code, held only until shown once
 var _pinBuffer='';
 var _setPinBuffer='';
 var _setPinStage=0; // 0=first entry, 1=confirm
@@ -13367,6 +13372,11 @@ async function journalBioUnlock(){
       return;
     }
     _journalKey=key;
+    // The invariant for _journalDekRaw is simply "the raw bytes of whatever
+    // key currently decrypts the entries" -- true for a v2 data key and for a
+    // v1 PIN-derived key alike, which is what lets a PIN change upgrade a v1
+    // journal to v2 without re-encrypting a single entry.
+    _journalDekRaw=r.payload;
     await _decryptAllEntries();
     _pinBuffer='';
     _enterUnlocked();
@@ -13383,6 +13393,44 @@ function _journalBioGateSync(){
 // ── Journal document I/O (own doc: users/{uid}/data/journal, mirrored to localStorage) ──
 function _journalStorageKey(){return 'cpJournal_'+(currentUser?currentUser.uid:'local');}
 
+// ── Doc shape ─────────────────────────────────────────────────────────
+// v2 seals a random data key (DEK) under a PIN-derived wrapping key, and
+// optionally under a recovery code too. v1 derived the entry key from the PIN
+// directly. Both are read here; v1 is upgraded on the first unlock that
+// proves the PIN (_journalUpgradeToV2), never on a guess.
+function _journalMetaFromDoc(d){
+  if(!d)return null;
+  if((d.v||1)>=2&&d.wrapped){
+    return {v:2,kdf:d.kdf||'argon2id',salt:d.salt||'',
+            iterations:d.iterations||JournalCrypto.PBKDF2_ITERATIONS,
+            argon:d.argon||JournalCrypto.ARGON2_PARAMS,
+            wrapped:d.wrapped,verifier:d.verifier||'',
+            recovery:d.recovery||null};
+  }
+  if(d.salt&&d.verifier)return {v:1,salt:d.salt,iterations:d.iterations||JournalCrypto.PBKDF2_ITERATIONS,verifier:d.verifier};
+  return null;
+}
+// The exact object written to Firestore, localStorage AND the weekly
+// snapshot -- one shape, so a snapshot can never miss a field the primary
+// has (which is how v1 stranded old backups after a PIN change).
+function _journalDocPayload(){
+  var m=_journalMeta;
+  if(m&&m.v>=2){
+    return {v:2,kdf:m.kdf,salt:m.salt,iterations:m.iterations,argon:m.argon,
+            wrapped:m.wrapped,verifier:m.verifier,recovery:m.recovery||null,
+            entries:_journalEntries};
+  }
+  return {v:1,salt:m?m.salt:'',iterations:m?m.iterations:JournalCrypto.PBKDF2_ITERATIONS,
+          verifier:m?m.verifier:'',entries:_journalEntries};
+}
+// KDF cost parameters for a given meta/recovery block -- read from the doc,
+// never assumed, so a doc written on a browser without Argon2 still opens.
+function _journalKdfParams(m){
+  return (m&&m.kdf==='pbkdf2')
+    ?{iterations:(m&&m.iterations)||JournalCrypto.PBKDF2_ITERATIONS}
+    :((m&&m.argon)||JournalCrypto.ARGON2_PARAMS);
+}
+
 async function _loadJournalDoc(){
   _journalMeta=null;_journalEntries=[];
   var loaded=null;
@@ -13397,13 +13445,15 @@ async function _loadJournalDoc(){
   }
   if(loaded){
     if(Array.isArray(loaded.entries))_journalEntries=loaded.entries;
-    if(loaded.salt&&loaded.verifier)_journalMeta={salt:loaded.salt,iterations:loaded.iterations||JournalCrypto.PBKDF2_ITERATIONS,verifier:loaded.verifier};
-    try{localStorage.setItem(_journalStorageKey(),JSON.stringify({v:1,salt:loaded.salt||'',iterations:loaded.iterations||JournalCrypto.PBKDF2_ITERATIONS,verifier:loaded.verifier||'',entries:_journalEntries}));}catch(e){}
+    _journalMeta=_journalMetaFromDoc(loaded);
+    // Mirror what we actually loaded. Rebuilding a v1-shaped object here is
+    // how a v2 doc would lose its wrapped key on any device that read it.
+    try{localStorage.setItem(_journalStorageKey(),JSON.stringify(_journalDocPayload()));}catch(e){}
   }
 }
 
 async function _saveJournalDoc(){
-  var doc={v:1,salt:_journalMeta?_journalMeta.salt:'',iterations:_journalMeta?_journalMeta.iterations:JournalCrypto.PBKDF2_ITERATIONS,verifier:_journalMeta?_journalMeta.verifier:'',entries:_journalEntries};
+  var doc=_journalDocPayload();
   try{localStorage.setItem(_journalStorageKey(),JSON.stringify(doc));}catch(e){}
   if(firebaseReady&&db&&currentUser){
     try{
@@ -13474,7 +13524,12 @@ async function _maybeBackupJournalDoc(doc){
       console.warn('[journal-backup] backup doc unreadable this session -- skipping',e);
       return;
     }
-    var copy={savedAt:new Date().toISOString(),salt:doc.salt,iterations:doc.iterations,verifier:doc.verifier,entries:doc.entries};
+    // Every field the primary doc has, so a snapshot is independently
+    // openable. Under v2 the data key is stable, so snapshots taken before a
+    // PIN change still open with the current PIN -- v1 orphaned them.
+    var copy={savedAt:new Date().toISOString(),v:doc.v,kdf:doc.kdf,salt:doc.salt,
+              iterations:doc.iterations,argon:doc.argon,wrapped:doc.wrapped,
+              verifier:doc.verifier,recovery:doc.recovery||null,entries:doc.entries};
     if(JSON.stringify(copy).length>JOURNAL_BACKUP_BUDGET){
       console.warn('[journal-backup] single snapshot exceeds the size budget -- skipping');
       return;
@@ -13511,16 +13566,74 @@ async function _journalDeriveKey(pin,saltB64,iterations){
   return JournalCrypto.deriveKey(pin,saltB64,iterations);
 }
 
+function _journalNativeBridge(){return (typeof _notifNative==='function')&&!!_notifNative();}
+
+// Mint a v2 key envelope for `pin`. Pass an existing data key to rewrap it
+// (a PIN change); omit it to mint a fresh one (new journal, or a v1 upgrade).
+// Argon2id unless the vendored WASM failed to load, in which case the doc
+// records kdf:'pbkdf2' so it is opened the same way it was sealed.
+async function _journalBuildV2(pin,existingDek){
+  var kdf=JournalCrypto.argon2Available()?'argon2id':'pbkdf2';
+  var params=kdf==='argon2id'?JournalCrypto.ARGON2_PARAMS:{iterations:JournalCrypto.PBKDF2_ITERATIONS};
+  var dek=existingDek||await JournalCrypto.newDek();
+  var salt=JournalCrypto.randomSaltB64();
+  var kek=await JournalCrypto.deriveKek(pin,salt,kdf,params);
+  var meta={v:2,kdf:kdf,salt:salt,
+            iterations:params.iterations||JournalCrypto.PBKDF2_ITERATIONS,
+            argon:kdf==='argon2id'?params:JournalCrypto.ARGON2_PARAMS,
+            wrapped:await JournalCrypto.wrapDek(kek,dek.rawB64),
+            verifier:await JournalCrypto.makeVerifier(dek.key),
+            recovery:null};
+  return {meta:meta,dek:dek};
+}
+
+// Seal the SAME data key under a fresh printed code. The code itself is
+// returned for a one-time display and never stored -- only this wrapping of
+// the key is, so the code cannot be recovered from the document later.
+async function _journalMakeRecovery(dekRawB64){
+  var kdf=JournalCrypto.argon2Available()?'argon2id':'pbkdf2';
+  var params=kdf==='argon2id'?JournalCrypto.ARGON2_PARAMS:{iterations:JournalCrypto.PBKDF2_ITERATIONS};
+  var code=JournalCrypto.newRecoveryCode();
+  var salt=JournalCrypto.randomSaltB64();
+  var kek=await JournalCrypto.deriveKek(JournalCrypto.normalizeRecoveryCode(code),salt,kdf,params);
+  return {code:code,block:{kdf:kdf,salt:salt,
+          iterations:params.iterations||JournalCrypto.PBKDF2_ITERATIONS,
+          argon:kdf==='argon2id'?params:JournalCrypto.ARGON2_PARAMS,
+          wrapped:await JournalCrypto.wrapDek(kek,dekRawB64)}};
+}
+
+// One-time upgrade of a v1 journal. Runs ONLY after the v1 verifier has
+// proven the PIN and every entry has decrypted into _journalPlain. The whole
+// v2 document is built in memory first: if anything throws, the stored v1 doc
+// is untouched and the user stays unlocked on the v1 key.
+async function _journalUpgradeToV2(pin){
+  var built=await _journalBuildV2(pin);
+  var re=[];
+  for(var i=0;i<_journalEntries.length;i++){
+    var e=_journalEntries[i];
+    var txt=_journalPlain[e.id];
+    // Never enshrine the placeholder as real text -- an entry we could not
+    // read stays sealed under v1 rather than being replaced by a lie.
+    if(txt==null||txt==='[unable to decrypt]')throw new Error('v1-entry-unreadable');
+    re.push({id:e.id,date:e.date,projId:e.projId||'',projName:e.projName||'',mood:e.mood||'',
+             enc:await JournalCrypto.encryptText(built.dek.key,txt)});
+  }
+  _journalMeta=built.meta;_journalKey=built.dek.key;_journalDekRaw=built.dek.rawB64;_journalEntries=re;
+  if(_journalNativeBridge())_journalRawB64=built.dek.rawB64;
+  await _saveJournalDoc();
+  console.log('[journal] upgraded to v2 ('+re.length+' entries re-sealed under a stable data key)');
+}
+
 // First-time / legacy setup: derive a key, and NON-DESTRUCTIVELY copy any
 // existing plaintext entries into the encrypted doc. The old state.journal /
 // state.journalPin are left intact as a safety net (scrubbed in Phase 3).
 async function _journalSetupAndMigrate(pin){
-  var salt=JournalCrypto.randomSaltB64();
-  var iterations=JournalCrypto.PBKDF2_ITERATIONS;
-  var key=await _journalDeriveKey(pin,salt,iterations);
-  var verifier=await JournalCrypto.makeVerifier(key);
-  _journalMeta={salt:salt,iterations:iterations,verifier:verifier};
+  var built=await _journalBuildV2(pin);
+  var key=built.dek.key;
+  _journalMeta=built.meta;
   _journalKey=key;
+  _journalDekRaw=built.dek.rawB64;
+  if(_journalNativeBridge())_journalRawB64=built.dek.rawB64;
   var legacy=(state.journal||[]);
   var migrated=[];
   _journalPlain={};
@@ -13535,26 +13648,24 @@ async function _journalSetupAndMigrate(pin){
   await _saveJournalDoc();
 }
 
-// Change PIN: re-encrypt every entry from the in-memory plaintext under a new key.
+// Change PIN: reseal the data key under a key derived from the new PIN. The
+// entries are NOT touched -- that is the whole point of the v2 split, and it
+// is also what keeps older encrypted snapshots openable.
 async function _journalRekey(newPin){
-  var salt=JournalCrypto.randomSaltB64();
-  var iterations=JournalCrypto.PBKDF2_ITERATIONS;
-  var key=await _journalDeriveKey(newPin,salt,iterations);
-  var verifier=await JournalCrypto.makeVerifier(key);
-  var re=[];
-  for(var i=0;i<_journalEntries.length;i++){
-    var e=_journalEntries[i];
-    var txt=_journalPlain[e.id]!=null?_journalPlain[e.id]:'';
-    re.push({id:e.id,date:e.date,projId:e.projId||'',projName:e.projName||'',mood:e.mood||'',enc:await JournalCrypto.encryptText(key,txt)});
-  }
-  _journalMeta={salt:salt,iterations:iterations,verifier:verifier};
-  _journalKey=key;_journalEntries=re;
+  if(!_journalDekRaw)throw new Error('no-data-key');
+  var built=await _journalBuildV2(newPin,{key:_journalKey,rawB64:_journalDekRaw});
+  // The recovery wrapping seals the same data key, so a PIN change must not
+  // invalidate a code the user has already written down.
+  built.meta.recovery=_journalMeta?_journalMeta.recovery:null;
+  _journalMeta=built.meta;
+  _journalKey=built.dek.key;
+  if(_journalNativeBridge())_journalRawB64=_journalDekRaw;
   await _saveJournalDoc();
 }
 
 // ── Open / close ──────────────────────────────────────────────────────
 async function openJournal(){
-  _journalUnlocked=false;_journalKey=null;_journalPlain={};
+  _journalUnlocked=false;_journalKey=null;_journalPlain={};_journalDekRaw=null;_journalPendingRecovery=null;
   _pinBuffer='';_setPinBuffer='';_setPinStage=0;_setPinFirst='';_changingPin=false;_journalNeedsFirstPin=false;
   document.getElementById('journalOverlay').classList.add('open');
   // R3 stage 4 (F11): journal is a full-screen surface too -- the FAB floated
@@ -13597,7 +13708,7 @@ function closeJournal(){
   document.getElementById('journalOverlay').classList.remove('open');
   _quitImmersiveChrome(); // guarded -- see closeCustomize
   _unblurDashboard();
-  _journalUnlocked=false;_journalKey=null;_journalPlain={};
+  _journalUnlocked=false;_journalKey=null;_journalPlain={};_journalDekRaw=null;_journalPendingRecovery=null;
   _pinBuffer='';_setPinBuffer='';_setPinStage=0;_setPinFirst='';_changingPin=false;_journalNeedsFirstPin=false;
   _journalRawB64=null; // R8 phase 2: never let the raw key outlive the session
 }
@@ -13747,15 +13858,40 @@ async function journalPinSubmit(){
     return;
   }
   var key;
+  var wasV1=(_journalMeta.v||1)<2;
   try{
-    key=await _journalDeriveKey(pin,_journalMeta.salt,_journalMeta.iterations);
-    var ok=await JournalCrypto.checkVerifier(key,_journalMeta.verifier);
-    if(!ok){_journalRawB64=null;_journalPinFail(err);return;}
-  }catch(e){console.log('journal unlock error:',e);_journalRawB64=null;_journalPinFail(err);return;}
+    if(!wasV1){
+      // Refusing here is deliberate. Falling back to PBKDF2 for a doc sealed
+      // with Argon2id would derive a different key and present as "wrong PIN",
+      // which is the worst possible lie to tell someone about their journal.
+      if(_journalMeta.kdf==='argon2id'&&!JournalCrypto.argon2Available()){
+        err.textContent='Secure unlock did not finish loading. Reload the page and try again.';
+        return;
+      }
+      var kek=await JournalCrypto.deriveKek(pin,_journalMeta.salt,_journalMeta.kdf,_journalKdfParams(_journalMeta));
+      // The GCM tag on the wrapped key IS the PIN check -- a wrong PIN throws.
+      var dek=await JournalCrypto.unwrapDek(kek,_journalMeta.wrapped);
+      key=dek.key;_journalDekRaw=dek.rawB64;
+      if(_journalNativeBridge())_journalRawB64=dek.rawB64;
+    }else{
+      key=await _journalDeriveKey(pin,_journalMeta.salt,_journalMeta.iterations);
+      var ok=await JournalCrypto.checkVerifier(key,_journalMeta.verifier);
+      if(!ok){_journalRawB64=null;_journalPinFail(err);return;}
+    }
+  }catch(e){console.log('journal unlock error:',e);_journalRawB64=null;_journalDekRaw=null;_journalPinFail(err);return;}
   _journalKey=key;
   await _decryptAllEntries();
+  // A v1 journal upgrades once the PIN is proven AND every entry read. A
+  // failure is logged and shrugged off: the user is already unlocked on the
+  // v1 key and the stored v1 doc is untouched, so nothing is lost by waiting.
+  if(wasV1){
+    try{await _journalUpgradeToV2(pin);}
+    catch(e2){console.log('journal v2 upgrade deferred:',e2);}
+  }
   _pinBuffer='';
   _enterUnlocked();
+  await _journalEnsureRecovery();
+  _journalShowPendingRecovery();
   _journalBioAfterPinUnlock();
 }
 
@@ -13815,14 +13951,122 @@ async function setPinSubmit(){
   // fields itself, so this is just re-invoking the same call the user
   // originally made.
   if(_wasFirstEntryPin){_journalNeedsFirstPin=false;await saveJournalEntry();}
+  await _journalEnsureRecovery();
+  _journalShowPendingRecovery();
   // R8 phase 2: covers create, rekey, AND the deferred-first-save path above.
   _journalBioAfterPinUnlock();
+}
+
+// ── Recovery code ─────────────────────────────────────────────────────
+// A 100-bit printed code sealing the SAME data key as the PIN. It exists
+// because a forgotten PIN was, by design, permanent data loss -- and the
+// 2026-08-18 panel named that the likeliest way to lose data in this app.
+// Minted once and never stored in the clear: the document holds only the
+// wrapping, so the code cannot be read back out of it later.
+async function _journalEnsureRecovery(){
+  try{
+    if(!_journalDekRaw||!_journalMeta||(_journalMeta.v||1)<2)return;
+    if(_journalMeta.recovery)return;   // never void a code already written down
+    var r=await _journalMakeRecovery(_journalDekRaw);
+    _journalMeta.recovery=r.block;
+    _journalPendingRecovery=r.code;
+    await _saveJournalDoc();
+  }catch(e){console.log('journal recovery-code error:',e);}
+}
+function _journalShowPendingRecovery(){
+  if(!_journalPendingRecovery)return;
+  var box=document.getElementById('journalRecoveryShow');
+  var out=document.getElementById('journalRecoveryCode');
+  if(!box||!out){_journalPendingRecovery=null;return;}
+  out.textContent=_journalPendingRecovery;
+  box.style.display='flex';
+}
+function dismissJournalRecovery(){
+  _journalPendingRecovery=null;
+  var box=document.getElementById('journalRecoveryShow');
+  var out=document.getElementById('journalRecoveryCode');
+  if(out)out.textContent='';
+  if(box)box.style.display='none';
+}
+function copyJournalRecoveryCode(){
+  var out=document.getElementById('journalRecoveryCode');
+  if(!out||!out.textContent)return;
+  try{navigator.clipboard.writeText(out.textContent);toast('Recovery code copied');}
+  catch(e){toast('Could not copy — write it down instead');}
+}
+function downloadJournalRecoveryCode(){
+  var out=document.getElementById('journalRecoveryCode');
+  if(!out||!out.textContent)return;
+  var body='Centerpost journal recovery code\n\n'+out.textContent+
+    '\n\nThis code unlocks your journal if you forget your PIN. Anyone who has\n'+
+    'it can read your journal, so keep it somewhere private. Centerpost cannot\n'+
+    'look it up for you -- only this file and your memory have it.\n\n'+
+    'Created '+new Date().toLocaleString()+'\n';
+  var blob=new Blob([body],{type:'text/plain'});
+  var u=URL.createObjectURL(blob);
+  var a=document.createElement('a');
+  a.href=u;a.download='centerpost-journal-recovery-code.txt';
+  document.body.appendChild(a);a.click();document.body.removeChild(a);
+  URL.revokeObjectURL(u);
+  toast('Recovery code saved');
+}
+// Replace the wrapping with one under a brand-new code. The old code stops
+// working the moment this saves, which is the point.
+async function regenerateJournalRecoveryCode(){
+  if(!_journalUnlocked||!_journalDekRaw){toast('Unlock the journal first');return;}
+  try{
+    var r=await _journalMakeRecovery(_journalDekRaw);
+    _journalMeta.recovery=r.block;
+    _journalPendingRecovery=r.code;
+    await _saveJournalDoc();
+    _journalShowPendingRecovery();
+  }catch(e){console.log('journal recovery regen error:',e);toast('Could not make a new code');}
+}
+function showJournalRecoveryEntry(){
+  var box=document.getElementById('journalRecoveryEntry');
+  var err=document.getElementById('journalRecoveryError');
+  var inp=document.getElementById('journalRecoveryInput');
+  if(err)err.textContent='';
+  if(inp)inp.value='';
+  if(box)box.style.display='flex';
+  if(inp)inp.focus();
+}
+function hideJournalRecoveryEntry(){
+  var box=document.getElementById('journalRecoveryEntry');
+  if(box)box.style.display='none';
+}
+async function journalRecoverySubmit(){
+  var err=document.getElementById('journalRecoveryError');
+  var inp=document.getElementById('journalRecoveryInput');
+  if(!err||!inp)return;
+  var code=JournalCrypto.normalizeRecoveryCode(inp.value);
+  var rec=_journalMeta&&_journalMeta.recovery;
+  if(!rec){err.textContent='This journal was created before recovery codes. Your PIN is the only way in.';return;}
+  if(code.length!==JournalCrypto.RECOVERY_LENGTH){err.textContent='A recovery code is '+JournalCrypto.RECOVERY_LENGTH+' characters.';return;}
+  if(rec.kdf==='argon2id'&&!JournalCrypto.argon2Available()){
+    err.textContent='Secure unlock did not finish loading. Reload the page and try again.';return;
+  }
+  err.textContent='Checking…';
+  try{
+    var kek=await JournalCrypto.deriveKek(code,rec.salt,rec.kdf,_journalKdfParams(rec));
+    var dek=await JournalCrypto.unwrapDek(kek,rec.wrapped);
+    _journalKey=dek.key;_journalDekRaw=dek.rawB64;
+    if(_journalNativeBridge())_journalRawB64=dek.rawB64;
+    await _decryptAllEntries();
+    hideJournalRecoveryEntry();
+    _enterUnlocked();
+    // They got in without the PIN, which means they do not have it. Send them
+    // straight to choosing a new one rather than leaving the journal reachable
+    // only by a code that has now been used and may be lying around.
+    _changingPin=true;
+    _showSetPin('Set a new PIN','Your recovery code worked. Choose a new 4+ digit PIN.');
+  }catch(e){err.textContent='That code did not work. Check for typos and try again.';}
 }
 
 function changeJournalPin(){
   if(!_journalUnlocked){toast('Unlock the journal first');return;}
   _changingPin=true;
-  _showSetPin('Set a new PIN','Choose a new 4+ digit PIN. Your entries will be re-encrypted.');
+  _showSetPin('Set a new PIN','Choose a new 4+ digit PIN. Your entries and recovery code stay as they are.');
 }
 
 function _renderPinDots(containerId,count){

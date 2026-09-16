@@ -3270,6 +3270,14 @@ body.capacitor-native .pd-topbar{padding-top:max(env(safe-area-inset-top),46px) 
    (celebrations, sign-in gate, update toast), none of which raise confirms.
    ANY NEW SURFACE THAT CALLS _confirm() MUST STAY BELOW 2500. */
 #confirmDialog{z-index:2500;}
+/* Journal recovery code (v2 wrapped-data-key scheme). Sits just above
+   .journal-overlay (1050) and far below the 2500 confirm band -- these two
+   surfaces only ever raise toast(), never _confirm(). */
+.journal-recovery-layer{position:fixed;inset:0;z-index:1060;display:none;align-items:center;justify-content:center;padding:20px;background:rgba(10,9,8,0.72);backdrop-filter:blur(6px);-webkit-backdrop-filter:blur(6px);}
+.journal-recovery-card{background:var(--surface);border:1px solid var(--border);border-radius:var(--radius);width:min(420px,94vw);max-height:90vh;overflow-y:auto;padding:22px;display:flex;flex-direction:column;gap:12px;text-align:center;box-shadow:0 24px 60px rgba(0,0,0,0.6);}
+.journal-recovery-code{font-family:ui-monospace,SFMono-Regular,Menlo,monospace;font-size:19px;letter-spacing:1.5px;font-weight:600;color:var(--text);background:var(--bg);border:1px dashed var(--border);border-radius:10px;padding:14px 10px;user-select:all;-webkit-user-select:all;word-break:break-all;}
+.journal-recovery-input{width:100%;font-family:ui-monospace,SFMono-Regular,Menlo,monospace;font-size:16px;letter-spacing:1px;text-align:center;text-transform:uppercase;padding:12px;border-radius:10px;border:1px solid var(--border);background:var(--bg);color:var(--text);}
+.journal-recovery-row{display:flex;gap:8px;justify-content:center;flex-wrap:wrap;}
 .modal-blur-backdrop{position:absolute;inset:0;background:rgba(10,9,8,0.55);backdrop-filter:blur(6px);-webkit-backdrop-filter:blur(6px);}
 .modal-blur-panel{position:relative;z-index:1;background:var(--surface);border:1px solid var(--border);border-radius:var(--radius);width:min(680px,92vw);max-height:88vh;display:flex;flex-direction:column;overflow:hidden;box-shadow:0 24px 60px rgba(0,0,0,0.6);animation:journalSlideIn 0.3s cubic-bezier(0.22,1,0.36,1) both;}
 .modal-blur-header{display:flex;align-items:center;justify-content:space-between;padding:16px 20px 12px;border-bottom:1px solid var(--border);flex-shrink:0;}
