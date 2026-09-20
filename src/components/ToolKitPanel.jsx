@@ -8,15 +8,6 @@ export default function ToolKitPanel() {
         </div>
         <div className="panel-badge">Quick Launch</div>
       </div>
-      {/* F24: the Presence Points medal used to sit HERE, pinned above the
-          grounding tools. All five review personas independently said it had
-          to go -- a rank badge is the first thing you meet on the surface you
-          open when you're struggling ("a scoreboard on the door of the room
-          people enter when they're losing"). Moved to the header's
-          points-focus-music slot, which already hosts the +Presence floaters
-          and is labelled for it. Points still accrue for regulation actions
-          -- awarding and DISPLAYING are separate decisions, and only the
-          display was the problem. */}
       {/* Filled by legacy.js's _renderToolkitExplainer() on first open, then
           never again. Lives ABOVE the grid, inside the panel, deliberately:
           the subtitles that used to explain these tiles were removed because

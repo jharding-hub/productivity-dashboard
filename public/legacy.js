@@ -1777,12 +1777,6 @@ async function load(){
   if(!state.reminders)state.reminders=[];
   if(!state.notes)state.notes=[];if(!state.moodLog)state.moodLog=[];if(!state.tasks)state.tasks=[];if(!state.visiblePanels)state.visiblePanels={};if(!state.knownPanels)state.knownPanels=[];
   if(!state.panelUseLog)state.panelUseLog={};if(!state.usageMonthlyTotals)state.usageMonthlyTotals={};
-  // Presence is gone but state.points stays as dormant data, and the Insights
-  // series still reads these two maps -- keep them shaped, never dereference
-  // state.points unguarded.
-  if(!state.points)state.points={};
-  if(!state.points.totalsByDay)state.points.totalsByDay={};
-  if(!state.points.monthlyTotals)state.points.monthlyTotals={};
   // Backfill any note missing a created timestamp (older notes) so sorts can't crash
   state.notes.forEach(function(n){if(n&&!n.created)n.created=n.updated||n.date||new Date(0).toISOString();});
   if(!state.journal)state.journal=[];if(!state.journalPin)state.journalPin='';
@@ -1897,7 +1891,6 @@ function startRealtimeSync(){
       const localRoutineReset=state.lastRoutineReset;
       const localRoutines=JSON.parse(JSON.stringify(state.routines||{}));
       const localUpdatedAt=state._updatedAt||0;
-      const localPoints=JSON.parse(JSON.stringify(state.points||{}));
       const _reconLocal=state; // pre-spread local snapshot for reconciliation
       // checkins/moodLog/completedTasks all live in their own docs now (R3/R5/F3)
       // and were never in SYNC_ACTIVE_ARRAYS/SYNC_UNION_ARRAYS -- reconcileSync
@@ -1932,11 +1925,6 @@ function startRealtimeSync(){
       // E-1: keep the newest stamp -- local unsaved edits may be newer than
       // the cloud doc this snapshot delivered.
       state._updatedAt=Math.max(localUpdatedAt,cloud._updatedAt||0);
-      // Points: a snapshot older than our last local edit (e.g. it landed
-      // before the debounced save() from completing a task committed) would
-      // otherwise silently revert state.points to the pre-increment cloud
-      // value -- and the next save() would persist that reverted total.
-      if(localUpdatedAt>(cloud._updatedAt||0))state.points=localPoints;
       state.focusMode=localFocusMode;
       state.currentRoutineTab=localRoutineTab;
       if(localSavedVis)state._savedPanelVis=localSavedVis;else delete state._savedPanelVis;
@@ -6471,7 +6459,7 @@ var COMMAND_REGISTRY=[
   {id:'open-reminders',label:'Open Reminders',keywords:'reminder alert',run:function(){openPanelOverlay('reminders');}},
   {id:'open-notes',label:'Open Notes',keywords:'note journal',run:function(){openPanelOverlay('notes');}},
   {id:'weekly-review',label:'Weekly Review',keywords:'recap summary week report review sunday',run:function(){openWeeklyReview();}},
-  {id:'insights',label:'Insights',keywords:'points mood trends report insights correlations',run:function(){openPointsInsights();}}
+  {id:'insights',label:'Insights',keywords:'mood trends report insights correlations',run:function(){openPointsInsights();}}
 ];
 // ============================================================
 // CROSS-TYPE OMNISEARCH (persona-panel-3, 2026-08-02: the #1 build ask,
@@ -10726,8 +10714,8 @@ async function _saveRemindersArchiveDoc(){
 }
 
 // =======================================
-// R14: INSIGHTS DATA EXPORT -- downloads check-ins, mood/energy, and daily
-// Presence totals as separate CSVs. Exports FULL history (not just the
+// R14: INSIGHTS DATA EXPORT -- downloads check-ins and mood/energy as
+// separate CSVs. Exports FULL history (not just the
 // currently selected week/month/lifetime tab), matching exportAllToICS's
 // precedent of "give me everything, I'll filter it myself." Reuses
 // downloadICS's blob-download pattern under a generic name. Formatting
@@ -10757,21 +10745,14 @@ function _exportMoodLogCSV(){
   });
   downloadCSV('centerpost-mood-energy.csv',_csvRows(rows));
 }
-function _exportPointsCSV(){
-  var rows=[['Date','Presence Earned']];
-  var totals=(state.points&&state.points.totalsByDay)||{};
-  Object.keys(totals).sort().forEach(function(d){
-    rows.push([d,totals[d]]);
-  });
-  downloadCSV('centerpost-presence-daily.csv',_csvRows(rows));
-}
 function exportInsightsData(){
-  var hasData=(state.checkins||[]).length||(state.moodLog||[]).length||Object.keys((state.points&&state.points.totalsByDay)||{}).length;
+  // Was 3 files -- the third was centerpost-presence-daily.csv, dropped with
+  // Presence itself.
+  var hasData=(state.checkins||[]).length||(state.moodLog||[]).length;
   if(!hasData){toast('Nothing to export yet.');return;}
   _exportCheckinsCSV();
   setTimeout(_exportMoodLogCSV,300);
-  setTimeout(_exportPointsCSV,600);
-  toast('⬇ Exporting 3 CSV files...');
+  toast('⬇ Exporting 2 CSV files...');
 }
 
 // =======================================
@@ -11230,7 +11211,6 @@ function _renderWellness(){
   var body=document.getElementById('wellnessBody');
   var html='<div class="well-intro">'
     +'The <strong>SAMHSA Wellness Wheel</strong> recognizes 8 dimensions of well-being. Click any dimension to expand it, read the definition, and add a personal note about how you can grow in that area.'
-    +' <span style="color:#7fb3a0;">+4 Presence</span> for each note saved.'
     +'</div>';
   html+='<div class="well-list">';
   WELLNESS_DIMENSIONS.forEach(function(d){
@@ -12112,13 +12092,13 @@ function closePointsInsights(){
   document.getElementById('pointsInsightsModal').classList.remove('open');
 }
 
-// Panel survey 2026-08-18 (I-7). The Skeptic's finding: Presence points are
-// awarded for using the regulation tools, so plotting "tool use" against
-// "Presence earned" made the correlation partly DEFINITIONAL -- the chart
-// was partly measuring itself. These sources are excluded from the usage
-// series the correlation uses. Note this is display-only: no stored points
-// change, and whether regulation tools keep EARNING Presence at all is
-// deliberately left as Joe's call (survey section 8), not decided here.
+// Panel survey 2026-08-18 (I-7). Regulation tools are excluded from the
+// usage series the mood correlation runs on. The original reason was that
+// they EARNED Presence, so plotting tool use against Presence earned made
+// the correlation partly definitional. Presence is gone, but the exclusion
+// stays on its own merit: the correlation asks whether using the app tracks
+// with better mood, and reaching for a grounding tool is itself a signal of
+// a bad moment, so counting it inverts what the chart is trying to show.
 var INSIGHTS_REGULATION_SOURCES=['breathwork','urge_log','log_mood','halt_check','grounding','panel:wellness'];
 function _isRegulationSource(src){
   if(INSIGHTS_REGULATION_SOURCES.indexOf(src)>=0)return true;
@@ -12136,20 +12116,16 @@ function _usageTotalForDay(dayKey,excludeRegulation){
   },0);
 }
 
-// Returns an ordered array of {label,dateKey,points,energy,mood,usage} rows
+// Returns an ordered array of {label,dateKey,energy,mood,usage} rows
 // for 'week' (7 days), 'month' (30 days), or 'lifetime' (one row per month).
 function getInsightsSeries(period){
   if(period==='lifetime'){
     var monthKeys={};
-    Object.keys(state.points.monthlyTotals).forEach(function(k){monthKeys[k]=true;});
     Object.keys(state.usageMonthlyTotals).forEach(function(k){monthKeys[k]=true;});
-    Object.keys(state.points.totalsByDay).forEach(function(k){monthKeys[k.slice(0,7)]=true;});
     Object.keys(state.panelUseLog).forEach(function(k){monthKeys[k.slice(0,7)]=true;});
     (state.moodLog||[]).forEach(function(e){if(e.date)monthKeys[e.date.slice(0,7)]=true;});
     var months=Object.keys(monthKeys).sort();
     return months.map(function(mk){
-      var pts=(state.points.monthlyTotals[mk]||0);
-      Object.keys(state.points.totalsByDay).forEach(function(k){if(k.slice(0,7)===mk)pts+=state.points.totalsByDay[k];});
       var usage=(state.usageMonthlyTotals[mk]||0);
       Object.keys(state.panelUseLog).forEach(function(k){if(k.slice(0,7)===mk)usage+=_usageTotalForDay(k,true);});
       var energyVals=[],moodVals=[];
@@ -12161,7 +12137,7 @@ function getInsightsSeries(period){
       });
       var avg=function(arr){return arr.length?arr.reduce(function(a,b){return a+b;},0)/arr.length:null;};
       var d=new Date(mk+'-15T12:00:00Z');
-      return {label:d.toLocaleDateString('en-US',{month:'short',year:'2-digit'}),dateKey:mk,points:pts,energy:avg(energyVals),mood:avg(moodVals),usage:usage};
+      return {label:d.toLocaleDateString('en-US',{month:'short',year:'2-digit'}),dateKey:mk,energy:avg(energyVals),mood:avg(moodVals),usage:usage};
     });
   }
 
@@ -12175,7 +12151,6 @@ function getInsightsSeries(period){
     rows.push({
       label:i===0?'Today':(d.getMonth()+1)+'/'+d.getDate(),
       dateKey:dk,
-      points:state.points.totalsByDay[dk]||0,
       energy:entry&&entry.energy?_PI_ENERGY_NUM[entry.energy]:null,
       mood:entry&&entry.mood?_PI_MOOD_NUM[entry.mood]:null,
       usage:_usageTotalForDay(dk,true)
@@ -12232,9 +12207,6 @@ function getProductivityTips(rows){
     tips.push({kind:'data',text:'You are only logging mood/energy on about '+Math.round(loggedDays/rows.length*100)+'% of days shown -- logging daily (even a quick tap) makes these patterns much clearer.'});
   }
   if(avgUsage>0&&avgUsage<2){
-    // I-7: was "...a quick, low-friction way to re-engage and earn Presence."
-    // The Skeptic's objection to points-framing on tool use applies here --
-    // the reason to start a focus session is the session, not the score.
     tips.push({kind:'data',text:'Usage is light in this window. Try a single 25-minute focus-timer session on your next task -- a quick, low-friction way to re-engage.'});
   }
   // I-7: this tip used to fire on a bare count of low-usage/low-mood days,
@@ -12247,7 +12219,6 @@ function getProductivityTips(rows){
   if(lowUsageLowMood.length>=2&&_ums.status==='positive'){
     tips.push({kind:'data',text:'Low-usage days tend to coincide with lower mood -- on tough days, body-doubling (working alongside the app open, even without finishing tasks) can help more than pushing through alone.'});
   }
-  // I-7: was "Breaking work into subtasks earns Presence more often than..."
   // The trailing mechanism claim ("small, frequent wins sustain ADHD
   // motivation better than large infrequent ones") was cut: it asserted a
   // research finding with no citation, on the one screen where this app
@@ -12260,7 +12231,7 @@ function renderInsightsChart(rows){
   var wrap=document.getElementById('piChartWrap');
   var noData=document.getElementById('piNoData');
   if(!wrap)return;
-  var hasAny=rows.some(function(r){return r.points>0||r.usage>0||r.mood!==null||r.energy!==null;});
+  var hasAny=rows.some(function(r){return r.usage>0||r.mood!==null||r.energy!==null;});
   if(noData)noData.style.display=hasAny?'none':'block';
   wrap.style.display=hasAny?'block':'none';
   if(!hasAny){wrap.innerHTML='';return;}
@@ -12272,23 +12243,13 @@ function renderInsightsChart(rows){
   function xp(i){return padL+i*stepX;}
   function yp1to4(v){return padT+cH-((v-1)/3)*cH;}
 
-  var maxPoints=Math.max(1,Math.max.apply(null,rows.map(function(r){return r.points;})));
   var maxUsage=Math.max(1,Math.max.apply(null,rows.map(function(r){return r.usage;})));
-  var barW=Math.max(3,Math.min(18,stepX*0.55));
 
   var svg='<svg viewBox="0 0 '+W+' '+H+'" xmlns="http://www.w3.org/2000/svg" style="width:100%;height:auto;display:block;">';
 
   [1,2,3,4].forEach(function(v){
     var y=yp1to4(v);
     svg+='<line x1="'+padL+'" y1="'+y+'" x2="'+(W-padR)+'" y2="'+y+'" stroke="rgba(128,128,128,0.12)" stroke-width="1"/>';
-  });
-
-  // Points bars (own scale, drawn from the baseline)
-  rows.forEach(function(r,i){
-    if(r.points<=0)return;
-    var h=(r.points/maxPoints)*cH;
-    var x=xp(i)-barW/2,y=padT+cH-h;
-    svg+='<rect x="'+x+'" y="'+y+'" width="'+barW+'" height="'+h+'" rx="2" fill="#c77dba" opacity="0.55"><title>'+r.label+': '+r.points+' Presence</title></rect>';
   });
 
   // Panel/tool usage line (own scale)
@@ -12444,7 +12405,6 @@ function closeWeeklyReview(){
 function _renderWeeklyReview(){
   var days=7;
   var rows=getInsightsSeries('week');
-  var totalPoints=rows.reduce(function(sum,r){return sum+(r.points||0);},0);
   var tasks=_tasksCompletedSince(days);
   var projectNames={};
   tasks.forEach(function(t){if(t.projectName)projectNames[t.projectName]=true;});
@@ -12457,8 +12417,13 @@ function _renderWeeklyReview(){
   // no "return '' when empty" convention, so it's deliberately EXCLUDED from
   // this check. Using it here would make hasAnything always true and the
   // empty-state below would never fire.
-  var hasAnything=totalPoints>0||tasks.length>0||!!stateCard
-    ||rc.morning.trackedDays>0||rc.evening.trackedDays>0;
+  // Was `totalPoints>0||...`. Presence came from these same actions, so it
+  // was only ever a proxy for "did anything happen this week"; with it gone
+  // the signals it stood in for are checked directly. Without this a week of
+  // nothing but mood/energy logging would fall through to the empty state.
+  var hasAnything=tasks.length>0||!!stateCard
+    ||rc.morning.trackedDays>0||rc.evening.trackedDays>0
+    ||rows.some(function(r){return r.usage>0||r.mood!==null||r.energy!==null;});
   if(!hasAnything){
     return '<div class="wr-empty">Not enough activity yet this week. Check back after using Centerpost a few more days.</div>';
   }
@@ -12466,22 +12431,6 @@ function _renderWeeklyReview(){
 
   var rangeLabel=(rows.length?rows[0].label:'')+' – '+(rows.length?rows[rows.length-1].label:'');
   var html='<div class="wr-range">'+rangeLabel+'</div>';
-
-  // Panel survey 2026-08-18 (I-4): "Presence" appears here with no
-  // explanation anywhere reachable in-context -- the Basic User's exact
-  // words were "I have no idea what a Presence point is, where I earned
-  // them, or whether 56 is good." Presence is just this app's name for the
-  // underlying points total (see TIER_THRESHOLDS/points comments) -- says so
-  // plainly on tap, via toast rather than a nested modal to avoid stacking
-  // the Weekly Review overlay under another one.
-  // Panel survey 2026-08-22 (I2-9/P1-S3): built here, rendered at the BOTTOM.
-  // Leading the week's review with a points total makes the score the
-  // headline; the Basic seat wanted the plain facts first ("you showed up
-  // four days, finished six things") and the number as a footnote. Also
-  // fixes "1 Presence points", which read like nobody proofread the most
-  // personal screen in the app.
-  var presenceHtml='';
-  if(totalPoints>0)presenceHtml='<div class="wr-row wr-row-presence" onclick="toast(\'Presence is this app\u2019s name for your points total \u2014 small credit for using tools like tasks, routines, and the grounding kit. Separate from Days Shown Up, which just counts whether you opened the app.\',5000)" style="cursor:pointer;" title="What is Presence?"><span class="wr-icon">\ud83c\udfc5</span><strong>'+totalPoints+'</strong> Presence point'+(totalPoints!==1?'s':'')+' this week <span style="opacity:0.5;font-size:11px;">(what\u2019s this?)</span></div>';
 
   if(tasks.length>0){
     html+='<div class="wr-row"><span class="wr-icon">✅</span><strong>'+tasks.length+'</strong> task'+(tasks.length!==1?'s':'')+' completed'
@@ -12495,8 +12444,6 @@ function _renderWeeklyReview(){
   if(rc.evening.trackedDays>0)html+='<div class="wr-row"><span class="wr-icon">🌙</span>Evening routine: <strong>'+rc.evening.completeDays+'</strong> of '+rc.evening.total+' days</div>';
 
   if(stateCard)html+='<div class="wr-state-wrap">'+stateCard+'</div>';
-
-  html+=presenceHtml;   // the score, after the facts
 
   html+='<div class="wr-journal-cta"><button class="btn" onclick="closeWeeklyReview();openJournal();">📖 Open Journal to reflect</button></div>';
   return html;
@@ -18894,7 +18841,7 @@ function _gcalRenderModal(){
     html += '<button class="gcal-btn danger" onclick="_confirmGcalDisconnect()">Disconnect</button>';
     html += '</div>';
 
-    html += '<div class="gcal-help">&#9881; <strong>What syncs:</strong> tasks, project subtasks, reminders, and timeline blocks with a date. Items without a date stay local. <br><br>&#128274; <strong>What doesn\'t sync:</strong> Brain Dump thoughts, notes, journal entries, mood/energy logs, wellness reflections, Presence.</div>';
+    html += '<div class="gcal-help">&#9881; <strong>What syncs:</strong> tasks, project subtasks, reminders, and timeline blocks with a date. Items without a date stay local. <br><br>&#128274; <strong>What doesn\'t sync:</strong> Brain Dump thoughts, notes, journal entries, mood/energy logs, and wellness reflections.</div>';
   } else {
     html += '<div class="gcal-status-row"><span class="gcal-dot"></span><div><strong>Not connected.</strong><br><span style="font-size:12px;color:var(--text-dim);">Connect to push tasks, subtasks, and reminders to a "'+GCAL_CALENDAR_NAME+'" calendar in your Google account, and pull events back into the Timeline panel.</span></div></div>';
     html += '<div class="gcal-actions">';

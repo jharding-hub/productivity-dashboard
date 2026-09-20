@@ -4,16 +4,11 @@ export default function PointsInsightsOverlay() {
       <div className="modal-blur-backdrop" onClick={() => window.closePointsInsights()}></div>
       <div className="modal-blur-panel" style={{ width: 'min(720px,96vw)' }}>
         <div className="modal-blur-header">
-          <div className="modal-blur-title">{'📈'} Focus &amp; Presence Insights</div>
-          {/* Panel survey 2026-08-18 (I-4): "Presence" is unexplained wherever
-              it appears. Reuses the toast pattern from the Weekly Review's
-              Presence row rather than a nested modal over this one. */}
-          <button
-            className="pi-what-is-presence"
-            onClick={() => window.toast("Presence is this app's name for your points total \u2014 small credit for using tools like tasks, routines, and the grounding kit. It's separate from Days Shown Up, which just counts whether you opened the app.", 5000)}
-            title="What is Presence?"
-            style={{ fontSize: 11, opacity: 0.6, background: 'none', border: 'none', cursor: 'pointer', color: 'inherit', marginLeft: 8 }}
-          >(what's this?)</button>
+          {/* Was "Focus & Presence Insights", with a "(what's this?)" button
+              next to it explaining what a Presence point was (panel survey
+              2026-08-18, I-4). Presence was removed from the product, and
+              with it the only term on this screen that needed explaining. */}
+          <div className="modal-blur-title">{'📈'} Focus &amp; Wellbeing Insights</div>
           <button className="modal-blur-close" onClick={() => window.closePointsInsights()}>&#10005;</button>
         </div>
         <div className="modal-blur-body">
@@ -26,7 +21,7 @@ export default function PointsInsightsOverlay() {
             <button className="pi-export-btn" onClick={() => { window.closePointsInsights(); window.openWeeklyReview(); }} title="A pulled-together summary of your week">
               &#128197; Weekly Review
             </button>
-            <button className="pi-export-btn" onClick={() => window.exportInsightsData()} title="Download check-ins, mood/energy, and daily Presence as CSV files">
+            <button className="pi-export-btn" onClick={() => window.exportInsightsData()} title="Download check-ins and mood/energy as CSV files">
               &#8595; Export CSV
             </button>
           </div>
@@ -39,8 +34,7 @@ export default function PointsInsightsOverlay() {
           </div>
 
           <div className="pi-legend">
-            <span className="pi-leg-dot" style={{ background: '#c77dba' }}></span><span>Presence</span>
-            <span className="pi-leg-dot" style={{ background: '#d4a853', marginLeft: 16 }}></span><span>Energy</span>
+            <span className="pi-leg-dot" style={{ background: '#d4a853' }}></span><span>Energy</span>
             <span className="pi-leg-dot" style={{ background: '#5f8fc7', marginLeft: 16 }}></span><span>Mood</span>
             <span className="pi-leg-dot" style={{ background: '#5fbf80', marginLeft: 16 }}></span><span>Panel/Tool Uses</span>
           </div>

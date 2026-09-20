@@ -53,8 +53,12 @@ export default function LandingLogin() {
                 <div className="mockup-content">
                   <div className="mockup-header">
                     <div className="mockup-header-left">
+                      {/* Was a "1,247 Presence" badge. Presence was removed
+                          from the product, and the real header carries the
+                          wordmark in this slot, so the mockup now shows what
+                          the app actually shows. */}
                       <span style={{ color: '#5be8ff' }}>&#9826;</span>
-                      <span className="mockup-points">1,247 Presence</span>
+                      <span className="mockup-points">Centerpost</span>
                     </div>
                     <span style={{ fontSize: 10, color: 'var(--text-faint)' }}>Tue, May 26</span>
                   </div>

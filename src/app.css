@@ -893,9 +893,10 @@ body.cmd-palette-open .mobile-tab-bar{z-index:1150;}
   .header > .header-center{
     order:1 !important;
     /* flex-shrink 0: the timeline bar must OWN row 1. At `1 1 100%` it was
-       shrinkable, so once the presence badge was ordered after it the badge
-       got pulled up onto the bar's own line and overflowed the viewport
-       instead of wrapping below it. */
+       shrinkable, so a sibling ordered after it got pulled up onto the bar's
+       own line and overflowed the viewport instead of wrapping below it.
+       (The sibling at the time was the Presence badge, since removed -- the
+       rule still guards row 1 for whatever sits beside it.) */
     flex:0 0 100% !important;
     width:100% !important;
     padding:0 !important;
@@ -947,8 +948,8 @@ body.cmd-palette-open .mobile-tab-bar{z-index:1150;}
      row (measured at 375px wide; see ProjectDashboard.jsx). Desktop keeps
      it: the row is wide there and the wrap never engaged anyway. */
   .pd-nav-timer{display:none !important;}
-  /* Row 2: timer on the right. The Presence badge no longer lives in the
-     header (moved into the Tool Kit panel), so this row is just the timer. */
+  /* Row 2: timer on the right, and only the timer -- the Presence badge
+     that used to share this row was removed with Presence itself. */
   .header > .header-right{
     order:3 !important;
     flex:0 1 auto !important;
