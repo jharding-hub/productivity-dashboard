@@ -1,7 +1,8 @@
 # Centerpost Consumer Health Data Privacy Policy
 
-**Version:** 1.0
+**Version:** 1.1
 **Effective date:** August 7, 2026
+**Last updated:** September 20, 2026
 **Contact:** medicjth@gmail.com
 
 This is a **separate, standalone policy** required by the Washington My Health My Data Act
@@ -66,12 +67,11 @@ policy to cover.
 
 ### What is *not* consumer health data
 
-Your tasks, projects, notes, reminders, calendar blocks, Presence points, days-shown-up count, and
-settings are ordinary productivity content, covered by the main [Privacy Policy](privacy-policy.md).
-Centerpost has no streak mechanic — days-shown-up only ever increases, and missing a day costs
-nothing — so there is no streak data to describe here or anywhere else. Gym and workout routines
-record exercise selections you make, not measurements about your body, and we do not use them to
-infer anything about your health.
+Your tasks, projects, notes, reminders, calendar blocks and settings are ordinary productivity
+content, covered by the main [Privacy Policy](privacy-policy.md). Your account holds no streak,
+adherence or consistency score of any kind, so there is no such behavioural record to describe
+here. Gym and workout routines record exercise selections you make, not measurements about your
+body, and we do not use them to infer anything about your health.
 
 ## 3. Why we collect it, and nothing else
 

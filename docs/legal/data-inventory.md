@@ -64,9 +64,16 @@ COMPLIANCE-GAPS.md G-11 for the closed-out finding.
 
 One JSON blob in a single document (`legacy.js:1034`, `:1151`). Contains `state` serialized to a
 string. Includes tasks, projects and subtasks, notes, reminders, timeline blocks, brain-dump
-thoughts, routines, Presence points and days-shown-up count (monotonic, no streak mechanic),
-settings (theme, `supportLevel`, `focusMode`, stop-motion), workout/gym routine selections, and
-`_tombstones` (a grow-only map of deleted item ids → deletion timestamp).
+thoughts, routines, settings (theme, `supportLevel`, `focusMode`, stop-motion), workout/gym
+routine selections, and `_tombstones` (a grow-only map of deleted item ids → deletion timestamp).
+
+**Dormant legacy field.** Presence points and the days-shown-up count were removed from the
+product on 2026-09-20 (web `b089481`, `172a814`). Nothing writes or reads them any more, but the
+existing `points` object was deliberately left in place in already-saved blobs rather than deleted
+— stripping it would be an irreversible write across every one of a user's devices for no benefit.
+So for accounts that predate that date the field still exists on disk, holding frozen historical
+counters; for accounts created after it, it does not. Published policies no longer list it as
+collected data, which is accurate: no new values are ever recorded.
 
 Explicitly **excluded** from this blob and split into their own documents: `checkins`, `moodLog`,
 `completedTasks`, `completedTasksLifetime`, `completedProjectSubtasksLifetime`, `remindersArchive`,
@@ -246,8 +253,24 @@ removed from `public/_headers`' `connect-src` — nothing calls them, so allowli
 unnecessary attack surface. The privacy policy's claim that these two parties see the user's IP has
 been removed as inaccurate.
 
-YouTube is allowlisted in `frame-src`/`script-src` — embedded YouTube sets cookies and is a
-third-party data flow.
+YouTube **was** a genuine third-party data flow: the Tool Kit's focus-music tile embedded a
+YouTube playlist player. That tile was removed on 2026-09-20 (web `b089481`), and nothing in the
+shipped web or native bundle loads YouTube any more — grep-verified across `public/`, `src/` and
+the built output, and confirmed against a live production page load.
+
+**The browser-direct list was incomplete and is now corrected.** The privacy policy's "Other
+connections" paragraph named YouTube and nothing else, but a live load of centerpost.app fetches
+three other origins straight from the browser, each of which sees the user's IP:
+`www.gstatic.com` (Firebase SDK, 3 requests), `fonts.googleapis.com` + `fonts.gstatic.com`
+(Google Fonts — DM Sans, Fraunces) and `cdn.jsdelivr.net` (Tabler icon webfont). Simply deleting
+the YouTube sentence would have left the policy disclosing *nothing* while three flows continued,
+so the paragraph was replaced with a table of what actually loads. Re-verify this list whenever a
+CDN, font or SDK is added or removed.
+
+**Still open:** `www.youtube.com` remains allowlisted in `public/_headers`' `script-src`,
+`connect-src` and `frame-src`, and in the enforcing native CSP that `centerpost-sync.sh` injects.
+Nothing uses it, so those entries are now unnecessary attack surface and should be dropped — the
+native one on the next native ship, since native's CSP is enforcing and web's is Report-Only.
 
 ---
 
@@ -299,7 +322,6 @@ human review of user input and must be disclosed.
 | **Sentry** | Exception messages, stack traces, CSP reports. No bodies, no user info, no AI I/O | Processor | Per Sentry plan retention — **UNVERIFIED** | Sentry DPA — **UNVERIFIED** |
 | **Apple** | App Store transaction data, subscription status; HealthKit writes stay on-device/in the user's Health store | Apple's own terms | Apple policy | Apple DPLA |
 | **Twilio (SMS)** | Operator phone number only — no user data | Processor | Twilio policy | — |
-| **YouTube (embeds)** | IP, cookies, viewing data | Google's own purposes | Google policy | None |
 
 **No data is sold. No targeted advertising. No advertising SDK of any kind exists in the
 codebase** — grep-verified across web and iOS.
@@ -322,7 +344,8 @@ codebase** — grep-verified across web and iOS.
 ### Personal but not sensitive
 Email address, Firebase UID, WebAuthn credential metadata, `createdAt`/`lastActive`, `invitedWith`,
 IP addresses in `sec:auth401` and in Cloudflare/Sentry logs, all Dashboard Data (tasks, projects,
-notes, reminders, routines, workout selections), Presence points/days-shown-up count, settings.
+notes, reminders, routines, workout selections), settings, and the dormant legacy `points` object
+described in §1.2 on accounts that predate 2026-09-20.
 
 ### Non-personal
 `aispend:{date}` aggregates, `AI_MODEL_RATES`, SendGrid aggregate stats, service-worker cache

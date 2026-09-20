@@ -1,8 +1,8 @@
 # Centerpost Privacy Policy
 
-**Version:** 1.0
+**Version:** 1.1
 **Effective date:** August 7, 2026
-**Last updated:** August 7, 2026
+**Last updated:** September 20, 2026
 **Contact:** medicjth@gmail.com
 
 > **If you use Centerpost's wellness features, please also read our separate
@@ -89,8 +89,7 @@ We collect only what the product needs to work. Everything below is grouped by p
 ### 3.2 Your content ("Dashboard Data")
 
 Tasks, projects and subtasks, notes, reminders, timeline blocks, brain-dump entries, routines,
-workout selections, Presence points and your days-shown-up count (there is no streak mechanic --
-the count only ever increases and missing a day costs nothing), and your settings.
+workout selections, and your settings.
 
 **Why:** to provide the Service — this *is* the Service.
 **Legal basis:** performance of a contract.
@@ -243,9 +242,18 @@ These companies process data on our behalf, under contract, for the purposes abo
 | **Sentry** | Error reporting | Error messages and stack traces | https://sentry.io/privacy/ |
 | **Apple** | App distribution, subscriptions | Subscription and transaction data, under Apple's own terms | https://www.apple.com/legal/privacy/ |
 
-**Other connections.** Some Centerpost features load content directly from third parties in your
-browser, which means those parties see your IP address: YouTube, where a video is embedded.
-YouTube is operated by Google under its own privacy policy and may set cookies.
+**Other connections.** Some parts of Centerpost load directly from third-party servers in your
+browser rather than from us, which means those servers see your IP address and basic browser
+details. They receive none of your Centerpost content.
+
+| Loaded from | What it is | Their terms |
+|---|---|---|
+| `www.gstatic.com` | Google's Firebase SDK — the code that signs you in and syncs your data | https://policies.google.com/privacy |
+| `fonts.googleapis.com`, `fonts.gstatic.com` | Google Fonts — the DM Sans and Fraunces typefaces | https://policies.google.com/privacy |
+| `cdn.jsdelivr.net` | jsDelivr, an open-source CDN, serving the Tabler icon font | https://www.jsdelivr.com/terms/privacy-policy-jsdelivr-net |
+
+Until September 2026 this list also included YouTube, which was embedded by a focus-music player in
+the Tool Kit. That feature has been removed and Centerpost no longer loads YouTube at all.
 
 **We do not sell personal data, and we do not share it for cross-context behavioural advertising**,
 as those terms are defined under California, Colorado, Connecticut, Virginia, and other state
