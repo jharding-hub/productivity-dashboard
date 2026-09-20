@@ -70,7 +70,6 @@ var TIER_CONFIG={
     routines:true,
     decision:false,
     aiAssistant:false,
-    musicStreaming:false,
   },
   pro:{
     label:'Pro',
@@ -91,7 +90,6 @@ var TIER_CONFIG={
     routines:true,
     decision:true,
     aiAssistant:false,
-    musicStreaming:false,
   },
   premium:{
     label:'Premium',
@@ -100,11 +98,10 @@ var TIER_CONFIG={
     // Premium: all features + all themes
     panels:['projects','reminders','notes','tasklist','timeline','brain','time','routines','decision','wellness'],
     maxProjects:null,maxTasks:null,maxNotes:null,maxReminders:null,
-    toolkitAllowed:['music','breath','timer','mood','journal','workout','halt','wellness'],
+    toolkitAllowed:['breath','timer','mood','journal','workout','halt','wellness'],
     voiceInput:true,radar:true,dataExport:true,completedHistory:true,
     brainDump:true,routines:true,decision:true,
     aiAssistant:true,
-    musicStreaming:true,
   },
   legacy:{
     label:'Legacy',
@@ -113,11 +110,10 @@ var TIER_CONFIG={
     allowedThemeTiers:['free','pro','premium'],
     panels:['projects','reminders','notes','tasklist','timeline','brain','time','routines','decision','wellness'],
     maxProjects:null,maxTasks:null,maxNotes:null,maxReminders:null,
-    toolkitAllowed:['music','breath','timer','mood','journal','workout','halt','wellness'],
+    toolkitAllowed:['breath','timer','mood','journal','workout','halt','wellness'],
     voiceInput:true,radar:true,dataExport:true,completedHistory:true,
     brainDump:true,routines:true,decision:true,
     aiAssistant:true,
-    musicStreaming:true,
   },
   owner:{
     label:'Owner',
@@ -125,17 +121,16 @@ var TIER_CONFIG={
     allowedThemeTiers:['free','pro','premium'],
     panels:['projects','reminders','notes','tasklist','timeline','brain','time','routines','decision','wellness','admin'],
     maxProjects:null,maxTasks:null,maxNotes:null,maxReminders:null,
-    toolkitAllowed:['music','breath','timer','mood','journal','workout','halt','wellness'],
+    toolkitAllowed:['breath','timer','mood','journal','workout','halt','wellness'],
     voiceInput:true,radar:true,dataExport:true,completedHistory:true,
     brainDump:true,routines:true,decision:true,
     aiAssistant:true,
-    musicStreaming:true,
   }
 };
 
 // Toolkit button → CSS class mapping
 var TOOLKIT_CLASS_MAP={
-  music:'toolkit-music',breath:'toolkit-breath',timer:'toolkit-timer',
+  breath:'toolkit-breath',timer:'toolkit-timer',
   mood:'toolkit-mood',journal:'toolkit-journal',workout:'toolkit-workout',
   halt:'toolkit-halt',wellness:'toolkit-wellness'
 };
@@ -197,7 +192,7 @@ function applyTierGating(){
   // -- Toolkit buttons ---------------------------------------------------------
   Object.keys(TOOLKIT_CLASS_MAP).forEach(function(key){
     var cls=TOOLKIT_CLASS_MAP[key];
-    // music and timer are wrappers, find the button inside
+    // timer is a wrapper, find the button inside
     var el=document.querySelector('.toolkit-'+key+'-wrap .toolkit-btn')||document.querySelector('.'+cls);
     if(!el)return;
     var allowed=BETA_ALL_FEATURES||cfg.toolkitAllowed.indexOf(key)>=0;
@@ -237,9 +232,6 @@ function applyTierGating(){
     b.style.display=(!BETA_ALL_FEATURES&&cfg.aiAssistant===false)?'none':'';
   });
 
-  // -- Music streaming button (only Owner/Legacy/Premium) -----------------------
-  var musicBtn=document.getElementById('toolkitMusicStreamBtn');
-  if(musicBtn)musicBtn.style.display=(BETA_ALL_FEATURES||cfg.musicStreaming)?'':'none';
 }
 
 function _injectPanelLockBadge(panel,key){
@@ -983,15 +975,6 @@ function showApp(){
   if(ov)ov.classList.remove('open');
   var ov2=document.getElementById('signupOverlay');
   if(ov2)ov2.classList.remove('open');
-  // Panel survey 2026-08-18 (J-1): Tool Kit tile order. All eight personas
-  // flagged Music/Streaming occupying the top row of the regulation toolkit
-  // -- reordered via CSS `order` (no DOM move, so this is a single class
-  // toggle, not a JSX-render-time check like the Quick Capture mobile-hint
-  // bug this same survey found; that race can't happen here). isAdmin is
-  // set above this call in both onAuthStateChanged branches, so the timing
-  // is always correct by the time this runs. The owner's own layout is
-  // unchanged -- see .is-owner overrides in app.css.
-  document.body.classList.toggle('is-owner',isAdmin);
 }
 function hideApp(){
   document.getElementById('loginGate').classList.remove('hidden');
@@ -1343,7 +1326,7 @@ try {
 
 // ── SCRIPT 3: APP LOGIC ─────────────────────────────────────────
 // STATE
-var state={projects:[],reminders:[],thoughts:[],notes:[],moodLog:[],tasks:[],completedTasks:[],completedTasksLifetime:undefined,completedProjectSubtasksLifetime:undefined,remindersArchive:[],remindersArchiveLifetime:undefined,journal:[],journalPin:'',workoutLog:{},completedWorkouts:[],focusPlaylistId:null,points:{current:0,monthKey:'',lastTier:'bronze',totalsByDay:{},lastLoginDate:'',lifetimeTotal:0,monthlyTotals:{}},panelUseLog:{},usageMonthlyTotals:{},routines:{morning:[{id:'m1',name:'Hydrate \u2014 glass of water',done:false},{id:'m2',name:"Review today's calendar",done:false},{id:'m3',name:'Pick top 3 priorities',done:false},{id:'m4',name:'Quick workspace tidy',done:false}],evening:[{id:'e1',name:'Review what got done today',done:false},{id:'e2',name:"Brain dump tomorrow's thoughts",done:false},{id:'e3',name:"Set out tomorrow's essentials",done:false},{id:'e4',name:'Wind-down activity',done:false}],custom:[]},currentRoutineTab:'morning',energy:null,mood:null,panelOrder:['projects','reminders','time','tasklist','notes','brain','routines','wellness','decision','admin'],panelsLocked:true,lastRoutineReset:null,visiblePanels:{},knownPanels:[],dayAnchorMin:0,productiveStartMin:300,productiveEndMin:1200,focusTimer:null};
+var state={projects:[],reminders:[],thoughts:[],notes:[],moodLog:[],tasks:[],completedTasks:[],completedTasksLifetime:undefined,completedProjectSubtasksLifetime:undefined,remindersArchive:[],remindersArchiveLifetime:undefined,journal:[],journalPin:'',workoutLog:{},completedWorkouts:[],points:{current:0,monthKey:'',lastTier:'bronze',totalsByDay:{},lastLoginDate:'',lifetimeTotal:0,monthlyTotals:{}},panelUseLog:{},usageMonthlyTotals:{},routines:{morning:[{id:'m1',name:'Hydrate \u2014 glass of water',done:false},{id:'m2',name:"Review today's calendar",done:false},{id:'m3',name:'Pick top 3 priorities',done:false},{id:'m4',name:'Quick workspace tidy',done:false}],evening:[{id:'e1',name:'Review what got done today',done:false},{id:'e2',name:"Brain dump tomorrow's thoughts",done:false},{id:'e3',name:"Set out tomorrow's essentials",done:false},{id:'e4',name:'Wind-down activity',done:false}],custom:[]},currentRoutineTab:'morning',energy:null,mood:null,panelOrder:['projects','reminders','time','tasklist','notes','brain','routines','wellness','decision','admin'],panelsLocked:true,lastRoutineReset:null,visiblePanels:{},knownPanels:[],dayAnchorMin:0,productiveStartMin:300,productiveEndMin:1200,focusTimer:null};
 
 // CROSS-ACCOUNT LEAK, round 3 (Joe, 2026-08-03). `state` is module-level and
 // was NEVER reset when the signed-in account changed: onAuthStateChanged's
@@ -1793,7 +1776,13 @@ async function load(){
   if(!state._archiveTombstones)state._archiveTombstones={};
   if(!state.reminders)state.reminders=[];
   if(!state.notes)state.notes=[];if(!state.moodLog)state.moodLog=[];if(!state.tasks)state.tasks=[];if(!state.visiblePanels)state.visiblePanels={};if(!state.knownPanels)state.knownPanels=[];
-  if(!state.panelUseLog)state.panelUseLog={};if(!state.usageMonthlyTotals)state.usageMonthlyTotals={};if(!state.points.monthlyTotals)state.points.monthlyTotals={};
+  if(!state.panelUseLog)state.panelUseLog={};if(!state.usageMonthlyTotals)state.usageMonthlyTotals={};
+  // Presence is gone but state.points stays as dormant data, and the Insights
+  // series still reads these two maps -- keep them shaped, never dereference
+  // state.points unguarded.
+  if(!state.points)state.points={};
+  if(!state.points.totalsByDay)state.points.totalsByDay={};
+  if(!state.points.monthlyTotals)state.points.monthlyTotals={};
   // Backfill any note missing a created timestamp (older notes) so sorts can't crash
   state.notes.forEach(function(n){if(n&&!n.created)n.created=n.updated||n.date||new Date(0).toISOString();});
   if(!state.journal)state.journal=[];if(!state.journalPin)state.journalPin='';
@@ -1827,18 +1816,25 @@ async function load(){
   // checkDailyRoutineReset, right before each day's checkmarks are wiped) so a
   // week of consistency can be shown in the Weekly Review.
   if(!state.routineHistory)state.routineHistory=[];
-  // Seed the presence-day counter once for pre-existing accounts (no-op after).
-  if(typeof _seedPresenceDays==='function')_seedPresenceDays();
   if(!state.completedTasks)state.completedTasks=[];
   if(!state.remindersArchive)state.remindersArchive=[];
   if(!state.completedWorkouts)state.completedWorkouts=[];
   // E-2: one-time migrate -- lifetime count seeded from the uncapped array
   if(state.workoutLifetimeCount===undefined)state.workoutLifetimeCount=state.completedWorkouts.length;
-  if(state.focusPlaylistId===undefined)state.focusPlaylistId=null;
-  if(!state.points)state.points={current:0,monthKey:'',lastTier:'bronze',totalsByDay:{},lastLoginDate:'',lifetimeTotal:0};
-  if(!state.points.totalsByDay)state.points.totalsByDay={};
-  if(state.points.lifetimeTotal===undefined)state.points.lifetimeTotal=0;
-  if(state.hidePoints===undefined)state.hidePoints=false;
+  // Presence points were removed. state.points is deliberately left in the
+  // saved blob rather than deleted -- it is dormant, costs nothing, and
+  // deleting it would be an irreversible write across every device.
+  //
+  // awardDailyLogin's date marker DID move off it, onto state.lastLoginDate.
+  // Seed that from the old location: without this every existing account
+  // reads lastLoginDate as undefined on the first load after the deploy,
+  // which reads as a fresh account (no "Welcome back", no lapse card) and,
+  // worse, a >=3 day gap the next time they open. One-time, no-op after.
+  if(state.lastLoginDate===undefined)
+    state.lastLoginDate=(state.points&&state.points.lastLoginDate)||'';
+  // Month marker for _rollUsageMonth, which used to ride state.points.monthKey.
+  if(state.usageMonthKey===undefined)
+    state.usageMonthKey=(state.points&&state.points.monthKey)||'';
   if(!state.wellnessNotes)state.wellnessNotes={};
   if(!state.completedProjects)state.completedProjects=[];
   if(!state.gcal)state.gcal={connected:false,email:null,calendarId:null,autoPush:false,showExternal:true,lastPush:null,lastPull:null,pulledEvents:[]};
@@ -2100,26 +2096,6 @@ function _pagerRefresh(){
   if(usePager){buildMobilePager();_pagerMoveOut();_pagerSizeTrack();_pagerRestoreScroll();}
 }
 
-// F6: hide-toggle only -- points still accrue in the background either way
-// (addPoints itself is untouched); this purely controls whether the Tool Kit
-// badge and its two celebratory surfaces (floater, tier-up fireworks) show.
-function setHidePoints(on){
-  state.hidePoints=!!on;
-  save();
-  applyPointsVisibility();
-  _renderPointsSettings();
-}
-function applyPointsVisibility(){
-  var wrap=document.getElementById('pointsWrap');
-  if(wrap)wrap.style.display=state.hidePoints?'none':'';
-}
-function _renderPointsSettings(){
-  var el=document.getElementById('pointsSettings');
-  if(!el)return;
-  var on=!!state.hidePoints;
-  el.innerHTML='<div class="panel-toggle"><span class="pt-icon">🏅</span><div class="pt-info"><div class="pt-name">Hide points</div><div class="pt-desc">Presence points still accrue in the background — this only hides them from view.</div></div><label class="toggle-switch"><input type="checkbox" '+(on?'checked':'')+' onchange="setHidePoints(this.checked)"><span class="toggle-slider"></span></label></div>';
-}
-
 function openCustomize(){
   const el=document.getElementById('panelToggles');
   const ids=getPanelIds();
@@ -2163,7 +2139,6 @@ function openCustomize(){
   if(typeof _renderProductiveHoursSettings==='function')_renderProductiveHoursSettings();
   if(typeof _renderNotifSettings==='function')_renderNotifSettings();
   if(typeof _renderBreathHealthSettings==='function')_renderBreathHealthSettings();
-  if(typeof _renderPointsSettings==='function')_renderPointsSettings();
   if(typeof loadTouchIDDevices==='function')loadTouchIDDevices();
   _renderGpcBanner();
 }
@@ -2469,24 +2444,16 @@ function updateTimerDisplay(){
     });
     _liveActivityEnd();
     playAlarm();
-    // Points are awarded ONCE PER SESSION across every device. Without this
-    // guard a Mac and a phone both open would each tick to zero and each call
-    // addPoints for the same run. Claimed by stamping awardedSessionId, which
-    // rides the same synced record. A true simultaneous finish on two devices
-    // can still double-award within one sync round-trip -- a few points, and
-    // not worth a distributed lock in a single-user app.
-    var _ftSess=(state.focusTimer&&state.focusTimer.sessionId)||'';
-    var _ftAwarded=(state.focusTimer&&state.focusTimer.awardedSessionId)||'';
-    var _claimPoints=!_ftSess||_ftAwarded!==_ftSess;
-    if(_claimPoints){
-      toast('⏰ Focus session complete! +3 Presence');
-      addPoints('timer',document.getElementById('headerTimerBtn'));
-    }else{
-      toast('⏰ Focus session complete');
-    }
-    // Publish the finished state (running:false) and claim the award.
+    // This used to branch on awardedSessionId, a synced stamp that stopped a
+    // Mac and a phone both ticking to zero from double-awarding the same
+    // session's Presence points. Presence is gone, so there is nothing left
+    // to claim and every device just says the same thing. The field itself
+    // stays in the synced timer record (see _writeTimerState) rather than
+    // being dropped mid-flight while older builds are still writing it.
+    toast('⏰ Focus session complete');
+    // Publish the finished state (running:false).
     if(typeof _writeTimerState==='function'){
-      _writeTimerState(_claimPoints&&_ftSess?{awardedSessionId:_ftSess}:{});
+      _writeTimerState({});
     }
     // Web (non-native): fire the completion notification now so a backgrounded
     // desktop tab still alerts. Native already scheduled one via the bridge and
@@ -2915,9 +2882,6 @@ function markProjectComplete(pid,btnEl){
   state.projects=state.projects.filter(function(pr){return pr.id!==pid;});
   _tombstone(pid);
 
-  // Award points
-  addPoints('project',btnEl);
-  
   save();
   renderProjects();
   renderTaskList();
@@ -3083,7 +3047,6 @@ function toggleSubtask(pid,sid){
   if(typeof _materializeRecurrence==='function')_materializeRecurrence(s,function(nextDue){
     p.subtasks.push({id:'st'+Date.now()+Math.random().toString(36).slice(2,5),name:s.name,due:nextDue,priority:s.priority,timeEst:s.timeEst||'',time:s.time||'',done:false,recurrence:s.recurrence});
   });
-  addPoints('subtask',srcEl);
   save();renderProjects();renderTaskList();
 }
 // Single-item deletes act immediately and offer Undo instead of asking
@@ -4781,8 +4744,8 @@ if(_isEditingInPanel('thoughtChips')){_deferPanelRender('thoughtChips');return;}
 document.getElementById('thoughtChips').innerHTML=state.thoughts.map(t=>'<div class="thought-chip"><span class="editable" id="tt_'+t.id+'">'+esc(t.text)+'</span><span class="chip-promote" onclick="promoteThought(\''+t.id+'\')">\u2197</span><span class="chip-x" onclick="deleteThought(\''+t.id+'\')">\u00D7</span></div>').join('');state.thoughts.forEach(t=>{const e=document.getElementById('tt_'+t.id);if(e)makeEditable(e,v=>editThought(t.id,v));});refreshEditables();}
 
 // ENERGY & MOOD
-function setEnergy(el,v){state.energy=v;document.querySelectorAll('#energyPills .em-pill').forEach(c=>c.classList.remove('selected'));el.classList.add('selected');logMoodEntry();save();showStateAdvice();updateWellnessVisibility();var today=_dayKey();if(state.points&&state.points.lastEnergyDate!==today){state.points.lastEnergyDate=today;save();addPoints('mood_energy',el);}}
-function setMood(el,v){state.mood=v;document.querySelectorAll('#moodPills .em-pill').forEach(c=>c.classList.remove('selected'));el.classList.add('selected');logMoodEntry();save();showStateAdvice();updateWellnessVisibility();var today=_dayKey();if(state.points&&state.points.lastMoodDate!==today){state.points.lastMoodDate=today;save();addPoints('mood_energy',el);}}
+function setEnergy(el,v){state.energy=v;document.querySelectorAll('#energyPills .em-pill').forEach(c=>c.classList.remove('selected'));el.classList.add('selected');logMoodEntry();save();showStateAdvice();updateWellnessVisibility();}
+function setMood(el,v){state.mood=v;document.querySelectorAll('#moodPills .em-pill').forEach(c=>c.classList.remove('selected'));el.classList.add('selected');logMoodEntry();save();showStateAdvice();updateWellnessVisibility();}
 var adviceMap={'high-focused':{t:'\u{1F525} Peak state \u2014 tackle your hardest task now.',cls:'state-advice-positive'},'high-scattered':{t:'\u26A1 Energy but no focus. Start a Pomodoro.',cls:'state-advice'},'high-anxious':{t:'\u{1F4A8} Burn off anxious energy with something physical.',cls:'state-advice'},'high-calm':{t:'\u2728 Great for creative work or complex problems.',cls:'state-advice-positive'},'good-focused':{t:'\u{1F44D} Solid state. Pick a medium-priority task.',c:'var(--green)'},'good-scattered':{t:'\u{1F4CB} List 3 things, do just the first one.',cls:'state-advice'},'good-anxious':{t:'\u{1F4DD} Channel worry into a task with a clear endpoint.',c:'var(--blue)'},'good-calm':{t:'\u{1F33F} Good baseline. Handle routine tasks or admin.',c:'var(--green)'},'low-focused':{t:'\u{1F3AF} Low but present? Detail work \u2014 editing, reviewing.',c:'var(--blue)'},'low-scattered':{t:'\u{1FAE7} Not deep work time. 5-min break, then one tiny task.',cls:'state-advice-alert'},'low-anxious':{t:'\u{1F9CA} Pause. Check the Grounding Session \u2192',c:'var(--purple)'},'low-calm':{t:'\u2601\uFE0F Rest state. Gentle tasks or a proper break.',c:'var(--blue)'},'crashed-focused':{t:'\u26A0\uFE0F Running on fumes. Only truly urgent items.',cls:'state-advice-alert'},'crashed-scattered':{t:'\u{1F6D1} Brain needs a reset. Check the Grounding Session \u2192',cls:'state-advice-alert'},'crashed-anxious':{t:'\u{1FAC2} Hardest state. Grounding Session first, then reassess.',c:'var(--red)'},'crashed-calm':{t:'\u{1F319} Depleted but peaceful. Gentle admin or rest.',cls:'state-advice'}};
 // R3 stage 2: when the advice text itself points at the Grounding Session
 // ("Check the Grounding Session →"), that pointer must BE the door -- it was
@@ -5444,7 +5407,7 @@ function checkDailyRoutineReset(){
 // for the rest of the session).
 function _defaultRoutineTab(){return new Date().getHours()<12?'morning':'evening';}
 function switchRoutineTab(tab,btn){state.currentRoutineTab=tab;state.routineTabDate=todayStr();save();document.querySelectorAll('.tab-btn').forEach(b=>b.classList.remove('active'));btn.classList.add('active');renderRoutines();}
-function toggleRoutine(tab,id,e){if(e){var t=e.target;if(t.classList.contains('r-delete')||t.classList.contains('r-name')||t.closest('.r-delete')||t.closest('.r-name'))return;}const r=state.routines[tab].find(r=>r.id===id);if(r){var wasUndone=!r.done;r.done=!r.done;if(wasUndone&&r.done){var srcEl=document.querySelector('[data-rid="'+id+'"] .r-check');addPoints('routine',srcEl);_trackEvent('tool_use','routine_check','Routine Check');}}save();renderRoutines();_refreshTodayViewIfVisible();}
+function toggleRoutine(tab,id,e){if(e){var t=e.target;if(t.classList.contains('r-delete')||t.classList.contains('r-name')||t.closest('.r-delete')||t.closest('.r-name'))return;}const r=state.routines[tab].find(r=>r.id===id);if(r){var wasUndone=!r.done;r.done=!r.done;if(wasUndone&&r.done){_trackEvent('tool_use','routine_check','Routine Check');}}save();renderRoutines();_refreshTodayViewIfVisible();}
 // Guarded cross-refresh so Today (R2) and Everything stay in sync regardless
 // of which one the action originated from. No-ops entirely when Today is
 // absent/hidden -- true for every account until R2b makes it a real mode.
@@ -5523,7 +5486,6 @@ function _buildWatchSnapshot(){
     var when=((r.date?fmtDate(r.date):'')+(r.time?(r.date?' ':'')+fmtTime(r.time):'')).trim();
     return {id:r.id,text:r.text||'',time:when,done:false};
   });
-  var points=(state.points&&state.points.current)||0;
   var R=state.routines||{};
   var routines={
     morning:(R.morning||[]).map(_mapRoutine),
@@ -5549,7 +5511,7 @@ function _buildWatchSnapshot(){
   // drift from it.
   var todayForCount=(typeof _widgetDayPayload==='function')?_widgetDayPayload(todayK):null;
   var todayRemainingCount=todayForCount?(todayForCount.taskCount+todayForCount.reminderCount):0;
-  return {points:points,tasks:tasks,reminders:reminders,routines:routines,timeline:timeline,timer:timer,presets:presets,energy:state.energy||'',mood:state.mood||'',todayRemainingCount:todayRemainingCount};
+  return {tasks:tasks,reminders:reminders,routines:routines,timeline:timeline,timer:timer,presets:presets,energy:state.energy||'',mood:state.mood||'',todayRemainingCount:todayRemainingCount};
 }
 
 // Push the today-slice of state to the watch. Called from save() and on init.
@@ -5688,7 +5650,13 @@ function _computeWidgetSnapshot(){
   // matches on `date`, but the order keeps it readable in the debugger.
   var snap={
     days:[today,_widgetDayPayload(tomorrowStr())],
-    presence:(state.points&&state.points.current)||0
+    // Presence was removed from the product, but this key MUST keep being
+    // written: TodayWidget.swift declares `var presence: Int` non-optionally
+    // on a Codable struct, so dropping it makes JSONDecoder throw and the
+    // whole snapshot fails to decode -- a blank widget on every build already
+    // installed (127-129). Retire it only in a release that also ships the
+    // Swift side making the field optional.
+    presence:0
   };
   // Today's fields stay MIRRORED at the top level so a widget build that
   // predates `days` (an older TestFlight install reading a newer snapshot)
@@ -5773,16 +5741,12 @@ window.__watchApplyAction=function(action){
       save();
       if(typeof showStateAdvice==='function')showStateAdvice();
       if(typeof updateWellnessVisibility==='function')updateWellnessVisibility();
-      var _tdyE=(typeof _dayKey==='function')?_dayKey():'';
-      if(state.points&&state.points.lastEnergyDate!==_tdyE){state.points.lastEnergyDate=_tdyE;save();if(typeof addPoints==='function')addPoints('mood_energy',null);}
     }else if(action.cmd==='mood'){
       state.mood=action.value;
       if(typeof logMoodEntry==='function')logMoodEntry();
       save();
       if(typeof showStateAdvice==='function')showStateAdvice();
       if(typeof updateWellnessVisibility==='function')updateWellnessVisibility();
-      var _tdyM=(typeof _dayKey==='function')?_dayKey():'';
-      if(state.points&&state.points.lastMoodDate!==_tdyM){state.points.lastMoodDate=_tdyM;save();if(typeof addPoints==='function')addPoints('mood_energy',null);}
     }else if(action.cmd==='checkin'){
       // A-11, panel survey Stage 8: the watch's one-tap combined energy+mood
       // grid. Same per-field bookkeeping as the separate 'energy'/'mood'
@@ -5797,11 +5761,6 @@ window.__watchApplyAction=function(action){
       save();
       if(typeof showStateAdvice==='function')showStateAdvice();
       if(typeof updateWellnessVisibility==='function')updateWellnessVisibility();
-      var _tdyC=(typeof _dayKey==='function')?_dayKey():'';
-      var _pointed=false;
-      if(action.energy&&state.points&&state.points.lastEnergyDate!==_tdyC){state.points.lastEnergyDate=_tdyC;_pointed=true;}
-      if(action.mood&&state.points&&state.points.lastMoodDate!==_tdyC){state.points.lastMoodDate=_tdyC;_pointed=true;}
-      if(_pointed){save();if(typeof addPoints==='function')addPoints('mood_energy',null);}
     }else if(action.cmd==='halt'){
       // A-11: the watch HALT check used to be @State-only on the watch and
       // evaporated on dismiss -- the exact "0300 hallway check-in" loss the
@@ -5813,7 +5772,9 @@ window.__watchApplyAction=function(action){
         _logCheckIn('halt',{items:haltItems,count:haltItems.length});
       }
     }else if(action.cmd==='breath'){
-      if(typeof addPoints==='function')addPoints('breathwork',null);
+      // Awarded Presence points until they were removed; the branch stays so
+      // a watch build still sending 'breath' is acknowledged rather than
+      // falling through to the unknown-command path.
       save();
     }else if(action.cmd==='checkinCtx'){
       // Stage 9 (J2-10): the optional context tag, sent as its own tiny
@@ -7328,41 +7289,6 @@ async function adminRevokeLegacy(uid){
   }catch(e){toast('Error: '+e.message);}
 }
 
-// --- Music Streaming Modal ------------------------------------------------
-// Opens the user's chosen platform in a new tab. No audio is streamed
-// through Centerpost -- this sidesteps all copyright/licensing concerns.
-// Only visible to Premium, Legacy, and Owner tiers.
-function openMusicStreamingModal(){
-  var cfg=getTierConfig();
-  // BETA_ALL_FEATURES was missing here while applyTierGating() DOES honor it
-  // when deciding to show the button (see the musicBtn line there). Net
-  // effect on any non-Premium account: the button rendered, and tapping it
-  // fired an "Upgrade to Premium" toast -- a paywall on a build where the
-  // v1-free decision says no gates render at all. Same flag, same answer.
-  if(!BETA_ALL_FEATURES&&!cfg.musicStreaming){_tierUpgradeToast('Premium');return;}
-  var overlay=document.getElementById('musicStreamOverlay');
-  if(overlay)overlay.classList.remove('hidden');
-}
-function closeMusicStreamingModal(){
-  var overlay=document.getElementById('musicStreamOverlay');
-  if(overlay)overlay.classList.add('hidden');
-}
-function launchMusicPlatform(platform){
-  var urls={
-    spotify:'https://open.spotify.com',
-    apple:'https://music.apple.com',
-    amazon:'https://music.amazon.com'
-  };
-  var url=urls[platform];
-  if(!url)return;
-  window.open(url,'_blank','noopener,noreferrer');
-  // Save preference
-  if(!state.settings)state.settings={};
-  state.settings.preferredMusicPlatform=platform;
-  save();
-  closeMusicStreamingModal();
-  toast('Opening '+{spotify:'Spotify',apple:'Apple Music',amazon:'Amazon Music'}[platform]+'…');
-}
 // Codes live at /inviteCodes/{CODE} with fields: used, maxUses, note,
 // disabled, createdAt, createdBy, lastUsedAt, lastUsedBy, lastUsedEmail.
 // ===========================================================================
@@ -7968,7 +7894,6 @@ function startBreathwork(){
     setTimeout(()=>{document.querySelector('.breath-content').classList.remove('breath-complete');},600);
     speak('Well done. Take a moment.');
     _breathHaptic('complete');
-    addPoints('breathwork');
     // A2-7: one record either way. A chain-run session tags the SAME breath
     // check-in (chain:'reset' + where it started) rather than logging a
     // second record -- the reset ran, the evidence is this row, and counts
@@ -9505,7 +9430,6 @@ function toggleTaskDone(id,source,projId){
         if(typeof _materializeRecurrence==='function')_materializeRecurrence(s,function(nextDue){
           p.subtasks.push({id:'st'+Date.now()+Math.random().toString(36).slice(2,5),name:s.name,due:nextDue,priority:s.priority,timeEst:s.timeEst||'',time:s.time||'',done:false,recurrence:s.recurrence});
         });
-        addPoints('subtask',srcEl);
       }
     }
     renderProjects();
@@ -9523,7 +9447,6 @@ function toggleTaskDone(id,source,projId){
       if(typeof _materializeRecurrence==='function')_materializeRecurrence(t,function(nextDue){
         state.tasks.push({id:'tk'+Date.now()+Math.random().toString(36).slice(2,5),name:t.name,due:nextDue,priority:t.priority,timeEst:t.timeEst||'',time:t.time||'',projectId:'',projectIds:[],done:false,recurrence:t.recurrence});
       });
-      addPoints('task',srcEl);
     }
   }
   save();renderTaskList();_refreshTodayViewIfVisible();
@@ -10261,7 +10184,6 @@ function pmdToggleSubtask(pid,sid){
   }else{
     p.subtasks=p.subtasks.filter(function(x){return x.id!==sid;});
   }
-  addPoints('subtask',srcEl);
   save();renderProjects();renderTaskList();
   openProjectModal(pid); // refresh modal
 }
@@ -11194,7 +11116,6 @@ function urgeDecideNow(){
 function urgeOutcome(result){
   var item=URGE_TYPES.find(function(t){return t.key===_urgeType;});
   _logCheckIn('urge',{urgeType:_urgeType,urgeLabel:item?item.label:_urgeType,note:_urgeNote||undefined,delayMinutes:urgeDelayMinutes,outcome:result});
-  addPoints('urge',document.getElementById('urgeOutcomeBtn-'+result));
   toast(result==='passed'?'✓ Logged — nice work riding it out.':'✓ Logged — no judgment, the pause still counted.');
   _urgeStep='idle';_urgeType=null;_urgeNote='';urgeDelayMinutes=0;urgeTimerLeft=0;
   // F5: defensive -- back to idle, ensure nothing native is left dangling.
@@ -11376,8 +11297,6 @@ function _wellSave(key){
   save();
   
   if(isNewOrUpdated){
-    var btnEl=document.querySelector('#well-'+key+' .well-save-btn');
-    addPoints('wellness_note',btnEl);
     toast('\u2713 Wellness note saved');
   }else{
     toast('No changes to save');
@@ -11407,260 +11326,6 @@ function _wellFormatDate(iso){
 }
 
 
-// =======================================
-// FOCUS MUSIC (YouTube IFrame API)
-// =======================================
-// =======================================
-// MUSIC PLAYER (YouTube IFrame API + Playlist Switcher)
-// =======================================
-var MUSIC_PLAYLISTS=[
-  {id:'PLeSVVJPLz73E_INwG2Oj5W_CG25Ac2t6l',name:'Rock Vibes',icon:'🤘'},
-  {id:'PLeSVVJPLz73HAqvoVE-8litfOeQk6oQ8m',name:'Khruangbin',icon:'🎸'},
-  {id:'PLeSVVJPLz73HUhdxoKKMJFfBgB5U_4JWC',name:'Jazz',icon:'🎷'},
-  {id:'PLeSVVJPLz73FPBtEZXCUPrLybUGbGoz8i',name:'90s Grunge',icon:'🎤'},
-  {id:'PLeSVVJPLz73FGftTDMuiefwuadwf4IAiF',name:'ADHD Focus',icon:'🎯'}
-];
-var currentPlaylistIdx=0;
-var ytPlayer=null,ytPlayerReady=false,ytAPILoading=false;
-
-function _loadYTAPI(callback){
-  if(typeof YT!=='undefined'&&YT.Player){callback();return;}
-  window.onYouTubeIframeAPIReady=callback;
-  if(ytAPILoading)return;
-  ytAPILoading=true;
-  var tag=document.createElement('script');
-  tag.src='https://www.youtube.com/iframe_api';
-  document.head.appendChild(tag);
-}
-
-function _createYTPlayer(playlistId){
-  var host=document.getElementById('ytPlayerHost');
-  if(!host)return;
-  host.innerHTML='<div id="ytPlayerInner"></div>';
-  ytPlayer=new YT.Player('ytPlayerInner',{
-    height:'1',width:'1',
-    playerVars:{listType:'playlist',list:playlistId,autoplay:1,controls:0,modestbranding:1,playsinline:1},
-    events:{
-      'onReady':function(e){
-        ytPlayerReady=true;
-        try{e.target.playVideo();}catch(err){}
-        _updateMusicUI();
-      },
-      'onStateChange':_updateMusicUI,
-      'onError':function(e){
-        console.error('YT Player error:',e.data);
-        var msgs={2:'Invalid playlist',5:'HTML5 player error',100:'Playlist not found',101:'Playlist owner disallows embedded playback',150:'Playlist owner disallows embedded playback'};
-        alert('Music error: '+(msgs[e.data]||'Error code '+e.data));
-      }
-    }
-  });
-}
-
-function musicHandleClick(ev){
-  // Always close dropdown on regular click
-  var dd=document.getElementById('musicDropdown');
-  if(dd&&dd.style.display==='block'){dd.style.display='none';}
-  focusMusicToggle();
-}
-
-function focusMusicToggle(){
-  // Lazy-load YT API and create player on first use
-  if(!ytPlayer){
-    _loadYTAPI(function(){_createYTPlayer(MUSIC_PLAYLISTS[currentPlaylistIdx].id);});
-    return;
-  }
-  // Toggle play/pause
-  if(!ytPlayerReady)return;
-  try{
-    var st=ytPlayer.getPlayerState();
-    if(st===1){ytPlayer.pauseVideo();}
-    else{ytPlayer.playVideo();}
-  }catch(err){console.error('Music toggle error:',err);}
-}
-
-function focusMusicSkip(){
-  if(ytPlayer&&ytPlayerReady){
-    try{ytPlayer.nextVideo();}catch(err){console.error('Skip error:',err);}
-  }
-}
-
-function musicToggleDropdown(ev){
-  var dd=document.getElementById('musicDropdown');
-  if(!dd)return;
-  if(dd.style.display==='block'){dd.style.display='none';return;}
-  
-  // Build dropdown contents
-  var html=MUSIC_PLAYLISTS.map(function(p,i){
-    var current=i===currentPlaylistIdx;
-    return '<div class="music-dropdown-item'+(current?' current':'')+'" onclick="event.stopPropagation();musicSelectPlaylist('+i+')">'
-      +'<span class="music-dropdown-icon">'+p.icon+'</span>'
-      +'<span class="music-dropdown-name">'+esc(p.name)+'</span>'
-      +(current?'<span class="music-dropdown-check">&#9654; playing</span>':'')
-      +'</div>';
-  }).join('');
-  dd.innerHTML=html;
-  dd.style.display='block';
-  
-  // Click-outside to close
-  setTimeout(function(){
-    var handler=function(e){
-      var wrap=document.querySelector('.toolkit-music-wrap');
-      if(!wrap||!wrap.contains(e.target)){
-        dd.style.display='none';
-        document.removeEventListener('click',handler);
-      }
-    };
-    document.addEventListener('click',handler);
-  },10);
-}
-
-function musicSelectPlaylist(idx){
-  if(idx<0||idx>=MUSIC_PLAYLISTS.length)return;
-  
-  var dd=document.getElementById('musicDropdown');
-  if(dd)dd.style.display='none';
-  
-  // No-op if same playlist already selected
-  if(idx===currentPlaylistIdx&&ytPlayer&&ytPlayerReady)return;
-  
-  currentPlaylistIdx=idx;
-  var playlistId=MUSIC_PLAYLISTS[idx].id;
-  
-  // If player exists, switch playlist; otherwise create with this one
-  if(ytPlayer&&ytPlayerReady){
-    try{
-      // Stop current playback first to avoid the API restarting the current track
-      ytPlayer.stopVideo();
-      // Use cuePlaylist to load without auto-playing, then call playVideo
-      // The string form (just playlist ID) is more reliable than the object form
-      ytPlayer.cuePlaylist({list:playlistId,listType:'playlist',index:0,startSeconds:0,suggestedQuality:'small'});
-      // Give the API a tick to process the new playlist before starting
-      setTimeout(function(){
-        try{ytPlayer.playVideo();}catch(err){console.error('Auto-play after switch error:',err);}
-      },200);
-    }catch(err){
-      console.error('Playlist switch error:',err);
-    }
-  }else if(!ytPlayer){
-    _loadYTAPI(function(){_createYTPlayer(playlistId);});
-  }
-  _updateMusicUI();
-}
-
-function _updateMusicUI(){
-  var btn=document.getElementById('focusMusicBtn');
-  var ctrls=document.getElementById('musicControls');
-  var stateIcon=document.getElementById('musicStateIcon');
-  var emoji=document.getElementById('musicEmoji');
-  var label=document.getElementById('musicLabel');
-  if(!btn||!ctrls)return;
-  
-  var currentName=MUSIC_PLAYLISTS[currentPlaylistIdx].name;
-  
-  if(!ytPlayer||!ytPlayerReady){
-    ctrls.style.display='none';
-    btn.classList.remove('playing');
-    if(emoji)emoji.classList.remove('music-emoji-spin');
-    if(label)label.textContent='Music';
-    return;
-  }
-  
-  ctrls.style.display='inline-flex';
-  var st;
-  try{st=ytPlayer.getPlayerState();}catch(err){st=-1;}
-  // States: -1=unstarted, 0=ended, 1=playing, 2=paused, 3=buffering, 5=cued
-  if(st===1){
-    btn.classList.add('playing');
-    if(stateIcon)stateIcon.innerHTML='&#9208;'; // pause icon (next action)
-    if(emoji)emoji.classList.add('music-emoji-spin');
-    if(label)label.textContent=currentName;
-  }else{
-    btn.classList.remove('playing');
-    if(stateIcon)stateIcon.innerHTML='&#9654;'; // play icon (next action)
-    if(emoji)emoji.classList.remove('music-emoji-spin');
-    if(label)label.textContent=currentName+' (paused)';
-  }
-}
-
-// =======================================
-// POINTS / REWARDS SYSTEM
-// =======================================
-// Tiers are milestones in DAYS SHOWN UP, not point totals. Joe's goal for this
-// system, stated directly: "award showing up. not how often you show up or how
-// many things you show up to do, but just showing up and giving effort."
-//
-// A point-total tier fails that three ways: it measures how MANY things you did,
-// a heavy user maxes it by the 8th of the month, and the monthly reset demoted
-// Mythic to Bronze on the 1st for doing nothing wrong -- a streak break wearing
-// a calendar for a hat, which two review personas flagged independently on an
-// app that had deliberately avoided streaks.
-//
-// Day milestones fix all three: one day of one breathing session counts exactly
-// as much as one day of thirty tasks (not "how many"), and the count is
-// MONOTONIC -- a missed day subtracts nothing, it simply doesn't add, so there
-// is never anything to lose or protect (not "how often"). The arc is first
-// week, first month, a season, a year.
-var TIER_THRESHOLDS=[
-  {name:'bronze',label:'Bronze',icon:'🥉',min:0,max:7,color:'#cd7f32'},
-  {name:'silver',label:'Silver',icon:'🥈',min:7,max:30,color:'#dadada'},
-  {name:'gold',label:'Gold',icon:'🥇',min:30,max:100,color:'#ffd700'},
-  {name:'diamond',label:'Diamond',icon:'💎',min:100,max:365,color:'#b9f2ff'},
-  {name:'mythic',label:'Mythic',icon:'⭐',min:365,max:Infinity,color:'#ff9ec0'}
-];
-
-// Rebalanced (F24 follow-up). The old table let productivity drown
-// regulation by roughly 8:1 -- the review's high-utilizer persona did the
-// arithmetic: a day of resisting an urge, breathing and journaling scored 19,
-// while mechanically closing 30 stale tasks scored 150. With the medal having
-// sat on the grounding surface, the app was structurally saying "grinding
-// beats regulating" on the exact screen meant for regulating.
-//
-// The imbalance is a VOLUME problem, not a value problem: you close 30 tasks
-// in a day, you do not do 30 breathwork sessions. So this fixes it from both
-// ends -- regulation actions (inherently once-or-twice-a-day) are worth more
-// each, productivity outliers are trimmed, and DAILY_AWARD_CAPS below stops
-// high-volume actions from farming an unbounded total.
-var POINT_VALUES={
-  daily_login:1,
-  routine:2,
-  timer:3,
-  subtask:2,
-  task:4,
-  mood_energy:4,
-  breathwork:5,
-  urge:6,
-  wellness_note:6,
-  journal:8,
-  recovery:10,
-  workout:12,
-  project:15
-};
-
-// Max times each source can award points per local day. Absent = uncapped.
-//
-// urge:1 is the fix for the "urge inversion" the Skeptic persona identified:
-// scoring every logged urge meant the score rose with urge FREQUENCY, so a
-// week of white-knuckling read back as "doing great" at precisely the moment
-// the underlying signal was deterioration. Capping at one award per day means
-// the tool still records every urge (the log is unchanged and still complete
-// -- only the POINTS stop), while a bad day can no longer inflate the score.
-//
-// NOTE the other half of that critique does not apply to this codebase:
-// urgeOutcome() already awards identically for 'passed' and 'acted', with the
-// toast "no judgment, the pause still counted" -- relapse was never scored as
-// zero, so there was no stalled-number-as-verdict to fix.
-var DAILY_AWARD_CAPS={
-  urge:1,
-  recovery:1,
-  breathwork:2,
-  journal:2,
-  mood_energy:2,
-  wellness_note:2,
-  routine:4,
-  timer:4,
-  task:10,
-  subtask:10
-};
 
 // R8: runs the quick-add text through parseQuickAdd and decides what to
 // apply. Asymmetric on purpose -- date/time only fill in when the field is
@@ -12331,88 +11996,34 @@ function _materializeRecurrence(item,pushFn){
   pushFn(nextDue);
 }
 
-// ── PRESENCE DAYS ───────────────────────────────────────────────────────
-// The headline number. Counts DAYS on which you did at least one real thing,
-// lifetime, and only ever goes up. See TIER_THRESHOLDS above for why this
-// replaced the monthly point total as what the badge shows.
+
+// Folds panel/tool usage older than 90 days out of the day-keyed log and
+// into a permanent per-month archive, so the Insights "Lifetime" view keeps
+// its monthly breakdown without panelUseLog growing forever.
 //
-// "Showing up AND giving effort": opening the app is not enough on its own.
-// daily_login is excluded below, so a day you launched Centerpost and did
-// nothing does not count -- but any single real action does, however small.
-var PRESENCE_EXCLUDED_SOURCES={daily_login:1};
-function _markPresenceToday(source){
-  if(PRESENCE_EXCLUDED_SOURCES[source])return;
-  var day=_dayKey();
-  if(state.points.lastPresenceDay===day)return; // already counted today
-  state.points.lastPresenceDay=day;
-  state.points.presenceDays=(state.points.presenceDays||0)+1;
-}
-// One-time seed for accounts that predate this counter. totalsByDay is trimmed
-// to a 90-day window and the older archive stores monthly TOTALS rather than
-// day counts, so a true lifetime figure is not reconstructable -- this is an
-// honest best-effort floor, not a real history. Days whose entire total is 1
-// point are skipped: under the pre-rebalance values that is the signature of a
-// login-only day, which no longer qualifies as showing up.
-function _seedPresenceDays(){
-  if(!state.points)return;
-  if(state.points.presenceDays!==undefined)return;
-  var byDay=state.points.totalsByDay||{};
-  var n=0;
-  Object.keys(byDay).forEach(function(k){ if((byDay[k]||0)>1)n++; });
-  state.points.presenceDays=n;
-}
-
-function getCurrentTier(pts){
-  pts=pts||0;
-  for(var i=TIER_THRESHOLDS.length-1;i>=0;i--){
-    if(pts>=TIER_THRESHOLDS[i].min)return TIER_THRESHOLDS[i];
-  }
-  return TIER_THRESHOLDS[0];
-}
-
-function getNextTier(pts){
-  var cur=getCurrentTier(pts);
-  var idx=TIER_THRESHOLDS.findIndex(function(t){return t.name===cur.name;});
-  return TIER_THRESHOLDS[idx+1]||null;
-}
-
-function checkMonthReset(){
+// This used to be checkMonthReset(), which did the same trim for BOTH the
+// Presence point totals and the usage log, and was called from the award
+// and renderPointsBadge(). Presence was removed, so those callers are gone
+// and the points half has nothing left to roll -- but the usage trim is
+// still needed by Insights, so it survives here with its own month marker
+// (state.usageMonthKey) instead of riding the now-dormant state.points.
+function _rollUsageMonth(){
   var nowKey=_monthKey();
-  if(state.points.monthKey!==nowKey){
-    // Carry over lifetime, reset current
-    state.points.lifetimeTotal=(state.points.lifetimeTotal||0)+(state.points.current||0);
-    state.points.current=0;
-    state.points.monthKey=nowKey;
-    // NO tier demotion here any more. This line used to set lastTier='bronze',
-    // so on the 1st of every month a Mythic user was knocked back to Bronze
-    // having done nothing wrong -- the streak break, fired by the calendar.
-    // Tier now derives from presenceDays, which never resets, so there is
-    // nothing to demote. The monthly point total below still rolls over; it
-    // just isn't what you're ranked by.
-    // Trim totalsByDay to last 90 days -- but fold anything falling off the
-    // window into a permanent per-month archive first, so the Lifetime view
-    // keeps its monthly breakdown instead of losing it to a single running total.
-    var cutoff=_anchoredNow();cutoff.setDate(cutoff.getDate()-90);
-    var cutKey=_dayKey(cutoff);
-    Object.keys(state.points.totalsByDay).forEach(function(k){
-      if(k<cutKey){
-        var mk=k.slice(0,7);
-        state.points.monthlyTotals[mk]=(state.points.monthlyTotals[mk]||0)+state.points.totalsByDay[k];
-        delete state.points.totalsByDay[k];
-      }
-    });
-    if(!state.panelUseLog)state.panelUseLog={};
-    if(!state.usageMonthlyTotals)state.usageMonthlyTotals={};
-    Object.keys(state.panelUseLog).forEach(function(k){
-      if(k<cutKey){
-        var umk=k.slice(0,7);
-        var dayTotal=Object.keys(state.panelUseLog[k]).reduce(function(sum,src){return sum+state.panelUseLog[k][src];},0);
-        state.usageMonthlyTotals[umk]=(state.usageMonthlyTotals[umk]||0)+dayTotal;
-        delete state.panelUseLog[k];
-      }
-    });
-    save();
-  }
+  if(state.usageMonthKey===nowKey)return;
+  state.usageMonthKey=nowKey;
+  var cutoff=_anchoredNow();cutoff.setDate(cutoff.getDate()-90);
+  var cutKey=_dayKey(cutoff);
+  if(!state.panelUseLog)state.panelUseLog={};
+  if(!state.usageMonthlyTotals)state.usageMonthlyTotals={};
+  Object.keys(state.panelUseLog).forEach(function(k){
+    if(k<cutKey){
+      var umk=k.slice(0,7);
+      var dayTotal=Object.keys(state.panelUseLog[k]).reduce(function(sum,src){return sum+state.panelUseLog[k][src];},0);
+      state.usageMonthlyTotals[umk]=(state.usageMonthlyTotals[umk]||0)+dayTotal;
+      delete state.panelUseLog[k];
+    }
+  });
+  save();
 }
 
 // Days since the last open, when that gap was >=3. Session-only (never saved,
@@ -12455,10 +12066,10 @@ function _maybeExportNudge(){
 function awardDailyLogin(){
   _maybeExportNudge();
   var today=_dayKey();
-  if(state.points.lastLoginDate!==today){
-    var prevDate=state.points.lastLoginDate;
-    state.points.lastLoginDate=today;
-    addPoints('daily_login');
+  if(state.lastLoginDate!==today){
+    var prevDate=state.lastLoginDate;
+    state.lastLoginDate=today;
+    save();
     // R9: a gentle nudge after a real gap -- never a count of missed days.
     // Matches the house style of signal-gated, non-moralizing copy (see
     // _haltTrendLine). Local-midnight date math throughout -- never
@@ -12483,190 +12094,6 @@ function awardDailyLogin(){
   }
 }
 
-// Claim one daily award slot for `source`. Returns false when the cap is
-// already spent, in which case addPoints awards nothing -- silently. The
-// caller's own logging/toast/UI is untouched: a capped urge is still fully
-// recorded by _logCheckIn and still gets its warm confirmation, it just
-// doesn't move the number. Never surface "you've hit the cap" -- that would
-// reintroduce exactly the judgment this is meant to remove.
-function _claimDailyAward(source){
-  var cap=DAILY_AWARD_CAPS[source];
-  if(cap===undefined)return true;
-  if(!state.points.awardsByDay)state.points.awardsByDay={};
-  var byDay=state.points.awardsByDay;
-  // Keep only the last few days -- this rides the synced dashboard blob.
-  var days=Object.keys(byDay);
-  if(days.length>3){
-    days.sort();
-    days.slice(0,days.length-3).forEach(function(k){delete byDay[k];});
-  }
-  var day=_dayKey();
-  var today=byDay[day]||(byDay[day]={});
-  var used=today[source]||0;
-  if(used>=cap)return false;
-  today[source]=used+1;
-  return true;
-}
-
-function addPoints(source,sourceEl){
-  if(!state.points)state.points={current:0,monthKey:_monthKey(),lastTier:'bronze',totalsByDay:{},lastLoginDate:'',lifetimeTotal:0};
-  checkMonthReset();
-  var amount=POINT_VALUES[source]||0;
-  if(amount<=0)return;
-  if(!_claimDailyAward(source))return;
-
-  // Tier now tracks presence DAYS, so the before/after comparison brackets
-  // _markPresenceToday -- a tier-up fires when you cross a day milestone
-  // (7th day, 30th...), not when a point total crosses a threshold.
-  var prevTier=getCurrentTier(state.points.presenceDays||0);
-  state.points.current+=amount;
-  _markPresenceToday(source);
-  var newTier=getCurrentTier(state.points.presenceDays||0);
-
-  // Track daily
-  var today=_dayKey();
-  state.points.totalsByDay[today]=(state.points.totalsByDay[today]||0)+amount;
-  
-  save();
-  renderPointsBadge();
-  
-  // Floating popup
-  showPointFloater(amount,sourceEl);
-  
-  // Tier-up celebration
-  if(newTier.name!==prevTier.name){
-    state.points.lastTier=newTier.name;
-    save();
-    setTimeout(function(){triggerTierUp(newTier);},300);
-  }
-}
-
-function showPointFloater(amount,sourceEl){
-  if(state.hidePoints)return; // F6: hide-toggle suppresses the celebratory UI, not the tally
-  var container=document.getElementById('pointPopupContainer');
-  if(!container)return;
-  var floater=document.createElement('div');
-  floater.className='point-popup-floater';
-  floater.textContent='+'+amount;
-  
-  // Position - near source element if provided, otherwise near badge
-  var x,y;
-  if(sourceEl&&sourceEl.getBoundingClientRect){
-    var rect=sourceEl.getBoundingClientRect();
-    x=rect.left+rect.width/2;
-    y=rect.top;
-  }else{
-    var badge=document.getElementById('pointsBadge');
-    if(badge){
-      var br=badge.getBoundingClientRect();
-      x=br.left+br.width/2;
-      y=br.bottom;
-    }else{x=window.innerWidth/2;y=80;}
-  }
-  floater.style.left=(x-15)+'px';
-  floater.style.top=y+'px';
-  container.appendChild(floater);
-  setTimeout(function(){if(floater.parentNode)floater.parentNode.removeChild(floater);},1500);
-}
-
-function renderPointsBadge(){
-  if(!state.points)return;
-  checkMonthReset();
-  var badge=document.getElementById('pointsBadge');
-  var iconEl=document.getElementById('ptTierIcon');
-  var valEl=document.getElementById('ptValue');
-  if(!badge||!valEl)return;
-  
-  var days=state.points.presenceDays||0;
-  var tier=getCurrentTier(days);
-  var classes=['tier-bronze','tier-silver','tier-gold','tier-diamond','tier-mythic'];
-  classes.forEach(function(c){badge.classList.remove(c);});
-  badge.classList.add('tier-'+tier.name);
-  if(iconEl)iconEl.textContent=tier.icon;
-  // The headline is DAYS SHOWN UP -- monotonic, volume-independent. The point
-  // total still exists and is still shown, but in the tap-for-detail popup
-  // rather than as the thing you are ranked by.
-  valEl.textContent=days;
-}
-
-function togglePointsPopup(){
-  var pop=document.getElementById('pointsPopup');
-  if(!pop)return;
-  if(pop.style.display==='block'){pop.style.display='none';return;}
-  renderPointsPopup();
-  pop.style.display='block';
-  // Click-outside to close
-  setTimeout(function(){
-    var handler=function(e){
-      if(!pop.contains(e.target)&&!document.getElementById('pointsBadge').contains(e.target)){
-        pop.style.display='none';
-        document.removeEventListener('click',handler);
-      }
-    };
-    document.addEventListener('click',handler);
-  },10);
-}
-
-function renderPointsPopup(){
-  var pop=document.getElementById('pointsPopup');
-  if(!pop)return;
-  var pts=state.points.current||0;
-  // Tier + progress read DAYS; the point figures below are kept as detail.
-  var days=state.points.presenceDays||0;
-  var tier=getCurrentTier(days);
-  var next=getNextTier(days);
-  var today=_dayKey();
-  var todayPts=state.points.totalsByDay[today]||0;
-  
-  // Week total = last 7 days including today
-  var weekPts=0;
-  for(var i=0;i<7;i++){
-    var d=_anchoredNow();d.setDate(d.getDate()-i);
-    weekPts+=(state.points.totalsByDay[_dayKey(d)]||0);
-  }
-  
-  var progressPct=0;
-  var progressLabel='';
-  if(next){
-    var range=next.min-tier.min;
-    var into=days-tier.min;
-    progressPct=Math.min(100,Math.round((into/range)*100));
-    var left=next.min-days;
-    progressLabel=left+' more day'+(left!==1?'s':'')+' to '+next.label+' '+next.icon;
-  }else{
-    progressPct=100;
-    progressLabel='Mythic -- top tier!';
-  }
-  
-  // R13 subtitle pass, part 2 (Joe, 2026-08-04): the full explanation of what
-  // Presence is has only ever lived in the badge's `title` attribute, which
-  // is desktop-hover-only -- a touch user tapping the badge got straight to
-  // numbers with no "what am I looking at" line anywhere reachable. This is
-  // that same sentence, placed where a tap can actually see it.
-  var html='<div class="points-popup-section">'
-    +'<div class="points-popup-explainer">Days you showed up and put in effort. It only ever goes up &mdash; missing a day costs you nothing.</div>'
-    +'<div class="points-popup-tier-row" style="color:'+tier.color+';">'
-    +'<span style="font-size:20px;">'+tier.icon+'</span> '+tier.label
-    +'</div>'
-    +'<div class="points-popup-progress"><div class="points-popup-progress-fill" style="width:'+progressPct+'%;background:'+tier.color+';"></div></div>'
-    +'<div class="points-popup-next">'+progressLabel+'</div>'
-    +'</div>'
-    +'<div class="points-popup-section">'
-    +'<div class="points-popup-row"><span class="points-popup-label">Days shown up</span><span class="points-popup-value">'+days+'</span></div>'
-    +'</div>'
-    +'<div class="points-popup-section">'
-    +'<div class="points-popup-row"><span class="points-popup-label">Today</span><span class="points-popup-value">'+todayPts+' Presence</span></div>'
-    +'<div class="points-popup-row"><span class="points-popup-label">Last 7 days</span><span class="points-popup-value">'+weekPts+' Presence</span></div>'
-    +'<div class="points-popup-row"><span class="points-popup-label">This month</span><span class="points-popup-value">'+pts+' Presence</span></div>'
-    +'</div>'
-    +'<div class="points-popup-section">'
-    +'<div class="points-popup-row"><span class="points-popup-label">Lifetime</span><span class="points-popup-value">'+(state.points.lifetimeTotal+pts)+' Presence</span></div>'
-    +'</div>'
-    +'<div class="points-popup-actions">'
-    +'<button class="btn btn-sm" onclick="togglePointsPopup();openPointsInsights();">📈 View Insights</button>'
-    +'</div>';
-  pop.innerHTML=html;
-}
 
 // =======================================
 // POINTS INSIGHTS OVERLAY
@@ -13075,59 +12502,6 @@ function _renderWeeklyReview(){
   return html;
 }
 
-function triggerTierUp(tier){
-  if(state.hidePoints)return; // F6: hide-toggle suppresses the celebratory UI, not the tally
-  var overlay=document.getElementById('fireworksOverlay');
-  if(!overlay)return;
-  overlay.classList.add('show');
-  overlay.innerHTML='';
-  
-  // Banner
-  var banner=document.createElement('div');
-  banner.className='tier-up-banner';
-  banner.style.color=tier.color;
-  banner.innerHTML=tier.icon+' '+tier.label.toUpperCase()+' TIER!';
-  overlay.appendChild(banner);
-  
-  // Fireworks bursts at random positions
-  var colors=['#ffd700','#ff6b9d','#7fdfff','#a0f0a0','#ffaa44','#c77dba'];
-  var bursts=6;
-  for(var b=0;b<bursts;b++){
-    setTimeout(function(){
-      var cx=Math.random()*window.innerWidth;
-      var cy=Math.random()*window.innerHeight*0.7+window.innerHeight*0.1;
-      var color=colors[Math.floor(Math.random()*colors.length)];
-      _spawnBurst(overlay,cx,cy,color);
-    },b*250);
-  }
-  
-  // Auto-cleanup
-  setTimeout(function(){
-    overlay.classList.remove('show');
-    overlay.innerHTML='';
-  },2800);
-}
-
-function _spawnBurst(parent,cx,cy,color){
-  var particles=24;
-  for(var i=0;i<particles;i++){
-    var p=document.createElement('div');
-    p.className='firework-particle';
-    var angle=(i/particles)*Math.PI*2;
-    var distance=80+Math.random()*60;
-    var tx=Math.cos(angle)*distance;
-    var ty=Math.sin(angle)*distance;
-    p.style.left=cx+'px';
-    p.style.top=cy+'px';
-    p.style.background=color;
-    p.style.boxShadow='0 0 6px '+color;
-    p.style.setProperty('--tx',tx+'px');
-    p.style.setProperty('--ty',ty+'px');
-    parent.appendChild(p);
-    // Cleanup
-    setTimeout(function(el){return function(){if(el.parentNode)el.parentNode.removeChild(el);};}(p),1600);
-  }
-}
 
 // =======================================
 // TASK TIMER (elapsed stopwatch)
@@ -13790,7 +13164,6 @@ async function saveJournalEntry(){
   document.getElementById('journalMoodTag').value='';
   _updateJournalMeta();
   await _saveJournalDoc();
-  addPoints('journal');
 }
 
 function toggleJournalView(){
@@ -15382,9 +14755,6 @@ function completeWorkout(type,dayIndex){
   state.workoutLifetimeCount=(state.workoutLifetimeCount||state.completedWorkouts.length-1)+1;
   if(state.completedWorkouts.length>100)state.completedWorkouts=state.completedWorkouts.slice(-100);
   save();
-  
-  // Award points
-  addPoints(type==='lift'?'workout':'recovery');
   
   // Show confirmation and update counter
   alert('✓ Workout completed!\n\n'+workoutName+'\n'+new Date(timestamp).toLocaleString());
@@ -17142,7 +16512,7 @@ if(_pendingWeeklyReviewOpen){_pendingWeeklyReviewOpen=false;setTimeout(openWeekl
 // the review can render real data; native answers by evaluating
 // openWeeklyReview only if a tap is actually pending. No-ops on web.
 (function(){var h=_notifNative();if(h){try{h.postMessage({action:'checkWeeklyReviewPending'});}catch(e){}}})();
-initPanelVisibility();applyPanelOrder();applyPanelVisibility();applyPointsVisibility();updateLockUI();updateClock();updateTimeLeft();setInterval(updateClock,1000);setInterval(updateTimeLeft,30000);updateTimerDisplay();renderPointsBadge();awardDailyLogin();
+initPanelVisibility();applyPanelOrder();applyPanelVisibility();updateLockUI();updateClock();updateTimeLeft();setInterval(updateClock,1000);setInterval(updateTimeLeft,30000);updateTimerDisplay();_rollUsageMonth();awardDailyLogin();
 _bindPanelUsageTracking();
 // -- DAILY ROUTINE RESET -- robust against tabs left open overnight --
 // 1. Run once immediately after load so stale checks clear before the user sees them.
@@ -17676,13 +17046,6 @@ var JARVIS_SYSTEM=function(){
     energyMood.mood={value:latestM.value,note:latestM.note||'',time:latestM.time||null};
   }
 
-  // Points/tier status
-  var pointsInfo={
-    current:(state.points&&state.points.current)||0,
-    lifetimeTotal:(state.points&&state.points.lifetimeTotal)||0,
-    tier:_jarvisCurrentTier()
-  };
-
   // Timeline blocks -- manually scheduled items (name, date, time, duration, project)
   // Include blocks from the past 24h through the next 14 days so Axis can read today's schedule
   // Same UTC bug as todayKey above, and the same fix: _anchoredNow() + _dayKey()
@@ -17722,8 +17085,7 @@ var JARVIS_SYSTEM=function(){
     wellnessReflections:wellness,
     todaysRoutines:routines,
     energyMood:energyMood,
-    timelineBlocks:timelineBlocks,
-    points:pointsInfo
+    timelineBlocks:timelineBlocks
   };
 
   // -- BREAKDOWN MODE: focused system prompt for AI task-breakdown --
@@ -17747,15 +17109,6 @@ var JARVIS_SYSTEM=function(){
 
   return 'You are Axis, an AI assistant embedded in Centerpost -- '+_axisPersonaLine()+'\n\nIt is now '+dateStr+', '+timeStr+'.\n\nYou have FULL access to the dashboard state below. Reference it precisely to answer questions about due dates, subtasks, projects, completed work, wellness reflections, routines, energy/mood, or anything else.\n\n=== DATA FIELD GUIDE ===\n- timelineBlocks = items manually scheduled on the TIMELINE PANEL (name, date, time, duration). Use THIS field for any question about the timeline, schedule, or blocked time. Do NOT substitute task due dates for timeline questions.\n- standaloneTasks / projects = task list and project subtasks. Use for task management questions.\n- upcomingReminders = reminders panel items.\n\n=== DASHBOARD STATE ===\n'+JSON.stringify(context,null,2)+'\n=== END STATE ===\n\nCRITICAL OUTPUT FORMAT: Respond with ONLY a raw JSON object. No markdown, no code fences, no explanation before or after. Format: {"reply":"...","actions":[]}\n\n=== RESPONSE STYLE RULES (STRICT -- ADHD-OPTIMIZED) ===\n\n1. **Count questions get count-first replies.** When asked "how many" or for any count: give the NUMBER first, then a single short urgency flag if applicable, then offer to expand. Maximum 2 short sentences.\n   - Example query: "How many tasks do I have?"\n   - GOOD reply: "You have 14 open tasks. 2 are overdue. Want me to list them?"\n   - GOOD reply: "8 active projects. All on track. Want me to list them by due date?"\n   - BAD reply: "You currently have 14 open tasks across 5 projects. The high priority ones are [lists everything]..." -- TOO MUCH UPFRONT.\n\n2. **List questions still default to a summary.** Even for "show me" or "what are", lead with a count + urgency summary, then offer to expand UNLESS the user explicitly said "list them all" or "show me each."\n   - "What\\\'s due this week?" → "6 items due this week, 2 today. Want the full list or just today\\\'s?"\n\n3. **Always end open-ended summary replies with an expansion offer** ("Want me to list them?", "Want details?", "Want today\\\'s breakdown?"). Phrase it naturally, not robotically.\n\n4. **If urgency flagging would clutter the reply, omit it.** No flag needed when nothing is overdue.\n\n5. **Definitions of urgency flags:**\n   - "Overdue" = due date is BEFORE today\\\'s date '+todayKey+'.\n   - "Due today" = due date === '+todayKey+'.\n\n6. **For action confirmations after add/complete/etc**: One short sentence. "Added \\\'Call dispatch\\\', due tomorrow." No follow-up question needed.\n\n7. **For specific data lookups** (e.g. "when is X due", "what project is X in"): Direct answer, no expansion offer.\n\n8. **Once the user confirms they want details**, THEN provide the full list -- but still use compact formatting: each item on one line with due date in parentheses. Group by project or urgency if list >8 items.\n\n=== ACTION TYPES ===\n{"type":"add_task","name":"string","due":"YYYY-MM-DD or null"}\n{"type":"add_project","name":"string","due":"YYYY-MM-DD or null"}\n{"type":"add_subtask","projectName":"string","name":"string","due":"YYYY-MM-DD or null"}\n{"type":"add_note","label":"string","body":"string"}\n{"type":"add_reminder","text":"string","date":"YYYY-MM-DD or null","time":"HH:MM or null"}\n{"type":"complete_task","name":"string"}\n\nFor pure questions with no state changes, use actions:[]. Parse relative dates using today\\\'s date.\n\n=== TIMELINE READOUT FORMAT ===\nWhen the user asks what is on their timeline (any phrasing: \"what\\\'s on my timeline\", \"what do I have scheduled\", \"read my timeline\", \"what\\\'s tomorrow\", etc.) ALWAYS read out the full list of blocks directly. Do NOT use the count-first-then-offer pattern for timeline questions -- just give the items. Format each entry as \"{time} -- {name}\" only. Do NOT include duration or project unless the user explicitly asks. If there are no blocks, say so directly. Example reply: \"3 blocks tomorrow: 9:00 AM -- Station meeting, 1:30 PM -- Report writing, 3:00 PM -- Training review.\"';
 };
-
-function _jarvisCurrentTier(){
-  var current=(state.points&&state.points.current)||0;
-  if(current>=1500)return 'Mythic';
-  if(current>=700)return 'Diamond';
-  if(current>=300)return 'Gold';
-  if(current>=100)return 'Silver';
-  return 'Bronze';
-}
 
 // === BREAKDOWN MODE ===
 // Order items by suggested completion sequence:

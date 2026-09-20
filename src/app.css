@@ -540,7 +540,7 @@ body[data-theme="autumn"] .header-center-title{color:#3a2a18;text-shadow:0 1px 3
 *{margin:0;padding:0;box-sizing:border-box;}
 body{font-family:'DM Sans',sans-serif;background:var(--bg);color:var(--text);min-height:100vh;min-height:100dvh;line-height:1.5;padding-top:env(safe-area-inset-top);padding-bottom:env(safe-area-inset-bottom);}
 /* ═══ HEADER ═══ */
-.header{padding:14px 24px 10px;display:grid;grid-template-columns:auto 1fr auto;align-items:center;gap:16px;border-bottom:1px solid var(--border);position:sticky;top:0;background:var(--bg);z-index:50;min-height:110px;}
+.header{padding:14px 24px 10px;display:grid;grid-template-columns:1fr auto;align-items:center;gap:16px;border-bottom:1px solid var(--border);position:sticky;top:0;background:var(--bg);z-index:50;min-height:110px;}
 
 /* Center column: stacks bar on top, subtitle below */
 .header-center{display:flex;flex-direction:column;align-items:stretch;position:relative;}
@@ -719,11 +719,6 @@ body[data-theme="storm-dark"] .day-progress-elapsed{
 /* Time-left text overlay sits inside the bar */
 /* (time-left overlay removed) */
 
-/* Presence badge wrapper -- F24: moved OUT of the Tool Kit panel into the
-   header's left slot (see PointsFocusMusic.jsx). The 14px bottom margin was
-   panel spacing; in the header it just inflates the top chrome. */
-.points-wrap{position:relative;z-index:2;display:flex;align-items:center;justify-content:center;margin:0;}
-.points-label-compact{display:none;}
 .header-right{display:flex;flex-direction:column;align-items:flex-end;justify-content:center;gap:4px;position:relative;z-index:2;}
 .header-clock-wrap{display:flex;flex-direction:column;align-items:flex-end;gap:2px;}
 .header-clock{font-variant-numeric:tabular-nums;font-size:calc(20px * var(--type-scale,1));font-weight:600;color:var(--text);letter-spacing:1px;line-height:1;}
@@ -795,11 +790,12 @@ body[data-theme="storm-dark"] .day-progress-elapsed{
    layer elements hold nothing but decoration, so a wildcard INSIDE them is
    safe and picks up anything spawned later without another round of this.
 
-   Deliberately NOT included: .tier-up-banner and .fireworks-overlay. Those
-   use `animation: ... forwards` to fade themselves OUT, so disabling their
-   animation would leave a celebration banner stuck on screen permanently --
-   the same fill-mode trap that hid the panels. Anything that animates itself
-   away must keep its animation. */
+   The tier-up banner and fireworks overlay used to be called out here as
+   deliberate exclusions: they fade themselves out with `animation: ...
+   forwards`, so disabling their animation would have left a celebration
+   banner stuck on screen forever. Both went with Presence points. The rule
+   they illustrate still stands for anything added later -- whatever animates
+   itself away must keep its animation. */
 body.cp-stop-motion #starryLayer,
 body.cp-stop-motion #starryLayer *,
 body.cp-stop-motion #starryLayer::before,
@@ -953,26 +949,6 @@ body.cmd-palette-open .mobile-tab-bar{z-index:1150;}
   .pd-nav-timer{display:none !important;}
   /* Row 2: timer on the right. The Presence badge no longer lives in the
      header (moved into the Tool Kit panel), so this row is just the timer. */
-  /* The presence badge sits on row 2, to the LEFT of the Today/Everything
-     switch -- below the timeline bar, not above it. Its slot has no `order`
-     of its own in the DOM, so it defaulted to order:0 and jumped ahead of
-     the bar; giving it an explicit order puts it back in sequence. flex:1
-     lets it fill the space between the screen edge and the switch, and
-     .points-wrap (already justify-content:center) centres it in there. */
-  .header > #points-focus-music-root{
-    order:2 !important;
-    /* flex-basis must be `auto` (content-sized), NOT 0. With basis 0 the slot
-       always "fits" in the zero space left after the full-width timeline bar,
-       so it never wraps -- it stayed on row 1 collapsed to width:0 and the
-       badge spilled out of its own parent, half off the right edge. At auto
-       the basis is the badge's real width, which doesn't fit, so it wraps to
-       row 2 and then grows to fill the space beside the Today/Everything
-       switch. */
-    flex:1 1 auto !important;
-    display:flex !important;
-    align-items:center !important;
-    justify-content:center !important;
-  }
   .header > .header-right{
     order:3 !important;
     flex:0 1 auto !important;
@@ -1006,20 +982,6 @@ body.cmd-palette-open .mobile-tab-bar{z-index:1150;}
      "Start focus". */
   .view-mode-switch{display:none !important;}
   .header-timer-label-tag{display:none !important;}
-  /* F24: the badge now lives in the HEADER, not the Tool Kit panel, so it has
-     to earn its vertical space against scarce phone chrome -- at the panel's
-     "-lg" sizing it added 69px to the mobile header. Compact here: smaller
-     medal/number, and the stacked "Presence / points" caption is dropped
-     (the medal + number carry the meaning, and the badge keeps its full
-     title tooltip and tap-for-detail popup). */
-  .points-badge-lg{padding:3px 9px !important;gap:6px !important;border-width:2px !important;}
-  .points-badge-lg .points-tier-icon{font-size:calc(16px * var(--type-scale,1)) !important;}
-  .points-badge-lg .points-value{font-size:calc(14px * var(--type-scale,1)) !important;}
-  .points-badge-lg .points-label{display:none !important;}
-  /* Panel survey 2026-08-18 (I-4): one-word compact label, shown only here.
-     Hidden by default (see .points-label-compact base rule) so it never
-     appears on desktop, where the full two-line label already renders. */
-  .points-label-compact{display:block !important;font-size:8px !important;opacity:0.65;letter-spacing:0.3px;text-transform:uppercase;font-weight:600;margin-left:2px;}
   /* Bottom status bar */
   .status-bar{padding:8px 14px;gap:8px;min-height:52px;}
   #status-bar-root{gap:8px;}
@@ -1636,48 +1598,7 @@ body.unlocked .date-editable{border-bottom-color:var(--border);}
 .settings-crisis-row{display:none;}
 .qc-hint-desktop{display:inline;}
 
-/* ═══ POINTS / REWARDS SYSTEM ═══
-   Same flat surface/color treatment as .toolkit-btn -- the only thing that
-   marks tier is a thick, tier-colored outline (this month's level), same
-   hex values as TIER_THRESHOLDS in legacy.js. No gradients/glow, matching
-   the "credit for showing up, not a flashy reward" framing behind the
-   Presence rename. */
-.points-badge{display:inline-flex;align-items:center;gap:6px;padding:5px 12px;background:var(--surface-raised);border:1.5px solid var(--border);border-radius:var(--radius-sm);cursor:pointer;transition:all 0.18s;font-weight:600;user-select:none;color:var(--text-dim);}
-.points-badge:hover{background:var(--surface-hover);}
-.points-badge-lg{padding:7px 15px;gap:8px;border-width:3px;border-radius:var(--radius);}
-.points-badge-lg .points-tier-icon{font-size:calc(25px * var(--type-scale,1));}
-.points-badge-lg .points-value{font-size:calc(20px * var(--type-scale,1));font-weight:700;}
-.points-tier-icon{font-size:calc(18px * var(--type-scale,1));line-height:1;}
-.points-value{font-size:calc(14px * var(--type-scale,1));font-variant-numeric:tabular-nums;}
-.points-badge.tier-bronze{border-color:#cd7f32;}
-.points-badge.tier-silver{border-color:#dadada;}
-.points-badge.tier-gold{border-color:#ffd700;}
-.points-badge.tier-diamond{border-color:#b9f2ff;}
-.points-badge.tier-mythic{border-color:#ff9ec0;}
-.points-badge.tier-bronze:hover{color:#cd7f32;}
-.points-badge.tier-silver:hover{color:#dadada;}
-.points-badge.tier-gold:hover{color:#ffd700;}
-.points-badge.tier-diamond:hover{color:#b9f2ff;}
-.points-badge.tier-mythic:hover{color:#ff9ec0;}
 
-/* Opens DOWN and to the RIGHT from the badge's left edge. It used to be
-   centred on the badge (left:50% + translateX(-50%)), which pushed a 240px
-   popup off the left edge of the screen and clipped it -- on desktop too,
-   not just mobile: a badge at x=24 put the popup's left edge at -14px.
-   Anchoring at left:0 means it can only ever grow rightward into open
-   space, and the max-width keeps it inside the viewport on a narrow phone. */
-.points-popup{position:absolute;top:calc(100% + 8px);left:0;right:auto;transform:none;background:var(--surface);border:1px solid var(--border);border-radius:var(--radius);padding:14px 16px;min-width:240px;max-width:calc(100vw - 24px);box-shadow:0 8px 24px rgba(0,0,0,0.4);z-index:100;font-size:calc(13px * var(--type-scale,1));}
-.points-popup-section{padding:6px 0;border-bottom:1px solid var(--border);}
-.points-popup-section:last-child{border-bottom:none;}
-.points-popup-row{display:flex;justify-content:space-between;align-items:center;margin:3px 0;}
-.points-popup-label{color:var(--text-dim);font-size:calc(12px * var(--type-scale,1));}
-.points-popup-value{color:var(--text);font-weight:600;font-variant-numeric:tabular-nums;}
-.points-popup-explainer{font-size:calc(11px * var(--type-scale,1));color:var(--text-faint);line-height:1.4;margin-bottom:8px;}
-.points-popup-tier-row{display:flex;align-items:center;gap:8px;font-size:calc(14px * var(--type-scale,1));font-weight:600;margin-bottom:6px;}
-.points-popup-progress{height:6px;background:var(--surface-raised);border-radius:3px;overflow:hidden;margin-top:4px;}
-.points-popup-progress-fill{height:100%;background:var(--accent);transition:width 0.4s ease;}
-.points-popup-next{font-size:calc(11px * var(--type-scale,1));color:var(--text-faint);margin-top:4px;text-align:right;}
-.points-popup-actions{padding-top:10px;display:flex;justify-content:flex-end;}
 
 .pi-period-row{display:flex;align-items:center;justify-content:space-between;gap:8px;margin-bottom:14px;flex-wrap:wrap;}
 .pi-period-group{display:flex;gap:8px;}
@@ -1707,33 +1628,9 @@ body.unlocked .date-editable{border-bottom-color:var(--border);}
 .pi-state-row strong{color:var(--text);}
 .pi-state-icon{font-size:calc(14px * var(--type-scale,1));}
 
-/* Floating +N popup */
-.point-popup-container{position:fixed;pointer-events:none;z-index:9999;top:0;left:0;right:0;bottom:0;}
-.point-popup-floater{position:absolute;font-weight:700;font-size:calc(18px * var(--type-scale,1));color:var(--green);text-shadow:0 2px 4px rgba(0,0,0,0.5),0 0 8px rgba(107,171,115,0.6);animation:point-float 1.4s ease-out forwards;pointer-events:none;}
-@keyframes point-float{0%{opacity:0;transform:translateY(0) scale(0.7);}15%{opacity:1;transform:translateY(-8px) scale(1.2);}100%{opacity:0;transform:translateY(-60px) scale(1);}}
 
-/* Fireworks overlay */
-.fireworks-overlay{position:fixed;top:0;left:0;right:0;bottom:0;pointer-events:none;z-index:9998;display:none;}
-.fireworks-overlay.show{display:block;}
-.firework{position:absolute;width:6px;height:6px;border-radius:50%;}
-.firework-particle{position:absolute;width:5px;height:5px;border-radius:50%;animation:firework-burst 1.5s ease-out forwards;}
-@keyframes firework-burst{
-  0%{opacity:1;transform:translate(0,0) scale(1);}
-  60%{opacity:1;}
-  100%{opacity:0;transform:translate(var(--tx),var(--ty)) scale(0.4);}
-}
-.tier-up-banner{position:fixed;top:50%;left:50%;transform:translate(-50%,-50%);background:linear-gradient(135deg,#ffd700,#ff9ec0);color:#1a1a1a;padding:24px 48px;border-radius:16px;font-size:calc(32px * var(--type-scale,1));font-weight:800;font-family:'Fraunces',serif;text-align:center;box-shadow:0 12px 40px rgba(0,0,0,0.5),0 0 60px currentColor;z-index:9999;letter-spacing:1px;animation:tier-banner 2.5s ease-out forwards;pointer-events:none;}
-@keyframes tier-banner{
-  0%{opacity:0;transform:translate(-50%,-50%) scale(0.5) rotate(-5deg);}
-  15%{opacity:1;transform:translate(-50%,-50%) scale(1.15) rotate(2deg);}
-  25%{transform:translate(-50%,-50%) scale(1) rotate(0deg);}
-  85%{opacity:1;transform:translate(-50%,-50%) scale(1) rotate(0deg);}
-  100%{opacity:0;transform:translate(-50%,-50%) scale(1.1);}
-}
 
 @media(max-width:768px),(orientation:landscape) and (max-height:600px){
-  .points-badge{padding:4px 8px;font-size:calc(12px * var(--type-scale,1));}
-  .points-tier-icon{font-size:calc(14px * var(--type-scale,1));}
   /* Was `right:8px` while the base rule still set left:50% + a centring
      transform -- the two fought each other and helped clip the popup. The
      base rule now anchors left:0 and opens rightward, which is correct on
@@ -2514,9 +2411,8 @@ body[data-theme="storm-dark"] .tl-hour-label{
    already bumped to 10002 for this exact reason; only that one instance got
    fixed. Toasts also fire from background save/sync paths (storage-full, sync
    failed) that can land while ANY surface is up, so this has to clear the
-   9000-band overlays too -- reminder popup (9000) and music stream (9001) --
-   not just the modal band. Stays under the fireworks/points celebration layer
-   (9998/9999), the sign-in gate (9999), and the update toast (10002). */
+   9000-band overlays too -- reminder popup (9000) -- not just the modal
+   band. Stays under the sign-in gate (9999) and the update toast (10002). */
 .toast{position:fixed;bottom:80px;right:24px;background:var(--green);color:var(--bg);padding:10px 18px;border-radius:var(--radius);font-size:calc(13px * var(--type-scale,1));font-weight:600;opacity:0;transform:translateY(10px);transition:all 0.3s;pointer-events:none;z-index:9500;}
 /* Panel survey 2026-08-18 (I-9): capture-verdict flip is the one toast that
    needs to be clickable. Base .toast stays pointer-events:none. */
@@ -2637,28 +2533,6 @@ body[data-theme="storm-dark"] .tl-hour-label{
 .rem-popup-snooze-row button{font-size:calc(11px * var(--type-scale,1));font-weight:600;padding:4px 10px;border-radius:6px;cursor:pointer;border:1px solid rgba(91,232,255,0.4);background:rgba(91,232,255,0.1);color:var(--accent);font-family:inherit;}
 .rem-popup-close{margin-top:12px;width:100%;font-size:calc(12px * var(--type-scale,1));color:var(--text-faint);background:none;border:1px solid var(--border);border-radius:8px;padding:7px;cursor:pointer;font-family:inherit;}
 .rem-popup-close:hover{color:var(--text);background:var(--surface-raised);}
-/* ── MUSIC STREAMING MODAL ───────────────────────────────────────────── */
-.music-stream-overlay{position:fixed;inset:0;z-index:9001;background:rgba(0,0,0,0.55);display:flex;align-items:center;justify-content:center;animation:fadeIn 0.2s ease;}
-.music-stream-overlay.hidden{display:none;}
-.music-stream-modal{background:var(--surface);border:1px solid var(--border);border-radius:var(--radius);padding:28px 28px 22px;max-width:420px;width:calc(100% - 32px);box-shadow:0 24px 64px rgba(0,0,0,0.5);}
-.music-stream-title{font-family:'Fraunces',serif;font-size:calc(20px * var(--type-scale,1));font-weight:600;color:var(--accent);margin-bottom:6px;}
-.music-stream-sub{font-size:calc(12px * var(--type-scale,1));color:var(--text-dim);margin-bottom:22px;line-height:1.5;}
-.music-platform-grid{display:grid;grid-template-columns:1fr 1fr 1fr;gap:12px;margin-bottom:18px;}
-.music-platform-btn{
-  display:flex;flex-direction:column;align-items:center;gap:8px;
-  padding:18px 10px;border-radius:12px;border:1px solid var(--border);
-  background:var(--surface-raised);cursor:pointer;
-  font-family:inherit;font-size:calc(12px * var(--type-scale,1));font-weight:600;color:var(--text);
-  transition:all 0.15s;
-}
-.music-platform-btn:hover{border-color:var(--border-focus);}
-.music-platform-btn.spotify:hover{border-color:#1db954;background:rgba(29,185,84,0.1);}
-.music-platform-btn.apple:hover{border-color:#fc3c44;background:rgba(252,60,68,0.1);}
-.music-platform-btn.amazon:hover{border-color:#00a8e0;background:rgba(0,168,224,0.1);}
-.music-platform-icon{font-size:calc(32px * var(--type-scale,1));line-height:1;}
-.music-platform-note{font-size:calc(11px * var(--type-scale,1));color:var(--text-faint);text-align:center;margin-bottom:14px;line-height:1.5;}
-.music-stream-close{width:100%;background:none;border:1px solid var(--border);border-radius:8px;padding:8px;font-size:calc(12px * var(--type-scale,1));color:var(--text-faint);cursor:pointer;font-family:inherit;}
-.music-stream-close:hover{background:var(--surface-raised);color:var(--text);}
 .mic-btn{background:var(--surface-raised);border:1px solid var(--border);color:var(--text-dim);padding:5px 9px;border-radius:var(--radius-sm);cursor:pointer;font-size:calc(13px * var(--type-scale,1));font-family:inherit;transition:all 0.2s;flex-shrink:0;line-height:1;}
 .mic-btn:hover{border-color:var(--teal);color:var(--teal);}
 .mic-btn.listening{background:var(--red-dim);border-color:var(--red);color:var(--red);animation:micPulse 1s ease-in-out infinite;}
@@ -3090,8 +2964,7 @@ body.capacitor-native .pd-topbar{padding-top:max(env(safe-area-inset-top),46px) 
 .logout-btn:hover{border-color:var(--red);color:var(--red);}
 .sync-status{font-size:calc(12px * var(--type-scale,1));padding:4px 10px;border-radius:10px;display:inline-flex;align-items:center;gap:5px;min-height:32px;font-weight:500;}
 .sync-status.synced{color:var(--green);}.sync-status.syncing{color:var(--accent);}.sync-status.error{color:var(--red);}.sync-status.offline{color:var(--text-dim);}.sync-status.warning{color:var(--amber,#c9922f);}
-/* Panel survey 2026-08-18 (I-5): tap-through detail popover, modeled on
-   .points-popup's positioning/visual pattern for consistency. */
+/* Panel survey 2026-08-18 (I-5): tap-through detail popover. */
 .sync-status-wrap{position:relative;display:inline-flex;}
 .sync-status-popover{position:absolute;bottom:calc(100% + 8px);left:0;background:var(--surface);border:1px solid var(--border);border-radius:var(--radius);padding:12px 14px;min-width:220px;max-width:calc(100vw - 24px);box-shadow:0 8px 24px rgba(0,0,0,0.4);z-index:100;font-size:calc(12px * var(--type-scale,1));}
 .sync-popover-status{font-weight:600;margin-bottom:6px;}
@@ -3442,14 +3315,11 @@ body.capacitor-native .pd-topbar{padding-top:max(env(safe-area-inset-top),46px) 
 
 /* ── TOOL KIT PANEL BUTTONS ── */
 .toolkit-grid{display:grid;grid-template-columns:1fr 1fr;gap:10px;padding:4px 0;}
-/* Panel survey 2026-08-18 (J-1): regulation tools first for everyone by
-   default (no JS needed, correct from first paint); the owner's original
-   order (Music/Streaming first) is preserved via the .is-owner override,
-   toggled once in showApp() -- see the comment there. Streaming itself
-   stays display:none regardless (separate, existing gate); order here only
-   matters for whichever tiles ARE visible. */
-.toolkit-music-wrap{order:9;}
-.toolkit-streaming{order:10;}
+/* Panel survey 2026-08-18 (J-1): regulation tools first, correct from first
+   paint with no JS. The Music/Streaming tiles that used to sit at order 9/10
+   (and at 1/2 for the owner, via a .is-owner body class toggled in showApp)
+   were removed entirely, so there is one order for everyone now and the
+   .is-owner overrides went with them. */
 .toolkit-breath{order:1;}
 .toolkit-mood{order:2;}
 .toolkit-journal{order:3;}
@@ -3462,16 +3332,6 @@ body.capacitor-native .pd-topbar{padding-top:max(env(safe-area-inset-top),46px) 
    new tile makes the count even, so total grid rows are unchanged (the
    629px-tile constraint that killed the subtitles). */
 .toolkit-reset{order:8;}
-body.is-owner .toolkit-music-wrap{order:1;}
-body.is-owner .toolkit-streaming{order:2;}
-body.is-owner .toolkit-breath{order:3;}
-body.is-owner .toolkit-mood{order:4;}
-body.is-owner .toolkit-journal{order:5;}
-body.is-owner .toolkit-workout{order:6;}
-body.is-owner .toolkit-halt{order:7;}
-body.is-owner .toolkit-urge{order:8;}
-body.is-owner .toolkit-wellness{order:9;}
-body.is-owner .toolkit-reset{order:10;}
 .toolkit-grid .toolkit-btn:last-child:nth-child(odd){grid-column:1/-1;}
 /* padding/gap tightened 18->13 / 7->6 alongside the subtitle removal
    (2026-08-19): the old values were sized for a three-line tile (icon,
@@ -3505,25 +3365,6 @@ body.is-owner .toolkit-reset{order:10;}
 .toolkit-journal:hover{border-color:var(--purple);color:var(--purple);background:var(--purple-dim);}
 .toolkit-radar:hover{border-color:var(--blue);color:var(--blue);background:var(--blue-dim);}
 .toolkit-workout:hover{border-color:var(--orange);color:var(--orange);background:var(--orange-dim);}
-.toolkit-music:hover{border-color:#c77dba;color:#c77dba;background:rgba(199,125,186,0.12);}
-.toolkit-music.playing{border-color:#c77dba;background:rgba(199,125,186,0.08);color:#c77dba;}
-.music-controls{display:inline-flex;gap:6px;align-items:center;justify-content:center;margin-top:4px;}
-.music-ctrl-btn{background:rgba(199,125,186,0.18);border:1px solid #c77dba;color:#c77dba;width:26px;height:26px;border-radius:50%;font-size:calc(11px * var(--type-scale,1));cursor:pointer;display:inline-flex;align-items:center;justify-content:center;transition:all 0.15s;padding:0;line-height:1;user-select:none;font-family:inherit;}
-.music-ctrl-btn.music-skip:hover{background:#c77dba;color:#fff;transform:scale(1.1);}
-.music-emoji-spin{animation:music-pulse 1.6s ease-in-out infinite;display:inline-block;}
-@keyframes music-pulse{0%,100%{opacity:1;transform:scale(1);}50%{opacity:0.6;transform:scale(0.9);}}
-
-/* Music dropdown */
-.toolkit-music-wrap{position:relative;display:flex;}
-.toolkit-music-wrap .toolkit-btn{flex:1;}
-.music-dropdown{position:absolute;top:calc(100% + 6px);left:0;right:0;background:var(--surface-raised);border:1.5px solid #c77dba;border-radius:var(--radius-sm);box-shadow:0 8px 20px rgba(0,0,0,0.4);z-index:200;overflow:hidden;}
-.music-dropdown-item{display:flex;align-items:center;gap:8px;padding:9px 12px;cursor:pointer;font-size:calc(13px * var(--type-scale,1));color:var(--text);border-bottom:1px solid var(--border);transition:background 0.15s;}
-.music-dropdown-item:last-child{border-bottom:none;}
-.music-dropdown-item:hover{background:rgba(199,125,186,0.15);color:#c77dba;}
-.music-dropdown-item.current{background:rgba(199,125,186,0.1);color:#c77dba;font-weight:600;}
-.music-dropdown-item .music-dropdown-icon{font-size:calc(16px * var(--type-scale,1));flex-shrink:0;width:20px;text-align:center;}
-.music-dropdown-item .music-dropdown-name{flex:1;}
-.music-dropdown-item .music-dropdown-check{font-size:calc(12px * var(--type-scale,1));color:#c77dba;}
 
 /* ── NOTIFICATION SETTINGS ── */
 .notif-row{display:flex;align-items:center;justify-content:space-between;gap:10px;padding:8px 0;font-size:calc(13px * var(--type-scale,1));color:var(--text-dim);flex-wrap:wrap;}

@@ -2,8 +2,6 @@
 <!-- APP (hidden until auth) -->
 <div class="app-wrap" id="appWrap">
 <div class="header">
-  <!-- Left: Points Badge + Focus Music system -->
-  <div id="points-focus-music-root"></div>
   <!-- Center: Bar + title overlay + subtitle below -->
   <div class="header-center">
     <div id="day-timeline-banner-root"></div>
@@ -37,7 +35,6 @@
 </div>
 
 <!-- Fireworks overlay (for tier-up celebration) -->
-<div class="fireworks-overlay" id="fireworksOverlay"></div>
 <!-- Emergency theme overlays (fire/police night themes) -->
 <div id="emsStrobe"></div>
 <div id="emsFire"></div>
@@ -48,7 +45,6 @@
 <!-- Storm theme overlays -->
 <div id="stormLayer"></div>
 <div id="lightningFlash"></div>
-<!-- Point popup container (rendered by PointsFocusMusic component) -->
 
 <div class="focus-banner" id="focusBanner" style="display:none;">
   <div class="focus-banner-inner">
@@ -372,9 +368,6 @@
 <button class="btn" onclick="closeCustomize();openWeeklyReview();">&#128198; Weekly Review</button>
 <button class="btn" onclick="closeCustomize();openPointsInsights();">&#128200; Insights</button>
 </div>
-<div style="border-bottom:1px solid var(--border);margin:16px 0;"></div>
-<div class="section-label" style="margin-bottom:8px;">Points</div>
-<div id="pointsSettings"></div>
 <div style="border-bottom:1px solid var(--border);margin:16px 0;"></div>
 <!-- Kids Mode was fully separated from the product 2026-08-11 (Joe's call).
      R13.5 had already hidden it on native; this removes the web entry point
@@ -760,7 +753,6 @@
 
 <!-- QUICK CAPTURE (R9) -->
 <div id="quick-capture-modal-root"></div>
-<div id="points-music-overlays-root"></div>
 
 <!-- ONBOARDING TOUR (R11) -->
 <div id="onboarding-tour-root"></div>
@@ -813,7 +805,6 @@
 </div>
 </div>
 
-<!-- Music Streaming Modal (rendered by PointsFocusMusic component) -->
 
 <!-- REMINDER POPUP -->
 <div class="rem-popup-overlay hidden" id="reminderPopupOverlay" onclick="if(event.target===this)closeReminderPopup()">

@@ -26,45 +26,6 @@ export default function ToolKitPanel() {
           without blocking anything. */}
       <div id="toolkitExplainer"></div>
       <div className="toolkit-grid">
-        <div className="toolkit-music-wrap">
-          <button
-            className="toolkit-btn toolkit-music"
-            id="focusMusicBtn"
-            onClick={e => window.musicHandleClick(e.nativeEvent)}
-            title="Click to play/pause • Use ☰ to switch playlists"
-          >
-            <span className="music-emoji" id="musicEmoji">&#127925;</span>
-            <span id="musicLabel">Music</span>
-            <span className="music-controls" id="musicControls" style={{ display: 'none' }}>
-              <span className="music-ctrl-btn" id="musicStateIcon">&#9654;</span>
-              <span
-                className="music-ctrl-btn music-skip"
-                onClick={e => { e.stopPropagation(); window.focusMusicSkip(); }}
-                title="Next track"
-                role="button"
-                tabIndex={0}
-              >&#9197;</span>
-              <span
-                className="music-ctrl-btn music-menu"
-                onClick={e => { e.stopPropagation(); window.musicToggleDropdown(e.nativeEvent); }}
-                title="Switch playlist"
-                role="button"
-                tabIndex={0}
-              >&#9776;</span>
-            </span>
-          </button>
-          <div className="music-dropdown" id="musicDropdown" style={{ display: 'none' }}></div>
-        </div>
-        <button
-          className="toolkit-btn toolkit-streaming"
-          id="toolkitMusicStreamBtn"
-          onClick={() => window.openMusicStreamingModal()}
-          title="Open Spotify, Apple Music, or Amazon Music"
-          style={{ display: 'none' }}
-        >
-          <i className="ti ti-headphones" aria-hidden="true"></i>
-          <span>Streaming</span>
-        </button>
         {/* Crisis resources moved to the status-bar ribbon (Joe, 2026-08-19)
             -- see StatusBar.jsx, next to Settings. Always-reachable there
             regardless of which Tool Kit tiles are shown/hidden. */}
@@ -121,7 +82,6 @@ export default function ToolKitPanel() {
           <span>Reset</span>
         </button>
       </div>
-      {/* YouTube player host (rendered by PointsFocusMusic component) */}
     </>
   );
 }
