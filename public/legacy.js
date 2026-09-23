@@ -8154,9 +8154,14 @@ function getAllTasks(){
   });
   // Add standalone tasks
   (state.tasks||[]).forEach(function(t){
+    // The React project page tags a task through projectIds only (no
+    // projectId). Reading projectId alone rendered those rows as "+ project",
+    // which invited re-tagging them -- the move that duplicated "check
+    // centerpost" on 2026-09-23. Same either-field rule every project view uses.
+    var pid=t.projectId||(t.projectIds&&t.projectIds[0])||'';
     var pName='';
-    if(t.projectId){var pr=state.projects.find(function(p){return p.id===t.projectId;});if(pr)pName=pr.name;}
-    tasks.push({id:t.id,name:t.name,done:t.done,priority:t.priority||'med',timeEst:t.timeEst||'',time:t.time||'',due:t.due||'',recurrence:t.recurrence||null,alertBefore:t.alertBefore||0,projectId:t.projectId||'',projectName:pName,source:'standalone'});
+    if(pid){var pr=state.projects.find(function(p){return p.id===pid;});if(pr)pName=pr.name;}
+    tasks.push({id:t.id,name:t.name,done:t.done,priority:t.priority||'med',timeEst:t.timeEst||'',time:t.time||'',due:t.due||'',recurrence:t.recurrence||null,alertBefore:t.alertBefore||0,projectId:pid,projectName:pName,source:'standalone'});
   });
   return tasks;
 }
