@@ -1505,8 +1505,9 @@ function _renderSyncPopover(){
 // TOMBSTONES -- deletion and completion are durable, synced FACTS, never the
 // mere absence of an item from an array (absence can't survive a merge). Every
 // genuine delete/complete records the id here; reconcileSync (public/sync-merge.js)
-// unions these across devices and drops any resurrected id. Do NOT call this for
-// a MOVE that reuses an id (e.g. task -> subtask) -- that id is still live.
+// unions these across devices and drops any resurrected id. A MOVE between
+// arrays never reuses the id: it is a new id plus a tombstone on the old one
+// (see editTaskProject) -- a reused id is resurrected at its old location.
 function _tombstone(id){
   if(id==null)return;
   if(!state._tombstones)state._tombstones={};
@@ -3144,33 +3145,61 @@ function editTaskTimeEst(taskId,source,projectId,val){
   }
   _flushPendingPanelRenders();
 }
+// A MOVE between locations (task -> subtask, subtask -> task, project ->
+// project) is a NEW id plus a tombstone on the old one -- never an id reused
+// in a new place. The merge unions each array (and each project's subtasks) by
+// id and has no notion of location, so a reused id stayed at its OLD location
+// on any stale copy and the next union brought it back: one item stored twice
+// under one id (2026-09-23 "check centerpost": a Centerpost subtask at 7a daily
+// plus a ghost in the task list, and deleting either tombstoned both).
+// The whole item rides along -- the old field-by-field copies dropped the start
+// time, repeat and reminder -- and linked timeline blocks are re-pointed at the
+// new id so a scheduled slot survives the move.
 function editTaskProject(taskId,source,oldProjectId,newProjectId){
   _dateEditActive=null;
+  var item,fromProj=null,toProj=null;
   if(source==='standalone'){
-    var t=(state.tasks||[]).find(function(x){return x.id===taskId;});
-    if(!t)return;
-    if(newProjectId){
-      var p=state.projects.find(function(x){return x.id===newProjectId;});
-      if(!p)return;
-      p.subtasks.push({id:t.id,name:t.name,due:t.due,priority:t.priority,timeEst:t.timeEst||'',done:t.done});
-      state.tasks=state.tasks.filter(function(x){return x.id!==taskId;});
-    }else{
-      t.projectId='';t.projectIds=[];_stampEdit(t);
+    item=(state.tasks||[]).find(function(x){return x.id===taskId;});
+    if(!item)return;
+    if(!newProjectId){
+      // Already standalone: clearing its tags is an in-place edit, not a move.
+      item.projectId='';item.projectIds=[];_stampEdit(item);
+      save();renderProjects();renderTaskList();
+      _flushPendingPanelRenders();
+      return;
     }
   }else{
-    var op=state.projects.find(function(x){return x.id===oldProjectId;});
-    if(!op)return;
-    var si=op.subtasks.findIndex(function(x){return x.id===taskId;});
-    if(si<0)return;
-    var sub=op.subtasks.splice(si,1)[0];
-    if(newProjectId){
-      var np=state.projects.find(function(x){return x.id===newProjectId;});
-      if(np)np.subtasks.push(sub);
-    }else{
-      state.tasks.push({id:sub.id,name:sub.name,due:sub.due,priority:sub.priority,timeEst:sub.timeEst||'',projectId:'',projectIds:[],done:sub.done});
-    }
+    fromProj=state.projects.find(function(x){return x.id===oldProjectId;});
+    item=fromProj&&fromProj.subtasks.find(function(x){return x.id===taskId;});
+    if(!item||newProjectId===oldProjectId)return;
   }
+  if(newProjectId){
+    toProj=state.projects.find(function(x){return x.id===newProjectId;});
+    if(!toProj)return;
+  }
+  var moved=JSON.parse(JSON.stringify(item));
+  moved.id=(toProj?'st':'tk')+Date.now()+Math.random().toString(36).slice(2,7);
+  // Subtasks carry their project by location, tasks by tag. An explicit move
+  // also takes it out of any linked group -- completing it must no longer
+  // clear copies in projects it has left.
+  if(toProj){delete moved.projectId;delete moved.projectIds;}
+  else{moved.projectId='';moved.projectIds=[];}
+  delete moved.linkGroupId;
+  _stampEdit(moved);
+  if(fromProj)fromProj.subtasks=fromProj.subtasks.filter(function(x){return x.id!==taskId;});
+  else state.tasks=state.tasks.filter(function(x){return x.id!==taskId;});
+  _tombstone(taskId);
+  if(toProj)toProj.subtasks.push(moved);
+  else state.tasks.push(moved);
+  (state.tlBlocks||[]).forEach(function(b){
+    if(!b||b.linkedId!==taskId)return;
+    b.linkedId=moved.id;
+    b.linkedType=toProj?'subtask':'task';
+    b.projectId=toProj?toProj.id:'';
+    _stampEdit(b);
+  });
   save();renderProjects();renderTaskList();
+  if(typeof renderTimeline==='function')renderTimeline();
   _flushPendingPanelRenders();
 }
 // Shared opener for the tl-inline-picker dropdowns (time/project/repeat).

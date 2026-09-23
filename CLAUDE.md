@@ -68,9 +68,13 @@ Two repos:
   Firestore doc (users/{uid}/data/dashboard), so every save() overwrites the
   whole field — a stale client that still holds a pre-delete array will clobber.
 - Every genuine delete/complete calls `_tombstone(id)` (legacy.js), which records
-  the id in the grow-only map `state._tombstones` = { id: deletedAtISO }. Do NOT
-  tombstone a MOVE that reuses an id (e.g. task -> subtask) — that id is still
-  live, and reconciliation would wrongly drop it.
+  the id in the grow-only map `state._tombstones` = { id: deletedAtISO }.
+- A MOVE between arrays (task <-> subtask, project -> project) must NEVER reuse
+  the id. The merge unions by id with no notion of location, so a reused id is
+  restored at its OLD location by any stale copy — the item then exists twice
+  under one id, and deleting either copy tombstones both (2026-09-23). A move
+  is a new id + `_tombstone(oldId)`, carrying the whole item and re-pointing
+  linked tlBlocks (see editTaskProject).
 - Reconciliation lives in the pure module public/sync-merge.js (reconcileSync),
   called from both load() and the onSnapshot listener. It unions item arrays by
   id (so concurrent adds on two devices both survive) and drops any id in the

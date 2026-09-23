@@ -967,3 +967,41 @@ test('bannerDone: completions on two devices both survive, live tombstone does n
   const out = reconcileSync(local, cloud);
   assert.deepEqual(out.bannerDone.map(e => e.id).sort(), ['tA', 'tB']);
 });
+
+// Moving an item between arrays (2026-09-23, "check centerpost"). The merge
+// unions by id with no notion of LOCATION, so a move that reuses the id is
+// restored at its old location by any stale pre-move copy: one item, two
+// places, one id. editTaskProject now moves under a NEW id and tombstones the
+// old one; a stale copy then has nothing left to bring back.
+const PRE_MOVE = {
+  tasks:    [ { id:'tl1', name:'check centerpost', due:'2026-09-23', timeEst:'30', projectIds:['p1'] } ],
+  projects: [ { id:'p1', name:'Centerpost', subtasks:[] } ],
+};
+test('BUG (id-reusing move): a stale pre-move copy duplicates the moved item', () => {
+  const local = {
+    tasks:    [],
+    projects: [ { id:'p1', name:'Centerpost', subtasks:[ { id:'tl1', name:'check centerpost', due:'2026-09-23', timeEst:'30' } ] } ],
+  };
+  const out = reconcileSync(local, JSON.parse(JSON.stringify(PRE_MOVE)));
+  assert.equal(out.tasks.length, 1, 'the old task-list copy comes back');
+  assert.equal(out.projects[0].subtasks.length, 1, 'alongside the moved copy');
+  assert.equal(out.tasks[0].id, out.projects[0].subtasks[0].id, 'under the SAME id');
+});
+test('FIX (new id + tombstone): the moved item exists once, only at its new location', () => {
+  const local = {
+    tasks:    [],
+    projects: [ { id:'p1', name:'Centerpost', subtasks:[ { id:'st9', name:'check centerpost', due:'2026-09-23', timeEst:'30', time:'07:00',
+                  recurrence:{freq:'daily',interval:1}, updatedAt:'2026-09-23T20:00:00.000Z' } ] } ],
+    tlBlocks: [ { id:'tlb1', linkedId:'st9', linkedType:'subtask', projectId:'p1', updatedAt:'2026-09-23T20:00:00.000Z' } ],
+    _tombstones: { tl1: '2026-09-23T20:00:00.000Z' },
+  };
+  const stale = Object.assign(JSON.parse(JSON.stringify(PRE_MOVE)), {
+    tlBlocks: [ { id:'tlb1', linkedId:'tl1', linkedType:'task', projectId:'' } ],
+  });
+  for (const out of [reconcileSync(local, stale), reconcileSync(stale, local)]) {
+    assert.deepEqual(out.tasks, [], 'no ghost in the task list');
+    assert.deepEqual(out.projects[0].subtasks.map(s => s.id), ['st9']);
+    assert.equal(out.projects[0].subtasks[0].time, '07:00', 'start time carried');
+    assert.equal(out.tlBlocks[0].linkedId, 'st9', 'stamped relink beats the stale block');
+  }
+});
