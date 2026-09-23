@@ -10260,25 +10260,12 @@ function openArchivedProjectModal(pid){
     +'<button class="btn btn-sm btn-danger" onclick="purgeCompletedProject(\''+pid+'\')" title="Permanently delete">Delete Forever</button>';
 }
 
+// Delegates to toggleSubtask rather than keeping its own copy: the copy that
+// used to live here drifted and never tombstoned, unlinked tlBlocks, or
+// materialized recurrence -- so a modal-checked subtask resurrected from a
+// stale device and a recurring one ended its series.
 function pmdToggleSubtask(pid,sid){
-  var p=state.projects.find(function(pr){return pr.id===pid;});
-  if(!p)return;
-  var s=p.subtasks.find(function(st){return st.id===sid;});
-  if(!s)return;
-  var srcEl=document.querySelector('.pmd-st-check[onclick*="'+sid+'"]');
-  _archiveCompletedTask({
-    id:s.id,name:s.name,projectName:p.name,projectId:p.id,
-    archivedAt:new Date().toISOString(),source:'project'
-  });
-  if(s.linkGroupId){
-    state.projects.forEach(function(pr){
-      pr.subtasks=pr.subtasks.filter(function(x){return x.linkGroupId!==s.linkGroupId;});
-    });
-  }else{
-    p.subtasks=p.subtasks.filter(function(x){return x.id!==sid;});
-  }
-  save();renderProjects();renderTaskList();
-  if(typeof renderBannerBlocks==='function')renderBannerBlocks();   // see toggleTaskDone
+  toggleSubtask(pid,sid);
   openProjectModal(pid); // refresh modal
 }
 
