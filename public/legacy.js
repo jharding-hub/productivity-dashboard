@@ -3402,8 +3402,13 @@ function showTaskProjectPicker(taskId,source,projectId,el){
   html+=projs.map(function(p){return '<div class="tl-pick-item'+(p.id===projectId?' tl-pick-current':'')+'" onclick="event.stopPropagation();editTaskProject(\''+taskId+'\',\''+source+'\',\''+projectId+'\',\''+p.id+'\')">'+esc(p.name)+'</div>';}).join('');
   _showInlinePicker(el,html);
 }
-function editReminderDate(id,v){const r=state.reminders.find(r=>r.id===id);if(r){r.date=v;_stampEdit(r);save();renderReminders();}}
-function editReminderTime(id,v){const r=state.reminders.find(r=>r.id===id);if(r){r.time=v;_stampEdit(r);save();renderReminders();}}
+// Moving a reminder to a new day or time RE-ARMS it, the way Snooze already
+// does. _dismissed/_autoScheduled used to ride along to the new date, so a
+// reminder dismissed once never popped up again after being moved, and any
+// moved reminder never got its timeline block on the new day.
+function _rearmReminder(r){delete r._dismissed;delete r._done;r._autoScheduled=false;}
+function editReminderDate(id,v){const r=state.reminders.find(r=>r.id===id);if(r){if(r.date!==v)_rearmReminder(r);r.date=v;_stampEdit(r);save();renderReminders();}}
+function editReminderTime(id,v){const r=state.reminders.find(r=>r.id===id);if(r){if(r.time!==v)_rearmReminder(r);r.time=v;_stampEdit(r);save();renderReminders();}}
 // makeDateClickable / makeTimeClickable moved to public/inline-edit.js (globals).
 
 // Helper -- projects sorted A→Z, used everywhere projects are listed
@@ -17918,16 +17923,16 @@ function _reminderPopupRemoveItem(id){
   if(list&&!list.querySelector('.rem-popup-item'))closeReminderPopup();
 }
 
+// The SAME completion as the check in the Reminders panel (completeReminder:
+// archive + tombstone). This used to set a _done flag nothing else reads, so a
+// reminder "marked done" here stayed in the Reminders list, never archived.
 function reminderPopupDone(id){
-  var r=(state.reminders||[]).find(function(r){return r.id===id;});
-  if(r){r._done=true;r._dismissed=true;_stampEdit(r);}
   // Remove any auto-scheduled timeline block for this reminder
   _tlRemoveBlocks(function(b){return b.linkedId===id;});
-  save();
-  if(typeof renderReminders==='function')renderReminders();
+  if(typeof completeReminder==='function')completeReminder(id);
+  save();   // persists the block removal even if the reminder was already gone
   if(typeof renderTimeline==='function')renderTimeline();
   _reminderPopupRemoveItem(id);
-  toast('Reminder marked done');
 }
 
 function reminderPopupDismiss(id){
