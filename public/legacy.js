@@ -2774,15 +2774,25 @@ window.addEventListener('pagehide',_flushPendingOp);
 function _undoableArrayDelete(opts){
   // opts: {label, items:[...], removeNow(), commitTombstones(), restore()}
   opts.removeNow();
+  _notifyStateChange();
   _startUndoableOp(opts.label,function(){
     opts.commitTombstones();
     opts.removeNow();   // re-filter: a mid-window merge may have re-added them
     save();
     if(opts.afterCommit)opts.afterCommit();
+    _notifyStateChange();
   },function(){
     opts.restore();
     if(opts.afterRevert)opts.afterRevert();
+    _notifyStateChange();
   });
+}
+// The React project page (src/components/ProjectDashboard.jsx) listens for this
+// to re-render. It routes deletes through the functions above, and those can
+// land AFTER its own handler returns (the recurring "this one / series" dialog,
+// an Undo 8s later) -- without this event the page kept showing a deleted row.
+function _notifyStateChange(){
+  try{window.dispatchEvent(new Event('centerpost-state-change'));}catch(e){}
 }
 
 function deleteProject(id){_confirm('Delete project and all subtasks?',function(){

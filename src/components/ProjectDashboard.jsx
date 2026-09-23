@@ -117,7 +117,11 @@ function scheduleTask(t, day, time, duration) {
 
 function unscheduleTask(itemId) {
   const s = getState();
-  s.tlBlocks = (s.tlBlocks || []).filter(b => b.id !== itemId && b.linkedId !== itemId);
+  const match = b => b.id === itemId || b.linkedId === itemId;
+  // tlBlocks is a tombstone-synced array: a bare filter() is not a deletion,
+  // the id-union merge restores the block from any other copy.
+  if (typeof window._tlRemoveBlocks === 'function') window._tlRemoveBlocks(match);
+  else s.tlBlocks = (s.tlBlocks || []).filter(b => !match(b));
   save();
   if (typeof window.renderTimeline === 'function') window.renderTimeline();
   if (typeof window.updateDayProgress === 'function') window.updateDayProgress();
@@ -561,26 +565,40 @@ export default function ProjectDashboard({ open, initialProjectId, onClose }) {
     taskInputRef.current?.focus();
   };
 
+  // Completing and deleting go through legacy.js's own paths, never a local
+  // flip/filter. A completion must archive, tombstone, unlink its timeline
+  // block and spawn the next repeat; a delete must tombstone and offer undo and
+  // the "this one / entire series" choice. This page used to just set done:true
+  // or filter the array -- no tombstone, so a stale device brought the item
+  // back, and a repeating task ended its series.
   const toggleTask = (t) => {
-    if (t._source === 'subtask') {
-      const proj = s.projects.find(p => p.id === t._pid);
-      const st = proj?.subtasks.find(st => st.id === t.id);
-      if (st) st.done = !st.done;
-    } else {
-      const task = (s.tasks || []).find(x => x.id === t.id);
-      if (task) task.done = !task.done;
+    if (!t.done) {
+      if (t._source === 'subtask' && typeof window.toggleSubtask === 'function') {
+        window.toggleSubtask(t._pid, t.id); refresh(); return;
+      }
+      if (t._source !== 'subtask' && typeof window.toggleTaskDone === 'function') {
+        window.toggleTaskDone(t.id, 'standalone', ''); refresh(); return;
+      }
+    }
+    // Un-checking a row this page marked done:true before the fix above is an
+    // in-place edit -- stamped so the merge keeps it.
+    const item = t._source === 'subtask'
+      ? s.projects.find(p => p.id === t._pid)?.subtasks.find(st => st.id === t.id)
+      : (s.tasks || []).find(x => x.id === t.id);
+    if (item) {
+      item.done = !item.done;
+      if (typeof window._stampEdit === 'function') window._stampEdit(item);
     }
     save(); refresh(); syncLegacy();
   };
 
   const deleteTask = (t) => {
-    if (t._source === 'subtask') {
-      const proj = s.projects.find(p => p.id === t._pid);
-      if (proj) proj.subtasks = proj.subtasks.filter(st => st.id !== t.id);
-    } else {
-      s.tasks = (s.tasks || []).filter(x => x.id !== t.id);
+    if (t._source === 'subtask' && typeof window.deleteSubtask === 'function') {
+      window.deleteSubtask(t._pid, t.id);
+    } else if (t._source !== 'subtask' && typeof window.deleteStandaloneTask === 'function') {
+      window.deleteStandaloneTask(t.id);
     }
-    save(); refresh(); syncLegacy();
+    refresh();
   };
 
   const addNote = () => {
