@@ -1555,6 +1555,45 @@ function _stampEdit(it){
   return it;
 }
 
+// gcalEventId preservation across a snapshot. An onSnapshot can carry stale
+// Firestore data while a push is in flight, and the cloud spread would wipe the
+// ids just set -- the next push then creates duplicate events. So the snapshot
+// handler collects this device's ids first and re-applies them after the merge.
+//
+// ONLY while connected. state.gcal rides the cloud spread, so after a
+// Disconnect on another device every snapshot here says connected:false; the
+// old unconditional re-apply put this device's ids straight back and its next
+// save() undid the Disconnect everywhere. When disconnected the ids point at a
+// calendar nobody tracks any more, so they are stripped. Deliberately NOT
+// stamped: every device reaches the same result on its own, and a stamp would
+// let this device's copy of each item beat real edits made elsewhere.
+function _gcalCollectIds(){
+  var ids={};
+  (state.tasks||[]).forEach(function(t){if(t.gcalEventId)ids['t:'+t.id]=t.gcalEventId;});
+  (state.projects||[]).forEach(function(p){
+    if(p.gcalEventId)ids['p:'+p.id]=p.gcalEventId;
+    (p.subtasks||[]).forEach(function(s){if(s.gcalEventId)ids['s:'+s.id]=s.gcalEventId;});
+  });
+  (state.reminders||[]).forEach(function(r){if(r.gcalEventId)ids['r:'+r.id]=r.gcalEventId;});
+  (state.tlBlocks||[]).forEach(function(b){if(b.gcalEventId)ids['b:'+b.id]=b.gcalEventId;});
+  return ids;
+}
+function _gcalReapplyIds(ids){
+  var connected=!!(state.gcal&&state.gcal.connected);
+  function fix(it,key){
+    if(!it)return;
+    if(!connected){if(it.gcalEventId)delete it.gcalEventId;return;}
+    if(!it.gcalEventId&&ids[key])it.gcalEventId=ids[key];
+  }
+  (state.tasks||[]).forEach(function(t){fix(t,'t:'+t.id);});
+  (state.projects||[]).forEach(function(p){
+    fix(p,'p:'+p.id);
+    (p.subtasks||[]).forEach(function(s){fix(s,'s:'+s.id);});
+  });
+  (state.reminders||[]).forEach(function(r){fix(r,'r:'+r.id);});
+  (state.tlBlocks||[]).forEach(function(b){fix(b,'b:'+b.id);});
+}
+
 // SAVE -- writes to localStorage + Firestore (per-user)
 var saveTimer=null;
 var _saveSkipCount=0; // consecutive writes skipped because cloud was newer (E-1)
@@ -1865,14 +1904,7 @@ function startRealtimeSync(){
       // in progress (debounced save hasn't committed yet). Without this guard,
       // the cloud spread overwrites newly-set gcalEventIds → next push creates
       // duplicate calendar events instead of updating existing ones.
-      var _gcalLocal={};
-      (state.tasks||[]).forEach(function(t){if(t.gcalEventId)_gcalLocal['t:'+t.id]=t.gcalEventId;});
-      (state.projects||[]).forEach(function(p){
-        if(p.gcalEventId)_gcalLocal['p:'+p.id]=p.gcalEventId;
-        (p.subtasks||[]).forEach(function(s){if(s.gcalEventId)_gcalLocal['s:'+s.id]=s.gcalEventId;});
-      });
-      (state.reminders||[]).forEach(function(r){if(r.gcalEventId)_gcalLocal['r:'+r.id]=r.gcalEventId;});
-      (state.tlBlocks||[]).forEach(function(b){if(b.gcalEventId)_gcalLocal['b:'+b.id]=b.gcalEventId;});
+      var _gcalLocal=_gcalCollectIds();
 
       // Preserve panel visibility/knownPanels from current session -- these were
       // already initialized by initPanelVisibility() and must not be overwritten
@@ -1968,14 +2000,8 @@ function startRealtimeSync(){
         }
       }
 
-      // Re-apply any gcalEventIds that were wiped by the cloud spread
-      (state.tasks||[]).forEach(function(t){if(!t.gcalEventId&&_gcalLocal['t:'+t.id])t.gcalEventId=_gcalLocal['t:'+t.id];});
-      (state.projects||[]).forEach(function(p){
-        if(!p.gcalEventId&&_gcalLocal['p:'+p.id])p.gcalEventId=_gcalLocal['p:'+p.id];
-        (p.subtasks||[]).forEach(function(s){if(!s.gcalEventId&&_gcalLocal['s:'+s.id])s.gcalEventId=_gcalLocal['s:'+s.id];});
-      });
-      (state.reminders||[]).forEach(function(r){if(!r.gcalEventId&&_gcalLocal['r:'+r.id])r.gcalEventId=_gcalLocal['r:'+r.id];});
-      (state.tlBlocks||[]).forEach(function(b){if(!b.gcalEventId&&_gcalLocal['b:'+b.id])b.gcalEventId=_gcalLocal['b:'+b.id];});
+      // Re-apply gcalEventIds the cloud spread wiped -- only while connected.
+      _gcalReapplyIds(_gcalLocal);
 
       // A-2: another device may have changed the anchor. Apply it BEFORE the
       // renders below, so they draw the new day rather than the old one.
@@ -18523,6 +18549,7 @@ function gcalDisconnect(){
     (p.subtasks||[]).forEach(_unlink);
   });
   (state.reminders||[]).forEach(_unlink);
+  (state.tlBlocks||[]).forEach(_unlink);
   save();
   _gcalUpdateUI();
   if(typeof renderTimeline === 'function') renderTimeline();
