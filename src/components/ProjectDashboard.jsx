@@ -704,7 +704,9 @@ export default function ProjectDashboard({ open, initialProjectId, onClose }) {
               <button onClick={() => {
                 const name = prompt('Rename project:', selected.name);
                 if (name && name.trim()) {
-                  selected.name = name.trim(); save(); refresh(); syncLegacy();
+                  selected.name = name.trim();
+                  if (typeof window._stampEdit === 'function') window._stampEdit(selected);
+                  save(); refresh(); syncLegacy();
                 }
               }} style={{
                 background: 'none', border: 'none', color: 'var(--text-faint)',

@@ -3138,9 +3138,9 @@ function _deleteSubtaskNow(pid,sid,skipOnly){
   });
 }
 
-function editProjectName(pid,v){if(!v)return;const p=state.projects.find(p=>p.id===pid);if(p)p.name=v;save();}
+function editProjectName(pid,v){if(!v)return;const p=state.projects.find(p=>p.id===pid);if(p){p.name=v;_stampEdit(p);}save();}
 function editSubtaskName(pid,sid,v){if(!v)return;const p=state.projects.find(p=>p.id===pid);const s=p&&p.subtasks.find(s=>s.id===sid);if(s){s.name=v;_stampEdit(s);}save();renderTaskList();}
-function editProjectDue(pid,v){const p=state.projects.find(p=>p.id===pid);if(p){p.due=v;save();renderProjects();}}
+function editProjectDue(pid,v){const p=state.projects.find(p=>p.id===pid);if(p){p.due=v;_stampEdit(p);save();renderProjects();}}
 function editSubtaskDue(pid,sid,v){const p=state.projects.find(p=>p.id===pid);const s=p&&p.subtasks.find(s=>s.id===sid);if(s){s.due=v;_stampEdit(s);save();renderProjects();renderTaskList();var modalOpen=document.getElementById('projDetailModal').classList.contains('open');if(modalOpen)openProjectModal(pid);}}
 function editStandaloneTaskName(id,v){if(!v)return;var t=(state.tasks||[]).find(function(x){return x.id===id;});if(t){t.name=v;_stampEdit(t);save();renderTaskList();var modalOpen=document.getElementById('projDetailModal').classList.contains('open');if(modalOpen&&t.projectId)openProjectModal(t.projectId);else if(modalOpen&&t.projectIds&&t.projectIds.length)openProjectModal(t.projectIds[0]);}}
 function editStandaloneTaskDue(id,v){var t=(state.tasks||[]).find(function(x){return x.id===id;});if(t){t.due=v;_stampEdit(t);save();renderTaskList();var modalOpen=document.getElementById('projDetailModal').classList.contains('open');if(modalOpen&&t.projectId)openProjectModal(t.projectId);else if(modalOpen&&t.projectIds&&t.projectIds.length)openProjectModal(t.projectIds[0]);}}
@@ -3373,8 +3373,8 @@ function showTaskProjectPicker(taskId,source,projectId,el){
   html+=projs.map(function(p){return '<div class="tl-pick-item'+(p.id===projectId?' tl-pick-current':'')+'" onclick="event.stopPropagation();editTaskProject(\''+taskId+'\',\''+source+'\',\''+projectId+'\',\''+p.id+'\')">'+esc(p.name)+'</div>';}).join('');
   _showInlinePicker(el,html);
 }
-function editReminderDate(id,v){const r=state.reminders.find(r=>r.id===id);if(r){r.date=v;save();renderReminders();}}
-function editReminderTime(id,v){const r=state.reminders.find(r=>r.id===id);if(r){r.time=v;save();renderReminders();}}
+function editReminderDate(id,v){const r=state.reminders.find(r=>r.id===id);if(r){r.date=v;_stampEdit(r);save();renderReminders();}}
+function editReminderTime(id,v){const r=state.reminders.find(r=>r.id===id);if(r){r.time=v;_stampEdit(r);save();renderReminders();}}
 // makeDateClickable / makeTimeClickable moved to public/inline-edit.js (globals).
 
 // Helper -- projects sorted A→Z, used everywhere projects are listed
@@ -3448,7 +3448,7 @@ function promptEditProject(pid){
   const p=state.projects.find(p=>p.id===pid);if(!p)return;
   const newName=prompt('Rename project:',p.name);
   if(newName&&newName.trim()&&newName.trim()!==p.name){
-    p.name=newName.trim();save();renderProjects();renderTaskList();
+    p.name=newName.trim();_stampEdit(p);save();renderProjects();renderTaskList();
   }
 }
 
@@ -3567,7 +3567,7 @@ function _renderRemindersArchiveSection(){
   html+='</div>';
   return html;
 }
-function editReminderText(id,v){if(!v)return;const r=state.reminders.find(r=>r.id===id);if(r)r.text=v;save();}
+function editReminderText(id,v){if(!v)return;const r=state.reminders.find(r=>r.id===id);if(r){r.text=v;_stampEdit(r);}save();}
 // R7 stage 2 / R10: shared chronological reminder sort -- date first, then
 // time within a date (an untimed reminder means "sometime that day", so it
 // sorts ahead of the day's scheduled ones rather than falling through to
@@ -4286,7 +4286,7 @@ function deleteThought(id){
   });
 }
 function promoteThought(id){const th=state.thoughts.find(t=>t.id===id);if(!th)return;if(state.projects.length>0){const sp=_sortedProjects();const c=prompt('Promote to which project?\n\n'+sp.map((p,i)=>(i+1)+'. '+p.name).join('\n')+'\n\n(0 = reminders)','1');if(c===null)return;const idx=parseInt(c)-1;if(idx>=0&&idx<sp.length){sp[idx].subtasks.push({id:'st'+Date.now(),name:th.text,due:'',priority:'med',timeEst:'',done:false});deleteThought(id);renderProjects();renderTaskList();toast('Added to '+sp[idx].name);return;}}state.reminders.push({id:'rem'+Date.now(),text:th.text,date:'',time:''});deleteThought(id);renderReminders();toast('Moved to reminders');}
-function editThought(id,v){if(!v)return;const t=state.thoughts.find(t=>t.id===id);if(t)t.text=v;save();}
+function editThought(id,v){if(!v)return;const t=state.thoughts.find(t=>t.id===id);if(t){t.text=v;_stampEdit(t);}save();}
 
 // ===========================================================================
 // BRAIN DUMP ORGANIZER -- Axis sorts thoughts into projects/tasks/notes
@@ -8665,11 +8665,11 @@ function _tlPlusDays(dayStr,days){
 function _tlSetDueByRef(ref,newDue){
   if(ref.source==='standalone'){
     var t=(state.tasks||[]).find(function(x){return x.id===ref.id;});
-    if(t)t.due=newDue;
+    if(t){t.due=newDue;_stampEdit(t);}
   }else{
     var p=state.projects.find(function(p){return p.id===ref.projectId;});
     var s=p&&p.subtasks.find(function(s){return s.id===ref.id;});
-    if(s)s.due=newDue;
+    if(s){s.due=newDue;_stampEdit(s);}
   }
 }
 function _tlTriageBarHTML(all,today){
@@ -15175,6 +15175,7 @@ function _writeBlock(dateStr,timeVal,durVal){
       existing.date=dateStr;
       existing.time=timeVal;
       existing.duration=durVal;
+      _stampEdit(existing);
       save();
       closeWorkTodayModal();
       renderProjects();renderTaskList();renderTimeline();
@@ -15469,6 +15470,7 @@ function _tlAttachDragHandlers(el,blockId,mode,derived,dateStr){
     }
     if(liveBlock){
       liveBlock.time=newTime;
+      _stampEdit(liveBlock);
       save();
       renderTimeline();
       if(typeof updateDayProgress==='function')updateDayProgress();
@@ -17876,7 +17878,7 @@ function _reminderPopupRemoveItem(id){
 
 function reminderPopupDone(id){
   var r=(state.reminders||[]).find(function(r){return r.id===id;});
-  if(r){r._done=true;r._dismissed=true;}
+  if(r){r._done=true;r._dismissed=true;_stampEdit(r);}
   // Remove any auto-scheduled timeline block for this reminder
   _tlRemoveBlocks(function(b){return b.linkedId===id;});
   save();
@@ -17888,7 +17890,7 @@ function reminderPopupDone(id){
 
 function reminderPopupDismiss(id){
   var r=(state.reminders||[]).find(function(r){return r.id===id;});
-  if(r)r._dismissed=true;
+  if(r){r._dismissed=true;_stampEdit(r);}
   save();
   _reminderPopupRemoveItem(id);
   toast('Reminder dismissed for today');
@@ -17924,6 +17926,7 @@ function reminderPopupSnooze(id){
     r.time=newTime;
     r._dismissed=false;
     r._autoScheduled=false;
+    _stampEdit(r);
     // Remove the old auto-scheduled block -- new date might be different
     _tlRemoveBlocks(function(b){return b.linkedId===id;});
     save();
