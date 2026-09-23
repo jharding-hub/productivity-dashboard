@@ -3042,16 +3042,67 @@ function toggleSubtask(pid,sid){
 // radius is large (project, bulk) -- for one item, undo is strictly kinder
 // than interrogation: no dialog to dismiss, and the mistake is reversible
 // for 8 seconds instead of guarded by a reflex-click.
+// \u2500\u2500 Recurring delete: "This one only" vs "Entire series" (2026-09-23) \u2500\u2500
+// A recurring task is ONE stored item: the next copy only exists once the
+// current one is completed (_materializeRecurrence). So a plain delete ended
+// the whole series. "This one only" deletes this copy and spawns the next
+// occurrence right away -- a skip; "Entire series" is the old plain delete.
+// The spawned copy is a NEW id (same as the completion path), never a
+// due-date bump of the old one: a linked tlBlock or gcalEventId still points
+// at the old id, and _tlCollectBlocks suppresses auto-placement for any id a
+// tlBlock links to, so reusing the id would hide the next occurrence.
+function _recurNextDue(item){
+  if(!item||!item.recurrence||!item.due||typeof _nextRecurrenceDate!=='function')return null;
+  return _nextRecurrenceDate(item.due,item.recurrence);
+}
+function _recurNextCopy(item,prefix){
+  var nextDue=_recurNextDue(item);
+  if(!nextDue)return null;
+  var c=JSON.parse(JSON.stringify(item));
+  c.id=prefix+Date.now()+Math.random().toString(36).slice(2,5);
+  c.due=nextDue;c.done=false;
+  // Per-occurrence fields that must not carry over to the next copy.
+  delete c.gcalEventId;delete c.updatedAt;delete c.completedAt;delete c.linkGroupId;
+  return c;
+}
+// onSeries/onOne are the two outcomes; a non-recurring delete skips the
+// dialog and runs onSeries (the plain delete) exactly as before.
+function _askRecurDelete(isRecurring,msg,onSeries,onOne){
+  if(!isRecurring){onSeries();return;}
+  _confirm(msg,onSeries,{destructive:true,icon:'ti-repeat',confirmText:'Entire series',altText:'This one only',onAlt:onOne});
+}
+function _recurSkipLabel(name,next){
+  return 'Skipped \u201c'+name+'\u201d \u2014 next one '+_recurDueLabel(next.due);
+}
+function _recurDueLabel(day){
+  var d=new Date(day+'T00:00:00');
+  return isNaN(d.getTime())?day:d.toLocaleDateString(undefined,{weekday:'short',month:'short',day:'numeric'});
+}
+
 function deleteSubtask(pid,sid){
   const p=state.projects.find(p=>p.id===pid);
   const snap=p&&p.subtasks.find(s=>s.id===sid);
   if(!p||!snap)return;
+  _askRecurDelete(!!_recurNextDue(snap),'\u201c'+(snap.name||'subtask')+'\u201d repeats. Delete just this one, or the entire series?',
+    function(){_deleteSubtaskNow(pid,sid,false);},
+    function(){_deleteSubtaskNow(pid,sid,true);});
+}
+// The dialog-free delete. The Google Calendar wrapper (end of file) wraps
+// THIS, not deleteSubtask, so cancelling the dialog leaves the event alone.
+function _deleteSubtaskNow(pid,sid,skipOnly){
+  const p=state.projects.find(p=>p.id===pid);
+  const snap=p&&p.subtasks.find(s=>s.id===sid);
+  if(!p||!snap)return;
   const idx=p.subtasks.indexOf(snap);
+  const next=skipOnly?_recurNextCopy(snap,'st'):null;
   _undoableArrayDelete({
-    label:'Deleted \u201c'+(snap.name||'subtask')+'\u201d',
-    removeNow:function(){var pr=state.projects.find(x=>x.id===pid);if(pr)pr.subtasks=pr.subtasks.filter(s=>s.id!==sid);renderProjects();renderTaskList();},
+    label:next?_recurSkipLabel(snap.name||'subtask',next):'Deleted \u201c'+(snap.name||'subtask')+'\u201d',
+    removeNow:function(){var pr=state.projects.find(x=>x.id===pid);if(pr){pr.subtasks=pr.subtasks.filter(s=>s.id!==sid);if(next&&!pr.subtasks.some(s=>s.id===next.id))pr.subtasks.push(next);}renderProjects();renderTaskList();},
     commitTombstones:function(){_tombstone(sid);},
-    restore:function(){var pr=state.projects.find(x=>x.id===pid);if(pr&&!pr.subtasks.some(s=>s.id===sid))pr.subtasks.splice(Math.min(idx,pr.subtasks.length),0,snap);renderProjects();renderTaskList();}
+    restore:function(){var pr=state.projects.find(x=>x.id===pid);if(pr&&next)pr.subtasks=pr.subtasks.filter(s=>s.id!==next.id);if(pr&&!pr.subtasks.some(s=>s.id===sid))pr.subtasks.splice(Math.min(idx,pr.subtasks.length),0,snap);renderProjects();renderTaskList();},
+    // The spawned copy may have ridden an unrelated save() during the undo
+    // window; tombstone it so no other device keeps it.
+    afterRevert:next?function(){_tombstone(next.id);save();}:null
   });
 }
 
@@ -8869,7 +8920,26 @@ function _tlBulkDelete(){
   var ids=Object.keys(_tlSelected);
   if(!ids.length){toast('No tasks selected');return;}
   var all=getAllTasks();
-  _confirm('Delete '+ids.length+' selected task'+(ids.length!==1?'s':'')+'?',function(){
+  var msg='Delete '+ids.length+' selected task'+(ids.length!==1?'s':'')+'?';
+  var nRecur=all.filter(function(t){return _tlSelected[t.id]&&_recurNextDue(t);}).length;
+  // Recurring items in the selection: ask ONCE for all of them (see
+  // _askRecurDelete). "This one only" skips each repeating item to its next
+  // occurrence; non-repeating items are deleted either way.
+  if(nRecur){
+    _confirm(msg+' '+nRecur+' of them repeat'+(nRecur===1?'s':'')+' \u2014 delete just this occurrence, or the entire series?',
+      function(){_tlBulkDeleteNow(ids,all,false);},
+      {destructive:true,icon:'ti-repeat',confirmText:'Entire series',altText:'This one only',onAlt:function(){_tlBulkDeleteNow(ids,all,true);}});
+  }else{
+    _confirm(msg,function(){_tlBulkDeleteNow(ids,all,false);},{destructive:true,confirmText:'Delete'});
+  }
+}
+function _bulkDeleteLabel(nDel,nSkip){
+  var parts=[];
+  if(nDel)parts.push('Deleted '+nDel+' task'+(nDel!==1?'s':''));
+  if(nSkip)parts.push((nDel?'skipped ':'Skipped ')+nSkip+' repeating');
+  return parts.join(', ');
+}
+function _tlBulkDeleteNow(ids,all,skipOnly){
     // A2-4: snapshot the real objects (not the getAllTasks copies) so revert
     // can put back the exact items, standalone or subtask.
     var snaps=[];
@@ -8887,17 +8957,37 @@ function _tlBulkDelete(){
     });
     if(!snaps.length)return;
     _tlSelected=Object.create(null);
+    // Next copies for the repeating items, built ONCE -- removeNow runs twice
+    // (apply + commit) and must not mint a second id the second time.
+    var nexts=[];
+    if(skipOnly)snaps.forEach(function(sn){
+      var c=_recurNextCopy(sn.item,sn.kind==='standalone'?'tk':'st');
+      if(c)nexts.push({kind:sn.kind,projectId:sn.projectId,item:c});
+    });
     _undoableArrayDelete({
-      label:'Deleted '+snaps.length+' task'+(snaps.length!==1?'s':''),
+      label:_bulkDeleteLabel(snaps.length-nexts.length,nexts.length),
       removeNow:function(){
         var byId={};snaps.forEach(function(sn){byId[sn.item.id]=1;});
         state.tasks=(state.tasks||[]).filter(function(x){return !byId[x.id];});
         state.projects.forEach(function(p){p.subtasks=p.subtasks.filter(function(x){return !byId[x.id];});});
+        nexts.forEach(function(nx){
+          if(nx.kind==='standalone'){
+            if(!state.tasks.some(function(x){return x.id===nx.item.id;}))state.tasks.push(nx.item);
+          }else{
+            var p=state.projects.find(function(x){return x.id===nx.projectId;});
+            if(p&&!p.subtasks.some(function(x){return x.id===nx.item.id;}))p.subtasks.push(nx.item);
+          }
+        });
         renderProjects();renderTaskList();
         if(typeof _refreshTodayViewIfVisible==='function')_refreshTodayViewIfVisible();
       },
       commitTombstones:function(){snaps.forEach(function(sn){_tombstone(sn.item.id);});},
       restore:function(){
+        var nextIds={};nexts.forEach(function(nx){nextIds[nx.item.id]=1;});
+        if(nexts.length){
+          state.tasks=(state.tasks||[]).filter(function(x){return !nextIds[x.id];});
+          state.projects.forEach(function(p){p.subtasks=p.subtasks.filter(function(x){return !nextIds[x.id];});});
+        }
         snaps.forEach(function(sn){
           if(sn.kind==='standalone'){
             if(!state.tasks.some(function(x){return x.id===sn.item.id;}))state.tasks.push(sn.item);
@@ -8908,9 +8998,10 @@ function _tlBulkDelete(){
         });
         renderProjects();renderTaskList();
         if(typeof _refreshTodayViewIfVisible==='function')_refreshTodayViewIfVisible();
-      }
+      },
+      // Same as the single delete: a spawned copy may have ridden a save().
+      afterRevert:nexts.length?function(){nexts.forEach(function(nx){_tombstone(nx.item.id);});save();}:null
     });
-  },{destructive:true,confirmText:'Delete'});
 }
 
 
@@ -9486,12 +9577,22 @@ function addStandaloneTask(){
 function deleteStandaloneTask(id){
   var snap=state.tasks.find(function(t){return t.id===id;});
   if(!snap)return;
+  _askRecurDelete(!!_recurNextDue(snap),'\u201c'+(snap.name||'task')+'\u201d repeats. Delete just this one, or the entire series?',
+    function(){_deleteStandaloneTaskNow(id,false);},
+    function(){_deleteStandaloneTaskNow(id,true);});
+}
+// Dialog-free delete; the Google Calendar wrapper wraps this (see deleteSubtask).
+function _deleteStandaloneTaskNow(id,skipOnly){
+  var snap=state.tasks.find(function(t){return t.id===id;});
+  if(!snap)return;
   var idx=state.tasks.indexOf(snap);
+  var next=skipOnly?_recurNextCopy(snap,'tk'):null;
   _undoableArrayDelete({
-    label:'Deleted \u201c'+(snap.name||'task')+'\u201d',
-    removeNow:function(){state.tasks=state.tasks.filter(function(t){return t.id!==id;});renderTaskList();if(typeof _refreshTodayViewIfVisible==='function')_refreshTodayViewIfVisible();},
+    label:next?_recurSkipLabel(snap.name||'task',next):'Deleted \u201c'+(snap.name||'task')+'\u201d',
+    removeNow:function(){state.tasks=state.tasks.filter(function(t){return t.id!==id;});if(next&&!state.tasks.some(function(t){return t.id===next.id;}))state.tasks.push(next);renderTaskList();if(typeof _refreshTodayViewIfVisible==='function')_refreshTodayViewIfVisible();},
     commitTombstones:function(){_tombstone(id);},
-    restore:function(){if(!state.tasks.some(function(t){return t.id===id;}))state.tasks.splice(Math.min(idx,state.tasks.length),0,snap);renderTaskList();if(typeof _refreshTodayViewIfVisible==='function')_refreshTodayViewIfVisible();}
+    restore:function(){if(next)state.tasks=state.tasks.filter(function(t){return t.id!==next.id;});if(!state.tasks.some(function(t){return t.id===id;}))state.tasks.splice(Math.min(idx,state.tasks.length),0,snap);renderTaskList();if(typeof _refreshTodayViewIfVisible==='function')_refreshTodayViewIfVisible();},
+    afterRevert:next?function(){_tombstone(next.id);save();}:null
   });
 }
 
@@ -18888,11 +18989,11 @@ setTimeout(function(){
   };
 })();
 
-// Wrap deleteStandaloneTask: propagate delete to Google
+// Wrap _deleteStandaloneTaskNow (post-dialog, so Cancel never reaches Google): propagate delete
 (function(){
-  if(typeof deleteStandaloneTask !== 'function') return;
-  var _orig = deleteStandaloneTask;
-  deleteStandaloneTask = function(id){
+  if(typeof _deleteStandaloneTaskNow !== 'function') return;
+  var _orig = _deleteStandaloneTaskNow;
+  _deleteStandaloneTaskNow = function(id){
     try {
       if(state.gcal && state.gcal.connected){
         var t = (state.tasks||[]).find(function(x){return x.id===id;});
@@ -18903,11 +19004,11 @@ setTimeout(function(){
   };
 })();
 
-// Wrap deleteSubtask: propagate delete
+// Wrap _deleteSubtaskNow (post-dialog): propagate delete
 (function(){
-  if(typeof deleteSubtask !== 'function') return;
-  var _orig = deleteSubtask;
-  deleteSubtask = function(pid, sid){
+  if(typeof _deleteSubtaskNow !== 'function') return;
+  var _orig = _deleteSubtaskNow;
+  _deleteSubtaskNow = function(pid, sid){
     try {
       if(state.gcal && state.gcal.connected){
         var p = (state.projects||[]).find(function(x){return x.id===pid;});
