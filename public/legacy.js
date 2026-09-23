@@ -3006,13 +3006,11 @@ function _toggleProjCompleted(pid){
   renderProjects();
 }
 function addSubtask(pid){const ne=document.getElementById('stN_'+pid),de=document.getElementById('stD_'+pid),te=document.getElementById('stT_'+pid);const nm=ne.value.trim();if(!nm)return;const pr=state.projects.find(p=>p.id===pid);if(!pr)return;const q=_applyQuickAdd(nm,{due:de.value},{date:true,time:true,recurrence:true});pr.subtasks.push({id:'st'+Date.now(),name:q.name,due:q.due,priority:'med',timeEst:te?te.value:'',time:q.time||'',done:false,recurrence:q.recurrence});ne.value='';de.value='';save();renderProjects();renderTaskList();}
-function toggleSubtask(pid,sid){
-  const p=state.projects.find(p=>p.id===pid);
-  if(!p)return;
-  const s=p.subtasks.find(s=>s.id===sid);
-  if(!s)return;
-  // Capture source element for popup positioning
-  var srcEl=document.querySelector('.st-check[onclick*="'+sid+'"]');
+// The one subtask-completion path -- data only, no save/render. Every caller
+// (toggleSubtask, toggleTaskDone's project branch, pmdToggleSubtask via
+// toggleSubtask) goes through here: separate copies of this used to drift, and
+// the modal's copy silently stopped tombstoning.
+function _completeSubtask(p,s){
   // Archive completed subtask (single record per group)
   _archiveCompletedTask({
     id:s.id,name:s.name,projectName:p.name,projectId:p.id,
@@ -3026,15 +3024,22 @@ function toggleSubtask(pid,sid){
       pr.subtasks=pr.subtasks.filter(function(x){if(x.linkGroupId===s.linkGroupId){_tombstone(x.id);_tlUnlinkBlocks(x.id);return false;}return true;});
     });
   }else{
-    _tombstone(sid);
-    _tlUnlinkBlocks(sid);
-    p.subtasks=p.subtasks.filter(x=>x.id!==sid);
+    _tombstone(s.id);
+    _tlUnlinkBlocks(s.id);
+    p.subtasks=p.subtasks.filter(x=>x.id!==s.id);
   }
   // `time` rides along with timeEst -- a recurring 6am workout has to come back
   // at 6am tomorrow, not fall back to the auto-placed slot.
   if(typeof _materializeRecurrence==='function')_materializeRecurrence(s,function(nextDue){
     p.subtasks.push({id:'st'+Date.now()+Math.random().toString(36).slice(2,5),name:s.name,due:nextDue,priority:s.priority,timeEst:s.timeEst||'',time:s.time||'',done:false,recurrence:s.recurrence});
   });
+}
+function toggleSubtask(pid,sid){
+  const p=state.projects.find(p=>p.id===pid);
+  if(!p)return;
+  const s=p.subtasks.find(s=>s.id===sid);
+  if(!s)return;
+  _completeSubtask(p,s);
   save();renderProjects();renderTaskList();
   if(typeof renderBannerBlocks==='function')renderBannerBlocks();   // see toggleTaskDone
 }
@@ -9493,24 +9498,7 @@ function toggleTaskDone(id,source,projId){
     var p=state.projects.find(function(p){return p.id===projId;});
     if(p){
       var s=p.subtasks.find(function(s){return s.id===id;});
-      if(s){
-        _archiveCompletedTask({
-          id:s.id,name:s.name,projectName:p.name,projectId:p.id,
-          archivedAt:new Date().toISOString(),source:'project'
-        });
-        if(s.linkGroupId){
-          state.projects.forEach(function(pr){
-            pr.subtasks=pr.subtasks.filter(function(x){if(x.linkGroupId===s.linkGroupId){_tombstone(x.id);_tlUnlinkBlocks(x.id);return false;}return true;});
-          });
-        }else{
-          _tombstone(id);
-          _tlUnlinkBlocks(id);
-          p.subtasks=p.subtasks.filter(function(x){return x.id!==id;});
-        }
-        if(typeof _materializeRecurrence==='function')_materializeRecurrence(s,function(nextDue){
-          p.subtasks.push({id:'st'+Date.now()+Math.random().toString(36).slice(2,5),name:s.name,due:nextDue,priority:s.priority,timeEst:s.timeEst||'',time:s.time||'',done:false,recurrence:s.recurrence});
-        });
-      }
+      if(s)_completeSubtask(p,s);
     }
     renderProjects();
   }else{
