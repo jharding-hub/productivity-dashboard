@@ -5156,7 +5156,10 @@ function toggleNoteEdit(id){
   if(editing){
     var clean = _sanitizeNoteHtml(editor.innerHTML);
     var n = state.notes.find(function(x){return x.id===id;});
-    if(n){ n.body = clean; n.rich = true; save(); }
+    // Done fires even when nothing changed. Stamp only a real change: an
+    // unconditional stamp let a device holding a STALE body win just by closing
+    // the editor later than the device that actually edited it.
+    if(n){ if(n.body!==clean||!n.rich){ n.body = clean; n.rich = true; _stampEdit(n); } save(); }
     if(rendered){ rendered.innerHTML = _renderNoteBody(n||{body:clean,rich:true}); rendered.style.display=''; }
     editor.style.display='none';
     if(bar) bar.style.display='none';
@@ -5444,7 +5447,7 @@ function renderNotes(){
       bi.addEventListener('blur',()=>{
         var clean=_sanitizeNoteHtml(bi.innerHTML);
         var nn=state.notes.find(function(x){return x.id===n.id;});
-        if(nn){ nn.body=clean; nn.rich=true; save(); }
+        if(nn){ if(nn.body!==clean||!nn.rich){ nn.body=clean; nn.rich=true; _stampEdit(nn); } save(); }   // see toggleNoteEdit
         var r=document.getElementById('nbr_'+n.id);
         if(r)r.innerHTML=_renderNoteBody(nn||{body:clean,rich:true});
       });
@@ -18511,12 +18514,15 @@ function gcalDisconnect(){
   _gcalTokenClient = null;
   state.gcal = {connected:false,email:null,calendarId:null,autoPush:false,showExternal:true,lastPush:null,lastPull:null,pulledEvents:[]};
   // Clear gcalEventId markers from all items (they reference a calendar we no longer track)
-  (state.tasks||[]).forEach(function(t){ delete t.gcalEventId; });
+  // Stamp only items that actually carried an id: a blanket stamp would make
+  // this device's copy of EVERY item newest, reverting edits made elsewhere.
+  function _unlink(it){ if(it&&it.gcalEventId){ delete it.gcalEventId; _stampEdit(it); } }
+  (state.tasks||[]).forEach(_unlink);
   (state.projects||[]).forEach(function(p){
-    delete p.gcalEventId;
-    (p.subtasks||[]).forEach(function(s){ delete s.gcalEventId; });
+    _unlink(p);
+    (p.subtasks||[]).forEach(_unlink);
   });
-  (state.reminders||[]).forEach(function(r){ delete r.gcalEventId; });
+  (state.reminders||[]).forEach(_unlink);
   save();
   _gcalUpdateUI();
   if(typeof renderTimeline === 'function') renderTimeline();
@@ -18728,7 +18734,8 @@ async function gcalPushAll(){
         name: t.name, date: t.due, time: t.time, durMin: parseInt(t.timeEst)||60,
         priority: t.priority||'med', kind: 'task', sourceId: t.id, existingEventId: t.gcalEventId
       });
-      if(eid){ t.gcalEventId = eid; pushed++; } else { failed++; }
+      // Stamp only a CHANGED id (a PUT returns the same one): see gcalDisconnect.
+      if(eid){ if(t.gcalEventId!==eid){ t.gcalEventId = eid; _stampEdit(t); } pushed++; } else { failed++; }
     }
 
     // 2. Project subtasks with due date (not done)
@@ -18742,7 +18749,7 @@ async function gcalPushAll(){
           priority: st.priority||'med', kind: 'subtask', projectName: proj.name,
           sourceId: st.id, existingEventId: st.gcalEventId
         });
-        if(seid){ st.gcalEventId = seid; pushed++; } else { failed++; }
+        if(seid){ if(st.gcalEventId!==seid){ st.gcalEventId = seid; _stampEdit(st); } pushed++; } else { failed++; }
       }
     }
 
@@ -18754,7 +18761,7 @@ async function gcalPushAll(){
         name: rem.text, date: rem.date, time: rem.time, durMin: 30,
         priority: 'med', kind: 'reminder', sourceId: rem.id, existingEventId: rem.gcalEventId
       });
-      if(reid){ rem.gcalEventId = reid; pushed++; } else { failed++; }
+      if(reid){ if(rem.gcalEventId!==reid){ rem.gcalEventId = reid; _stampEdit(rem); } pushed++; } else { failed++; }
     }
 
     // 4. Manual timeline blocks
@@ -18786,7 +18793,7 @@ async function gcalPushAll(){
         priority: blk.priority||'med', kind: 'block', projectName: projName,
         sourceId: blk.id, existingEventId: blk.gcalEventId
       });
-      if(beid){ blk.gcalEventId = beid; pushed++; } else { failed++; }
+      if(beid){ if(blk.gcalEventId!==beid){ blk.gcalEventId = beid; _stampEdit(blk); } pushed++; } else { failed++; }
     }
 
     state.gcal.lastPush = new Date().toISOString();
