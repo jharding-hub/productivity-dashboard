@@ -1518,8 +1518,11 @@ function _tombstone(id){
 // which makes a bare filter() no longer a deletion: the union with any other
 // copy of the doc brings the block straight back. Removal must be recorded as
 // a tombstone, the same synced fact every other active array records. Block
-// ids are generated (tlb<ts><rand> / rem_tl_<id>_<ts>), never reused, so a
-// tombstone here can never suppress a future legitimate add.
+// ids are generated (tlb<ts><rand>), never reused, so a tombstone here can
+// never suppress a future legitimate add -- with ONE deliberate exception:
+// reminder auto-blocks use a deterministic id (rem_tl_<id>_<day>_<time|auto>,
+// see autoScheduleTodayReminders) precisely SO that the tombstone suppresses
+// re-creating a block the user deleted.
 function _tlRemoveBlocks(pred){
   if(!state.tlBlocks)return;
   state.tlBlocks=state.tlBlocks.filter(function(b){
@@ -17805,6 +17808,16 @@ function autoScheduleTodayReminders(){
     // Skip if already on timeline (by linkedId)
     var alreadyOn=(state.tlBlocks||[]).some(function(b){return b.linkedId===r.id&&b.date===today;});
     if(alreadyOn){r._autoScheduled=true;return;}
+    // DETERMINISTIC id: reminder + day + its set time ('auto' when untimed --
+    // never the computed slot, which differs per device and per minute). Two
+    // devices that both run this now create the SAME block and the id-union
+    // keeps one (random ids gave one block per device). And a block the user
+    // deleted is tombstoned under this id, so it is never re-created -- the
+    // _autoScheduled flag alone could not guarantee that, being an automatic
+    // (unstamped) write a snapshot echo can revert. Moving the reminder to a
+    // new day or time is a new id, so it is scheduled afresh.
+    var autoId='rem_tl_'+r.id+'_'+today+'_'+(r.time?String(r.time).replace(':',''):'auto');
+    if(state._tombstones&&state._tombstones[autoId]){r._autoScheduled=true;return;}
 
     // Default duration: 30min. If reminder has a time, use that exact slot.
     var dur=30;
@@ -17828,7 +17841,7 @@ function autoScheduleTodayReminders(){
     var timeStr=(h<10?'0':'')+h+':'+(m<10?'0':'')+m;
 
     state.tlBlocks.push({
-      id:'rem_tl_'+r.id+'_'+Date.now(),
+      id:autoId,
       name:'🔔 '+r.text,
       date:today,
       time:timeStr,
