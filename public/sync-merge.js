@@ -116,7 +116,12 @@ var SYNC_ACTIVE_ARRAYS = ['reminders','tasks','notes','thoughts','tlBlocks'];
 // Firestore doc; it reconciles on load with these same helpers there (see
 // _loadCompletedTasksDoc in legacy.js). completedProjects/completedWorkouts
 // stay here until their own split, so _archiveTombstones is still in use.
-var SYNC_UNION_ARRAYS = ['completedProjects','completedWorkouts'];
+// bannerDone joined 2026-09-23: today's completed-task slots drawn grey on the
+// day banner. Entry ids are the completed task's id (already live-tombstoned,
+// hence this list, not SYNC_ACTIVE_ARRAYS). Pruned to today on every add; a
+// stale device may union old days back in, which the render ignores (day
+// filter) and the next completion prunes again.
+var SYNC_UNION_ARRAYS = ['completedProjects','completedWorkouts','bannerDone'];
 
 // ── Device heartbeats (panel survey 2026-08-22, I2-8) ────────────────────
 // state._devices = { deviceId: { n: "Mac · Chrome", t: lastSeenMs } } rides

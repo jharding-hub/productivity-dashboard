@@ -955,3 +955,15 @@ test('FIX: the remap holds for tasks and reminders too, through reconcileSync', 
   assert.deepEqual(out.tasks[0].projectIds,     [NEW_PID], 'task remap survives');
   assert.deepEqual(out.reminders[0].projectIds, [NEW_PID], 'reminder remap survives');
 });
+
+// Completed tasks stay on the day banner (2026-09-23). state.bannerDone rides
+// SYNC_UNION_ARRAYS: the entry id IS the completed task's id, which the
+// completion already put in the LIVE tombstone map -- so it must union across
+// devices and must NOT be dropped by that tombstone.
+test('bannerDone: completions on two devices both survive, live tombstone does not drop them', () => {
+  const tomb = { tA: '2026-09-23T14:00:00.000Z', tB: '2026-09-23T15:00:00.000Z' };
+  const local = { _tombstones: tomb, bannerDone: [{ id: 'tA', day: '2026-09-23', startMin: 540, durMin: 60 }] };
+  const cloud = { _tombstones: tomb, bannerDone: [{ id: 'tB', day: '2026-09-23', startMin: 660, durMin: 30 }] };
+  const out = reconcileSync(local, cloud);
+  assert.deepEqual(out.bannerDone.map(e => e.id).sort(), ['tA', 'tB']);
+});

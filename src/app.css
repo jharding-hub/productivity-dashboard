@@ -908,6 +908,8 @@ body.cmd-palette-open .mobile-tab-bar{z-index:1150;}
     height:48px !important;
     margin:0 !important;
   }
+  /* Completed-task strip (see .day-progress-bar-done) scales with the 9px labels. */
+  .header .day-progress-bar-done{height:11px;}
   /* Title lives ON the bar (scaled down from the 41px desktop treatment);
      the subtitle stays hidden — no room for it at <430px. */
   .header .header-title-on-bar{
@@ -2323,6 +2325,21 @@ body[data-theme="storm-dark"] .tl-hour-label{
 }
 .dpb-block:hover{opacity:1;transform:scaleY(1.08);}
 .dpb-block.dragging{cursor:grabbing;opacity:1;z-index:20;box-shadow:0 0 12px rgba(91,232,255,0.6),inset 0 1px 0 rgba(255,255,255,0.3);}
+/* Completed tasks (2026-09-23): translucent grey, parked along the TOP edge
+   of the bar -- the hour-number strip -- instead of vanishing. z-index 3 sits
+   UNDER the hour/edge labels (4) so the numbers stay readable over a block,
+   and under the live blocks strip (7). Not draggable. */
+.day-progress-bar-done{
+  position:absolute;left:0;right:0;top:0;height:16px;
+  pointer-events:none;z-index:3;
+}
+.dpb-done{
+  position:absolute;top:0;bottom:0;
+  border-radius:3px;
+  background:rgba(140,140,140,0.45);
+  border:1px solid rgba(255,255,255,0.22);
+  pointer-events:auto;cursor:default;
+}
 .tl-block.dragging{cursor:grabbing;opacity:0.85;z-index:20;box-shadow:0 0 16px rgba(91,232,255,0.5);}
 .tl-block{cursor:grab;}
 

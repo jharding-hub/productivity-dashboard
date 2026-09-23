@@ -80,6 +80,47 @@ function bannerSpanPct(win,startMin,endMin){
   return null;
 }
 
+// ── Completed tasks stay on the banner (2026-09-23) ─────────────────────
+// Checking off a task used to make its block vanish from the bar. Now it
+// stays for the rest of that day as a translucent grey block parked along the
+// TOP edge (the hour-number strip) -- see renderBannerBlocks in legacy.js.
+// The entries ride the dashboard blob as state.bannerDone, a union-by-id
+// synced array (SYNC_UNION_ARRAYS in sync-merge.js), so a completion on the
+// phone greys out on the desktop live. These three are pure so the rules
+// below are unit-tested (test/banner-done.test.mjs).
+//
+// bannerDoneEntry: where item `id` sat on `day`'s banner at the moment it was
+// completed, or null if it wasn't on that banner. That null IS the "finished
+// ahead of its scheduled day" rule: a task due Friday that's done on Wednesday
+// has no block on Wednesday's bar, so nothing is recorded, and on Friday there
+// is no live task left to draw -- it never appears on its scheduled day.
+function bannerDoneEntry(blocks,id,day,nowIso){
+  if(!id||!blocks)return null;
+  for(var i=0;i<blocks.length;i++){
+    var b=blocks[i];
+    if(b.itemId===id||(b.linkedId&&b.linkedId===id)){
+      if(b.startMin==null||isNaN(b.startMin))return null;
+      return {id:id,day:day,name:b.name||'',startMin:b.startMin,durMin:b.durMin||30,
+              projectId:b.projectId||'',updatedAt:nowIso||new Date().toISOString()};
+    }
+  }
+  return null;
+}
+// bannerDoneAdd: the new list after recording `entry` on `day`. Drops every
+// other day's entries (the list only ever holds today) and any older entry
+// for the same id. entry==null still prunes.
+function bannerDoneAdd(list,entry,day){
+  var out=(list||[]).filter(function(e){return e&&e.day===day&&(!entry||e.id!==entry.id);});
+  if(entry)out.push(entry);
+  return out;
+}
+// bannerDoneVisible: what to draw on `day` -- that day's entries only, and
+// never one whose item is live on the bar again (restored / un-completed).
+function bannerDoneVisible(list,day,liveIds){
+  liveIds=liveIds||{};
+  return (list||[]).filter(function(e){return e&&e.day===day&&!liveIds[e.id];});
+}
+
 function bannerHourLabel(h){
   h=((h%24)+24)%24;
   return ((h%12)||12)+(h<12?'a':'p');

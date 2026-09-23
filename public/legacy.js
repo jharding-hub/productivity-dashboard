@@ -3036,6 +3036,7 @@ function toggleSubtask(pid,sid){
     p.subtasks.push({id:'st'+Date.now()+Math.random().toString(36).slice(2,5),name:s.name,due:nextDue,priority:s.priority,timeEst:s.timeEst||'',time:s.time||'',done:false,recurrence:s.recurrence});
   });
   save();renderProjects();renderTaskList();
+  if(typeof renderBannerBlocks==='function')renderBannerBlocks();   // see toggleTaskDone
 }
 // Single-item deletes act immediately and offer Undo instead of asking
 // "are you sure" first (A2-4). The confirm survives only where the blast
@@ -9529,6 +9530,9 @@ function toggleTaskDone(id,source,projId){
     }
   }
   save();renderTaskList();_refreshTodayViewIfVisible();
+  // The bar only repaints with the Timeline panel; a completion must show its
+  // grey block (and drop the live one) now, not on the next unrelated repaint.
+  if(typeof renderBannerBlocks==='function')renderBannerBlocks();
 }
 
 function addStandaloneTask(){
@@ -10274,6 +10278,7 @@ function pmdToggleSubtask(pid,sid){
     p.subtasks=p.subtasks.filter(function(x){return x.id!==sid;});
   }
   save();renderProjects();renderTaskList();
+  if(typeof renderBannerBlocks==='function')renderBannerBlocks();   // see toggleTaskDone
   openProjectModal(pid); // refresh modal
 }
 
@@ -10317,6 +10322,9 @@ function _checkinsSince(days){
 // state.tasks etc.); that no longer carries completedTasks.
 var COMPLETED_TASKS_MAX=100;
 function _archiveCompletedTask(record){
+  // Every completion path archives BEFORE it removes the item and unlinks its
+  // blocks, so this is the one place the item's banner slot is still readable.
+  _recordBannerDone(record&&record.id);
   if(!state.completedTasks)state.completedTasks=[];
   state.completedTasks.unshift(record);
   if(state.completedTasks.length>COMPLETED_TASKS_MAX)state.completedTasks=state.completedTasks.slice(0,COMPLETED_TASKS_MAX);
@@ -15432,6 +15440,43 @@ function _tlAttachDragHandlers(el,blockId,mode,derived,dateStr){
 }
 
 
+// Completed tasks stay on the banner, greyed, along the top edge
+// (2026-09-23). Pure rules + the "completed early never shows" guarantee live
+// in day-progress.js (bannerDoneEntry/Add/Visible); state.bannerDone syncs
+// through SYNC_UNION_ARRAYS. Deliberately NOT part of _tlCollectBlocks: that
+// composite also feeds the widget, focus banner, conflict checks, free-slot
+// suggestions and the ICS/Google exports, none of which should see a done task.
+function _recordBannerDone(id){
+  if(!id||typeof bannerDoneEntry!=='function'||typeof _tlCollectBlocks!=='function')return;
+  var day=todayStr(),entry=null;
+  try{entry=bannerDoneEntry(_tlCollectBlocks(day),id,day);}catch(e){console.warn('[banner-done] snapshot failed',e);}
+  state.bannerDone=bannerDoneAdd(state.bannerDone,entry,day);
+}
+function _renderBannerDone(bar,blocks,win){
+  var old=bar.querySelector('.day-progress-bar-done');
+  if(old)old.remove();
+  if(typeof bannerDoneVisible!=='function')return;
+  var live={};
+  blocks.forEach(function(b){if(b.itemId)live[b.itemId]=1;if(b.linkedId)live[b.linkedId]=1;});
+  var done=bannerDoneVisible(state.bannerDone,todayStr(),live);
+  if(!done.length)return;
+  var strip=document.createElement('div');
+  strip.className='day-progress-bar-done';
+  done.forEach(function(e){
+    var span=bannerSpanPct(win,e.startMin,e.startMin+e.durMin);
+    if(!span)return;
+    var el=document.createElement('div');
+    el.className='dpb-done';
+    el.style.left=span.leftPct+'%';
+    el.style.width=span.widthPct+'%';
+    el.title='Completed: '+e.name+' -- '+_tlFmtTime(e.startMin)+' to '+_tlFmtEnd(e.startMin+e.durMin);
+    el.setAttribute('aria-label',el.title);
+    el.addEventListener('click',function(ev){ev.stopPropagation();toast('Completed: '+e.name);});
+    strip.appendChild(el);
+  });
+  bar.appendChild(strip);
+}
+
 function renderBannerBlocks(){
   var bar=document.getElementById('dayProgressBar');
   if(!bar)return;
@@ -15440,10 +15485,11 @@ function renderBannerBlocks(){
   if(existing)existing.remove();
   
   var blocks=_tlCollectBlocks();
-  if(blocks.length===0)return;
-  
   // The productive window (Settings ▸ Productive hours); may cross midnight.
   var win=bannerWindow();
+  // Completed (grey) blocks draw even when nothing live is left today.
+  _renderBannerDone(bar,blocks,win);
+  if(blocks.length===0)return;
   
   var palette=PROJECT_PALETTE;
   
