@@ -3129,19 +3129,19 @@ function _deleteSubtaskNow(pid,sid,skipOnly){
 }
 
 function editProjectName(pid,v){if(!v)return;const p=state.projects.find(p=>p.id===pid);if(p)p.name=v;save();}
-function editSubtaskName(pid,sid,v){if(!v)return;const p=state.projects.find(p=>p.id===pid);const s=p&&p.subtasks.find(s=>s.id===sid);if(s)s.name=v;save();renderTaskList();}
+function editSubtaskName(pid,sid,v){if(!v)return;const p=state.projects.find(p=>p.id===pid);const s=p&&p.subtasks.find(s=>s.id===sid);if(s){s.name=v;_stampEdit(s);}save();renderTaskList();}
 function editProjectDue(pid,v){const p=state.projects.find(p=>p.id===pid);if(p){p.due=v;save();renderProjects();}}
-function editSubtaskDue(pid,sid,v){const p=state.projects.find(p=>p.id===pid);const s=p&&p.subtasks.find(s=>s.id===sid);if(s){s.due=v;save();renderProjects();renderTaskList();var modalOpen=document.getElementById('projDetailModal').classList.contains('open');if(modalOpen)openProjectModal(pid);}}
-function editStandaloneTaskName(id,v){if(!v)return;var t=(state.tasks||[]).find(function(x){return x.id===id;});if(t){t.name=v;save();renderTaskList();var modalOpen=document.getElementById('projDetailModal').classList.contains('open');if(modalOpen&&t.projectId)openProjectModal(t.projectId);else if(modalOpen&&t.projectIds&&t.projectIds.length)openProjectModal(t.projectIds[0]);}}
-function editStandaloneTaskDue(id,v){var t=(state.tasks||[]).find(function(x){return x.id===id;});if(t){t.due=v;save();renderTaskList();var modalOpen=document.getElementById('projDetailModal').classList.contains('open');if(modalOpen&&t.projectId)openProjectModal(t.projectId);else if(modalOpen&&t.projectIds&&t.projectIds.length)openProjectModal(t.projectIds[0]);}}
+function editSubtaskDue(pid,sid,v){const p=state.projects.find(p=>p.id===pid);const s=p&&p.subtasks.find(s=>s.id===sid);if(s){s.due=v;_stampEdit(s);save();renderProjects();renderTaskList();var modalOpen=document.getElementById('projDetailModal').classList.contains('open');if(modalOpen)openProjectModal(pid);}}
+function editStandaloneTaskName(id,v){if(!v)return;var t=(state.tasks||[]).find(function(x){return x.id===id;});if(t){t.name=v;_stampEdit(t);save();renderTaskList();var modalOpen=document.getElementById('projDetailModal').classList.contains('open');if(modalOpen&&t.projectId)openProjectModal(t.projectId);else if(modalOpen&&t.projectIds&&t.projectIds.length)openProjectModal(t.projectIds[0]);}}
+function editStandaloneTaskDue(id,v){var t=(state.tasks||[]).find(function(x){return x.id===id;});if(t){t.due=v;_stampEdit(t);save();renderTaskList();var modalOpen=document.getElementById('projDetailModal').classList.contains('open');if(modalOpen&&t.projectId)openProjectModal(t.projectId);else if(modalOpen&&t.projectIds&&t.projectIds.length)openProjectModal(t.projectIds[0]);}}
 function editTaskTimeEst(taskId,source,projectId,val){
   _dateEditActive=null;
   if(source==='standalone'){
     var t=(state.tasks||[]).find(function(x){return x.id===taskId;});
-    if(t){t.timeEst=val;save();renderTaskList();}
+    if(t){t.timeEst=val;_stampEdit(t);save();renderTaskList();}
   }else{
     var p=state.projects.find(function(x){return x.id===projectId;});
-    if(p){var s=p.subtasks.find(function(x){return x.id===taskId;});if(s){s.timeEst=val;save();renderProjects();renderTaskList();}}
+    if(p){var s=p.subtasks.find(function(x){return x.id===taskId;});if(s){s.timeEst=val;_stampEdit(s);save();renderProjects();renderTaskList();}}
   }
   _flushPendingPanelRenders();
 }
@@ -3287,6 +3287,7 @@ function editTaskAlert(taskId,source,projectId,mins){
   }
   if(!target)return;
   if(mins)target.alertBefore=mins;else delete target.alertBefore;
+  _stampEdit(target);
   save();
   var pk=document.querySelector('.tl-inline-picker');
   if(pk){if(pk.parentElement)pk.parentElement.classList.remove('tl-picker-open');pk.remove();}
@@ -3303,6 +3304,7 @@ function editTaskStartTime(taskId,source,projectId,val){
   }
   if(!item)return;
   item.time=val;
+  _stampEdit(item);
   // A pinned tlBlock (dragged, or scheduled with the clock button) is canonical
   // and would suppress the new time entirely -- clear it so the explicit choice
   // the user just made is the one that shows.
@@ -3349,6 +3351,9 @@ function editTaskRecurrence(taskId,source,projectId,val){
     item.recurrence={freq:val,interval:1};
     if(!item.due)item.due=todayStr();
   }
+  // Stamped like every other edit to a synced item (see _stampEdit): unstamped,
+  // it ties the cloud copy and the next snapshot echo reverts the repeat.
+  _stampEdit(item);
   save();renderTaskList();_refreshTodayViewIfVisible();
   _flushPendingPanelRenders();
 }
