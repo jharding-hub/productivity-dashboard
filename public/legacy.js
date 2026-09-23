@@ -9525,7 +9525,9 @@ function toggleTaskDone(id,source,projId){
       _tlUnlinkBlocks(id);
       state.tasks=state.tasks.filter(function(x){return x.id!==id;});
       if(typeof _materializeRecurrence==='function')_materializeRecurrence(t,function(nextDue){
-        state.tasks.push({id:'tk'+Date.now()+Math.random().toString(36).slice(2,5),name:t.name,due:nextDue,priority:t.priority,timeEst:t.timeEst||'',time:t.time||'',projectId:'',projectIds:[],done:false,recurrence:t.recurrence});
+        // Carry the project tags forward -- the next copy used to be built with
+        // projectId:''/projectIds:[], so every completion stripped them.
+        state.tasks.push({id:'tk'+Date.now()+Math.random().toString(36).slice(2,5),name:t.name,due:nextDue,priority:t.priority,timeEst:t.timeEst||'',time:t.time||'',projectId:t.projectId||'',projectIds:(t.projectIds||[]).slice(),done:false,recurrence:t.recurrence});
       });
     }
   }
