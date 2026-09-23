@@ -3019,19 +3019,34 @@ function _completeSubtask(p,s){
   // Remove from this project AND any other project containing a linked sibling.
   // Completion is a durable fact -- tombstone every removed id so a stale device
   // can't re-add the checked item.
+  var removed=[];   // [{pr,x}] -- every copy this completion took out, and where it lived
   if(s.linkGroupId){
     state.projects.forEach(function(pr){
-      pr.subtasks=pr.subtasks.filter(function(x){if(x.linkGroupId===s.linkGroupId){_tombstone(x.id);_tlUnlinkBlocks(x.id);return false;}return true;});
+      pr.subtasks=pr.subtasks.filter(function(x){if(x.linkGroupId===s.linkGroupId){_tombstone(x.id);_tlUnlinkBlocks(x.id);removed.push({pr:pr,x:x});return false;}return true;});
     });
   }else{
     _tombstone(s.id);
     _tlUnlinkBlocks(s.id);
     p.subtasks=p.subtasks.filter(x=>x.id!==s.id);
+    removed.push({pr:p,x:s});
   }
+  // Every removed copy continues its own series in its own project -- a linked
+  // recurring subtask used to respawn only where it was ticked, so the other
+  // projects silently lost the series. The new copies stay linked, under a
+  // FRESH linkGroupId: a lingering old copy on a not-yet-merged device can then
+  // never take tomorrow's copies out with it.
   // `time` rides along with timeEst -- a recurring 6am workout has to come back
   // at 6am tomorrow, not fall back to the auto-placed slot.
-  if(typeof _materializeRecurrence==='function')_materializeRecurrence(s,function(nextDue){
-    p.subtasks.push({id:'st'+Date.now()+Math.random().toString(36).slice(2,5),name:s.name,due:nextDue,priority:s.priority,timeEst:s.timeEst||'',time:s.time||'',done:false,recurrence:s.recurrence});
+  if(typeof _materializeRecurrence!=='function')return;
+  var nextGroup=s.linkGroupId&&removed.filter(function(r){return r.x.recurrence&&r.x.due;}).length>1
+    ?'lg'+Date.now()+Math.random().toString(36).slice(2,5):null;
+  removed.forEach(function(r){
+    var x=r.x;
+    _materializeRecurrence(x,function(nextDue){
+      var c={id:'st'+Date.now()+Math.random().toString(36).slice(2,7),name:x.name,due:nextDue,priority:x.priority,timeEst:x.timeEst||'',time:x.time||'',done:false,recurrence:x.recurrence};
+      if(nextGroup)c.linkGroupId=nextGroup;
+      r.pr.subtasks.push(c);
+    });
   });
 }
 function toggleSubtask(pid,sid){
