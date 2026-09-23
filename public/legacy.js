@@ -19065,21 +19065,48 @@ setTimeout(function(){
 (function(){
   if(typeof addStandaloneTask !== 'function') return;
   var _orig = addStandaloneTask;
+  // Find what was ADDED by diffing ids, never "the last task in state.tasks":
+  // picking a project makes addStandaloneTask add SUBTASKS instead, and the old
+  // last-element guess then pushed an unrelated older task as a new Google
+  // event (a duplicate) and overwrote that task's gcalEventId.
+  function _taskIds(){
+    var ids = {};
+    (state.tasks||[]).forEach(function(t){ ids[t.id] = 1; });
+    (state.projects||[]).forEach(function(p){ (p.subtasks||[]).forEach(function(s){ ids[s.id] = 1; }); });
+    return ids;
+  }
+  // Re-found by id when the push resolves: a snapshot during the await can
+  // replace the arrays, leaving the object we started with detached.
+  function _findLive(id){
+    var t = (state.tasks||[]).find(function(x){ return x.id===id; });
+    if(t) return t;
+    for(var i=0;i<(state.projects||[]).length;i++){
+      var s = (state.projects[i].subtasks||[]).find(function(x){ return x.id===id; });
+      if(s) return s;
+    }
+    return null;
+  }
   addStandaloneTask = function(){
-    var beforeLen = (state.tasks||[]).length;
+    var before = _taskIds();
     var ret = _orig.apply(this, arguments);
     try {
       if(state.gcal && state.gcal.connected && state.gcal.autoPush){
-        // The new task is the last appended to state.tasks
-        var t = state.tasks[state.tasks.length-1];
-        if(t && t.due && !t.done){
+        var added = [];
+        (state.tasks||[]).forEach(function(t){ if(!before[t.id]) added.push({item:t, kind:'task'}); });
+        (state.projects||[]).forEach(function(p){
+          (p.subtasks||[]).forEach(function(s){ if(!before[s.id]) added.push({item:s, kind:'subtask', projectName:p.name}); });
+        });
+        added.forEach(function(a){
+          var t = a.item;
+          if(!t.due || t.done) return;
           _gcalPushItem({
             name: t.name, date: t.due, time: t.time, durMin: parseInt(t.timeEst)||60,
-            priority: t.priority||'med', kind: 'task', sourceId: t.id
+            priority: t.priority||'med', kind: a.kind, projectName: a.projectName, sourceId: t.id
           }).then(function(eid){
-            if(eid){ t.gcalEventId = eid; save(); }
+            var live = _findLive(t.id);
+            if(eid && live && live.gcalEventId!==eid){ live.gcalEventId = eid; _stampEdit(live); save(); }
           });
-        }
+        });
       }
     } catch(e){ console.warn('[gcal] auto-push task failed', e); }
     return ret;
