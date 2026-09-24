@@ -19,7 +19,8 @@
     "test:sky": "node --test test/sky-banner.test.mjs",
     "test:window": "node --test test/banner-window.test.mjs",
     "test:journal": "node --test test/journal-crypto.test.mjs",
-    "test:banner-done": "node --test test/banner-done.test.mjs"
+    "test:banner-done": "node --test test/banner-done.test.mjs",
+    "test:undef": "node --test test/undef-setters.test.mjs"
   },
   "repository": {
     "type": "git",
