@@ -559,7 +559,6 @@ export default function ProjectDashboard({ open, initialProjectId, onClose }) {
     });
     setNewTaskName('');
     setNewTaskDue('');
-    setNewTaskPri('med');
     setNewTaskTime('');
     save(); refresh(); syncLegacy();
     taskInputRef.current?.focus();
