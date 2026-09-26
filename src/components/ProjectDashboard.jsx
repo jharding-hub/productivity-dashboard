@@ -379,7 +379,17 @@ function tlParseTime(hhmm) {
   return parseInt(h) * 60 + parseInt(m);
 }
 
+// The SAME composite the home banner draws (2026-09-26, Joe: the project
+// page banner's "tasks and blocks don't match"). This used to read raw
+// tlBlocks only -- hand-added/scheduled blocks -- so every task or project
+// subtask with a start time, and the untimed 9am cascade, was missing here
+// while the home banner (renderBannerBlocks -> _tlCollectBlocks) showed it.
+// Same drift the watch payload had. The raw read below is only a fallback for
+// the moment before legacy.js has loaded.
 function collectTodayBlocks() {
+  try {
+    if (typeof window._tlCollectBlocks === 'function') return window._tlCollectBlocks(todayStr());
+  } catch (e) {}
   const s = getState();
   const today = todayStr();
   const blocks = [];
@@ -394,6 +404,19 @@ function collectTodayBlocks() {
     }
   });
   return blocks;
+}
+
+// Completed items for today's grey strip: state.bannerDone filtered by
+// day-progress.js's bannerDoneVisible, with the live block ids excluded
+// exactly as the home banner's _renderBannerDone does (a task un-completed
+// since shows as its live block, not twice).
+function collectBannerDone(blocks) {
+  try {
+    if (typeof window.bannerDoneVisible !== 'function') return [];
+    const live = {};
+    blocks.forEach(b => { if (b.itemId) live[b.itemId] = 1; if (b.linkedId) live[b.linkedId] = 1; });
+    return window.bannerDoneVisible(getState().bannerDone, todayStr(), live) || [];
+  } catch (e) { return []; }
 }
 
 function useClock() {
@@ -443,6 +466,7 @@ function ProjectBanner({ tick }) {
   }, []);
 
   const blocks = collectTodayBlocks();
+  const done = collectBannerDone(blocks);
   const markers = bannerMarkers(win);
 
   return (
@@ -466,6 +490,22 @@ function ProjectBanner({ tick }) {
       <div className="header-subtitle">
         <span className="hs-prod">Productivity</span>
       </div>
+      {/* Completed tasks, greyed along the top edge -- same data and rule as
+          the home banner's _renderBannerDone. Display-only here (Joe's call,
+          2026-09-26): no drag, no tap-to-edit, just the title on hover. */}
+      {done.length > 0 && (
+        <div className="day-progress-bar-done">
+          {done.map(e => {
+            const span = bannerSpan(win, e.startMin, e.startMin + e.durMin);
+            if (!span) return null;
+            return (
+              <div key={e.id} className="dpb-done" style={{
+                left: `${span.leftPct}%`, width: `${span.widthPct}%`,
+              }} title={'Completed: ' + e.name} />
+            );
+          })}
+        </div>
+      )}
       {blocks.length > 0 && (
         <div className="day-progress-bar-blocks">
           {blocks.map(b => {

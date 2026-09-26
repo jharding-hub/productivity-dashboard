@@ -937,6 +937,8 @@ body.cmd-palette-open .mobile-tab-bar{z-index:1150;}
   .pd-topbar .header-title-on-bar{font-size:calc(20px * var(--type-scale,1)) !important;}
   .pd-topbar .header-subtitle{display:none !important;}
   .pd-topbar .day-progress-marker-label{display:none !important;}
+  /* Completed-task strip, same phone height as the .header copy above. */
+  .pd-topbar .day-progress-bar-done{height:11px;}
   .pd-topbar .day-progress-edge-label{font-size:calc(9px * var(--type-scale,1)) !important;top:1px !important;font-weight:600 !important;}
   /* Keep the three quarter-point labels, via the pd-marker-key class the JSX
      sets -- NOT the [style*="left:20%"] attribute match the .header rules
@@ -2325,6 +2327,9 @@ body[data-theme="storm-dark"] .tl-hour-label{
 }
 .dpb-block:hover{opacity:1;transform:scaleY(1.08);}
 .dpb-block.dragging{cursor:grabbing;opacity:1;z-index:20;box-shadow:0 0 12px rgba(91,232,255,0.6),inset 0 1px 0 rgba(255,255,255,0.3);}
+/* The project page's banner is display-only (2026-09-26), so its blocks
+   must not advertise the home banner's drag-to-reschedule. */
+.pd-topbar .dpb-block{cursor:default;}
 /* Completed tasks (2026-09-23): translucent grey, parked along the TOP edge
    of the bar -- the hour-number strip -- instead of vanishing. z-index 3 sits
    UNDER the hour/edge labels (4) so the numbers stay readable over a block,
