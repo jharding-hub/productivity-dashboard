@@ -5673,7 +5673,13 @@ function _buildWatchSnapshot(){
   // drift from it.
   var todayForCount=(typeof _widgetDayPayload==='function')?_widgetDayPayload(todayK):null;
   var todayRemainingCount=todayForCount?(todayForCount.taskCount+todayForCount.reminderCount):0;
-  return {tasks:tasks,reminders:reminders,routines:routines,timeline:timeline,timer:timer,presets:presets,energy:state.energy||'',mood:state.mood||'',todayRemainingCount:todayRemainingCount};
+  // dayEndMs (2026-09-25): WatchBridge.swift now keeps the last snapshot on
+  // disk and serves it after the phone process is relaunched. Past this
+  // instant its timeline and today-count describe a day that is over, so the
+  // bridge drops them rather than showing yesterday's schedule as today's.
+  // _anchoredDayEnd, not a local midnight, so a day anchor is honoured.
+  var dayEnd=(typeof _anchoredDayEnd==='function')?_anchoredDayEnd():null;
+  return {tasks:tasks,reminders:reminders,routines:routines,timeline:timeline,timer:timer,presets:presets,energy:state.energy||'',mood:state.mood||'',todayRemainingCount:todayRemainingCount,dayEndMs:dayEnd?dayEnd.getTime():0};
 }
 
 // Push the today-slice of state to the watch. Called from save() and on init.
@@ -5774,6 +5780,12 @@ function _widgetDayPayload(day){
   var timeline=blocks.slice().sort(function(a,b){return a.startMin-b.startMin;})
     .map(function(b){
       var row={name:b.name||'',time:_fmtStartMin(b.startMin)};
+      // startMs/endMs (2026-09-25, additive -- optional in TodayWidget.swift):
+      // the lock-screen "Next block" used timeline.first, i.e. the day's FIRST
+      // block even hours after it ended. Absolute instants let the extension
+      // pick the block in progress or next, and advance on its own.
+      var st=_anchoredInstantOf(day,b.startMin);
+      if(st){row.startMs=st.getTime();row.endMs=row.startMs+(b.durMin||0)*60000;}
       // A-6 (Stage 8): attach what toggleTaskDone needs, so the widget's
       // complete button can sit on THESE rows -- the ones actually rendered.
       // (An earlier version put the button on a separate "due today" items
