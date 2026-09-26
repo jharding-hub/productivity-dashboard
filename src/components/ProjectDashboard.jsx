@@ -426,6 +426,13 @@ function ProjectBanner({ tick }) {
       const pct = Math.max(0, Math.min(100, (off / w.lenMin) * 100));
       setElapsed(pct);
       setNowPct(pct);
+      // This banner mounts fresh every time the project page opens, but the
+      // real-sky gradient is an inline style that only day-progress.js's own
+      // 30s timer repaints -- so a freshly opened bar showed the stylesheet's
+      // flat fallback gradient for up to 30s instead of the sky the home
+      // banner already had. Repaint here too, on the same schedule as the
+      // rest of this effect (mount, every 60s, and on window-setting changes).
+      if (typeof window.applySkyGradient === 'function') window.applySkyGradient();
     };
     update();
     const id = setInterval(update, 60000);
