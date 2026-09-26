@@ -699,6 +699,7 @@ async function doForgotPassword(){
 }
 
 function doLogout(){
+  if(typeof _clearWatchSnapshot==='function')_clearWatchSnapshot();
   firebase.auth().signOut();
 }
 
@@ -961,6 +962,7 @@ async function _performAccountDeletion(){
     // Stop every writer BEFORE clearing, so nothing recreates what we erase.
     _accountDeleted=true;
     _wipeLocalAccountData(uid);
+    if(typeof _clearWatchSnapshot==='function')_clearWatchSnapshot();
     toast('Account deleted. Take care of yourself out there.');
     setTimeout(function(){firebase.auth().signOut();},1500);
   }catch(e){toast('Deletion failed: '+(e.message||'unknown error')+'. Your account was not changed.');}
@@ -5618,9 +5620,15 @@ function _buildWatchSnapshot(){
   // there are genuinely more than 25 things due today alone. Same due-date
   // convention as renderTaskList()'s 'due' sort (undated last); reminders
   // reuse the shared _reminderSortCompare (R7 stage 2).
-  var tasks=(state.tasks||[]).filter(function(t){return !t.done;})
-    .sort(function(a,b){var da=a.due||'9999',db=b.due||'9999';return da.localeCompare(db);})
-    .slice(0,25).map(function(t){
+  //
+  // 2026-09-25 (Joe: watch "isn't lining up with what I have for tasks"):
+  // this read state.tasks alone -- standalone tasks only, never PROJECT
+  // SUBTASKS -- and wasn't scoped to any day, so the watch listed undated
+  // loose tasks while the phone's Today view listed project work due today.
+  // Same standalone-only trap the widget payload fell into in Stage 8. It now
+  // IS the phone's "Today & overdue" list: _todaySlice() is the one function
+  // renderTodayView draws that section from, so the two cannot drift again.
+  var tasks=_todaySlice().tasks.slice(0,25).map(function(t){
       return {id:t.id,title:t.name||'',done:false};
     });
   var reminders=(state.reminders||[]).slice().sort(_reminderSortCompare).slice(0,25).map(function(r){
@@ -5634,9 +5642,22 @@ function _buildWatchSnapshot(){
     custom:(R.custom||[]).map(_mapRoutine)
   };
   var todayK=todayStr();
-  var timeline=(state.tlBlocks||[]).filter(function(b){return (b.date||'')===todayK;})
-    .sort(function(a,b){return (a.time||'').localeCompare(b.time||'');})
-    .map(function(b){return {id:b.id||('tl'+(b.time||'')),name:b.name||'',time:b.time?fmtTime(b.time):''};});
+  // _tlCollectBlocks, not raw state.tlBlocks (2026-09-25): the raw array holds
+  // only hand-added/scheduled blocks, so every task or project subtask with a
+  // start time -- and the untimed 9am cascade -- was missing from the watch's
+  // Today screen while the phone and widget showed it. The widget made this
+  // exact switch on 2026-07-27; the watch never did.
+  // startMs/endMs are additive (older watch builds ignore unknown keys): the
+  // watch's next-block complication needs absolute instants to skip blocks
+  // that are already over, which the display string can't give it.
+  var timeline=((typeof _tlCollectBlocks==='function')?_tlCollectBlocks(todayK):[]).slice()
+    .sort(function(a,b){return a.startMin-b.startMin;})
+    .map(function(b){
+      var start=_anchoredInstantOf(todayK,b.startMin);
+      var startMs=start?start.getTime():0;
+      return {id:b.id||('tl'+b.startMin),name:b.name||'',time:_fmtStartMin(b.startMin),
+              startMs:startMs,endMs:startMs?startMs+(b.durMin||0)*60000:0};
+    });
   var timer={
     running:!!timerRunning,
     endAt:(timerEndAt||0),   // ms epoch when running, else 0
@@ -5656,12 +5677,38 @@ function _buildWatchSnapshot(){
 }
 
 // Push the today-slice of state to the watch. Called from save() and on init.
+//
+// Gated on _appDataReady (2026-09-25): a save() that runs before load() has
+// finished would build this from the DEFAULT empty state and send it as real,
+// and the watch replaces everything it shows with whatever arrives. Since
+// WatchBridge.swift now keeps the last real snapshot on disk, a push like that
+// would also overwrite the copy it falls back to. __watchApplyAction already
+// refuses to run before the same flag.
 function pushWatchSnapshot(){
+  if(!_appDataReady)return;
   try{
     var h=window.webkit&&window.webkit.messageHandlers&&window.webkit.messageHandlers.watchData;
     if(!h)return; // not running inside the iOS shell
     h.postMessage(_buildWatchSnapshot());
   }catch(e){console.warn('[watch] pushSnapshot failed',e);}
+}
+
+// Blank the watch on a DELIBERATE sign-out or account deletion. Needed now
+// that WatchBridge.swift keeps the last real snapshot on disk: without this,
+// the signed-out account's tasks would stay on the watch, and survive app
+// relaunches. Not called from onAuthStateChanged(null) -- that branch also
+// fires on a cold boot and can't tell the two apart, so it would wipe the
+// watch on launch. Posted BEFORE signOut(), while the handler still exists
+// and before state is reset. Real shape, honestly empty.
+function _clearWatchSnapshot(){
+  try{
+    var h=window.webkit&&window.webkit.messageHandlers&&window.webkit.messageHandlers.watchData;
+    if(!h)return;
+    var presets=(typeof TIMER_PRESETS!=='undefined'?TIMER_PRESETS:[]).map(function(p){return {label:p.label,minutes:p.minutes};});
+    h.postMessage({tasks:[],reminders:[],routines:{morning:[],evening:[],custom:[]},timeline:[],
+      timer:{running:false,endAt:0,total:timerTotal||0,left:timerTotal||0},
+      presets:presets,energy:'',mood:'',todayRemainingCount:0});
+  }catch(e){console.warn('[watch] clearSnapshot failed',e);}
 }
 
 // =======================================
@@ -5695,6 +5742,12 @@ function _widgetCompletionTarget(b){
   }
   return null;
 }
+// Minutes-since-midnight -> the display clock ("6:00 PM"). Shared by the
+// widget and watch payloads so both label a block identically.
+function _fmtStartMin(startMin){
+  var hh=Math.floor(startMin/60),mm=startMin%60;
+  return fmtTime((hh<10?'0':'')+hh+':'+(mm<10?'0':'')+mm);
+}
 function _widgetDayPayload(day){
   var pr={high:0,med:1,low:2};
   // NOTE: pr[x]||1 would be wrong here -- high's rank is 0, which is falsy,
@@ -5720,9 +5773,7 @@ function _widgetDayPayload(day){
   var blocks=(typeof _tlCollectBlocks==='function')?_tlCollectBlocks(day):[];
   var timeline=blocks.slice().sort(function(a,b){return a.startMin-b.startMin;})
     .map(function(b){
-      var hh=Math.floor(b.startMin/60),mm=b.startMin%60;
-      var row={name:b.name||'',
-               time:fmtTime((hh<10?'0':'')+hh+':'+(mm<10?'0':'')+mm)};
+      var row={name:b.name||'',time:_fmtStartMin(b.startMin)};
       // A-6 (Stage 8): attach what toggleTaskDone needs, so the widget's
       // complete button can sit on THESE rows -- the ones actually rendered.
       // (An earlier version put the button on a separate "due today" items
@@ -5766,19 +5817,30 @@ function _widgetDayPayload(day){
 // writes without the app being opened and without extra timeline entries.
 // Built from the date's components, never new Date(dueStr) -- the latter parses
 // a bare YYYY-MM-DD as UTC and lands a day early west of Greenwich.
+//
+// 2026-09-25: a task with its OWN time counts to that instant, the same rule
+// the phone's due chip (_dueCountdownLabel) has used since 2026-08-22. This
+// line never got that fix, so at 2:58pm a 6pm task read "9 hr, 1 min" (to
+// 11:59pm) on the widget while the phone said "due in 3h". Timed tasks
+// already past today are skipped: the phone shows those as "past 11:30a", not
+// as a countdown, so the widget's single countdown must not pick one either.
+// Sorted by the real instant, so same-day ties go to the earliest.
 function _widgetNextDeadline(){
-  var today=todayStr();
-  var upcoming=getAllTasks().filter(function(t){return !t.done&&t.due&&t.due>=today;})
-    .sort(function(a,b){return a.due.localeCompare(b.due);});
-  if(!upcoming.length)return null;
-  var t=upcoming[0];
-  // _anchoredDayEndOf, not a local 23:59: under an anchor the due day ends at
-  // the anchor time on the FOLLOWING calendar date, and the widget's countdown
-  // has to run to that instant or it reads as overdue while the app still
-  // shows time left.
-  var end=_anchoredDayEndOf(t.due);
-  if(!end)return null;
-  return {name:t.name||'',date:t.due,atMs:end.getTime()};
+  var today=todayStr(), nowMs=Date.now();
+  var best=null;
+  getAllTasks().forEach(function(t){
+    if(t.done||!t.due||t.due<today)return;
+    var timed=t.time&&t.time.indexOf(':')>=0;
+    // _anchoredInstantOf / _anchoredDayEndOf, not a local clock: under a day
+    // anchor the due day ends at the anchor time on the FOLLOWING calendar
+    // date, and the countdown has to run to the same instant the app uses.
+    var end=timed?_anchoredInstantOf(t.due,_hmToMin(t.time)):_anchoredDayEndOf(t.due);
+    if(!end)return;
+    var at=end.getTime();
+    if(at<=nowMs)return;
+    if(!best||at<best.atMs)best={name:t.name||'',date:t.due,atMs:at};
+  });
+  return best;
 }
 function _computeWidgetSnapshot(){
   var today=_widgetDayPayload(todayStr());
@@ -5859,7 +5921,16 @@ window.__watchApplyAction=function(action){
     if(!action||!action.cmd)return _buildWatchSnapshot();
     if(action.cmd==='toggle'){
       if(action.kind==='task'){
-        if(typeof toggleTaskDone==='function')toggleTaskDone(action.id,'standalone');
+        // The list now carries project subtasks too (see _buildWatchSnapshot).
+        // The watch sends only the id, so resolve which kind it is here --
+        // toggleTaskDone's 'project' branch goes through _completeSubtask,
+        // which tombstones, unlinks and respawns recurring subtasks. Sending
+        // a subtask id down the 'standalone' branch would silently do nothing.
+        var hit=(typeof getAllTasks==='function')?getAllTasks().find(function(t){return t.id===action.id;}):null;
+        if(typeof toggleTaskDone==='function'){
+          if(hit&&hit.source==='project')toggleTaskDone(action.id,'project',hit.projectId);
+          else toggleTaskDone(action.id,'standalone');
+        }
       }else if(action.kind==='reminder'){
         _tombstone(action.id);
         state.reminders=(state.reminders||[]).filter(function(r){return r.id!==action.id;});
@@ -5941,7 +6012,10 @@ window.__watchApplyAction=function(action){
     }else if(action.cmd==='add'){
       var name=(action.text||'').trim();
       if(name){
-        state.tasks.push({id:'t'+Date.now(),name:name,due:'',priority:'med',timeEst:'',projectId:'',projectIds:[],done:false});
+        // due today, not undated (2026-09-25): the watch's "+" sits on a list
+        // that is now Today & overdue, so an undated task would vanish from
+        // it the moment it was added and read as a failed save.
+        state.tasks.push({id:'t'+Date.now(),name:name,due:todayStr(),priority:'med',timeEst:'',projectId:'',projectIds:[],done:false});
         save();
         if(typeof renderTaskList==='function')renderTaskList();
       }
