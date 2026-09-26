@@ -2033,6 +2033,12 @@ function startRealtimeSync(){
       renderProjects();renderReminders();renderThoughts();renderNotes();renderRoutines();renderTaskList();renderTimeline();
       applyPanelVisibility();
       showStateAdvice();updateWellnessVisibility();
+      // 2026-09-26: a change made on ANOTHER device (the Mac) lands here and
+      // never goes through save(), so the watch -- and the bridge's saved copy
+      // it falls back on -- kept showing the old list until the phone happened
+      // to save something itself. Both calls dedupe unchanged content.
+      if(typeof pushWatchSnapshot==='function')pushWatchSnapshot();
+      if(typeof _updateWidgetSnapshot==='function')_updateWidgetSnapshot();
       setSyncStatus('synced','Synced');
     }catch(e){console.log('Realtime sync error:',e);}
   },err=>{console.log('Snapshot error:',err);setSyncStatus('error','Sync lost');});
@@ -5689,8 +5695,13 @@ function _buildWatchSnapshot(){
   // instant its timeline and today-count describe a day that is over, so the
   // bridge drops them rather than showing yesterday's schedule as today's.
   // _anchoredDayEnd, not a local midnight, so a day anchor is honoured.
+  // builtAt (2026-09-26): when this list was built, in ms. The watch keeps
+  // only the NEWEST list it has seen and ignores older ones. Before this it
+  // took whatever arrived last -- a reply built before a push, the bridge's
+  // saved disk copy after a relaunch -- so a task added on the phone could
+  // vanish from the watch on a watch-app restart (seen on device, build 135).
   var dayEnd=(typeof _anchoredDayEnd==='function')?_anchoredDayEnd():null;
-  return {tasks:tasks,reminders:reminders,routines:routines,timeline:timeline,timer:timer,presets:presets,energy:state.energy||'',mood:state.mood||'',todayRemainingCount:todayRemainingCount,dayEndMs:dayEnd?dayEnd.getTime():0};
+  return {tasks:tasks,reminders:reminders,routines:routines,timeline:timeline,timer:timer,presets:presets,energy:state.energy||'',mood:state.mood||'',todayRemainingCount:todayRemainingCount,dayEndMs:dayEnd?dayEnd.getTime():0,builtAt:Date.now()};
 }
 
 // Push the today-slice of state to the watch. Called from save() and on init.
@@ -5701,12 +5712,22 @@ function _buildWatchSnapshot(){
 // WatchBridge.swift now keeps the last real snapshot on disk, a push like that
 // would also overwrite the copy it falls back to. __watchApplyAction already
 // refuses to run before the same flag.
+//
+// Skips a push whose CONTENT (everything but builtAt) matches the last one
+// sent (2026-09-26). The realtime-sync handler now pushes too, and every local
+// save comes back through it as an echo, so without this each edit would
+// cross the watch link twice for nothing.
+var _lastWatchPushKey=null;
 function pushWatchSnapshot(){
   if(!_appDataReady)return;
   try{
     var h=window.webkit&&window.webkit.messageHandlers&&window.webkit.messageHandlers.watchData;
     if(!h)return; // not running inside the iOS shell
-    h.postMessage(_buildWatchSnapshot());
+    var snap=_buildWatchSnapshot();
+    var key=JSON.stringify(Object.assign({},snap,{builtAt:0}));
+    if(key===_lastWatchPushKey)return;
+    _lastWatchPushKey=key;
+    h.postMessage(snap);
   }catch(e){console.warn('[watch] pushSnapshot failed',e);}
 }
 
@@ -5722,9 +5743,11 @@ function _clearWatchSnapshot(){
     var h=window.webkit&&window.webkit.messageHandlers&&window.webkit.messageHandlers.watchData;
     if(!h)return;
     var presets=(typeof TIMER_PRESETS!=='undefined'?TIMER_PRESETS:[]).map(function(p){return {label:p.label,minutes:p.minutes};});
+    _lastWatchPushKey=null; // signing back in, even to the same account, must re-send
     h.postMessage({tasks:[],reminders:[],routines:{morning:[],evening:[],custom:[]},timeline:[],
       timer:{running:false,endAt:0,total:timerTotal||0,left:timerTotal||0},
-      presets:presets,energy:'',mood:'',todayRemainingCount:0});
+      presets:presets,energy:'',mood:'',todayRemainingCount:0,
+      builtAt:Date.now()}); // newest, so the watch's keep-newest rule accepts the clear
   }catch(e){console.warn('[watch] clearSnapshot failed',e);}
 }
 
