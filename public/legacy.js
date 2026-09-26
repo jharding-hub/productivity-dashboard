@@ -699,7 +699,13 @@ async function doForgotPassword(){
 }
 
 function doLogout(){
+  // Not ready from here on (2026-09-26): the widget and watch pushes both gate
+  // on this flag, so nothing re-sends the outgoing account's data between
+  // this clear and the onAuthStateChanged(null) that resets state -- the
+  // 60s rollover tick keeps running through sign-out.
+  _appDataReady=false;
   if(typeof _clearWatchSnapshot==='function')_clearWatchSnapshot();
+  if(typeof _clearWidgetSnapshot==='function')_clearWidgetSnapshot();
   firebase.auth().signOut();
 }
 
@@ -962,7 +968,12 @@ async function _performAccountDeletion(){
     // Stop every writer BEFORE clearing, so nothing recreates what we erase.
     _accountDeleted=true;
     _wipeLocalAccountData(uid);
+    // Same as doLogout, and it matters more here: signOut() waits 1.5s below,
+    // and a rollover tick in that gap would put the DELETED account's tasks
+    // back on the widget (and, before this flag, the watch).
+    _appDataReady=false;
     if(typeof _clearWatchSnapshot==='function')_clearWatchSnapshot();
+    if(typeof _clearWidgetSnapshot==='function')_clearWidgetSnapshot();
     toast('Account deleted. Take care of yourself out there.');
     setTimeout(function(){firebase.auth().signOut();},1500);
   }catch(e){toast('Deletion failed: '+(e.message||'unknown error')+'. Your account was not changed.');}
@@ -5906,12 +5917,40 @@ function _computeWidgetSnapshot(){
 }
 var _lastWidgetSnapshot=null;
 function _updateWidgetSnapshot(){
+  // Gated on _appDataReady (2026-09-26), same as pushWatchSnapshot: before
+  // load() finishes -- or after a deliberate sign-out -- state is the DEFAULT
+  // or a reset copy, and sending it would overwrite the widget with nothing
+  // as if it were real (or, mid-sign-out, with the outgoing account's data).
+  if(!_appDataReady)return;
   var h=(typeof _notifNative==='function')?_notifNative():null;
   if(!h)return;
   var json=JSON.stringify(_computeWidgetSnapshot());
   if(json===_lastWidgetSnapshot)return; // avoid a redundant native round-trip on unrelated saves
   _lastWidgetSnapshot=json;
   try{h.postMessage({action:'updateWidgetSnapshot',snapshot:json});}catch(e){}
+}
+
+// Blank the home-screen / lock-screen widget on a DELIBERATE sign-out or
+// account deletion (2026-09-26). Nothing did: the widget kept the signed-out
+// account's tasks indefinitely unless the app happened to stay open for the
+// next 60s rollover tick. Same call sites as _clearWatchSnapshot, and for the
+// same reason NOT onAuthStateChanged(null), which also fires on a cold boot.
+// An honestly-empty snapshot the widget decodes as "All clear": every field
+// TodayWidget.swift's TodaySnapshot requires (presence stays non-optional
+// there), today AND tomorrow so the midnight entry still resolves, and the
+// timeline/overdueCount the Shortcuts intents read. _lastWidgetSnapshot is
+// reset so signing back in -- even to the same account -- always re-sends.
+function _clearWidgetSnapshot(){
+  var h=(typeof _notifNative==='function')?_notifNative():null;
+  if(!h)return;
+  var empty=function(day){return {date:day,taskCount:0,reminderCount:0,items:[],timeline:[]};};
+  var today=empty(todayStr());
+  var snap={days:[today,empty(tomorrowStr())],presence:0,
+    date:today.date,taskCount:0,reminderCount:0,items:[],timeline:[],
+    overdueCount:0,nextDeadline:null,
+    dayAnchorMin:(typeof getDayAnchorMinutes==='function')?getDayAnchorMinutes():0};
+  _lastWidgetSnapshot=null;
+  try{h.postMessage({action:'updateWidgetSnapshot',snapshot:JSON.stringify(snap)});}catch(e){}
 }
 
 // Apply an action the watch sent (toggle a task/reminder, quick-add a task),
