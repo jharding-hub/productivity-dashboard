@@ -16827,6 +16827,15 @@ await Promise.all([_loadCheckinsDoc(),_loadMoodLogDoc(),_loadCompletedTasksDoc()
 // see openWeeklyReview's deferral. Small delay so the dashboard paints
 // first and the modal opens over a rendered app, not a blank one.
 _appDataReady=true;
+// Pull-when-ready for every native saved-for-later queue (2026-09-27). The
+// native side drains watch taps, Siri/Share captures and widget check-offs on
+// didBecomeActive and 1.5s after the web view loads -- on a cold launch both
+// are BEFORE this line, so every drain was turned away (this flag was false)
+// and the items sat until the next foreground: a watch check-off made with
+// the phone app closed took a minute-plus to land (build 136, on device).
+// Same pattern as checkWeeklyReviewPending below. Every native drain is
+// idempotent, so a warm launch that already drained just finds nothing.
+(function(){var h=(typeof _notifNative==='function')?_notifNative():null;if(h){try{h.postMessage({action:'webReady'});}catch(e){}}})();
 if(_pendingWeeklyReviewOpen){_pendingWeeklyReviewOpen=false;setTimeout(openWeeklyReview,400);}
 // Cold-launch pull (build-82 postmortem): a notification tap delivered
 // before legacy.js parsed leaves no trace in this page -- only native knows
