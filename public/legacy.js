@@ -1735,6 +1735,41 @@ function save(){
   },1000);
 }
 
+// COLD-LAUNCH PAINT FROM THE DEVICE COPY (2026-09-28). A cold launch drew
+// nothing until three cloud reads had finished one after another (profile,
+// dashboard, the four own-docs). On a slow or waking connection the phone sat
+// on a blank Everything view or skeleton rows for many seconds, while the full
+// copy saved on this device went unused. This draws that copy the moment
+// load() has merged it, BEFORE the cloud read; initApp's normal render block
+// repaints from the merged state once the reads finish (and the render
+// functions defer themselves while an inline edit is open).
+//
+// Only steps that PAINT. Nothing that resets, awards or migrates
+// (checkDailyRoutineReset, awardDailyLogin, initPanelVisibility all mutate
+// and save) -- those still run once, after the read, on real data. The one
+// save() this triggers (setViewMode's) is held by save() until _appDataReady.
+// Routines are skipped on the first launch of a new day: the copy still holds
+// yesterday's checkmarks, which the reset clears only after the read.
+// Looked up by name so a step that isn't global warns instead of throwing,
+// and each step is isolated so one bad field can't stop the boot.
+//
+// _bootPainted tells initApp the view is already on screen, so it refreshes
+// the content in place instead of re-running setViewMode -- see there.
+var _bootPainted=false;
+function _paintFromDeviceCopy(){
+  var steps=['_applyDayAnchor','applyPanelOrder','applyPanelVisibility','_applySavedTheme',
+    'renderProjects','renderReminders','renderThoughts','renderNotes','renderTaskList','renderTimeline',
+    'updateAllTileSummaries','updateTimeLeft','updateClock','updateTimerDisplay'];
+  try{
+    if(state.routineTabDate!==todayStr())state.currentRoutineTab=_defaultRoutineTab();
+    if(state.lastRoutineReset===todayStr())steps.push('renderRoutines');
+  }catch(e){}
+  steps.forEach(function(name){
+    try{window[name]();}catch(e){console.warn('[boot] device-copy paint: '+name+' failed',e);}
+  });
+  try{setViewMode(state.viewMode);}catch(e){console.warn('[boot] device-copy paint: setViewMode failed',e);}
+}
+
 // LOAD -- tries Firestore first, then localStorage (per-user)
 async function load(){
   const uid=currentUser?currentUser.uid:'local';
@@ -1745,7 +1780,15 @@ async function load(){
   _lastLoadedUid=uid;
   _loadAxisProfile(); // independent of dashboard state; fire-and-forget, ready well before chat is opened
   // Always load localStorage as baseline
-  try{const s=localStorage.getItem('prodDash_'+uid);if(s){const p=JSON.parse(s);state={...state,...p};}}catch(e){}
+  var hadDeviceCopy=false;
+  try{const s=localStorage.getItem('prodDash_'+uid);if(s){const p=JSON.parse(s);state={...state,...p};hadDeviceCopy=true;}}catch(e){}
+  // Cold launch only (not pull-to-refresh, which runs with data already on
+  // screen): draw the device copy now, then read the cloud.
+  var painted=false;
+  if(hadDeviceCopy&&!_appDataReady&&firebaseReady&&db&&currentUser){
+    _paintFromDeviceCopy();
+    painted=_bootPainted=true;
+  }
   // Try Firestore
   if(firebaseReady&&db&&currentUser){
     try{
@@ -1759,6 +1802,11 @@ async function load(){
           // Spread cloud over local, then reconcile.
           var today=todayStr();
           var merged=Object.assign({},state,cloud);
+          // The view already on screen (Today/Everything, the pager page --
+          // painted from the device copy, or picked while this read was in
+          // flight) stays on screen. Taking the cloud's here would jump the
+          // user to another view a few seconds after launch.
+          if(painted){merged.viewMode=state.viewMode;merged.everythingPagerPanel=state.everythingPagerPanel;}
           // Protect lastRoutineReset -- never let cloud roll it back to a past date
           if(state.lastRoutineReset===today){merged.lastRoutineReset=today;}
           if(state.lastRoutineReset===today&&cloud.lastRoutineReset!==today){
@@ -6239,6 +6287,23 @@ function _pagerComputeVisible(){
   });
   return _pagerVisiblePanels;
 }
+// Whether a rail button shows its dot: the panel has a nonzero count.
+function _pagerHasCount(p){
+  var badgeVal='';
+  var todayVal=_mobileTodayBadge(p.id);
+  if(todayVal!==null){badgeVal=todayVal;}
+  else if(p.badge){var el=document.getElementById(p.badge);if(el)badgeVal=el.textContent||'';}
+  return !!(badgeVal&&badgeVal!=='0');
+}
+// Re-evaluates the rail dots without rebuilding the pager (a rebuild moves
+// the live panels -- see initApp's cold-launch refresh).
+function _pagerRefreshDots(){
+  document.querySelectorAll('#pagerRail .pager-rail-btn').forEach(function(b){
+    for(var j=0;j<MOBILE_PANELS.length;j++){
+      if(MOBILE_PANELS[j].id===b.dataset.pagerId){b.classList.toggle('has-count',_pagerHasCount(MOBILE_PANELS[j]));return;}
+    }
+  });
+}
 function buildMobilePager(){
   var rail=document.getElementById('pagerRail');
   var track=document.getElementById('pagerTrack');
@@ -6251,11 +6316,7 @@ function buildMobilePager(){
     var p=null;
     for(var j=0;j<MOBILE_PANELS.length;j++){if(MOBILE_PANELS[j].id===id){p=MOBILE_PANELS[j];break;}}
     if(!p)return;
-    var badgeVal='';
-    var todayVal=_mobileTodayBadge(p.id);
-    if(todayVal!==null){badgeVal=todayVal;}
-    else if(p.badge){var el=document.getElementById(p.badge);if(el)badgeVal=el.textContent||'';}
-    var hasCount=!!(badgeVal&&badgeVal!=='0');
+    var hasCount=_pagerHasCount(p);
     var active=i===startIdx;
     railHtml+='<button type="button" class="pager-rail-btn'+(active?' active':'')+(hasCount?' has-count':'')+'" data-pager-id="'+p.id+'">'
       +'<span class="prb-icon">'+p.icon+'</span>'
@@ -17071,7 +17132,18 @@ renderProjects();renderReminders();renderThoughts();renderNotes();renderRoutines
 // paint of Today-vs-Everything (and, on mobile, home-vs-launcher) from the
 // persisted state.viewMode -- replacing the old unconditional showMobileHome().
 if(!_isMobile()){document.querySelector('.header')&&document.querySelector('.header').classList.add('mobile-visible');}
-setViewMode(state.viewMode);
+// When load() already painted the device copy, that view is on screen and
+// load() kept it over the cloud's, so refresh it IN PLACE (the renders above
+// already did the panels). Re-running setViewMode here re-navigates:
+// showMobileHome moves every panel out of the pager and back, which drops
+// focus from an edit the user started during the read -- the edit guard then
+// sees nothing and the re-render wipes the typing (reproduced 2026-09-28) --
+// and it scrolls back to the top.
+if(_bootPainted){
+  _bootPainted=false;
+  if(state.viewMode==='today')renderTodayView();
+  else if(_isMobile()){buildMobileHome();_pagerRefreshDots();}
+}else setViewMode(state.viewMode);
 if(state.energy){const c=document.querySelectorAll('#energyPills .em-pill');const m=['high','good','low','crashed'];const i=m.indexOf(state.energy);if(i>=0)c[i].classList.add('selected');}
 if(state.mood){const c=document.querySelectorAll('#moodPills .em-pill');const m=['focused','scattered','anxious','calm'];const i=m.indexOf(state.mood);if(i>=0)c[i].classList.add('selected');}
 showStateAdvice();updateWellnessVisibility();
