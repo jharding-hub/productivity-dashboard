@@ -3155,6 +3155,12 @@ body.capacitor-native .pd-topbar{padding-top:max(env(safe-area-inset-top),46px) 
 .note-org-btn i{font-size:calc(12px * var(--type-scale,1));}
 .modal-blur-overlay{position:fixed;inset:0;z-index:1100;display:flex;align-items:center;justify-content:center;visibility:hidden;opacity:0;transition:opacity 0.3s ease,visibility 0.3s ease;}
 .modal-blur-overlay.open{visibility:visible;opacity:1;}
+/* Your data is opened FROM Settings (.customize-overlay, z-1400), so the
+   shared 1100 put it behind the sheet that opened it (Joe, on device, build
+   138). Same class as build 84's buried Delete Account confirm. 1450 clears
+   Settings and stays under proj-multi-dropdown/jit-hint (1500); everything
+   Your data opens is #confirmDialog (2500) or a download. */
+#yourDataModal{z-index:1450;}
 /* _confirm() is the universal blocking-question layer -- it is raised FROM
    nearly every other surface, so it cannot share their 1100 band. Joe hit this
    on-device (build 84): Settings > Delete Account opened the confirm behind the
