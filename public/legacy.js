@@ -1613,6 +1613,7 @@ function _gcalReapplyIds(ids){
 // SAVE -- writes to localStorage + Firestore (per-user)
 var saveTimer=null;
 var _saveSkipCount=0; // consecutive writes skipped because cloud was newer (E-1)
+var _saveOwedUntilReady=false; // a save() ran before the cloud read finished -- see save()
 
 // E-2: size telemetry -- warn well before Firestore's 1 MiB doc limit.
 // Saves are never blocked; this only makes growth visible in time to act.
@@ -1678,6 +1679,15 @@ function save(){
   if(typeof _notifScheduleNativeSync==='function')_notifScheduleNativeSync(); // reschedule iOS local notifications (debounced)
   if(typeof _updateWidgetSnapshot==='function')_updateWidgetSnapshot(); // R10: refresh the home-screen widget's data
   if(!firebaseReady||!db||!currentUser)return;
+  // No cloud write until this session has READ the cloud copy (2026-09-28).
+  // Tapping Today/Everything during a slow cold launch calls save() while
+  // load() is still waiting on Firestore. The stamp above then marks this
+  // device's older copy as the newest edit, which beats the E-1 guard below,
+  // and the blob captured above was built BEFORE the cloud read -- so it went
+  // up over newer data. The local copy is still written above; initApp sends
+  // the owed cloud write once, from the merged state, right after
+  // _appDataReady. Same rule as the own-docs: never write what you haven't read.
+  if(!_appDataReady){_saveOwedUntilReady=true;return;}
   clearTimeout(saveTimer);
   saveTimer=setTimeout(async()=>{
     try{
@@ -16827,6 +16837,9 @@ await Promise.all([_loadCheckinsDoc(),_loadMoodLogDoc(),_loadCompletedTasksDoc()
 // see openWeeklyReview's deferral. Small delay so the dashboard paints
 // first and the modal opens over a rendered app, not a blank one.
 _appDataReady=true;
+// Send the cloud write save() held back while the read was in flight. state
+// is the merged copy now, so this can't put a pre-read blob over newer data.
+if(_saveOwedUntilReady){_saveOwedUntilReady=false;save();}
 // Pull-when-ready for every native saved-for-later queue (2026-09-27). The
 // native side drains watch taps, Siri/Share captures and widget check-offs on
 // didBecomeActive and 1.5s after the web view loads -- on a cold launch both
