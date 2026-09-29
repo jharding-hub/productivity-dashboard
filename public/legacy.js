@@ -1305,6 +1305,7 @@ function initAuthListener(){
     if(user){
       _bootMark('a');
       currentUser=user;
+      _paintDeviceCopyEarly(); // before the profile read -- see there
       try{
         const prof=await db.collection('users').doc(user.uid).get();
         if(prof.exists){
@@ -1338,7 +1339,7 @@ function initAuthListener(){
       // load() also guards on uid change, but clearing here means the data is
       // gone the moment you sign out rather than lingering until someone
       // signs in again. Belt and braces on a leak that has now bitten twice.
-      _resetStateForNewUser();_lastLoadedUid=null;
+      _resetStateForNewUser();_lastLoadedUid=null;_bootPainted=false;
       // Weekly-review readiness gate follows the same lifecycle as state:
       // signed out means the data is gone, so an openWeeklyReview() arriving
       // now must defer to the next successful sign-in's initApp, not render
@@ -1818,6 +1819,30 @@ function _paintFromDeviceCopy(){
   });
   try{setViewMode(state.viewMode);}catch(e){console.warn('[boot] device-copy paint: setViewMode failed',e);}
 }
+// The same paint, moved EARLIER: the auth listener calls this the moment a
+// signed-in user is known, BEFORE its profile read (build 138 on device: the
+// copy reached the screen at 1.5s, 0.6s of it waiting on that read). It does
+// load()'s device-copy merge itself, and load() then skips its own. A disabled
+// account is signed out by the profile check a moment later, which hides the
+// app and wipes state; what was drawn was already stored on this device.
+// No paint step reads isAdmin or the account tier, which that read sets --
+// initApp's post-read render applies both.
+function _paintDeviceCopyEarly(){
+  if(_bootPainted||_appDataReady||!firebaseReady||!db||!currentUser)return;
+  try{
+    var uid=currentUser.uid;
+    var s=localStorage.getItem('prodDash_'+uid);
+    if(!s)return;
+    var p=JSON.parse(s);
+    if(_lastLoadedUid!==null&&_lastLoadedUid!==uid)_resetStateForNewUser();
+    _lastLoadedUid=uid;
+    state={...state,...p};
+    showApp();
+    _paintFromDeviceCopy();
+    _bootPainted=true;
+    _bootMark('s');
+  }catch(e){console.warn('[boot] early device-copy paint failed',e);}
+}
 
 // LOAD -- tries Firestore first, then localStorage (per-user)
 async function load(){
@@ -1828,16 +1853,21 @@ async function load(){
   if(_lastLoadedUid!==null&&_lastLoadedUid!==uid)_resetStateForNewUser();
   _lastLoadedUid=uid;
   _loadAxisProfile(); // independent of dashboard state; fire-and-forget, ready well before chat is opened
-  // Always load localStorage as baseline
-  var hadDeviceCopy=false;
-  try{const s=localStorage.getItem('prodDash_'+uid);if(s){const p=JSON.parse(s);state={...state,...p};hadDeviceCopy=true;}}catch(e){}
-  // Cold launch only (not pull-to-refresh, which runs with data already on
-  // screen): draw the device copy now, then read the cloud.
-  var painted=false;
-  if(hadDeviceCopy&&!_appDataReady&&firebaseReady&&db&&currentUser){
-    _paintFromDeviceCopy();
-    painted=_bootPainted=true;
-    _bootMark('s');
+  // Always load localStorage as baseline -- unless _paintDeviceCopyEarly
+  // already merged and drew it this launch (state has moved on since: taps
+  // made during the profile read live in it, so merging again isn't needed).
+  var painted=_bootPainted;
+  if(!painted){
+    var hadDeviceCopy=false;
+    try{const s=localStorage.getItem('prodDash_'+uid);if(s){const p=JSON.parse(s);state={...state,...p};hadDeviceCopy=true;}}catch(e){}
+    // Cold launch only (not pull-to-refresh, which runs with data already on
+    // screen): draw the device copy now, then read the cloud. Normally the
+    // early paint has done this already; this is its fallback.
+    if(hadDeviceCopy&&!_appDataReady&&firebaseReady&&db&&currentUser){
+      _paintFromDeviceCopy();
+      painted=_bootPainted=true;
+      _bootMark('s');
+    }
   }
   // Try Firestore
   if(firebaseReady&&db&&currentUser){
