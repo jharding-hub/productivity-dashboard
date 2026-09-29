@@ -18286,6 +18286,13 @@ var _wakeWordEnabled=false;      // user-toggleable preference (persists); defau
 var _wakeWordRetryTimer=null;
 var _wakeWordSupported=!!(window.SpeechRecognition||window.webkitSpeechRecognition);
 var WAKE_PHRASES=['hey axis','hi axis','hey, axis','okay axis','ok axis','axis','hey jarvis','hi jarvis','hey, jarvis','okay jarvis','ok jarvis','jarvis'];
+// The mic was refused on THIS device (2026-09-28). The wake-word preference
+// is synced, so it stays on for devices where the mic works; this per-device
+// note stops each launch here from re-arming the mic only to be refused and
+// toast about it again (Joe saw the toast on every native launch). Tapping
+// the wake-word button clears it and asks once more.
+var WAKE_MIC_DENIED_KEY='cpWakeMicDenied';
+function _wakeMicDenied(){try{return localStorage.getItem(WAKE_MIC_DENIED_KEY)==='1';}catch(e){return false;}}
 
 function _wakeWordMatches(transcript){
   var t=transcript.toLowerCase().trim();
@@ -18318,6 +18325,7 @@ function _startWakeWord(){
       if(e.error==='not-allowed'||e.error==='service-not-allowed'){
         _wakeWordEnabled=false;
         _updateWakeWordUI();
+        try{localStorage.setItem(WAKE_MIC_DENIED_KEY,'1');}catch(x){}
         toast('Mic permission denied. Wake word disabled.');
       }
     };
@@ -18363,6 +18371,7 @@ function toggleWakeWord(){
   state.jarvisWakeEnabled=_wakeWordEnabled;
   if(typeof save==='function')save();
   if(_wakeWordEnabled){
+    try{localStorage.removeItem(WAKE_MIC_DENIED_KEY);}catch(e){} // asked for it -- try the mic again
     _startWakeWord();
     toast('Wake word enabled -- say "Hey Axis"');
   }else{
@@ -18410,6 +18419,8 @@ function _initWakeWord(){
   if(state&&typeof state.jarvisWakeEnabled==='boolean'){
     _wakeWordEnabled=state.jarvisWakeEnabled;
   }
+  // Refused here before: stay off on this device, quietly (see _wakeMicDenied).
+  if(_wakeWordEnabled&&_wakeMicDenied())_wakeWordEnabled=false;
   _updateWakeWordUI();
   // Only auto-start after a user gesture has occurred at some point;
   // otherwise some browsers block the mic. Will start on first toggle or after first click.
