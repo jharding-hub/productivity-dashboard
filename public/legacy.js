@@ -779,6 +779,50 @@ async function exportMyData(){
 // app-body.html carries the copy.
 // ═══════════════════════════════════════════════════════════════════
 var _lastCloudCheckAt=null;   // stamped in load() when the cloud doc read OK
+
+// LAUNCH TIMING (2026-09-28). Where a cold launch spends its time, phase by
+// phase, so a slow launch on the phone is MEASURED rather than guessed.
+// performance.now() counts from when this web view started loading the page
+// (native app start before that isn't included). Marks, each set once:
+//   l legacy.js running   a signed-in user restored   p profile read
+//   s device copy on screen   d dashboard read returned   r data ready
+// Only a launch that RESTORED a session is recorded -- a sign-in typed on the
+// login screen would count the typing. Kept per device, last 5, and shown on
+// the Your data page (the status-bar sync pill is hidden on phones).
+var _bootMarks={};
+function _bootMark(k){if(_bootMarks[k]===undefined)_bootMarks[k]=Math.round(performance.now());}
+_bootMark('l');
+var _bootRecorded=false;
+function _bootRecord(){
+  if(_bootRecorded)return;
+  _bootRecorded=true;
+  if(!_bootMarks.restored)return;
+  _bootMark('r');
+  var m=_bootMarks;
+  try{
+    var list=JSON.parse(localStorage.getItem('cpBootTimes')||'[]');
+    if(!Array.isArray(list))list=[];
+    list.unshift({at:Date.now(),l:m.l,a:m.a,p:m.p,s:m.s,d:m.d,r:m.r,f:m.failed?1:0});
+    localStorage.setItem('cpBootTimes',JSON.stringify(list.slice(0,5)));
+  }catch(e){}
+}
+function _bootTimingRows(){
+  var list;
+  try{list=JSON.parse(localStorage.getItem('cpBootTimes')||'[]');}catch(e){list=[];}
+  if(!Array.isArray(list)||!list.length)return '';
+  var sec=function(ms){return (ms/1000).toFixed(1)+'s';};
+  var has=function(v){return typeof v==='number';};
+  var L=list[0],parts=[];
+  if(has(L.l))parts.push('loading '+sec(L.l));
+  if(has(L.a)&&has(L.l))parts.push('sign-in '+sec(L.a-L.l));
+  if(has(L.p)&&has(L.a))parts.push('account '+sec(L.p-L.a));
+  if(has(L.d)&&has(L.p))parts.push('dashboard '+sec(L.d-L.p));
+  if(has(L.r)&&has(L.d))parts.push('other data '+sec(L.r-L.d));
+  var html=_ydRow('Last app launch','Ready in '+sec(L.r)+(has(L.s)?', on screen at '+sec(L.s):'')+' ('+_relTimeAgo(L.at)+')');
+  html+=_ydRow('Where it waited',parts.join(' · ')+(L.f?' · cloud read failed':''));
+  if(list.length>1)html+=_ydRow('Earlier launches',list.slice(1).map(function(x){return sec(x.r);}).join(', '));
+  return html;
+}
 function openYourData(){
   document.getElementById('yourDataModal').classList.add('open');
   _blurDashboard();
@@ -801,6 +845,7 @@ function _renderYourData(){
     html+=_ydRow('Saved on this device',_lastLocalSaveAt?_relTimeAgo(_lastLocalSaveAt):'No changes this session');
     html+=_ydRow('Backed up to cloud',_lastSyncedAt?_relTimeAgo(_lastSyncedAt):(currentUser?'No changes this session':'Signed out — this device only'));
     if(_lastCloudCheckAt)html+=_ydRow('Cloud copy checked',_relTimeAgo(_lastCloudCheckAt));
+    html+=_bootTimingRows();
     html+=_ydRow('Your last export',state.lastExportAt?_relTimeAgo(state.lastExportAt):'Never — a copy you hold is the best backup');
     html+='<div class="yd-row" id="ydJournalSnapRow"><span class="yd-row-label">Journal snapshots (encrypted)</span><span class="yd-row-value">'+(currentUser?'Checking…':'Sign in to keep these')+'</span></div>';
     rows.innerHTML=html;
@@ -1255,7 +1300,10 @@ function initAuthListener(){
     firebase.auth().setPersistence(firebase.auth.Auth.Persistence.LOCAL);
   } catch(e){console.warn('[auth] setPersistence skipped',e);}
   firebase.auth().onAuthStateChanged(async function(user){
+    // Launch timing: only a session restored on the FIRST auth answer counts.
+    if(_bootMarks.restored===undefined)_bootMarks.restored=!!user;
     if(user){
+      _bootMark('a');
       currentUser=user;
       try{
         const prof=await db.collection('users').doc(user.uid).get();
@@ -1281,6 +1329,7 @@ function initAuthListener(){
           isAdmin=false;
         }
       }catch(e){console.log('Profile load error:',e);}
+      _bootMark('p');
       showApp();
       if(typeof initApp==='function') await initApp();
     }else{
@@ -1788,12 +1837,14 @@ async function load(){
   if(hadDeviceCopy&&!_appDataReady&&firebaseReady&&db&&currentUser){
     _paintFromDeviceCopy();
     painted=_bootPainted=true;
+    _bootMark('s');
   }
   // Try Firestore
   if(firebaseReady&&db&&currentUser){
     try{
       setSyncStatus('syncing','Loading...');
       const doc=await db.collection('users').doc(currentUser.uid).collection('data').doc('dashboard').get();
+      _bootMark('d');
       _lastCloudCheckAt=Date.now();
       if(doc.exists&&doc.data().state){
         const cloud=JSON.parse(doc.data().state);
@@ -1871,7 +1922,7 @@ async function load(){
         await db.collection('users').doc(currentUser.uid).collection('data').doc('dashboard').set({state:JSON.stringify(Object.assign({},state,{checkins:undefined,moodLog:undefined,completedTasks:undefined,completedTasksLifetime:undefined,completedProjectSubtasksLifetime:undefined,remindersArchive:undefined,remindersArchiveLifetime:undefined})),updated:firebase.firestore.FieldValue.serverTimestamp()});
         setSyncStatus('synced','Synced');
       }
-    }catch(e){console.log('Firestore load error:',e);setSyncStatus('error','Offline');}
+    }catch(e){console.log('Firestore load error:',e);setSyncStatus('error','Offline');if(_bootMarks.d===undefined){_bootMark('d');_bootMarks.failed=true;}}
   }else{
     setSyncStatus('offline','Local only');
   }
@@ -16898,6 +16949,7 @@ await Promise.all([_loadCheckinsDoc(),_loadMoodLogDoc(),_loadCompletedTasksDoc()
 // see openWeeklyReview's deferral. Small delay so the dashboard paints
 // first and the modal opens over a rendered app, not a blank one.
 _appDataReady=true;
+_bootRecord();
 // Send the cloud write save() held back while the read was in flight. state
 // is the merged copy now, so this can't put a pre-read blob over newer data.
 if(_saveOwedUntilReady){_saveOwedUntilReady=false;save();}
