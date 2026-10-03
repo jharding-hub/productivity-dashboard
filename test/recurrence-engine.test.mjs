@@ -89,3 +89,85 @@ test('until: an until date far in the future never cuts anything off', () => {
   const r = { freq: 'monthly', interval: 1, until: '2030-01-01' };
   assert.equal(_nextRecurrenceDate('2026-08-19', r, NOW), '2026-09-19');
 });
+
+// ── 2026-10-03: monthly on the Nth weekday ("1st Monday") ──────────────────
+// The bug: a meeting set up on the first Monday of August 2026 (the 3rd) came
+// back on Thu Sep 3, then Sat Oct 3 -- "monthly" only knew "same date".
+// nth 1-4 or -1 (last), weekday 0-6. Due dates here are after NOW.
+test('nth weekday: 1st Monday advances to the 1st Monday of each next month', () => {
+  const r = { freq: 'monthly', interval: 1, nth: 1, weekday: 1 };
+  assert.equal(_nextRecurrenceDate('2026-10-05', r, NOW), '2026-11-02');
+  assert.equal(_nextRecurrenceDate('2026-11-02', r, NOW), '2026-12-07');
+});
+test('nth weekday: 2nd Tuesday rolls over the year end', () => {
+  const r = { freq: 'monthly', interval: 1, nth: 2, weekday: 2 };
+  assert.equal(_nextRecurrenceDate('2026-12-08', r, NOW), '2027-01-12');
+});
+test('nth weekday: the 4th one always exists, even in February', () => {
+  const r = { freq: 'monthly', interval: 1, nth: 4, weekday: 6 };
+  assert.equal(_nextRecurrenceDate('2027-01-23', r, NOW), '2027-02-27');
+});
+test('nth weekday: nth -1 is the LAST one, 4th or 5th', () => {
+  const r = { freq: 'monthly', interval: 1, nth: -1, weekday: 5 };
+  assert.equal(_nextRecurrenceDate('2026-10-30', r, NOW), '2026-11-27');
+  assert.equal(_nextRecurrenceDate('2026-11-27', r, NOW), '2026-12-25');
+  assert.equal(_nextRecurrenceDate('2026-12-25', r, NOW), '2027-01-29'); // a 5th Friday
+});
+test('nth weekday: interval 3 is every quarter, on the pattern', () => {
+  const r = { freq: 'monthly', interval: 3, nth: 1, weekday: 1 };
+  assert.equal(_nextRecurrenceDate('2026-10-05', r, NOW), '2027-01-04');
+});
+test('nth weekday: a due date BEFORE this month\'s Nth weekday is still owed it', () => {
+  // Due Sat Oct 3 (the bugged date), rule now says 1st Monday -> Mon Oct 5.
+  const r = { freq: 'monthly', interval: 1, nth: 1, weekday: 1 };
+  assert.equal(_nextRecurrenceDate('2026-10-03', r, new Date('2026-10-03T12:00:00')), '2026-10-05');
+});
+test('nth weekday: a malformed rule falls back to the plain same-date meaning', () => {
+  assert.equal(_nextRecurrenceDate('2026-10-05', { freq: 'monthly', interval: 1, nth: 5, weekday: 1 }, NOW), '2026-11-05');
+  assert.equal(_nextRecurrenceDate('2026-10-05', { freq: 'monthly', interval: 1, nth: 1, weekday: 9 }, NOW), '2026-11-05');
+});
+test('nth weekday: until ends the series like every other rule', () => {
+  const r = { freq: 'monthly', interval: 1, nth: 1, weekday: 1, until: '2026-11-15' };
+  assert.equal(_nextRecurrenceDate('2026-10-05', r, NOW), '2026-11-02');
+  assert.equal(_nextRecurrenceDate('2026-11-02', r, NOW), null);
+});
+test('plain monthly still means the same DATE (the old behavior, unchanged)', () => {
+  const r = { freq: 'monthly', interval: 1 };
+  assert.equal(_nextRecurrenceDate('2026-08-03', r, new Date('2026-08-03T12:00:00')), '2026-09-03');
+});
+
+// ── 2026-10-03: a late completion keeps the task's own schedule ────────────
+// Before: weekly/monthly restarted from the day it was ticked off, so
+// "Every Saturday" done on Sunday became every Sunday.
+test('late weekly: stays on its weekday, first one after today', () => {
+  const r = { freq: 'weekly', interval: 1 };
+  assert.equal(_nextRecurrenceDate('2026-09-26', r, new Date('2026-09-27T12:00:00')), '2026-10-03'); // Sat stays Sat
+  assert.equal(_nextRecurrenceDate('2026-01-03', r, NOW), '2026-08-22'); // months late, still a Saturday
+});
+test('late weekly: done late ON a scheduled day goes to the next one, never due again today', () => {
+  const r = { freq: 'weekly', interval: 1 };
+  assert.equal(_nextRecurrenceDate('2026-08-08', r, new Date('2026-08-15T12:00:00')), '2026-08-22');
+});
+test('late weekly: every 2 weeks keeps its fortnight grid', () => {
+  const r = { freq: 'weekly', interval: 2 };
+  // Grid from Sat Aug 1: Aug 15, Aug 29. NOW is Wed Aug 19 -> Aug 29, not Sep 2.
+  assert.equal(_nextRecurrenceDate('2026-08-01', r, NOW), '2026-08-29');
+});
+test('late monthly: same-date rule stays on its date', () => {
+  const r = { freq: 'monthly', interval: 1 };
+  assert.equal(_nextRecurrenceDate('2026-09-03', r, new Date('2026-09-05T12:00:00')), '2026-10-03');
+});
+test('late monthly: a clamp on the way does not drag later months', () => {
+  const r = { freq: 'monthly', interval: 1 };
+  // Due Jan 31, done Mar 5: Feb 28 has passed -> Mar 31, not Mar 28.
+  assert.equal(_nextRecurrenceDate('2027-01-31', r, new Date('2027-03-05T12:00:00')), '2027-03-31');
+});
+test('late nth weekday: 1st Monday done two days late stays the 1st Monday', () => {
+  const r = { freq: 'monthly', interval: 1, nth: 1, weekday: 1 };
+  assert.equal(_nextRecurrenceDate('2026-09-07', r, new Date('2026-09-09T12:00:00')), '2026-10-05');
+  // Done so late the next month's one is still ahead -> that one, not a skip.
+  assert.equal(_nextRecurrenceDate('2026-10-05', r, new Date('2026-11-01T12:00:00')), '2026-11-02');
+});
+test('late daily: still restarts from today (unchanged)', () => {
+  assert.equal(_nextRecurrenceDate('2026-08-10', { freq: 'daily', interval: 3 }, NOW), '2026-08-22');
+});

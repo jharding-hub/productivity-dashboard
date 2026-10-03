@@ -86,11 +86,44 @@
     return { until: null, text: text };
   }
 
+  // -- Recurrence: monthly on the Nth weekday (2026-10-03) ----------------
+  // "every first monday", "every 1st mon", "every last friday", optionally
+  // "... of the month", or "first monday of every month". recurrence.nth is
+  // 1-4 or -1 (last) and recurrence.weekday 0-6 -- see recurrence-engine.js.
+  // Without "every" the "of every/each month" tail is required: a bare
+  // "first monday of the month" reads as a one-off date, not a series.
+  var ORDINAL = { first: 1, '1st': 1, second: 2, '2nd': 2, third: 3, '3rd': 3, fourth: 4, '4th': 4, last: -1 };
+  var ORDINAL_TOKEN = '(first|second|third|fourth|last|1st|2nd|3rd|4th)';
+  function extractNthWeekdayRecurrence(text) {
+    var m = text.match(new RegExp('\\bevery\\s+' + ORDINAL_TOKEN + '\\s+(' + WEEKDAY_TOKEN + ')\\b(?:\\s+of\\s+(?:the|each|every)\\s+month\\b)?', 'i')) ||
+            text.match(new RegExp('\\b(?:on\\s+)?(?:the\\s+)?' + ORDINAL_TOKEN + '\\s+(' + WEEKDAY_TOKEN + ')\\s+of\\s+(?:each|every)\\s+month\\b', 'i'));
+    if (!m) return null;
+    return {
+      recurrence: { freq: 'monthly', interval: 1, nth: ORDINAL[m[1].toLowerCase()], weekday: WEEKDAY_ABBR[m[2].toLowerCase().slice(0, 3)] },
+      dayOfWeek: null,
+      text: strip(text, m),
+    };
+  }
+  // Same arithmetic as recurrence-engine.js's nthWeekdayOfMonth (this module
+  // stays standalone, like its own pad/dayKey).
+  function nthWeekdayOfMonth(year, month, nth, weekday) {
+    if (nth === -1) {
+      var last = new Date(year, month + 1, 0);
+      last.setDate(last.getDate() - ((last.getDay() - weekday + 7) % 7));
+      return last;
+    }
+    var first = new Date(year, month, 1);
+    first.setDate(1 + ((weekday - first.getDay() + 7) % 7) + 7 * (nth - 1));
+    return first;
+  }
+
   // -- Recurrence: "every day|week|month", "every N days|weeks|months", or
   // "every <weekday>" (weekly, anchored to that weekday -- weekly recurrence
   // already repeats on whatever weekday the due date lands on, so this just
   // needs to pin the due date to the right day; see dayOfWeek below).
   function extractRecurrence(text) {
+    var nthRec = extractNthWeekdayRecurrence(text);
+    if (nthRec) return nthRec;
     var m = text.match(/\bevery\s+(\d+)\s+(day|week|month)s?\b/i);
     if (m) {
       var freqN = { day: 'daily', week: 'weekly', month: 'monthly' }[m[2].toLowerCase()];
@@ -274,6 +307,15 @@
     if (!due && rec.dayOfWeek != null) {
       var delta = ((rec.dayOfWeek - now.getDay() + 7) % 7) || 7;
       due = dayKey(addDays(now, delta));
+    }
+    // Nth weekday ("every first monday"): pin to this month's if it's today
+    // or still ahead, else next month's. Unlike the weekday forms, today
+    // DOES count -- skipping it would push the first one out a whole month.
+    if (!due && recurrence && recurrence.nth != null) {
+      var todayMid = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+      var nd = nthWeekdayOfMonth(now.getFullYear(), now.getMonth(), recurrence.nth, recurrence.weekday);
+      if (nd.getTime() < todayMid.getTime()) nd = nthWeekdayOfMonth(now.getFullYear(), now.getMonth() + 1, recurrence.nth, recurrence.weekday);
+      due = dayKey(nd);
     }
     // Day-set: pin to the nearest day IN THE SET after today (same "not
     // literally today" convention as the single-weekday case above).

@@ -249,3 +249,47 @@ test('project tag: composes with type prefix and date extraction', () => {
   assert.equal(r.due, '2026-07-18');
   assert.equal(r.name, 'renew lease');
 });
+
+// ── 2026-10-03: monthly on the Nth weekday ─────────────────────────────────
+// NOW is Fri 2026-07-17. July's 1st Monday (Jul 6) has passed -> Aug 3.
+const FIRST_MON = { freq: 'monthly', interval: 1, nth: 1, weekday: 1 };
+test('nth weekday: "every first monday" is monthly on the 1st Monday, due pinned', () => {
+  const r = parseQuickAdd('QA group every first monday', NOW);
+  assert.deepEqual(r.recurrence, FIRST_MON);
+  assert.equal(r.due, '2026-08-03');
+  assert.equal(r.name, 'QA group');
+});
+test('nth weekday: short forms, "last", and an "of the month" tail', () => {
+  assert.deepEqual(parseQuickAdd('QA group every 1st mon', NOW).recurrence, FIRST_MON);
+  const r = parseQuickAdd('payday every last friday of the month', NOW);
+  assert.deepEqual(r.recurrence, { freq: 'monthly', interval: 1, nth: -1, weekday: 5 });
+  assert.equal(r.due, '2026-07-31');
+  assert.equal(r.name, 'payday');
+});
+test('nth weekday: "on the first monday of every month" form', () => {
+  const r = parseQuickAdd('QA group on the first monday of every month', NOW);
+  assert.deepEqual(r.recurrence, FIRST_MON);
+  assert.equal(r.name, 'QA group');
+});
+test('nth weekday: today counts when today IS the Nth weekday', () => {
+  assert.equal(parseQuickAdd('payroll every third friday', NOW).due, '2026-07-17');
+});
+test('nth weekday: an explicit date wins; time and until compose', () => {
+  const r = parseQuickAdd('QA group every first monday 11am 2026-09-07 until Dec 12', NOW);
+  assert.equal(r.due, '2026-09-07');
+  assert.equal(r.time, '11:00');
+  assert.deepEqual(r.recurrence, { ...FIRST_MON, until: '2026-12-12' });
+  assert.equal(r.name, 'QA group');
+});
+test('nth weekday: no "every" and no "of every month" is NOT a series', () => {
+  assert.equal(parseQuickAdd('meet first monday', NOW).recurrence, null);
+  assert.deepEqual(parseQuickAdd('standup every monday', NOW).recurrence, { freq: 'weekly', interval: 1 });
+});
+test('nth weekday: the export text ("every 1st monday until ...") parses back identically', () => {
+  // legacy.js _recurrenceToText writes exactly this shape for CSV export.
+  const r = parseQuickAdd('QA group every 1st monday until 2026-12-12', NOW);
+  assert.deepEqual(r.recurrence, { ...FIRST_MON, until: '2026-12-12' });
+  assert.equal(r.name, 'QA group');
+  const last = parseQuickAdd('payday every last friday', NOW);
+  assert.deepEqual(last.recurrence, { freq: 'monthly', interval: 1, nth: -1, weekday: 5 });
+});

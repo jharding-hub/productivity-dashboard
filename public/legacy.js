@@ -3513,10 +3513,43 @@ function editTaskStartTime(taskId,source,projectId,val){
   _flushPendingPanelRenders();
 }
 var WEEKDAY_NAMES=['Sunday','Monday','Tuesday','Wednesday','Thursday','Friday','Saturday'];
+function _ordinal(n){
+  var t=n%100;
+  if(t>=11&&t<=13)return n+'th';
+  return n+(['th','st','nd','rd'][n%10]||'th');
+}
+// "1st Mon" / "last Fri" for a monthly Nth-weekday rule (recurrence-engine.js
+// header), '' for any other rule -- callers fall back to their own label.
+// long=true spells the weekday out for the picker and previews.
+function _recurrenceNthLabel(rec,long){
+  // Same validity test as the engine's isNthWeekdayRule -- a rule the engine
+  // treats as same-date must not be labelled as an Nth weekday.
+  if(!rec||rec.freq!=='monthly'||!(rec.nth===-1||(rec.nth>=1&&rec.nth<=4))||!WEEKDAY_NAMES[rec.weekday])return '';
+  var name=WEEKDAY_NAMES[rec.weekday];
+  return (rec.nth===-1?'last':_ordinal(rec.nth))+' '+(long?name:name.slice(0,3));
+}
 function showTaskRepeatPicker(taskId,source,projectId,el){
   var opts=[{v:'',l:'None'},{v:'daily',l:'Daily'}];
   WEEKDAY_NAMES.forEach(function(name,i){opts.push({v:'weekly_'+i,l:'Every '+name});});
-  opts.push({v:'monthly',l:'Monthly'});
+  // Monthly choices are worked out from the task's due date (Google Calendar
+  // style): due Mon Oct 5 offers "on the 5th" and "on the 1st Monday", plus
+  // "on the last Monday" when it falls in the month's final week. A 5th
+  // weekday (day 29-31) only gets "last" -- there is no 5th one most months.
+  var item;
+  if(source==='project'){
+    var pr=state.projects.find(function(p){return p.id===projectId;});
+    item=pr&&pr.subtasks.find(function(x){return x.id===taskId;});
+  }else{
+    item=(state.tasks||[]).find(function(x){return x.id===taskId;});
+  }
+  var base=new Date(((item&&item.due)||todayStr())+'T00:00:00');
+  if(isNaN(base.getTime()))base=new Date(todayStr()+'T00:00:00');
+  var day=base.getDate(),wd=base.getDay();
+  var lastDay=new Date(base.getFullYear(),base.getMonth()+1,0).getDate();
+  opts.push({v:'monthly',l:'Monthly on the '+_ordinal(day)});
+  var nth=Math.ceil(day/7);
+  if(nth<=4)opts.push({v:'mnth_'+nth+'_'+wd,l:'Monthly on the '+_recurrenceNthLabel({freq:'monthly',nth:nth,weekday:wd},true)});
+  if(day+7>lastDay)opts.push({v:'mnth_-1_'+wd,l:'Monthly on the '+_recurrenceNthLabel({freq:'monthly',nth:-1,weekday:wd},true)});
   var html=opts.map(function(o){return '<div class="tl-pick-item" onclick="event.stopPropagation();editTaskRecurrence(\''+taskId+'\',\''+source+'\',\''+projectId+'\',\''+o.v+'\')">'+o.l+'</div>';}).join('');
   _showInlinePicker(el,html);
 }
@@ -3544,6 +3577,13 @@ function editTaskRecurrence(taskId,source,projectId,val){
     item.recurrence={freq:'weekly',interval:1};
     var alreadyOnDay=item.due&&new Date(item.due+'T00:00:00').getDay()===wd;
     if(!alreadyOnDay)item.due=_nextWeekdayOnOrAfter(todayStr(),wd);
+  }else if(val.indexOf('mnth_')===0){
+    // 'mnth_<nth>_<weekday>', nth -1 = last. The picker built this option
+    // FROM the due date (or today, with none), so the due already lands on
+    // the pattern -- nothing to move.
+    var parts=val.split('_');
+    item.recurrence={freq:'monthly',interval:1,nth:parseInt(parts[1],10),weekday:parseInt(parts[2],10)};
+    if(!item.due)item.due=todayStr();
   }else{
     item.recurrence={freq:val,interval:1};
     if(!item.due)item.due=todayStr();
@@ -8990,8 +9030,10 @@ function renderTaskList(){
 // "Top 3" = the three MOST RECENTLY due (b.due vs a.due below): a task due
 // yesterday is far likelier still live than one from three weeks ago, so the
 // recent ones surface and the stale ones snooze. Recurring tasks are included
-// on purpose -- _nextRecurrenceDate already counts forward from today for
-// late completions, so shifting their due can't derail the cadence.
+// on purpose -- _nextRecurrenceDate never returns a date on or before today,
+// so a shifted due can't respawn overdue. (Weekly/same-date monthly step from
+// the due date, so a shift by a non-whole week/month moves the schedule with
+// it, as it always has; a monthly Nth-weekday rule is unaffected.)
 // =======================================
 var _tlTriageUndo=null,_tlTriageNote='',_tlTriageNoteTimer=null;
 function _tlPlusDays(dayStr,days){
@@ -9737,7 +9779,7 @@ function _importRunPreview(){
     var bits=[];
     if(it.due)bits.push(fmtDate(it.due));
     if(it.time)bits.push(fmtTime(it.time));
-    if(it.recurrence&&it.recurrence.freq)bits.push('repeats '+(RECUR_LABEL[it.recurrence.freq]||it.recurrence.freq));
+    if(it.recurrence&&it.recurrence.freq)bits.push('repeats '+(_recurrenceNthLabel(it.recurrence)?'monthly on the '+_recurrenceNthLabel(it.recurrence,true):(RECUR_LABEL[it.recurrence.freq]||it.recurrence.freq)));
     // Stage 7 (P2-S5): say where the tag actually LANDS, not just that one
     // was typed -- '#work' resolving to nothing imported silently without a
     // project before, which is the black-box behaviour this preview exists
@@ -9804,6 +9846,9 @@ function _recurrenceToText(rec){
   var t;
   if(rec.days&&rec.days.length>1){
     t='every '+rec.days.map(function(d){return _DAY_SHORT[d]||'';}).filter(Boolean).join(' ');
+  }else if(_recurrenceNthLabel(rec)){
+    // "every 1st monday" / "every last friday" -- the parser's own syntax.
+    t='every '+_recurrenceNthLabel(rec,true).toLowerCase();
   }else{
     var unit=_RECUR_UNIT[rec.freq]||rec.freq;
     t=(rec.interval&&rec.interval>1)?('every '+rec.interval+' '+unit+'s'):('every '+unit);
@@ -11833,6 +11878,10 @@ function _recurrenceBadgeLabel(t){
     var dow=new Date(t.due+'T00:00:00').getDay();
     if(!isNaN(dow))return WEEKDAY_NAMES[dow].slice(0,3);
   }
+  // Monthly on the Nth weekday: "1st Mon" says the rule; a plain "monthly"
+  // badge is exactly what hid the same-date bug (2026-10-03).
+  var nthLbl=_recurrenceNthLabel(t.recurrence);
+  if(nthLbl)return nthLbl;
   return RECUR_LABEL[t.recurrence.freq]||t.recurrence.freq;
 }
 // Live "→ Jul 16, 3:00 PM, repeats monthly" chip under a quick-add text
@@ -11851,7 +11900,7 @@ function _renderQuickAddPreview(inputId,previewId,opts){
   if(opts.type&&p.forcedType)bits.push(p.forcedType==='task'?'Task':'Brain Dump thought');
   if(opts.date&&p.due)bits.push(fmtDate(p.due));
   if(opts.time&&p.time)bits.push(fmtTime(p.time));
-  if(opts.recurrence&&p.recurrence)bits.push('repeats '+(RECUR_LABEL[p.recurrence.freq]||p.recurrence.freq));
+  if(opts.recurrence&&p.recurrence)bits.push('repeats '+(_recurrenceNthLabel(p.recurrence)?'monthly on the '+_recurrenceNthLabel(p.recurrence,true):(RECUR_LABEL[p.recurrence.freq]||p.recurrence.freq)));
   if(opts.project&&p.projectTag){
     var proj=(typeof _resolveProjectTag==='function')?_resolveProjectTag(p.projectTag):null;
     bits.push(proj?proj.name:'#'+p.projectTag+' (no match)');
