@@ -148,7 +148,21 @@ function stripHtml(html) {
   return tmp.textContent || '';
 }
 
-function RichEditor({ editorRef, placeholder }) {
+// The note body as editor HTML -- legacy.js's renderer, so a note looks the
+// same here as in the Notes panel. The fallback escapes rather than drops a
+// non-rich body, so a save from it can never blank the note.
+function renderNoteBody(n) {
+  if (typeof window._renderNoteBody === 'function') return window._renderNoteBody(n);
+  if (n && n.rich === true) return sanitizeNoteHtml(n.body || '');
+  const tmp = document.createElement('div');
+  tmp.textContent = (n && n.body) || '';
+  return tmp.innerHTML;
+}
+
+// fill: grow to the parent's height (the single-note view) instead of the
+// add-note form's 100-280px box. onSubmit: what Cmd+Enter does; without it,
+// Cmd+Enter clicks the enclosing form's Add button as before.
+function RichEditor({ editorRef, placeholder, onSubmit, fill }) {
   const id = useRef('pd-note-' + Math.random().toString(36).slice(2)).current;
 
   const fmt = (kind) => {
@@ -186,7 +200,7 @@ function RichEditor({ editorRef, placeholder }) {
   };
 
   return (
-    <div>
+    <div style={fill ? { flex: 1, minHeight: 0, display: 'flex', flexDirection: 'column' } : undefined}>
       <div ref={editorRef}
         contentEditable
         data-placeholder={placeholder || 'Write a note...'}
@@ -194,11 +208,13 @@ function RichEditor({ editorRef, placeholder }) {
         onKeyDown={e => {
           if (e.key === 'Enter' && e.metaKey) {
             e.preventDefault();
-            editorRef.current?.closest?.('[data-note-form]')?.querySelector?.('[data-add-note]')?.click();
+            if (onSubmit) onSubmit();
+            else editorRef.current?.closest?.('[data-note-form]')?.querySelector?.('[data-add-note]')?.click();
           }
         }}
         style={{
-          minHeight: 100, maxHeight: 280, overflowY: 'auto',
+          ...(fill ? { flex: 1, minHeight: 120, maxHeight: 'none' } : { minHeight: 100, maxHeight: 280 }),
+          overflowY: 'auto',
           width: '100%', background: 'var(--surface-raised)',
           border: '1px solid var(--border)', borderRadius: 8,
           padding: '8px 10px', fontSize: 13, fontFamily: 'inherit',
@@ -534,8 +550,21 @@ export default function ProjectDashboard({ open, initialProjectId, onClose }) {
   const [newTaskTime, setNewTaskTime] = useState('');
   const [newNoteName, setNewNoteName] = useState('');
   const [scheduleFor, setScheduleFor] = useState(null);
+  // The note open in the Notes column: { id, date, time } captured when it was
+  // opened, so the view never depends on the note still being in this
+  // project's list mid-edit (a re-render from another action must not unmount
+  // the editor and drop what's been typed). Title is local state for the same
+  // reason; the body editor is uncontrolled -- filled once on open.
+  const [openNote, setOpenNote] = useState(null);
+  const [noteTitle, setNoteTitle] = useState('');
+  const [noteSaved, setNoteSaved] = useState(false);
   const taskInputRef = useRef(null);
   const noteEditorRef = useRef(null);
+  const openNoteEditorRef = useRef(null);
+  // Sanitized editor HTML as last loaded or saved. "Unsaved changes" means the
+  // editor differs from THIS, not from the stored body: the browser re-
+  // serializes HTML, so comparing against n.body would flag untouched notes.
+  const noteBaselineRef = useRef('');
   const { clock } = useClock();
 
   const refresh = useCallback(() => setTick(t => t + 1), []);
@@ -552,7 +581,32 @@ export default function ProjectDashboard({ open, initialProjectId, onClose }) {
   useEffect(() => {
     if (!open) return;
     setSelectedId(initialProjectId || null);
+    setOpenNote(null);
   }, [open, initialProjectId]);
+
+  // Fill the single-note editor once per opened note, then leave it alone --
+  // re-renders never touch an uncontrolled contentEditable, which is what keeps
+  // typing safe from refreshes. Caret goes to the START with no scroll, so a
+  // long note opens at its top, ready to type.
+  const openNoteId = openNote ? openNote.id : null;
+  useEffect(() => {
+    if (!openNoteId) return;
+    const ed = openNoteEditorRef.current;
+    const n = (getState().notes || []).find(x => x.id === openNoteId);
+    if (!ed || !n) return;
+    ed.innerHTML = renderNoteBody(n);
+    noteBaselineRef.current = sanitizeNoteHtml(ed.innerHTML);
+    ed.scrollTop = 0;
+    try { ed.focus({ preventScroll: true }); } catch (e) { ed.focus(); }
+    const sel = window.getSelection();
+    if (sel) {
+      const r = document.createRange();
+      r.selectNodeContents(ed);
+      r.collapse(true);
+      sel.removeAllRanges();
+      sel.addRange(r);
+    }
+  }, [openNoteId]);
 
   useEffect(() => {
     if (open) document.body.style.overflow = 'hidden';
@@ -670,21 +724,87 @@ export default function ProjectDashboard({ open, initialProjectId, onClose }) {
     save(); refresh(); syncLegacy();
   };
 
-  // Existing notes open in the full Notes editor (the dedicated panel) rather
-  // than an inline read-only preview: close this overlay, open the Notes panel,
-  // and drop straight into that note's rich editor, scrolled into view. Runs on
-  // a macrotask so this overlay unmounts first and the two never overlap.
-  const openNoteInEditor = (noteId) => {
-    onClose();
-    setTimeout(() => {
-      if (typeof window.openPanelOverlay === 'function') window.openPanelOverlay('notes');
-      const editor = document.getElementById('nb_' + noteId);
-      if (editor && editor.style.display === 'none' && typeof window.toggleNoteEdit === 'function') {
-        window.toggleNoteEdit(noteId);
-      }
-      const target = document.getElementById('nb_' + noteId) || document.getElementById('nbr_' + noteId);
-      if (target && target.scrollIntoView) target.scrollIntoView({ block: 'center' });
-    }, 0);
+  // An existing note opens on its own inside the Notes column, and closing it
+  // returns to this project's list. (It used to close this page and jump to the
+  // Notes panel's full list, which left you outside the project -- Joe,
+  // 2026-10-04.)
+  const findNote = (id) => (getState().notes || []).find(x => x.id === id);
+
+  const openNoteView = (n) => {
+    setNoteTitle(n.label || '');
+    setNoteSaved(false);
+    setOpenNote({ id: n.id, date: n.date, time: n.time });
+  };
+
+  const isNoteDirty = () => {
+    if (!openNote) return false;
+    const ed = openNoteEditorRef.current;
+    const bodyChanged = !!ed && sanitizeNoteHtml(ed.innerHTML) !== noteBaselineRef.current;
+    const n = findNote(openNote.id);
+    const label = noteTitle.trim();
+    const labelChanged = !!label && label !== ((n && n.label) || '');
+    return bodyChanged || labelChanged;
+  };
+
+  // Looks the note up by id at save time -- a snapshot can replace state.notes
+  // with new objects while the note is open. Stamps only a real change (same
+  // rule as legacy toggleNoteEdit): an unconditional stamp lets a device holding
+  // a STALE body win just by saving later. A cleared title keeps the old one,
+  // like the Notes panel's editNoteLabel.
+  const saveOpenNote = () => {
+    if (!openNote) return false;
+    const n = findNote(openNote.id);
+    if (!n) {
+      if (typeof window.toast === 'function') window.toast('This note was deleted on another device');
+      return false;
+    }
+    const ed = openNoteEditorRef.current;
+    const clean = ed ? sanitizeNoteHtml(ed.innerHTML) : noteBaselineRef.current;
+    const bodyChanged = clean !== noteBaselineRef.current;
+    const label = noteTitle.trim() || n.label || 'Note';
+    const labelChanged = label !== n.label;
+    if (bodyChanged) { n.body = clean; n.rich = true; }
+    if (labelChanged) n.label = label;
+    if (bodyChanged || labelChanged) {
+      if (typeof window._stampEdit === 'function') window._stampEdit(n);
+      else n.updatedAt = new Date().toISOString();
+      save(); syncLegacy();
+    }
+    noteBaselineRef.current = clean;
+    setNoteTitle(label);
+    return true;
+  };
+
+  const handleNoteSave = () => {
+    if (!saveOpenNote()) return;
+    setNoteSaved(true);
+    setTimeout(() => setNoteSaved(false), 1500);
+    refresh();
+  };
+
+  // Every way out of an open note goes through here: its Close button, the
+  // Dashboard button, and switching or adding a project. Unsaved changes ask
+  // Save / Discard (Cancel keeps editing) instead of being silently dropped.
+  const leaveNote = (then) => {
+    const finish = () => { setOpenNote(null); refresh(); if (then) then(); };
+    if (!isNoteDirty()) { finish(); return; }
+    const msg = 'Save changes to this note?';
+    if (typeof window._confirm === 'function') {
+      window._confirm(msg, () => { if (saveOpenNote()) finish(); },
+        { confirmText: 'Save', altText: 'Discard', onAlt: finish });
+    } else if (window.confirm(msg)) {
+      if (saveOpenNote()) finish();
+    }
+  };
+
+  // Legacy deleteNote: tombstone on commit + the Undo toast, same as the Notes
+  // panel's delete.
+  const deleteOpenNote = () => {
+    if (!openNote) return;
+    const id = openNote.id;
+    setOpenNote(null);
+    if (typeof window.deleteNote === 'function') window.deleteNote(id);
+    refresh();
   };
 
   return (
@@ -730,7 +850,7 @@ export default function ProjectDashboard({ open, initialProjectId, onClose }) {
           display: 'flex', alignItems: 'center', gap: 12, flexWrap: 'wrap',
           padding: '4px 20px 8px',
         }}>
-          <button onClick={onClose} style={{
+          <button onClick={() => leaveNote(onClose)} style={{
             background: 'none', border: '1px solid var(--border)', borderRadius: 'var(--radius-sm)',
             color: 'var(--text-dim)', cursor: 'pointer', padding: '6px 14px', fontSize: 13,
             fontFamily: 'inherit', display: 'flex', alignItems: 'center', gap: 6,
@@ -741,8 +861,8 @@ export default function ProjectDashboard({ open, initialProjectId, onClose }) {
           <ProjectDropdown
             projects={projects}
             selectedId={selectedId}
-            onSelect={setSelectedId}
-            onAddNew={addProject}
+            onSelect={id => leaveNote(() => setSelectedId(id))}
+            onAddNew={(name, due) => leaveNote(() => addProject(name, due))}
           />
 
           {selected && (
@@ -938,6 +1058,53 @@ export default function ProjectDashboard({ open, initialProjectId, onClose }) {
               display: 'flex', flexDirection: 'column',
               overflow: 'hidden',
             }}>
+              {/* One note, opened on its own. Rendered beside the list, not
+                  instead of it: the list stays mounted (hidden) so a half-typed
+                  new note in the Add form survives opening and closing a note. */}
+              {openNote && (
+                <div data-note-view style={{ flex: 1, minHeight: 0, display: 'flex', flexDirection: 'column' }}>
+                  <div style={{
+                    padding: '8px 12px',
+                    borderBottom: '1px solid var(--border)',
+                    display: 'flex', alignItems: 'center', gap: 8,
+                  }}>
+                    <button data-note-close onClick={() => leaveNote()} style={noteBarBtnStyle}>
+                      <span style={{ fontSize: 15 }}>←</span> Close
+                    </button>
+                    <span style={{ flex: 1 }} />
+                    <button data-note-delete onClick={deleteOpenNote} title="Delete note"
+                      style={{ ...noteBarBtnStyle, color: 'var(--red)' }}>
+                      <i className="ti ti-trash" aria-hidden="true" /> Delete
+                    </button>
+                    <button data-note-save onClick={handleNoteSave} style={addBtnStyle}>
+                      {noteSaved ? 'Saved ✓' : 'Save'}
+                    </button>
+                  </div>
+                  <div style={{
+                    flex: 1, minHeight: 0,
+                    display: 'flex', flexDirection: 'column', gap: 6,
+                    padding: '12px 16px',
+                  }}>
+                    <input type="text" value={noteTitle}
+                      onChange={e => setNoteTitle(e.target.value)}
+                      placeholder="Title..."
+                      style={inputStyle({ fontSize: 15, fontWeight: 700 })} />
+                    {(openNote.date || openNote.time) && (
+                      <div style={{ fontSize: 10, color: 'var(--text-faint)' }}>
+                        {openNote.date && fmtDate(openNote.date)}{openNote.time ? ` · ${openNote.time}` : ''}
+                      </div>
+                    )}
+                    <RichEditor key={openNote.id} editorRef={openNoteEditorRef} fill
+                      onSubmit={handleNoteSave}
+                      placeholder="Write your note... (⌘ Enter to save)" />
+                  </div>
+                </div>
+              )}
+
+              <div style={{
+                flex: 1, minHeight: 0,
+                display: openNote ? 'none' : 'flex', flexDirection: 'column',
+              }}>
               <div style={{
                 padding: '10px 16px',
                 borderBottom: '1px solid var(--border)',
@@ -973,8 +1140,9 @@ export default function ProjectDashboard({ open, initialProjectId, onClose }) {
                 )}
                 {allNotes.map(n => (
                   <div key={n.id}
-                    onClick={() => openNoteInEditor(n.id)}
-                    title="Open in the Notes editor"
+                    data-note-card={n.id}
+                    onClick={() => openNoteView(n)}
+                    title="Open note"
                     style={{
                       marginBottom: 6,
                       background: 'var(--surface-raised)', border: '1px solid var(--border)',
@@ -995,6 +1163,7 @@ export default function ProjectDashboard({ open, initialProjectId, onClose }) {
                     </div>
                   </div>
                 ))}
+              </div>
               </div>
             </div>
           </>
@@ -1082,6 +1251,14 @@ const addBtnStyle = {
   background: 'var(--accent)', color: 'var(--bg)',
   border: 'none', borderRadius: 'var(--radius-sm)',
   cursor: 'pointer', fontFamily: 'inherit',
+};
+
+const noteBarBtnStyle = {
+  display: 'inline-flex', alignItems: 'center', gap: 5,
+  padding: '5px 12px', fontSize: 12, fontFamily: 'inherit',
+  background: 'none', color: 'var(--text-dim)',
+  border: '1px solid var(--border)', borderRadius: 'var(--radius-sm)',
+  cursor: 'pointer',
 };
 
 function ScheduleBtn({ scheduled, onClick }) {
