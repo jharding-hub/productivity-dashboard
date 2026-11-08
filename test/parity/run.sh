@@ -17,7 +17,7 @@
 # ═══════════════════════════════════════════════════════════════════
 set -u
 HERE="$(cd "$(dirname "$0")" && pwd)"
-NATIVE="${CENTERPOST_NATIVE:-/Users/jhmac/Desktop/git hub productivity}"
+NATIVE="${CENTERPOST_NATIVE:-$HOME/dev/centerpost-capacitor}"
 SWIFT_SRC="$NATIVE/ios/App/FocusTimerWidget/TodayWidget.swift"
 
 if [ ! -f "$SWIFT_SRC" ]; then
