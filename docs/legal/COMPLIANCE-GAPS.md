@@ -437,11 +437,11 @@ you wrote") is not yet true of the running system.
 Deploy, in this order, once Joe gives the OK:
 
 ```bash
-cd /Users/jhmac/dev/centerpost-workers/jarvis && npx wrangler deploy
+cd ~/dev/centerpost-workers/jarvis && npx wrangler deploy
 ```
 
 ```bash
-cd /Users/jhmac/dev/centerpost-workers/guardian && npx wrangler deploy
+cd ~/dev/centerpost-workers/guardian && npx wrangler deploy
 ```
 
 Then the web change (`public/ops.html`) goes live with the next push to main in
