@@ -4,7 +4,7 @@
 **Date:** 2026-08-06
 **Status:** Internal working document. Source of truth for every legal document in `docs/legal/`.
 **Method:** Direct audit of `~/dev/productivity-dashboard`, `~/dev/centerpost-workers`, and
-`/Users/jhmac/Desktop/git hub productivity` (Capacitor iOS/watch). Every row below cites the file
+`~/dev/centerpost-capacitor` (Capacitor iOS/watch). Every row below cites the file
 that implements it. Rows marked **UNVERIFIED** could not be confirmed from code and require Joe to
 check a vendor console — they must not be asserted as fact in any published policy.
 
