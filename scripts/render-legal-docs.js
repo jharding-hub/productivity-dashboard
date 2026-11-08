@@ -12,7 +12,7 @@ const fs = require('fs');
 const path = require('path');
 const { marked } = require('marked');
 
-const REPO = '/Users/jhmac/dev/productivity-dashboard';
+const REPO = path.resolve(__dirname, '..');
 const LEGAL_DIR = path.join(REPO, 'docs/legal');
 const OUT_DIR = path.join(REPO, 'public');
 
