@@ -72,15 +72,35 @@
   // now: optional Date override, for testing -- same convention as
   // quick-add-parser.js's parseQuickAdd(text, now). legacy.js's real call
   // site never passes it, so production behavior (real clock) is unchanged.
-  function _nextRecurrenceDate(dueStr, recurrence, now) {
+  //
+  // anchorStr: optional 'YYYY-MM-DD' -- the date this occurrence was ORIGINALLY
+  // scheduled for, before an overdue carry-over ("Move to today", Fresh Start,
+  // snooze) or a "this one only" move shifted its due date (item.recurAnchor,
+  // set by legacy.js _setTaskDue). Weekly and monthly rules step from the
+  // anchor so the series stays on its own weekday/date; the shifted due date
+  // still sets the floor (with the anchor), so the next copy is never on or
+  // before the current one. Before this (2026-11-12), an "every Saturday" task carried over to
+  // Sunday came back every Sunday.
+  function _nextRecurrenceDate(dueStr, recurrence, now, anchorStr) {
     if (!dueStr || !recurrence || !recurrence.freq) return null;
-    var due = new Date(dueStr + 'T00:00:00');
-    if (isNaN(due.getTime())) return null;
+    var dueD = new Date(dueStr + 'T00:00:00');
+    if (isNaN(dueD.getTime())) return null;
+    var due = dueD;
+    if (anchorStr) {
+      var anchorD = new Date(anchorStr + 'T00:00:00');
+      if (!isNaN(anchorD.getTime())) due = anchorD;
+    }
     var todayD = new Date(dayKey(now || new Date()) + 'T00:00:00');
     var n = recurrence.interval || 1;
-    // The next occurrence must be after the due date AND after today, so a
-    // late completion is never born overdue (or due again today).
-    var floor = due.getTime() < todayD.getTime() ? todayD : due;
+    // The next occurrence must be after the (possibly moved) due date, after
+    // the original date it was moved from, AND after today -- so a late
+    // completion is never born overdue (or due again today), a moved copy
+    // never respawns on or before itself, and one moved EARLIER (Sat -> Fri,
+    // "this one only") isn't followed by a second copy on the Saturday it
+    // replaced.
+    var floor = dueD;
+    if (due.getTime() > floor.getTime()) floor = due;
+    if (todayD.getTime() > floor.getTime()) floor = todayD;
     var d, guard;
     if (recurrence.freq === 'daily' ||
         (recurrence.freq === 'weekly' && recurrence.days && recurrence.days.length)) {

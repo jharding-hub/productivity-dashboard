@@ -3272,7 +3272,7 @@ function toggleSubtask(pid,sid){
 // tlBlock links to, so reusing the id would hide the next occurrence.
 function _recurNextDue(item){
   if(!item||!item.recurrence||!item.due||typeof _nextRecurrenceDate!=='function')return null;
-  return _nextRecurrenceDate(item.due,item.recurrence);
+  return _nextRecurrenceDate(item.due,item.recurrence,undefined,item.recurAnchor);
 }
 function _recurNextCopy(item,prefix){
   var nextDue=_recurNextDue(item);
@@ -3281,7 +3281,7 @@ function _recurNextCopy(item,prefix){
   c.id=prefix+Date.now()+Math.random().toString(36).slice(2,5);
   c.due=nextDue;c.done=false;
   // Per-occurrence fields that must not carry over to the next copy.
-  delete c.gcalEventId;delete c.updatedAt;delete c.completedAt;delete c.linkGroupId;
+  delete c.gcalEventId;delete c.updatedAt;delete c.completedAt;delete c.linkGroupId;delete c.recurAnchor;
   return c;
 }
 // onSeries/onOne are the two outcomes; a non-recurring delete skips the
@@ -3328,9 +3328,62 @@ function _deleteSubtaskNow(pid,sid,skipOnly){
 function editProjectName(pid,v){if(!v)return;const p=state.projects.find(p=>p.id===pid);if(p){p.name=v;_stampEdit(p);}save();}
 function editSubtaskName(pid,sid,v){if(!v)return;const p=state.projects.find(p=>p.id===pid);const s=p&&p.subtasks.find(s=>s.id===sid);if(s){s.name=v;_stampEdit(s);}save();renderTaskList();}
 function editProjectDue(pid,v){const p=state.projects.find(p=>p.id===pid);if(p){p.due=v;_stampEdit(p);save();renderProjects();}}
-function editSubtaskDue(pid,sid,v){const p=state.projects.find(p=>p.id===pid);const s=p&&p.subtasks.find(s=>s.id===sid);if(s){s.due=v;_stampEdit(s);save();renderProjects();renderTaskList();var modalOpen=document.getElementById('projDetailModal').classList.contains('open');if(modalOpen)openProjectModal(pid);}}
+// ── Moving a recurring task: this occurrence vs the series (2026-11-12) ──
+// Every task/subtask due-date write goes through _setTaskDue. A recurring
+// item stores ONE occurrence, so moving its date used to silently move the
+// whole series too: "every Saturday" carried over to Sunday came back every
+// Sunday. Now a moved occurrence remembers the date it was ORIGINALLY
+// scheduled for in recurAnchor, and _nextRecurrenceDate steps the series from
+// that instead of from the moved date.
+//   scope 'one'     -- move this occurrence only; the series keeps its day.
+//   scope 'series'  -- the new date becomes the series' day (no anchor).
+//   scope 'restore' -- undo: put back the exact due + anchor recorded before.
+//   none / 'auto'   -- an OVERDUE occurrence moved later (Move to today, Fresh
+//                      Start, snooze, bulk reschedule) is a carry-over, i.e.
+//                      'one'. Anything else is a plain write.
+// Interactive callers ask first for an on-time recurring move
+// (_needsRecurMoveAsk / _askRecurMove) -- overdue carry-overs never ask.
+// The anchor is per-occurrence: dropped when the date is cleared or moved
+// back onto it, and never copied onto the next occurrence.
+function _setTaskDue(item,v,scope,restoreAnchor){
+  if(scope==='restore'){
+    item.due=v;
+    if(restoreAnchor)item.recurAnchor=restoreAnchor;else delete item.recurAnchor;
+    return;
+  }
+  var old=item.due;
+  if(scope==='series'){
+    delete item.recurAnchor;
+  }else if(item.recurrence&&old&&v&&v!==old&&
+           (scope==='one'||(old<todayStr()&&v>old))){
+    if(!item.recurAnchor)item.recurAnchor=old;
+  }
+  if(item.recurAnchor&&(!v||v===item.recurAnchor))delete item.recurAnchor;
+  item.due=v;
+}
+// An on-time (not overdue) recurring occurrence moved to another date -- the
+// one case where the user picks: this occurrence, or the whole series.
+function _needsRecurMoveAsk(item,v){
+  return !!(item&&item.recurrence&&item.due&&v&&v!==item.due&&item.due>=todayStr());
+}
+// count: how many recurring tasks the choice covers (bulk reschedule asks once).
+// onPick(scope) runs with 'one' or 'series'; Cancel leaves every date as it
+// was and repaints, so an inline date input that was showing the new value
+// goes back to the real one.
+function _askRecurMove(count,onPick){
+  var many=count>1;
+  _confirm(many
+      ?(count+' of these tasks repeat. Move just these occurrences, or move their whole series to the new date?')
+      :'This task repeats. Move just this occurrence, or move the whole series to the new date?',
+    function(){onPick('one');},
+    {icon:'ti-repeat',confirmText:many?'These ones only':'This one only',
+     altText:'Entire series',onAlt:function(){onPick('series');}});
+  renderProjects();renderTaskList();
+  if(typeof _refreshTodayViewIfVisible==='function')_refreshTodayViewIfVisible();
+}
+function editSubtaskDue(pid,sid,v,scope,restoreAnchor){const p=state.projects.find(p=>p.id===pid);const s=p&&p.subtasks.find(s=>s.id===sid);if(s){if(!scope&&_needsRecurMoveAsk(s,v)){_askRecurMove(1,function(sc){editSubtaskDue(pid,sid,v,sc);});return;}_setTaskDue(s,v,scope,restoreAnchor);_stampEdit(s);save();renderProjects();renderTaskList();var modalOpen=document.getElementById('projDetailModal').classList.contains('open');if(modalOpen)openProjectModal(pid);}}
 function editStandaloneTaskName(id,v){if(!v)return;var t=(state.tasks||[]).find(function(x){return x.id===id;});if(t){t.name=v;_stampEdit(t);save();renderTaskList();var modalOpen=document.getElementById('projDetailModal').classList.contains('open');if(modalOpen&&t.projectId)openProjectModal(t.projectId);else if(modalOpen&&t.projectIds&&t.projectIds.length)openProjectModal(t.projectIds[0]);}}
-function editStandaloneTaskDue(id,v){var t=(state.tasks||[]).find(function(x){return x.id===id;});if(t){t.due=v;_stampEdit(t);save();renderTaskList();var modalOpen=document.getElementById('projDetailModal').classList.contains('open');if(modalOpen&&t.projectId)openProjectModal(t.projectId);else if(modalOpen&&t.projectIds&&t.projectIds.length)openProjectModal(t.projectIds[0]);}}
+function editStandaloneTaskDue(id,v,scope,restoreAnchor){var t=(state.tasks||[]).find(function(x){return x.id===id;});if(t){if(!scope&&_needsRecurMoveAsk(t,v)){_askRecurMove(1,function(sc){editStandaloneTaskDue(id,v,sc);});return;}_setTaskDue(t,v,scope,restoreAnchor);_stampEdit(t);save();renderTaskList();var modalOpen=document.getElementById('projDetailModal').classList.contains('open');if(modalOpen&&t.projectId)openProjectModal(t.projectId);else if(modalOpen&&t.projectIds&&t.projectIds.length)openProjectModal(t.projectIds[0]);}}
 function editTaskTimeEst(taskId,source,projectId,val){
   _dateEditActive=null;
   if(source==='standalone'){
@@ -8541,7 +8594,7 @@ function getAllTasks(){
   // Pull subtasks from all projects
   state.projects.forEach(function(p){
     p.subtasks.forEach(function(st){
-      tasks.push({id:st.id,name:st.name,done:st.done,priority:st.priority||'med',timeEst:st.timeEst||'',time:st.time||'',due:st.due||'',recurrence:st.recurrence||null,alertBefore:st.alertBefore||0,projectId:p.id,projectName:p.name,source:'project'});
+      tasks.push({id:st.id,name:st.name,done:st.done,priority:st.priority||'med',timeEst:st.timeEst||'',time:st.time||'',due:st.due||'',recurrence:st.recurrence||null,recurAnchor:st.recurAnchor||'',alertBefore:st.alertBefore||0,projectId:p.id,projectName:p.name,source:'project'});
     });
   });
   // Add standalone tasks
@@ -8553,7 +8606,7 @@ function getAllTasks(){
     var pid=t.projectId||(t.projectIds&&t.projectIds[0])||'';
     var pName='';
     if(pid){var pr=state.projects.find(function(p){return p.id===pid;});if(pr)pName=pr.name;}
-    tasks.push({id:t.id,name:t.name,done:t.done,priority:t.priority||'med',timeEst:t.timeEst||'',time:t.time||'',due:t.due||'',recurrence:t.recurrence||null,alertBefore:t.alertBefore||0,projectId:pid,projectName:pName,source:'standalone'});
+    tasks.push({id:t.id,name:t.name,done:t.done,priority:t.priority||'med',timeEst:t.timeEst||'',time:t.time||'',due:t.due||'',recurrence:t.recurrence||null,recurAnchor:t.recurAnchor||'',alertBefore:t.alertBefore||0,projectId:pid,projectName:pName,source:'standalone'});
   });
   return tasks;
 }
@@ -9031,9 +9084,9 @@ function renderTaskList(){
 // yesterday is far likelier still live than one from three weeks ago, so the
 // recent ones surface and the stale ones snooze. Recurring tasks are included
 // on purpose -- _nextRecurrenceDate never returns a date on or before today,
-// so a shifted due can't respawn overdue. (Weekly/same-date monthly step from
-// the due date, so a shift by a non-whole week/month moves the schedule with
-// it, as it always has; a monthly Nth-weekday rule is unaffected.)
+// so a shifted due can't respawn overdue. The shift goes through _setTaskDue,
+// which records the original date in recurAnchor, so weekly/monthly series
+// keep their own weekday/date instead of moving to the carried-over day.
 // =======================================
 var _tlTriageUndo=null,_tlTriageNote='',_tlTriageNoteTimer=null;
 function _tlPlusDays(dayStr,days){
@@ -9041,14 +9094,16 @@ function _tlPlusDays(dayStr,days){
   d.setDate(d.getDate()+days);
   return _dayKey(d);
 }
-function _tlSetDueByRef(ref,newDue){
+// scope/restoreAnchor: see _setTaskDue. Triage only ever moves OVERDUE
+// items, so it never asks one-vs-series; its undo passes 'restore'.
+function _tlSetDueByRef(ref,newDue,scope,restoreAnchor){
   if(ref.source==='standalone'){
     var t=(state.tasks||[]).find(function(x){return x.id===ref.id;});
-    if(t){t.due=newDue;_stampEdit(t);}
+    if(t){_setTaskDue(t,newDue,scope,restoreAnchor);_stampEdit(t);}
   }else{
     var p=state.projects.find(function(p){return p.id===ref.projectId;});
     var s=p&&p.subtasks.find(function(s){return s.id===ref.id;});
-    if(s){s.due=newDue;_stampEdit(s);}
+    if(s){_setTaskDue(s,newDue,scope,restoreAnchor);_stampEdit(s);}
   }
 }
 function _tlTriageBarHTML(all,today){
@@ -9107,7 +9162,7 @@ function tlTriage(mode){
   var od=getAllTasks().filter(function(t){return !t.done&&t.due&&t.due<today;});
   if(!od.length){renderTaskList();return;}
   od.sort(function(a,b){return b.due.localeCompare(a.due);}); // most recently due first
-  _tlTriageUndo=od.map(function(t){return {id:t.id,source:t.source,projectId:t.projectId,oldDue:t.due};});
+  _tlTriageUndo=od.map(function(t){return {id:t.id,source:t.source,projectId:t.projectId,oldDue:t.due,oldAnchor:t.recurAnchor};});
   var week=_tlPlusDays(today,7);
   var n=od.length;
   if(mode==='all'){
@@ -9138,7 +9193,7 @@ function tlTriage(mode){
 }
 function tlTriageUndo(){
   if(!_tlTriageUndo)return;
-  _tlTriageUndo.forEach(function(r){_tlSetDueByRef(r,r.oldDue);});
+  _tlTriageUndo.forEach(function(r){_tlSetDueByRef(r,r.oldDue,'restore',r.oldAnchor);});
   _tlTriageUndo=null;_tlTriageNote='';
   if(_tlTriageNoteTimer){clearTimeout(_tlTriageNoteTimer);_tlTriageNoteTimer=null;}
   save();
@@ -9292,6 +9347,16 @@ function _tlBulkReschedule(dateStr){
   var ids=Object.keys(_tlSelected);
   if(!ids.length){toast('No tasks selected');return;}
   var all=getAllTasks();
+  // On-time recurring tasks in the selection: ask ONCE whether to move just
+  // these occurrences or their series (_askRecurMove), then apply that choice
+  // to all of them -- never one dialog per task inside the batch.
+  var asking=ids.filter(function(id){
+    return _needsRecurMoveAsk(all.find(function(x){return x.id===id;}),dateStr);
+  }).length;
+  if(asking){_askRecurMove(asking,function(sc){_tlBulkRescheduleApply(ids,all,dateStr,sc);});return;}
+  _tlBulkRescheduleApply(ids,all,dateStr);
+}
+function _tlBulkRescheduleApply(ids,all,dateStr,scope){
   // A2-4: field edits don't need the deferred-commit machinery -- undo just
   // writes the OLD dates back through the same guarded setters, which is
   // sync-safe by construction (it's an ordinary edit, not a resurrection).
@@ -9301,9 +9366,11 @@ function _tlBulkReschedule(dateStr){
     ids.forEach(function(id){
       var t=all.find(function(x){return x.id===id;});
       if(!t)return;
-      prev.push({id:id,source:t.source,projectId:t.projectId,oldDue:t.due});
-      if(t.source==='standalone')editStandaloneTaskDue(id,dateStr);
-      else editSubtaskDue(t.projectId,id,dateStr);
+      prev.push({id:id,source:t.source,projectId:t.projectId,oldDue:t.due,oldAnchor:t.recurAnchor});
+      // scope 'one'/'series' when the user was asked; otherwise a plain
+      // write (overdue recurring items count as carry-overs automatically).
+      if(t.source==='standalone')editStandaloneTaskDue(id,dateStr,scope||'auto');
+      else editSubtaskDue(t.projectId,id,dateStr,scope||'auto');
       n++;
     });
   });
@@ -9314,8 +9381,8 @@ function _tlBulkReschedule(dateStr){
     function(){
       _withBatch(function(){
         prev.forEach(function(r){
-          if(r.source==='standalone')editStandaloneTaskDue(r.id,r.oldDue);
-          else editSubtaskDue(r.projectId,r.id,r.oldDue);
+          if(r.source==='standalone')editStandaloneTaskDue(r.id,r.oldDue,'restore',r.oldAnchor);
+          else editSubtaskDue(r.projectId,r.id,r.oldDue,'restore',r.oldAnchor);
         });
       });
       renderProjects();renderTaskList();
@@ -9638,8 +9705,8 @@ function _freshStartApply(mode,overdue){
   var n=0;
   _withBatch(function(){
     overdue.forEach(function(t){
-      if(t.source==='standalone')editStandaloneTaskDue(t.id,target);
-      else editSubtaskDue(t.projectId,t.id,target);
+      if(t.source==='standalone')editStandaloneTaskDue(t.id,target,'auto');
+      else editSubtaskDue(t.projectId,t.id,target,'auto');
       n++;
     });
   });
@@ -12507,7 +12574,7 @@ function renderOnboardingStep(){
 // the next one" signal; deleting a recurring item just deletes it, no re-spawn.
 function _materializeRecurrence(item,pushFn){
   if(!item||!item.recurrence||!item.due)return;
-  var nextDue=_nextRecurrenceDate(item.due,item.recurrence);
+  var nextDue=_nextRecurrenceDate(item.due,item.recurrence,undefined,item.recurAnchor);
   if(!nextDue)return;
   pushFn(nextDue);
 }

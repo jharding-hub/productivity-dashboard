@@ -171,3 +171,46 @@ test('late nth weekday: 1st Monday done two days late stays the 1st Monday', () 
 test('late daily: still restarts from today (unchanged)', () => {
   assert.equal(_nextRecurrenceDate('2026-08-10', { freq: 'daily', interval: 3 }, NOW), '2026-08-22');
 });
+
+// ── Overdue carry-over keeps the series on its own day (2026-11-12) ─────────
+// "Move to today" / Fresh Start / snooze shift an overdue copy's due date and
+// legacy.js records the original date as recurAnchor (4th param). The series
+// must keep stepping from the anchor, not the carried-over date.
+test('carry-over: weekly stays on its original weekday', () => {
+  // Due Sat 2026-08-15, carried over to today (Wed 08-19), done today.
+  const r = { freq: 'weekly', interval: 1 };
+  assert.equal(_nextRecurrenceDate('2026-08-19', r, NOW, '2026-08-15'), '2026-08-22'); // Sat
+  // Without the anchor it drifts to Wednesday -- the bug.
+  assert.equal(_nextRecurrenceDate('2026-08-19', r, NOW), '2026-08-26');
+});
+test('carry-over: completed early, before the carried-over date', () => {
+  // Due Sat 08-15, snoozed a week to Sat 08-22, ticked off early on Wed 08-19:
+  // next is the Saturday AFTER the snoozed copy, never the copy's own date.
+  const r = { freq: 'weekly', interval: 1 };
+  assert.equal(_nextRecurrenceDate('2026-08-22', r, NOW, '2026-08-15'), '2026-08-29');
+  // Moved by a non-whole week (Sat -> Mon 08-24), done early: next Saturday after it.
+  assert.equal(_nextRecurrenceDate('2026-08-24', r, NOW, '2026-08-15'), '2026-08-29');
+});
+test('carry-over: monthly same-date and biweekly keep their schedule', () => {
+  // Due the 15th of August, carried to the 19th -> 15th of September.
+  assert.equal(_nextRecurrenceDate('2026-08-19', { freq: 'monthly', interval: 1 }, NOW, '2026-08-15'), '2026-09-15');
+  // Biweekly carried over keeps its parity from the anchor (08-08 -> 08-22).
+  assert.equal(_nextRecurrenceDate('2026-08-19', { freq: 'weekly', interval: 2 }, NOW, '2026-08-08'), '2026-08-22');
+});
+test('carry-over: a bogus anchor is ignored', () => {
+  const r = { freq: 'weekly', interval: 1 };
+  assert.equal(_nextRecurrenceDate('2026-08-19', r, NOW, 'junk'), '2026-08-26');
+});
+test('"this one only" moved EARLIER keeps the series and skips the replaced day', () => {
+  // Every Saturday; the Sat 08-22 occurrence moved to Thu 08-20 only.
+  // Done Thursday -> next is Sat 08-29, not Sat 08-22 (that one was moved)
+  // and not Thu 08-27 (the series didn't move).
+  const r = { freq: 'weekly', interval: 1 };
+  assert.equal(_nextRecurrenceDate('2026-08-20', r, NOW, '2026-08-22'), '2026-08-29');
+  // Monthly on the 25th, this month's moved up to the 21st -> Sep 25.
+  assert.equal(_nextRecurrenceDate('2026-08-21', { freq: 'monthly', interval: 1 }, NOW, '2026-08-25'), '2026-09-25');
+});
+test('"this one only" moved LATER on time keeps the series day', () => {
+  // Sat 08-22 moved to Mon 08-24 only; done Monday -> Sat 08-29.
+  assert.equal(_nextRecurrenceDate('2026-08-24', { freq: 'weekly', interval: 1 }, NOW, '2026-08-22'), '2026-08-29');
+});
