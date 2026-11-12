@@ -6043,9 +6043,17 @@ function _widgetDayPayload(day){
   // this it read tlBlocks directly, so a task that appeared on the in-app
   // timeline was simply missing from the widget.
   var blocks=(typeof _tlCollectBlocks==='function')?_tlCollectBlocks(day):[];
+  // Hand-typed time blocks already over drop off like a completed task
+  // (2026-11-12), so they don't take one of the widget's few rows.
+  var nowMs=Date.now();
+  blocks=blocks.filter(function(b){return !_tlElapsedBlock(b,day,nowMs);});
   var timeline=blocks.slice().sort(function(a,b){return a.startMin-b.startMin;})
     .map(function(b){
       var row={name:b.name||'',time:_fmtStartMin(b.startMin)};
+      // clears (2026-11-12, additive -- optional in TodayWidget.swift): this
+      // row is a hand-typed time block, so the widget hides it once endMs
+      // passes, with the app closed. Task rows stay until checked off.
+      if(b.source==='manual'&&!b.linkedId)row.clears=true;
       // startMs/endMs (2026-09-25, additive -- optional in TodayWidget.swift):
       // the lock-screen "Next block" used timeline.first, i.e. the day's FIRST
       // block even hours after it ended. Absolute instants let the extension
@@ -15948,13 +15956,17 @@ function _recordBannerDone(id){
   try{entry=bannerDoneEntry(_tlCollectBlocks(day),id,day);}catch(e){console.warn('[banner-done] snapshot failed',e);}
   state.bannerDone=bannerDoneAdd(state.bannerDone,entry,day);
 }
-function _renderBannerDone(bar,blocks,win){
+// elapsed: hand-typed time blocks whose end has passed (_tlElapsedBlock) --
+// drawn on the same greyed strip as completed tasks, from live data each
+// render rather than recorded in state.bannerDone, so moving the block later
+// (or editing its time) brings it straight back onto the live bar.
+function _renderBannerDone(bar,blocks,win,elapsed){
   var old=bar.querySelector('.day-progress-bar-done');
   if(old)old.remove();
   if(typeof bannerDoneVisible!=='function')return;
   var live={};
   blocks.forEach(function(b){if(b.itemId)live[b.itemId]=1;if(b.linkedId)live[b.linkedId]=1;});
-  var done=bannerDoneVisible(state.bannerDone,todayStr(),live);
+  var done=bannerDoneVisible(state.bannerDone,todayStr(),live).concat(elapsed||[]);
   if(!done.length)return;
   var strip=document.createElement('div');
   strip.className='day-progress-bar-done';
@@ -15980,11 +15992,20 @@ function renderBannerBlocks(){
   var existing=bar.querySelector('.day-progress-bar-blocks');
   if(existing)existing.remove();
   
-  var blocks=_tlCollectBlocks();
+  var all=_tlCollectBlocks();
+  // Hand-typed time blocks that are over move to the done strip, like a
+  // completed task (2026-11-12) -- they used to sit on the live bar all day.
+  // The 30s updateDayProgress tick re-runs this, so a block clears within
+  // half a minute of its end.
+  var day=todayStr(),nowMs=Date.now(),elapsed=[];
+  var blocks=all.filter(function(b){
+    if(!_tlElapsedBlock(b,day,nowMs))return true;
+    elapsed.push(b);return false;
+  });
   // The productive window (Settings ▸ Productive hours); may cross midnight.
   var win=bannerWindow();
   // Completed (grey) blocks draw even when nothing live is left today.
-  _renderBannerDone(bar,blocks,win);
+  _renderBannerDone(bar,blocks,win,elapsed);
   if(blocks.length===0)return;
   
   var palette=PROJECT_PALETTE;
@@ -16018,6 +16039,15 @@ function renderBannerBlocks(){
   });
   
   bar.appendChild(container);
+}
+
+// True when `b` (a _tlCollectBlocks row for `day`) is a hand-typed time
+// block whose end is at or before nowMs -- see bannerBlockElapsed.
+function _tlElapsedBlock(b,day,nowMs){
+  if(typeof bannerBlockElapsed!=='function'||!b||b.startMin==null)return false;
+  var st=_anchoredInstantOf(day,b.startMin);
+  if(!st)return false;
+  return bannerBlockElapsed(b,st.getTime()+(b.durMin||0)*60000,nowMs);
 }
 
 function _tlMinutesToY(minutes){

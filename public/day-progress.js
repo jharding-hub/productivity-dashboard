@@ -121,6 +121,20 @@ function bannerDoneVisible(list,day,liveIds){
   return (list||[]).filter(function(e){return e&&e.day===day&&!liveIds[e.id];});
 }
 
+// bannerBlockElapsed (2026-11-12): a hand-typed time block (a manual block
+// NOT linked to a task) whose end has passed is over -- it behaves like a
+// completed task: off the live bar, onto the greyed done strip along the top,
+// and off the widget. endMs is the block's real end instant (the caller builds
+// it with _anchoredInstantOf, so a night-shift anchor is respected). Blocks
+// that stand for a task (auto-placed, or dragged into a linked block) and
+// reminders never qualify -- those clear when the task is actually checked
+// off, not because the clock moved past them.
+function bannerBlockElapsed(b,endMs,nowMs){
+  if(!b||b.source!=='manual'||b.linkedId)return false;
+  if(endMs==null||isNaN(endMs))return false;
+  return endMs<=nowMs;
+}
+
 function bannerHourLabel(h){
   h=((h%24)+24)%24;
   return ((h%12)||12)+(h<12?'a':'p');

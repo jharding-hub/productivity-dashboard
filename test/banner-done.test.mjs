@@ -5,7 +5,7 @@ import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
 
 const src = readFileSync(new URL('../public/day-progress.js', import.meta.url), 'utf8');
-const w = new Function(src + ';return{bannerDoneEntry,bannerDoneAdd,bannerDoneVisible};')();
+const w = new Function(src + ';return{bannerDoneEntry,bannerDoneAdd,bannerDoneVisible,bannerBlockElapsed};')();
 
 const WED = '2026-09-23', FRI = '2026-09-25';
 // What _tlCollectBlocks returns for Wednesday: one auto-placed task, one task
@@ -56,4 +56,21 @@ test('adding prunes other days and replaces a same-id entry', () => {
 test('an item live on the bar again (restored) is not drawn grey twice', () => {
   const list = [{ id: 't1', day: WED, startMin: 600, durMin: 60 }];
   assert.deepEqual(w.bannerDoneVisible(list, WED, { t1: 1 }), []);
+});
+
+// ── Time blocks clear once their end passes (2026-11-12) ────────────────────
+test('a hand-typed block is elapsed at/after its end, not before', () => {
+  const blk = { id: 'blk5', source: 'manual', linkedId: '', name: 'Lunch', startMin: 720, durMin: 60 };
+  const end = 1000000;
+  assert.equal(w.bannerBlockElapsed(blk, end, end - 1), false);
+  assert.equal(w.bannerBlockElapsed(blk, end, end), true);
+  assert.equal(w.bannerBlockElapsed(blk, end, end + 60000), true);
+});
+test('task-backed blocks and reminders never clear on time alone', () => {
+  const end = 1000000, later = end + 3600000;
+  assert.equal(w.bannerBlockElapsed({ source: 'manual', linkedId: 't2' }, end, later), false); // dragged task
+  assert.equal(w.bannerBlockElapsed({ source: 'task', itemId: 't1' }, end, later), false);
+  assert.equal(w.bannerBlockElapsed({ source: 'subtask', itemId: 's1' }, end, later), false);
+  assert.equal(w.bannerBlockElapsed({ source: 'reminder' }, end, later), false);
+  assert.equal(w.bannerBlockElapsed({ source: 'manual' }, NaN, later), false);
 });
