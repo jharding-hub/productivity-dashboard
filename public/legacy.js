@@ -5133,8 +5133,32 @@ if(_isEditingInPanel('thoughtChips')){_deferPanelRender('thoughtChips');return;}
 document.getElementById('thoughtChips').innerHTML=state.thoughts.map(t=>'<div class="thought-chip"><span class="editable" id="tt_'+t.id+'">'+esc(t.text)+'</span><span class="chip-promote" onclick="promoteThought(\''+t.id+'\')">\u2197</span><span class="chip-x" onclick="deleteThought(\''+t.id+'\')">\u00D7</span></div>').join('');state.thoughts.forEach(t=>{const e=document.getElementById('tt_'+t.id);if(e)makeEditable(e,v=>editThought(t.id,v));});refreshEditables();}
 
 // ENERGY & MOOD
-function setEnergy(el,v){state.energy=v;document.querySelectorAll('#energyPills .em-pill').forEach(c=>c.classList.remove('selected'));el.classList.add('selected');logMoodEntry();save();showStateAdvice();updateWellnessVisibility();}
-function setMood(el,v){state.mood=v;document.querySelectorAll('#moodPills .em-pill').forEach(c=>c.classList.remove('selected'));el.classList.add('selected');logMoodEntry();save();showStateAdvice();updateWellnessVisibility();}
+// Energy & Mood panel (2026-11-12): each tap logs AND says what it logged in
+// a toast -- it used to save silently, so there was no sign anything
+// happened. The panel opens blank every time (_emResetPanel) instead of
+// showing the last check-in as if it were still selected; the log in
+// state.moodLog and state.energy/mood (wellness triggers, watch) are untouched.
+// The advice line only appears once BOTH are picked in this visit, so it
+// never mixes a fresh pick with a stale one from earlier.
+var EM_ENERGY_LABELS={high:'High',good:'Good',low:'Low',crashed:'Crash'};
+var EM_MOOD_LABELS={focused:'Focus',scattered:'Scatter',anxious:'Anxious',calm:'Calm'};
+var _emPicked={};
+function _emResetPanel(){
+  _emPicked={};
+  document.querySelectorAll('#energyPills .em-pill,#moodPills .em-pill').forEach(function(c){c.classList.remove('selected');});
+  var adv=document.getElementById('stateAdvice');if(adv)adv.innerHTML='';
+}
+function _emAfterPick(){
+  logMoodEntry();save();
+  if(_emPicked.energy&&_emPicked.mood)showStateAdvice();
+  updateWellnessVisibility();
+  var parts=[];
+  if(_emPicked.energy)parts.push('Energy '+(EM_ENERGY_LABELS[state.energy]||state.energy));
+  if(_emPicked.mood)parts.push('Mood '+(EM_MOOD_LABELS[state.mood]||state.mood));
+  toast('Logged: '+parts.join(' \u00b7 '));
+}
+function setEnergy(el,v){state.energy=v;_emPicked.energy=1;document.querySelectorAll('#energyPills .em-pill').forEach(c=>c.classList.remove('selected'));el.classList.add('selected');_emAfterPick();}
+function setMood(el,v){state.mood=v;_emPicked.mood=1;document.querySelectorAll('#moodPills .em-pill').forEach(c=>c.classList.remove('selected'));el.classList.add('selected');_emAfterPick();}
 var adviceMap={'high-focused':{t:'\u{1F525} Peak state \u2014 tackle your hardest task now.',cls:'state-advice-positive'},'high-scattered':{t:'\u26A1 Energy but no focus. Start a Pomodoro.',cls:'state-advice'},'high-anxious':{t:'\u{1F4A8} Burn off anxious energy with something physical.',cls:'state-advice'},'high-calm':{t:'\u2728 Great for creative work or complex problems.',cls:'state-advice-positive'},'good-focused':{t:'\u{1F44D} Solid state. Pick a medium-priority task.',c:'var(--green)'},'good-scattered':{t:'\u{1F4CB} List 3 things, do just the first one.',cls:'state-advice'},'good-anxious':{t:'\u{1F4DD} Channel worry into a task with a clear endpoint.',c:'var(--blue)'},'good-calm':{t:'\u{1F33F} Good baseline. Handle routine tasks or admin.',c:'var(--green)'},'low-focused':{t:'\u{1F3AF} Low but present? Detail work \u2014 editing, reviewing.',c:'var(--blue)'},'low-scattered':{t:'\u{1FAE7} Not deep work time. 5-min break, then one tiny task.',cls:'state-advice-alert'},'low-anxious':{t:'\u{1F9CA} Pause. Check the Grounding Session \u2192',c:'var(--purple)'},'low-calm':{t:'\u2601\uFE0F Rest state. Gentle tasks or a proper break.',c:'var(--blue)'},'crashed-focused':{t:'\u26A0\uFE0F Running on fumes. Only truly urgent items.',cls:'state-advice-alert'},'crashed-scattered':{t:'\u{1F6D1} Brain needs a reset. Check the Grounding Session \u2192',cls:'state-advice-alert'},'crashed-anxious':{t:'\u{1FAC2} Hardest state. Grounding Session first, then reassess.',c:'var(--red)'},'crashed-calm':{t:'\u{1F319} Depleted but peaceful. Gentle admin or rest.',cls:'state-advice'}};
 // R3 stage 2: when the advice text itself points at the Grounding Session
 // ("Check the Grounding Session →"), that pointer must BE the door -- it was
@@ -13111,14 +13135,13 @@ function _confirmGcalDisconnect(){
 function openEnergyModal(){
   document.getElementById('energyModal').classList.add('open');
   _blurDashboard();
-  // Restore selected pill states
-  if(state.energy){const pills=document.querySelectorAll('#energyPills .em-pill');['high','good','low','crashed'].forEach((v,i)=>{pills[i]&&pills[i].classList.toggle('selected',v===state.energy);});}
-  if(state.mood){const pills=document.querySelectorAll('#moodPills .em-pill');['focused','scattered','anxious','calm'].forEach((v,i)=>{pills[i]&&pills[i].classList.toggle('selected',v===state.mood);});}
-  showStateAdvice();
+  // Opens blank -- the last check-in is in Mood History, not pre-selected.
+  _emResetPanel();
 }
 function closeEnergyModal(){
   document.getElementById('energyModal').classList.remove('open');
   _unblurDashboard();
+  _emResetPanel();
 }
 
 function openBreathworkModal(){
@@ -17372,8 +17395,8 @@ if(_bootPainted){
   if(state.viewMode==='today')renderTodayView();
   else if(_isMobile()){buildMobileHome();_pagerRefreshDots();}
 }else setViewMode(state.viewMode);
-if(state.energy){const c=document.querySelectorAll('#energyPills .em-pill');const m=['high','good','low','crashed'];const i=m.indexOf(state.energy);if(i>=0)c[i].classList.add('selected');}
-if(state.mood){const c=document.querySelectorAll('#moodPills .em-pill');const m=['focused','scattered','anxious','calm'];const i=m.indexOf(state.mood);if(i>=0)c[i].classList.add('selected');}
+// Energy/Mood pills are no longer pre-selected at load -- the panel opens
+// blank each time (_emResetPanel, 2026-11-12).
 showStateAdvice();updateWellnessVisibility();
 startRealtimeSync();
 if(typeof pushWatchSnapshot==='function')pushWatchSnapshot(); // seed the watch on load
