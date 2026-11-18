@@ -238,24 +238,24 @@ on anything else where "we removed it" means "we stopped linking to it".
 
 ---
 
-## 🟠 G-07 — No privacy policy or terms exist anywhere in the product
+## 🟠 G-07 — Policies published; no acceptance record at sign-up (partly resolved)
 
-**What the code does.** `grep` for `privacy`, `terms of service`, `/legal` across `index.html`,
-`public/app.html`, and `src/components/*.jsx` returns **zero hits**. There is no link, no route, no
-page, and no consent record anywhere in the codebase.
+**Status (2026-11-17).** DONE: `/privacy`, `/terms` and `/health-privacy` pages exist
+(public/*.html) and are linked from the landing page footer, with the Consumer Health
+Data Privacy Policy as its own conspicuous link (MHMDA). STILL OPEN: no acceptance
+record at sign-up — nothing writes `{acceptedAt, tosVersion, privacyVersion}` to
+`users/{uid}`, so the arbitration clause and limitation of liability remain
+unenforceable browsewrap. Also open: no Settings → About links inside the app.
 
 **Why it matters.** App Store Connect requires a functional privacy policy URL. MHMDA requires a
 **homepage link** to the consumer health data policy specifically. CPRA requires a conspicuous
 link. There is currently no consent record to prove any user accepted anything — so the arbitration
 clause and limitation of liability in the forthcoming ToS would be unenforceable browsewrap.
 
-**Recommended fix.** Beyond publishing the documents:
-- Routes at `/privacy`, `/terms`, `/health-privacy` (MHMDA requires this one be **separately and
-  conspicuously linked from the homepage**, not nested inside the main policy)
-- Footer links on the landing page
-- Settings → About links inside the app
+**Recommended fix (remaining).**
 - Clickwrap acceptance at signup writing `{acceptedAt, tosVersion, privacyVersion}` to
   `users/{uid}` — this is what makes the terms enforceable
+- Settings → About links inside the app
 
 ---
 
