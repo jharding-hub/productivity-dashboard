@@ -58,9 +58,21 @@ Two repos:
 - Clean build artifacts:     make clean   -> rm -rf dist node_modules/.cache
 - vite.config.js `base` must stay correct or the deployed page renders blank
   (React never mounts). This has bitten me before.
-- No broad test suite — verify changes by running `make dev` and checking the
-  result in the browser. The one exception is `test/sync-merge.test.mjs`
-  (`npm run test:sync`), which is mandatory for any merge/tombstone change.
+- Tests: 13 `npm run test:*` scripts. For anything without a test, also verify
+  in the browser with `make dev`. Area each one covers:
+  - test:sync — MANDATORY for any merge/tombstone change
+  - test:sync-e2e — two-client sync (needs Firestore emulator)
+  - test:rules — Firestore security rules (needs emulator)
+  - test:inline — inline editing
+  - test:parser — quick-add parser
+  - test:recurrence — recurrence engine
+  - test:parity — parity check (test/parity/run.sh)
+  - test:palette — project colour palette
+  - test:sky — sky banner
+  - test:window — banner window
+  - test:banner-done — banner done state
+  - test:journal — journal encryption
+  - test:undef — undefined setters
 
 ## Sync invariants — read before touching delete/complete or the merge
 - Deletion and completion are durable, SYNCED FACTS, never the mere absence of
