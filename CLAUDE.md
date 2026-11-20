@@ -7,6 +7,7 @@ Two repos:
 - Private backend Workers:  ~/dev/centerpost-workers
 
 ## Architecture — read this before assuming anything
+- Before reading public/legacy.js, read docs/legacy-map.md and jump to the section; run `npm run map` after large edits.
 - Modular Vite/React build, BUT there are also standalone static HTML pages:
   kids.html, howto.html, teacher.html, ops.html. These are NOT part of the
   React app and CANNOT read import.meta.env.

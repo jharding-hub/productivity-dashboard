@@ -7,6 +7,7 @@
     "dev": "vite",
     "build": "vite build && npx esbuild dist/legacy.js --minify --outfile=dist/legacy.js --allow-overwrite && node scripts/stamp-sw.js",
     "preview": "vite preview",
+    "map": "node scripts/legacy-map.mjs",
     "deploy": "npm run build && gh-pages -d dist -b gh-pages --dotfiles",
     "test:rules": "firebase emulators:exec --only firestore --project demo-centerpost \"node --test test/firestore.rules.test.mjs\"",
     "test:sync": "node --test test/sync-merge.test.mjs",
