@@ -7986,6 +7986,19 @@ async function adminCopyInviteCode(code){
   }
 }
 
+// Doc ids of the rows in the invite-code table, in row order. Table buttons
+// carry only a row number; the code is looked up here, so no stored string is
+// ever placed inside an inline handler (esc() does not neutralize a backslash
+// in JS context).
+var _inviteCodeIds=[];
+function _inviteAct(kind,i,flag){
+  var code=_inviteCodeIds[i];
+  if(typeof code!=='string')return;
+  if(kind==='copy')adminCopyInviteCode(code);
+  else if(kind==='toggle')adminToggleInviteCode(code,!!flag);
+  else if(kind==='delete')adminDeleteInviteCode(code);
+}
+
 async function renderInviteCodes(){
   if(!isAdmin||!db)return;
   var tbody=document.getElementById('inviteCodeList');
@@ -7997,6 +8010,7 @@ async function renderInviteCodes(){
       return;
     }
     var rows=[];
+    _inviteCodeIds=[];
     snap.forEach(function(doc){
       var d=doc.data();
       var used=d.used||0;
@@ -8011,18 +8025,18 @@ async function renderInviteCodes(){
         statusBadge='<span class="admin-badge active">Active</span>';
       }
       var note=d.note?esc(d.note):'<span style="color:var(--text-faint);">--</span>';
-      var codeJs=esc(d.code||doc.id).replace(/'/g,"\\'");
+      var rowIdx=_inviteCodeIds.push(doc.id)-1;
       rows.push(
         '<tr><td><code style="background:rgba(91,232,255,0.1);color:#5be8ff;padding:2px 8px;border-radius:4px;font-family:ui-monospace,monospace;font-size:12px;letter-spacing:1px;">'+esc(d.code||doc.id)+'</code></td>'+
         '<td>'+usesTxt+'</td>'+
         '<td>'+statusBadge+'</td>'+
         '<td>'+note+'</td>'+
         '<td><div class="admin-actions">'+
-          '<button class="admin-action" onclick="adminCopyInviteCode(\''+codeJs+'\')">Copy</button>'+
+          '<button class="admin-action" onclick="_inviteAct(\'copy\','+rowIdx+')">Copy</button>'+
           (d.disabled
-            ? '<button class="admin-action" onclick="adminToggleInviteCode(\''+codeJs+'\',false)">Enable</button>'
-            : '<button class="admin-action" onclick="adminToggleInviteCode(\''+codeJs+'\',true)">Disable</button>')+
-          '<button class="admin-action danger" onclick="adminDeleteInviteCode(\''+codeJs+'\')">Delete</button>'+
+            ? '<button class="admin-action" onclick="_inviteAct(\'toggle\','+rowIdx+',false)">Enable</button>'
+            : '<button class="admin-action" onclick="_inviteAct(\'toggle\','+rowIdx+',true)">Disable</button>')+
+          '<button class="admin-action danger" onclick="_inviteAct(\'delete\','+rowIdx+')">Delete</button>'+
         '</div></td></tr>'
       );
     });
