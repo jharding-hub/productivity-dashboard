@@ -7746,6 +7746,38 @@ window.addEventListener('hashchange',function(){
 window.closeAdminPanel=closeAdminPanel;
 window.openAdminRoute=openAdminRoute;
 
+// Users from the last admin-table load, keyed by uid. Table buttons carry only
+// data-act + data-uid; the email is looked up here, so no user-controlled
+// string is ever placed inside an inline handler (a profile email is
+// self-editable, and esc() does not neutralize a backslash in JS context).
+var _adminUsersByUid=new Map();
+var _ADMIN_ACTIONS={
+  disable:function(uid){adminDisableUser(uid);},
+  enable:function(uid){adminEnableUser(uid);},
+  reset:function(uid){adminResetPassword(uid);},
+  makeAdmin:function(uid){adminMakeAdmin(uid);},
+  grantLegacy:function(uid){adminGrantLegacy(uid);},
+  revokeLegacy:function(uid){adminRevokeLegacy(uid);},
+  del:function(uid){adminDeleteUser(uid);}
+};
+function _adminTableClick(e){
+  var b=e.target.closest('button[data-act]');
+  if(!b||!this.contains(b))return;
+  var act=b.getAttribute('data-act');
+  if(!Object.prototype.hasOwnProperty.call(_ADMIN_ACTIONS,act))return;
+  _ADMIN_ACTIONS[act](b.getAttribute('data-uid'));
+}
+// lastActive should be a Firestore Timestamp, but a profile is self-editable:
+// anything else renders as a dash instead of throwing and blanking the table.
+function _adminFmtDate(v){
+  if(!v)return 'Never';
+  var d=null;
+  if(typeof v.toDate==='function'){try{d=v.toDate();}catch(e){d=null;}}
+  else if(v instanceof Date)d=v;
+  if(!(d instanceof Date)||isNaN(d.getTime()))return '—';
+  return d.toLocaleDateString('en-US',{month:'short',day:'numeric'});
+}
+
 async function renderAdminPanel(){
   if(!isAdmin||!db)return;
   try{
@@ -7763,29 +7795,39 @@ async function renderAdminPanel(){
       '<div class="admin-stat"><div class="as-val">'+admins+'</div><div class="as-lbl">Admins</div></div>';
 
     // User list
+    _adminUsersByUid=new Map();
+    users.forEach(u=>{_adminUsersByUid.set(u.uid,u);});
     const tbody=document.getElementById('adminUserList');
+    tbody.onclick=_adminTableClick;
     tbody.innerHTML=users.map(u=>{
-      const lastActive=u.lastActive?u.lastActive.toDate().toLocaleDateString('en-US',{month:'short',day:'numeric'}):'Never';
-      const isSelf=u.uid===currentUser.uid;
-      const tier=u.accountTier||'free';
-      // esc: accountTier comes from the user's own profile doc -- treat as untrusted
-      const tierLabel=esc({free:'Free',pro:'Pro',premium:'Premium',legacy:'Legacy',owner:'Owner'}[tier]||tier);
-      const isLegacy=u.accountTier==='legacy';
-      const emailJs=esc(u.email).replace(/'/g,"\\'");
-      return '<tr>'+
-        '<td>'+esc(u.email)+(u.admin?' <span class="admin-badge admin">Admin</span>':'')+'</td>'+
-        '<td><span class="admin-badge '+(u.disabled?'disabled':'active')+'">'+(u.disabled?'Disabled':'Active')+'</span></td>'+
-        '<td><span class="admin-badge '+(isLegacy?'active':'disabled')+'" style="'+(isLegacy?'background:rgba(5,150,105,0.15);color:#059669;border-color:rgba(5,150,105,0.4)':'')+'">'+tierLabel+'</span></td>'+
-        '<td>'+lastActive+'</td>'+
-        '<td><div class="admin-actions">'+
-        (!isSelf&&!u.disabled?'<button class="admin-action danger" onclick="adminDisableUser(\''+u.uid+'\')">Disable</button>':'')+
-        (!isSelf&&u.disabled?'<button class="admin-action" onclick="adminEnableUser(\''+u.uid+'\')">Enable</button>':'')+
-        '<button class="admin-action" onclick="adminResetPassword(\''+emailJs+'\')">Reset PW</button>'+
-        (!isSelf&&!u.admin?'<button class="admin-action" onclick="adminMakeAdmin(\''+u.uid+'\')">Make Admin</button>':'')+
-        (!isSelf&&!isLegacy?'<button class="admin-action" style="background:rgba(5,150,105,0.12);border-color:rgba(5,150,105,0.5);color:#059669;" onclick="adminGrantLegacy(\''+u.uid+'\')">Grant Legacy</button>':'')+
-        (!isSelf&&isLegacy?'<button class="admin-action" onclick="adminRevokeLegacy(\''+u.uid+'\')">Revoke Legacy</button>':'')+
-        (!isSelf?'<button class="admin-action danger" onclick="adminDeleteUser(\''+u.uid+'\',\''+emailJs+'\')">Delete</button>':'')+
-        '</div></td></tr>';
+      // Per-row guard: one malformed profile must not blank the whole table.
+      try{
+        const lastActive=_adminFmtDate(u.lastActive);
+        const isSelf=u.uid===currentUser.uid;
+        const tier=u.accountTier||'free';
+        // esc: accountTier comes from the user's own profile doc -- treat as untrusted
+        const tierLabel=esc({free:'Free',pro:'Pro',premium:'Premium',legacy:'Legacy',owner:'Owner'}[tier]||tier);
+        const isLegacy=u.accountTier==='legacy';
+        const uidAttr=esc(u.uid);
+        const btn=(act,cls,style,label)=>'<button class="admin-action'+(cls?' '+cls:'')+'"'+(style?' style="'+style+'"':'')+' data-act="'+act+'" data-uid="'+uidAttr+'">'+label+'</button>';
+        return '<tr>'+
+          '<td>'+esc(u.email)+(u.admin?' <span class="admin-badge admin">Admin</span>':'')+'</td>'+
+          '<td><span class="admin-badge '+(u.disabled?'disabled':'active')+'">'+(u.disabled?'Disabled':'Active')+'</span></td>'+
+          '<td><span class="admin-badge '+(isLegacy?'active':'disabled')+'" style="'+(isLegacy?'background:rgba(5,150,105,0.15);color:#059669;border-color:rgba(5,150,105,0.4)':'')+'">'+tierLabel+'</span></td>'+
+          '<td>'+lastActive+'</td>'+
+          '<td><div class="admin-actions">'+
+          (!isSelf&&!u.disabled?btn('disable','danger','','Disable'):'')+
+          (!isSelf&&u.disabled?btn('enable','','','Enable'):'')+
+          btn('reset','','','Reset PW')+
+          (!isSelf&&!u.admin?btn('makeAdmin','','','Make Admin'):'')+
+          (!isSelf&&!isLegacy?btn('grantLegacy','','background:rgba(5,150,105,0.12);border-color:rgba(5,150,105,0.5);color:#059669;','Grant Legacy'):'')+
+          (!isSelf&&isLegacy?btn('revokeLegacy','','','Revoke Legacy'):'')+
+          (!isSelf?btn('del','danger','','Delete'):'')+
+          '</div></td></tr>';
+      }catch(rowErr){
+        console.warn('[admin] unreadable profile row',rowErr&&rowErr.message);
+        return '<tr><td colspan="5">Unreadable profile ('+esc(String(u.uid))+')</td></tr>';
+      }
     }).join('');
   }catch(e){console.log('Admin render error:',e);}
 }
@@ -8011,8 +8053,11 @@ async function adminEnableUser(uid){
   if(!isAdmin)return;
   try{await db.collection('users').doc(uid).update({disabled:false});toast('User enabled');renderAdminPanel();}catch(e){toast('Error: '+e.message);}
 }
-async function adminResetPassword(email){
+async function adminResetPassword(uid){
   if(!isAdmin)return;
+  var u=_adminUsersByUid.get(uid);
+  var email=(u&&typeof u.email==='string')?u.email:'';
+  if(!email){toast('No email on file for this user');return;}
   _confirm('Send a password reset email to '+email+'?',async function(){
     try{await firebase.auth().sendPasswordResetEmail(email);toast('Password reset sent to '+email);}catch(e){toast('Error: '+e.message);}
   },{confirmText:'Reset Password'});
@@ -8031,8 +8076,11 @@ async function adminMakeAdmin(uid){
 // removes what the client never could: the journal/checkins/moodLog/archive
 // docs and the Firebase Auth record (without which a "deleted" user simply
 // signs back in and their profile doc is recreated).
-async function adminDeleteUser(uid,email){
+async function adminDeleteUser(uid){
   if(!isAdmin)return;
+  var u=_adminUsersByUid.get(uid);
+  if(!u){toast('User not found. Reload the admin panel.');return;}
+  var email=(typeof u.email==='string'&&u.email)?u.email:uid;
   _confirm('Delete user '+email+'? Their account, all of their data, and their sign-in are erased permanently.',async function(){
     try{
       if(!currentUser){toast('Sign in first');return;}
