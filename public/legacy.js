@@ -5050,7 +5050,7 @@ function _norgPickProject(ii, btnEl){
   var html = '<div style="padding:4px 10px;font-size:11px;cursor:pointer;color:var(--text-dim);" onclick="_norgSetProject('+ii+',\'\')">None (remove)</div>';
   projects.forEach(function(p){
     var sel = (it._userProject||'').toLowerCase()===(p.name||'').toLowerCase();
-    html+='<div style="padding:4px 10px;font-size:11px;cursor:pointer;color:'+(sel?'var(--accent)':'var(--text)')+';font-weight:'+(sel?'700':'400')+';" onclick="_norgSetProject('+ii+',\''+esc(p.name).replace(/'/g,"\\'")+'\')">'+esc(p.name)+'</div>';
+    html+='<div style="padding:4px 10px;font-size:11px;cursor:pointer;color:'+(sel?'var(--accent)':'var(--text)')+';font-weight:'+(sel?'700':'400')+';" onclick="_norgSetProject('+ii+',\''+esc(p.id)+'\')">'+esc(p.name)+'</div>';
   });
   wrap.innerHTML = html;
 
@@ -5061,9 +5061,18 @@ function _norgPickProject(ii, btnEl){
   setTimeout(function(){ document.addEventListener('click', function closer(e){ if(!wrap.contains(e.target)&&e.target!==btnEl){ wrap.remove(); document.removeEventListener('click',closer); } }); },0);
 }
 
-function _norgSetProject(ii, projName){
+// projId is a project id (or '' for none). The handler never carries the
+// project name: a name is user-typed and cannot be made safe inside an inline
+// handler, so the name is looked up here from state.
+function _norgSetProject(ii, projId){
   var it = _norgPlan && _norgPlan.items[ii];
   if(!it) return;
+  var projName = '';
+  if(projId){
+    var proj = (state.projects||[]).find(function(p){ return String(p.id)===String(projId); });
+    if(!proj) return;
+    projName = proj.name || '';
+  }
   it._userProject = projName;
 
   var projWrap = document.getElementById('norgproj_'+ii);
