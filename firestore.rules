@@ -59,10 +59,15 @@ service cloud.firestore {
     match /inviteCodes/{code} {
       allow get: if true;
       allow list: if isAdmin();
-      allow update: if isSignedIn()
-                    && request.resource.data.diff(resource.data).affectedKeys()
-                         .hasOnly(['used','lastUsedAt','lastUsedBy','lastUsedEmail'])
-                    && request.resource.data.used == resource.data.used + 1;
+      // Admins may toggle `disabled` (and nothing else). Any signed-in user
+      // may record a use: bump `used` by exactly 1 (signup).
+      allow update: if (isAdmin()
+                        && request.resource.data.diff(resource.data).affectedKeys()
+                             .hasOnly(['disabled']))
+                    || (isSignedIn()
+                        && request.resource.data.diff(resource.data).affectedKeys()
+                             .hasOnly(['used','lastUsedAt','lastUsedBy','lastUsedEmail'])
+                        && request.resource.data.used == resource.data.used + 1);
       allow create, delete: if isAdmin();
     }
   }

@@ -14,7 +14,7 @@ import {
   assertSucceeds,
 } from '@firebase/rules-unit-testing';
 import {
-  doc, collection, getDoc, getDocs, setDoc, updateDoc,
+  doc, collection, getDoc, getDocs, setDoc, updateDoc, deleteDoc,
 } from 'firebase/firestore';
 
 let testEnv;
@@ -117,6 +117,13 @@ describe('invite codes (inviteCodes/{code})', () => {
   it('a user cannot disable a code', async () => {
     await assertFails(updateDoc(doc(alice(), 'inviteCodes/CODE1'), { disabled: true }));
   });
+  it('an admin can disable and re-enable a code', async () => {
+    await assertSucceeds(updateDoc(doc(admin(), 'inviteCodes/CODE1'), { disabled: true }));
+    await assertSucceeds(updateDoc(doc(admin(), 'inviteCodes/CODE1'), { disabled: false }));
+  });
+  it('an admin cannot change used through the disable path', async () => {
+    await assertFails(updateDoc(doc(admin(), 'inviteCodes/CODE1'), { used: 9 }));
+  });
   it('a user cannot jump used by more than 1', async () => {
     await assertFails(updateDoc(doc(alice(), 'inviteCodes/CODE1'), { used: 9 }));
   });
@@ -125,5 +132,8 @@ describe('invite codes (inviteCodes/{code})', () => {
   });
   it('an admin can create a code', async () => {
     await assertSucceeds(setDoc(doc(admin(), 'inviteCodes/NEW'), { used: 0, maxUses: 5 }));
+  });
+  it('an admin can delete a code', async () => {
+    await assertSucceeds(deleteDoc(doc(admin(), 'inviteCodes/CODE1')));
   });
 });
