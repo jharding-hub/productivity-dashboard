@@ -1204,62 +1204,28 @@ async function doSignup(){
   if(!firebaseReady){errEl.textContent='Service unavailable. Please try again.';return;}
 
   btn.disabled=true;
-  btn.textContent='Checking invite code...';
+  btn.textContent='Creating account...';
 
   try {
-    // -- Step 1: Validate invite code BEFORE creating account --
-    var codeRef=db.collection('inviteCodes').doc(inviteCode);
-    var codeSnap=await codeRef.get();
-    if(!codeSnap.exists){
-      errEl.textContent='That invite code isn\'t valid. Double-check the spelling.';
-      btn.disabled=false;btn.textContent='Create Account';return;
-    }
-    var codeData=codeSnap.data();
-    if(codeData.disabled){
-      errEl.textContent='That invite code has been disabled. Ask the developer for a new one.';
-      btn.disabled=false;btn.textContent='Create Account';return;
-    }
-    if(codeData.expiresAt){
-      var exp=codeData.expiresAt.toDate?codeData.expiresAt.toDate():new Date(codeData.expiresAt);
-      if(exp.getTime()<Date.now()){
-        errEl.textContent='That invite code has expired. Ask the developer for a new one.';
-        btn.disabled=false;btn.textContent='Create Account';return;
-      }
-    }
-    var usedSoFar=codeData.used||0;
-    if(codeData.maxUses && usedSoFar>=codeData.maxUses){
-      errEl.textContent='That invite code has reached its usage limit. Ask the developer for a new one.';
-      btn.disabled=false;btn.textContent='Create Account';return;
+    // The whole sign-up (invite-code checks, account, use count, profile)
+    // happens server-side in jarvis /signup. Its error text is shown as-is.
+    var res=await fetch(JARVIS_PROXY_URL+'/signup',{
+      method:'POST',
+      headers:{'Content-Type':'application/json'},
+      body:JSON.stringify({inviteCode:inviteCode,email:email,password:pass})
+    });
+    var data={};
+    try{data=await res.json();}catch(_){}
+    if(!res.ok){
+      errEl.textContent=data.error||(res.status===429
+        ?'Too many tries just now \u2014 give it a few minutes.'
+        :'Sign-up failed. Please try again.');
+      return;
     }
 
-    // -- Step 2: Create user account --
-    btn.textContent='Creating account...';
-    var cred=await firebase.auth().createUserWithEmailAndPassword(email,pass);
-
-    // -- Step 3: Record code usage (best-effort; doesn't block account if it fails) --
-    try {
-      await codeRef.update({
-        used:firebase.firestore.FieldValue.increment(1),
-        lastUsedAt:firebase.firestore.FieldValue.serverTimestamp(),
-        lastUsedBy:cred.user.uid,
-        lastUsedEmail:email
-      });
-    } catch(e){console.warn('[signup] code increment failed (non-fatal)',e);}
-
-    // -- Step 4: Create the user's profile. admin:false / disabled:false
-    //    are REQUIRED by the Firestore `create` rule (see firestore.rules);
-    //    a merge-tag write that omitted them was silently denied, leaving
-    //    invite-code users with no profile doc. invitedWith aids admin audit.
-    try {
-      await db.collection('users').doc(cred.user.uid).set({
-        email:email,admin:false,disabled:false,
-        createdAt:firebase.firestore.FieldValue.serverTimestamp(),
-        lastActive:firebase.firestore.FieldValue.serverTimestamp(),
-        invitedWith:inviteCode
-      });
-    } catch(e){console.error('[signup] profile create failed',e);}
-
-    // onAuthStateChanged fires next, takes user to dashboard
+    // Account exists now. Sign in; onAuthStateChanged takes it from here.
+    btn.textContent='Signing in...';
+    await firebase.auth().signInWithEmailAndPassword(email,pass);
     successEl.textContent='Account created! Loading your workspace...';
     passEl.value='';
     passConfirmEl.value='';
@@ -1267,12 +1233,7 @@ async function doSignup(){
   } catch(e) {
     var msg=e.message||'Sign-up failed. Please try again.';
     var code=e.code||'';
-    if(code==='auth/email-already-in-use')msg='That email is already registered. Try signing in instead.';
-    else if(code==='auth/invalid-email')msg='Please enter a valid email address.';
-    else if(code==='auth/weak-password')msg='Password is too weak. Use at least 6 characters.';
-    else if(code==='auth/operation-not-allowed')msg='Account creation is currently disabled. Contact the developer.';
-    else if(code==='auth/network-request-failed')msg='Network error. Check your connection and try again.';
-    else if(code==='permission-denied')msg='Couldn\'t verify the invite code. Make sure Firestore rules allow reading inviteCodes (see admin panel).';
+    if(e instanceof TypeError||code==='auth/network-request-failed')msg='Network error. Check your connection and try again.';
     errEl.textContent=msg;
   } finally {
     btn.disabled=false;
