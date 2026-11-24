@@ -344,7 +344,8 @@ async function doLogin(){
     const msg=e.code==='auth/user-not-found'?'No account with that email. Ask your admin to create one.':
               e.code==='auth/wrong-password'||e.code==='auth/invalid-credential'?'Incorrect password.':
               e.code==='auth/invalid-email'?'Invalid email format.':
-              e.code==='auth/too-many-requests'?'Too many attempts. Try again later.':e.message;
+              e.code==='auth/too-many-requests'?'Too many attempts. Try again later.':
+              e.code==='auth/user-disabled'?'Account disabled. Contact your admin.':e.message;
     err.textContent=msg;
   }
 }
@@ -8027,15 +8028,29 @@ async function _bootstrapInviteCodesIfEmpty(){
   } catch(e){console.warn('[admin] bootstrap codes failed',e);}
 }
 
+// Real disable/enable: jarvis flips the Firebase Auth account (and revokes
+// sessions), the profile field and the jarvis block. Owner-only server side.
+async function _adminSetUserDisabled(uid,disabled){
+  var res=await fetch(JARVIS_PROXY_URL+'/admin/set-user-disabled',{
+    method:'POST',
+    headers:await _jarvisAuthHeaders(),
+    body:JSON.stringify({uid:uid,disabled:disabled})
+  });
+  if(!res.ok){
+    var data={};
+    try{data=await res.json();}catch(_){}
+    throw new Error(data.error||('HTTP '+res.status));
+  }
+}
 async function adminDisableUser(uid){
   if(!isAdmin)return;
   _confirm('Disable this user? They will not be able to sign in.',async function(){
-    try{await db.collection('users').doc(uid).update({disabled:true});toast('User disabled');renderAdminPanel();}catch(e){toast('Error: '+e.message);}
+    try{await _adminSetUserDisabled(uid,true);toast('User disabled');renderAdminPanel();}catch(e){toast('Error: '+e.message);}
   },{destructive:true,confirmText:'Disable'});
 }
 async function adminEnableUser(uid){
   if(!isAdmin)return;
-  try{await db.collection('users').doc(uid).update({disabled:false});toast('User enabled');renderAdminPanel();}catch(e){toast('Error: '+e.message);}
+  try{await _adminSetUserDisabled(uid,false);toast('User enabled');renderAdminPanel();}catch(e){toast('Error: '+e.message);}
 }
 async function adminResetPassword(uid){
   if(!isAdmin)return;
