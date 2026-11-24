@@ -7803,34 +7803,6 @@ async function renderAdminPanel(){
   }catch(e){console.log('Admin render error:',e);}
 }
 
-async function adminAddUser(){
-  if(!isAdmin)return;
-  const email=document.getElementById('adminNewEmail').value.trim();
-  const pass=document.getElementById('adminNewPass').value;
-  const err=document.getElementById('adminAddError');
-  err.textContent='';
-  if(!email||!pass){err.textContent='Enter email and password.';return;}
-  if(pass.length<6){err.textContent='Password must be at least 6 characters.';return;}
-  try{
-    // Use secondary app to create user without signing out admin
-    const secondaryApp=firebase.initializeApp(firebaseConfig,'secondary_'+Date.now());
-    const cred=await secondaryApp.auth().createUserWithEmailAndPassword(email,pass);
-    const newUid=cred.user.uid;
-    await secondaryApp.auth().signOut();
-    secondaryApp.delete();
-    // Create profile in Firestore
-    await db.collection('users').doc(newUid).set({
-      email:email,admin:false,disabled:false,
-      createdAt:firebase.firestore.FieldValue.serverTimestamp(),
-      lastActive:null
-    });
-    document.getElementById('adminNewEmail').value='';
-    document.getElementById('adminNewPass').value='';
-    toast('User '+email+' created');
-    renderAdminPanel();
-  }catch(e){err.textContent=e.message;}
-}
-
 // --- Legacy tier grant / revoke -------------------------------------------
 // Firestore holds the tier for the UI; the Jarvis Worker's KV tier registry
 // is what actually enforces AI access (S-2) -- sync both on every change.
