@@ -67,6 +67,33 @@ describe('per-user data (users/{uid}/data/*)', () => {
   it('an unauthenticated client cannot read data', async () => {
     await assertFails(getDoc(doc(anon(), 'users/alice/data/dashboard')));
   });
+  it('a user with no profile can still read and write their data', async () => {
+    await assertSucceeds(setDoc(doc(alice(), 'users/alice/data/dashboard'), { state: '{}' }));
+    await assertSucceeds(getDoc(doc(alice(), 'users/alice/data/dashboard')));
+  });
+  it('an enabled user can read and write their data', async () => {
+    await seedProfile('alice');
+    await assertSucceeds(setDoc(doc(alice(), 'users/alice/data/dashboard'), { state: '{}' }));
+    await assertSucceeds(getDoc(doc(alice(), 'users/alice/data/dashboard')));
+  });
+  it('a profile without a disabled field still has access', async () => {
+    await testEnv.withSecurityRulesDisabled(async (ctx) => {
+      await setDoc(doc(ctx.firestore(), 'users/alice'), { email: 'alice@x.co' });
+    });
+    await assertSucceeds(getDoc(doc(alice(), 'users/alice/data/dashboard')));
+  });
+  it('a disabled user cannot read or write their data', async () => {
+    await testEnv.withSecurityRulesDisabled(async (ctx) => {
+      await setDoc(doc(ctx.firestore(), 'users/alice'), { email: 'alice@x.co', admin: false, disabled: true });
+      await setDoc(doc(ctx.firestore(), 'users/alice/data/dashboard'), { state: '{}' });
+    });
+    await assertFails(getDoc(doc(alice(), 'users/alice/data/dashboard')));
+    await assertFails(setDoc(doc(alice(), 'users/alice/data/dashboard'), { state: '{"x":1}' }));
+  });
+  it('an admin cannot read another user\'s data', async () => {
+    await seedProfile('alice');
+    await assertFails(getDoc(doc(admin(), 'users/alice/data/dashboard')));
+  });
 });
 
 describe('user profiles (users/{uid})', () => {

@@ -49,9 +49,13 @@ service cloud.firestore {
       // Delete: admins only.
       allow delete: if isAdmin();
 
-      // Per-user dashboard data — owner only.
+      // Per-user dashboard data — owner only, and only while the owner's
+      // profile is not disabled. A missing profile is allowed (some older
+      // invite users never got one).
       match /data/{doc} {
-        allow read, write: if isSignedIn() && request.auth.uid == userId;
+        allow read, write: if isSignedIn() && request.auth.uid == userId
+          && (!exists(/databases/$(database)/documents/users/$(userId))
+              || get(/databases/$(database)/documents/users/$(userId)).data.get('disabled', false) != true);
       }
     }
 
