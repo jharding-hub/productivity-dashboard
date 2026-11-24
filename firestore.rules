@@ -59,19 +59,15 @@ service cloud.firestore {
       }
     }
 
-    // Invite Codes
+    // Invite Codes — admin only. Sign-up runs on the server (jarvis /signup),
+    // which reads codes and records uses with the service account, so no
+    // ordinary client needs to read or change a code.
     match /inviteCodes/{code} {
-      allow get: if true;
-      allow list: if isAdmin();
-      // Admins may toggle `disabled` (and nothing else). Any signed-in user
-      // may record a use: bump `used` by exactly 1 (signup).
-      allow update: if (isAdmin()
-                        && request.resource.data.diff(resource.data).affectedKeys()
-                             .hasOnly(['disabled']))
-                    || (isSignedIn()
-                        && request.resource.data.diff(resource.data).affectedKeys()
-                             .hasOnly(['used','lastUsedAt','lastUsedBy','lastUsedEmail'])
-                        && request.resource.data.used == resource.data.used + 1);
+      allow read: if isAdmin();
+      // Admins may toggle `disabled` (and nothing else).
+      allow update: if isAdmin()
+                    && request.resource.data.diff(resource.data).affectedKeys()
+                         .hasOnly(['disabled']);
       allow create, delete: if isAdmin();
     }
   }

@@ -130,16 +130,26 @@ describe('user profiles (users/{uid})', () => {
 });
 
 describe('invite codes (inviteCodes/{code})', () => {
-  it('anyone can get a specific code (signup validation)', async () => {
-    await assertSucceeds(getDoc(doc(anon(), 'inviteCodes/CODE1')));
+  it('an unauthenticated client cannot get a code', async () => {
+    await assertFails(getDoc(doc(anon(), 'inviteCodes/CODE1')));
+  });
+  it('a signed-in user cannot get a code', async () => {
+    await assertFails(getDoc(doc(alice(), 'inviteCodes/CODE1')));
   });
   it('a non-admin cannot list/enumerate codes', async () => {
     await assertFails(getDocs(collection(alice(), 'inviteCodes')));
   });
-  it('a signed-in user may bump used by exactly +1', async () => {
-    await assertSucceeds(updateDoc(doc(alice(), 'inviteCodes/CODE1'), {
+  it('a signed-in user cannot bump used by +1 any more', async () => {
+    await assertFails(updateDoc(doc(alice(), 'inviteCodes/CODE1'), {
       used: 1, lastUsedBy: 'alice', lastUsedEmail: 'alice@x.co',
     }));
+  });
+  it('an admin can get and list codes', async () => {
+    await assertSucceeds(getDoc(doc(admin(), 'inviteCodes/CODE1')));
+    await assertSucceeds(getDocs(collection(admin(), 'inviteCodes')));
+  });
+  it('an admin can check whether a new code already exists', async () => {
+    await assertSucceeds(getDoc(doc(admin(), 'inviteCodes/NOPE')));
   });
   it('a user cannot disable a code', async () => {
     await assertFails(updateDoc(doc(alice(), 'inviteCodes/CODE1'), { disabled: true }));
