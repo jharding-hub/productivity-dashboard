@@ -2676,6 +2676,11 @@ body.capacitor-native .pd-topbar{padding-top:max(env(safe-area-inset-top),46px) 
 /* AUTH GATE */
 .login-gate{position:fixed;inset:0;background:var(--bg);z-index:9999;display:flex;align-items:center;justify-content:center;padding:20px;}
 .login-gate.hidden{display:none;}
+/* While the landing gate is showing, the signed-in controls sitting behind it
+   (status bar, mobile tab bar, Axis, Quick Capture) must not take keyboard
+   focus or be read by a screen reader. visibility:hidden removes both; the
+   rule stops applying the moment the gate gets .hidden on sign-in. */
+body:has(#loginGate:not(.hidden)) :is(#statusBar,#mobileTabBar,#axis-assistant-root,#quick-capture-modal-root){visibility:hidden;}
 .login-box{background:var(--surface);border:1px solid var(--border);border-radius:var(--radius);padding:40px 36px;max-width:400px;width:100%;text-align:center;}
 .login-box h2{font-family:'Fraunces',serif;font-size:calc(24px * var(--type-scale,1));color:var(--accent);margin-bottom:6px;}
 .login-box .login-sub{font-size:calc(13px * var(--type-scale,1));color:var(--text-dim);margin-bottom:24px;}
