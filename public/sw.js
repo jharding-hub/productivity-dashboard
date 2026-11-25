@@ -78,12 +78,15 @@ const APP_SCRIPT_PATH = /\/(legacy|config|journal-crypto|quick-add-parser|recurr
 // is Cloudflare Pages' SPA fallback wearing that URL -- it answers ANY path
 // it can't find (an asset mid-deploy, a hashed filename that's rolled off
 // since the last redeploy) with index.html and a 200, not a 404. _headers
-// marks /assets/* immutable for a year, so a browser (or this SW's own Cache
-// Storage, before this check existed) that happened to ask at exactly the
-// wrong instant would trust that HTML as the real CSS/JS forever -- root
-// cause of the 2026-08-23 report: Chrome stuck permanently unstyled while
-// Safari, which asked at a different moment, was fine. Never treat one of
-// these as the real file, and never let it into a cache.
+// USED to mark /assets/* immutable for a year; it now sends "public,
+// no-cache" (browsers revalidate every load), so the browser HTTP cache no
+// longer holds a poisoned copy forever. That setting was the fix for the
+// 2026-08-23 report: Chrome stuck permanently unstyled while Safari, which
+// asked at a different moment, was fine -- it had trusted that HTML as the
+// real CSS/JS for a year. This SW's own Cache Storage is separate from the
+// HTTP cache and never revalidates by itself, so the guard below is still
+// needed: never treat one of these as the real file, and never let it into
+// a cache.
 function isPoisonedHTML(req, resp) {
   if (!resp) return false;
   // HTML is the CORRECT content type for navigations and real HTML paths --
