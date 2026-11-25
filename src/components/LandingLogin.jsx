@@ -7,6 +7,7 @@ export default function LandingLogin() {
 
   const marketingBody = (
     <>
+      <main>
       {/* HERO */}
           <section className="landing-hero">
             <div className="landing-hero-text">
@@ -183,6 +184,7 @@ export default function LandingLogin() {
               <button className="landing-cta-tertiary" onClick={() => window.showSigninPanel()}>I have an account</button>
             </div>
           </section>
+      </main>
 
           {/* FOOTER */}
           <footer className="landing-footer">

@@ -2765,6 +2765,8 @@ body.capacitor-native .pd-topbar{padding-top:max(env(safe-area-inset-top),46px) 
    ═══════════════════════════════════════════════════════════════════════ */
 .login-gate.landing-mode{padding:0;align-items:stretch;justify-content:flex-start;overflow-y:auto;background:radial-gradient(ellipse at top right,rgba(91,232,255,0.06) 0%,transparent 60%),radial-gradient(ellipse at bottom left,rgba(91,232,255,0.04) 0%,transparent 60%),var(--bg);}
 .landing{display:flex;flex-direction:column;width:100%;min-height:100vh;}
+/* <main> landmark wraps the sections; flex column keeps them laid out as when they were direct children of .landing */
+.landing > main{display:flex;flex-direction:column;width:100%;}
 .landing-nav{position:sticky;top:0;display:flex;align-items:center;justify-content:space-between;padding:14px 32px;background:rgba(13,20,28,0.85);backdrop-filter:blur(12px);-webkit-backdrop-filter:blur(12px);border-bottom:1px solid var(--border);z-index:10;}
 .landing-logo{display:flex;align-items:center;gap:10px;font-family:'Fraunces',serif;font-size:calc(18px * var(--type-scale,1));font-weight:600;color:var(--text);letter-spacing:-0.3px;}
 .landing-logo .logo-dot{width:10px;height:10px;border-radius:50%;background:#5be8ff;box-shadow:0 0 12px rgba(91,232,255,0.6);}
