@@ -18,6 +18,4 @@ jobs:
           node-version: 22
           cache: npm
       - run: npm ci
-      - run: npm run test:sync
-      - run: npm run test:parser
-      - run: npm run test:inline
+      - run: npm test
