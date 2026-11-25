@@ -2911,6 +2911,8 @@ body:has(#loginGate:not(.hidden)) :is(#statusBar,#mobileTabBar,#axis-assistant-r
   .feature-grid{grid-template-columns:1fr;}
   .mockup-grid{grid-template-columns:1fr;}
   .signin-card{padding:32px 24px;}
+  /* 44px minimum touch target for the header Sign In / Sign Up buttons (they measured 35px). */
+  .landing-signin-btn,.landing-signup-btn{min-height:44px;}
 }
 .customize-btn{background:none;border:1px solid var(--border);color:var(--text-dim);padding:6px 10px;border-radius:var(--radius-sm);cursor:pointer;font-size:calc(12px * var(--type-scale,1));font-family:inherit;transition:all 0.15s;min-height:40px;}
 .customize-btn:hover{border-color:var(--accent-dim);color:var(--accent);}
