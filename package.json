@@ -9,6 +9,7 @@
     "preview": "vite preview",
     "map": "node scripts/legacy-map.mjs",
     "deploy": "npm run build && gh-pages -d dist -b gh-pages --dotfiles",
+    "test": "node --test test/sync-merge.test.mjs test/inline-edit.test.mjs test/quick-add-parser.test.mjs test/recurrence-engine.test.mjs test/project-palette.test.mjs test/sky-banner.test.mjs test/banner-window.test.mjs test/journal-crypto.test.mjs test/banner-done.test.mjs test/undef-setters.test.mjs test/sw-script-list.test.mjs",
     "test:rules": "firebase emulators:exec --only firestore --project demo-centerpost \"node --test test/firestore.rules.test.mjs\"",
     "test:sync": "node --test test/sync-merge.test.mjs",
     "test:inline": "node --test test/inline-edit.test.mjs",
