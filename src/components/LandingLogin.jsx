@@ -280,8 +280,8 @@ export default function LandingLogin() {
                 security check) and the platform still supports it now.
                 Password stays the primary path either way. */}
             <button id="waSigninBtn" className="login-btn" style={{ display: 'none', background: 'var(--surface-raised)', color: 'var(--text)', border: '1px solid var(--border)', marginBottom: 10 }} onClick={() => window.signInWithTouchID()}>&#128272; Sign in with Touch ID</button>
-            <input type="email" id="loginEmail" placeholder="Email address..." onKeyDown={e => { if (e.key === 'Enter') document.getElementById('loginPass').focus(); }} />
-            <input type="password" id="loginPass" placeholder="Password..." onKeyDown={e => { if (e.key === 'Enter') window.doLogin(); }} />
+            <input type="email" id="loginEmail" aria-label="Email address" placeholder="Email address..." onKeyDown={e => { if (e.key === 'Enter') document.getElementById('loginPass').focus(); }} />
+            <input type="password" id="loginPass" aria-label="Password" placeholder="Password..." onKeyDown={e => { if (e.key === 'Enter') window.doLogin(); }} />
             <button className="login-btn" onClick={() => window.doLogin()}>Sign In</button>
             <div className="login-error" id="loginError"></div>
             <div className="login-success" id="loginSuccess"></div>
@@ -303,10 +303,10 @@ export default function LandingLogin() {
           <h2>&#128640; Create Account</h2>
           <p className="login-sub">Invite code required</p>
           <div id="signupForm">
-            <input type="text" id="signupInvite" placeholder="Invite code..." autoComplete="off" autoCapitalize="characters" style={{ textTransform: 'uppercase', letterSpacing: '1.5px', fontWeight: 600 }} onKeyDown={e => { if (e.key === 'Enter') document.getElementById('signupEmail').focus(); }} />
-            <input type="email" id="signupEmail" placeholder="Email address..." autoComplete="email" onKeyDown={e => { if (e.key === 'Enter') document.getElementById('signupPass').focus(); }} />
-            <input type="password" id="signupPass" placeholder="Password (min 6 characters)..." autoComplete="new-password" onKeyDown={e => { if (e.key === 'Enter') document.getElementById('signupPassConfirm').focus(); }} />
-            <input type="password" id="signupPassConfirm" placeholder="Confirm password..." autoComplete="new-password" onKeyDown={e => { if (e.key === 'Enter') window.doSignup(); }} />
+            <input type="text" id="signupInvite" aria-label="Invite code" placeholder="Invite code..." autoComplete="off" autoCapitalize="characters" style={{ textTransform: 'uppercase', letterSpacing: '1.5px', fontWeight: 600 }} onKeyDown={e => { if (e.key === 'Enter') document.getElementById('signupEmail').focus(); }} />
+            <input type="email" id="signupEmail" aria-label="Email address" placeholder="Email address..." autoComplete="email" onKeyDown={e => { if (e.key === 'Enter') document.getElementById('signupPass').focus(); }} />
+            <input type="password" id="signupPass" aria-label="Password, minimum 6 characters" placeholder="Password (min 6 characters)..." autoComplete="new-password" onKeyDown={e => { if (e.key === 'Enter') document.getElementById('signupPassConfirm').focus(); }} />
+            <input type="password" id="signupPassConfirm" aria-label="Confirm password" placeholder="Confirm password..." autoComplete="new-password" onKeyDown={e => { if (e.key === 'Enter') window.doSignup(); }} />
             <button className="login-btn" onClick={() => window.doSignup()} id="signupBtn">Create Account</button>
             <div className="login-error" id="signupError"></div>
             <div className="login-success" id="signupSuccess"></div>
@@ -318,7 +318,7 @@ export default function LandingLogin() {
             <div className="waitlist-block" style={{ marginTop: 14, paddingTop: 14, borderTop: '1px solid var(--border)' }}>
               <p style={{ fontSize: 12, color: 'var(--text-dim)', margin: '0 0 8px', lineHeight: 1.5 }}>No code? Leave your email and we&rsquo;ll send you one when a spot opens.</p>
               <div style={{ display: 'flex', gap: 6 }}>
-                <input type="email" id="waitlistEmail" placeholder="you@example.com" autoComplete="email" style={{ flex: 1, marginBottom: 0 }} onKeyDown={e => { if (e.key === 'Enter') window.joinWaitlist(); }} />
+                <input type="email" id="waitlistEmail" aria-label="Email address for the waitlist" placeholder="you@example.com" autoComplete="email" style={{ flex: 1, marginBottom: 0 }} onKeyDown={e => { if (e.key === 'Enter') window.joinWaitlist(); }} />
                 <button className="btn" id="waitlistBtn" onClick={() => window.joinWaitlist()} style={{ whiteSpace: 'nowrap' }}>Join the waitlist</button>
               </div>
               <div id="waitlistMsg" style={{ fontSize: 11, color: 'var(--text-dim)', marginTop: 8, minHeight: 14, lineHeight: 1.5 }}></div>
