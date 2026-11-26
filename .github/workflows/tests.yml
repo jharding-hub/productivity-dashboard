@@ -9,7 +9,7 @@ on:
 
 jobs:
   unit-tests:
-    name: Sync + parser tests (no emulator)
+    name: Unit tests (no emulator)
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
