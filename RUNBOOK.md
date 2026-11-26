@@ -34,7 +34,7 @@ Firebase console (Firestore → Disaster recovery):
    ```
 
 Practice restore log (date · result):
-- _not yet performed_
+- 2026-11-26 · PASSED. Restored backup from 2026-11-19 to `restore-test` (completed, SUCCESSFUL). Confirmed `users/{uid}/data/dashboard` held real state. `restore-test` deleted the same day. `(default)` untouched.
 
 ## Disaster recovery — restoring lost/corrupted production data
 
